@@ -25,14 +25,29 @@ There is a `docker-start` script (`npm run setup && npm run start`) but **no Doc
 in the repo. Ignore it.
 
 ### Do NOT put `npm run setup` in the build command
-`setup` = `prisma generate && prisma migrate deploy`. `migrate deploy` needs a
-reachable database, so if `DATABASE_URL` is even briefly unreachable the build
-aborts on a non-zero exit and the deploy fails. Use `npm ci && npm run build`
-and run migrations once by hand:
+`setup` is now just `prisma generate`. Migrations are **not** part of the build,
+because `migrate deploy` needs a reachable database and exits non-zero if
+`DATABASE_URL` is briefly unreachable — that aborts the deploy.
+
+Build command:
+
+```
+npm ci && npm run build
+```
+
+Run migrations by hand, once, before the first deploy (and after any schema
+change):
 
 ```bash
 DATABASE_URL="postgresql://...-pooler.../neondb?sslmode=require" npx prisma migrate deploy
 ```
+
+### `prisma` must be a regular dependency, not a devDependency
+Render's build runs `npm ci` with devDependencies omitted. If `prisma` is only in
+`devDependencies`, the `prisma` binary is never installed and the build dies with
+`sh: 1: prisma: not found`. It has to be in `dependencies` so `prisma generate`
+works at build time. `@prisma/client` declares `prisma` as a *peer* dependency,
+so it will not be pulled in automatically — this has to be explicit.
 
 ### The ui-extensions versions are pinned together on purpose
 `@shopify/ui-extensions` and `@shopify/ui-extensions-react` must be the **same**
