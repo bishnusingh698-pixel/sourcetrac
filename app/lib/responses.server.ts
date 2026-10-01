@@ -1,4 +1,5 @@
 import { db, isRetryableDbError } from "~/db.server";
+import { serialiseError } from "~/lib/errors";
 import { logger } from "~/lib/logger";
 import { parseMoneyToMinor } from "~/lib/money";
 import { currentUtcPeriod, evaluateCap, isPlanKey, type PlanKey } from "~/lib/plans";
@@ -223,4 +224,35 @@ export async function markUnreconcilable(olderThanHours = 24, now = new Date()):
   return result.count;
 }
 
-export { isPlanKey };
+/**
+ * Run `markUnreconcilable` at most once per process, opportunistically, on a
+ * normal request.
+ *
+ * Render's free tier grants 750 instance hours per month against 744 in a
+ * 31-day month, so a second service for scheduled work would guarantee a
+ * mid-month suspension. Sweeping inline keeps the deployment to one web
+ * service. The guard is per-process, not per-request, because this is a
+ * write on an otherwise read-only path.
+ */
+let lastUnreconcilableSweep: number | undefined;
+
+export async function maybeMarkUnreconcilable(olderThanHours = 24): Promise<void> {
+  const intervalMs = 60 * 60 * 1000;
+  const now = Date.now();
+
+  if (lastUnreconcilableSweep !== undefined && now - lastUnreconcilableSweep < intervalMs) {
+    return;
+  }
+
+  // Set before awaiting so concurrent requests on a cold process cannot both
+  // trigger a sweep.
+  lastUnreconcilableSweep = now;
+
+  try {
+    await markUnreconcilable(olderThanHours);
+  } catch (error) {
+    // Must not fail the caller's request: this is housekeeping, and the
+    // retry inside markUnreconcilable has already been exhausted.
+    logger.warn("unreconcilable_sweep_failed", serialiseError(error));
+  }
+}

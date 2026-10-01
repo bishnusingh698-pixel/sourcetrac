@@ -7,6 +7,7 @@ import { logger } from "~/lib/logger";
 import { BUCKETS, consumeToken } from "~/lib/rate-limit.server";
 import { DEFAULT_OPTIONS, parseSurveySettings } from "~/lib/settings";
 import { findShopByDomain, hasResponseFor } from "~/lib/shop.server";
+import { maybeMarkUnreconcilable } from "~/lib/responses.server";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -70,6 +71,11 @@ export const loader = async ({ request }: { request: Request }) => {
   });
 
   const alreadyAnswered = await hasResponseFor(shop.id, parsed.data.orderId);
+
+  // Fire-and-forget: this is the request path that runs most often, and the
+  // sweep rate-limits itself. Kept off the critical path so housekeeping can
+  // never delay the buyer seeing the survey.
+  void maybeMarkUnreconcilable();
 
   logger.info("survey_config_served", {
     request_id: requestId,
