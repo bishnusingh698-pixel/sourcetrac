@@ -1,0 +1,65 @@
+# SourceTrac — app configuration
+# Docs: https://shopify.dev/docs/apps/build/cli-for-apps/app-configuration
+
+client_id = "REPLACE_WITH_YOUR_CLIENT_ID"
+name = "SourceTrac"
+handle = "sourcetrac"
+application_url = "https://REPLACE_WITH_YOUR_DEPLOYMENT.onrender.com"
+embedded = true
+
+# Single scope. We cache order totals via webhook and never mutate an order.
+# See docs/02-architecture-and-costs.md §4 for the justification of each exclusion.
+scopes = "read_orders"
+
+[access_scopes]
+scopes = "read_orders"
+
+# Version 2026-07 is the latest stable as of 2026-10-01.
+# Keep this in sync with SHOPIFY_API_VERSION and each extension's api_version.
+scopes_api_version = "2026-07"
+
+[auth]
+redirect_urls = [
+  "https://REPLACE_WITH_YOUR_DEPLOYMENT.onrender.com/auth/callback",
+  "https://REPLACE_WITH_YOUR_DEPLOYMENT.onrender.com/auth/shopify/callback",
+]
+
+[webhooks]
+api_version = "2026-07"
+
+  [[webhooks.subscriptions]]
+  compliance_topics = [ "customers/data_request", "customers/redact", "shop/redact" ]
+  uri = "/webhooks"
+
+  [[webhooks.subscriptions]]
+  topics = [ "orders/create" ]
+  uri = "/webhooks"
+
+  [[webhooks.subscriptions]]
+  topics = [ "orders/updated" ]
+  uri = "/webhooks"
+
+  [[webhooks.subscriptions]]
+  topics = [ "orders/cancelled" ]
+  uri = "/webhooks"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update" ]
+  uri = "/webhooks"
+
+  # Billing API path. Shopify App Pricing (which stopped sending these on
+  # 2026-04-28) would require a Partner API query instead — see docs/01 A12.
+  [[webhooks.subscriptions]]
+  topics = [ "app_subscriptions/update" ]
+  uri = "/webhooks"
+
+[pos]
+embedded = false
+
+[build]
+automatically_update_urls_on_dev = false
+include_config_on_deploy = true

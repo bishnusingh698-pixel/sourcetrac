@@ -1,0 +1,13 @@
+node_modules
+/.cache
+/build
+/dist
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.shopify
+.vscode
+/coverage
+/.react-router

@@ -1,0 +1,179 @@
+// SourceTrac data model.
+// Rationale for every column lives in docs/02-architecture-and-costs.md §3.
+// Flow-by-flow behaviour lives in docs/03-logic-spec.md.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Plan {
+  free
+  growth
+  scale
+}
+
+enum PlanStatus {
+  active
+  cancelled
+  declined
+  frozen
+  expired
+}
+
+enum InstallState {
+  installed
+  uninstalled
+}
+
+/// One row per merchant store. Access tokens are AES-256-GCM encrypted at rest.
+model Shop {
+  id                     String   @id @default(cuid())
+  shopDomain             String   @unique
+  shopId                 String   @unique
+  accessTokenEncrypted   String?
+  accessTokenIv          String?
+  accessTokenTag         String?
+  installState           InstallState @default(installed)
+  uninstalledAt          DateTime?
+  plan                   Plan     @default(free)
+  planStatus             PlanStatus @default(active)
+  subscriptionGid        String?
+  planDisplayName        String?
+  checkoutSupported      Boolean?
+  checkoutCheckedAt      DateTime?
+  questionText           String   @default("How did you hear about us?")
+  /// Defaulted so a shop row is always valid: a freshly installed store must be
+  /// able to render a working survey before the merchant visits Settings.
+  optionsJson            String   @default("[]")
+  allowOther             Boolean  @default(false)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  responses   SurveyResponse[]
+  orders      OrderCache[]
+  usage       BillingUsage[]
+  webhookLogs WebhookEvent[]
+
+  @@index([installState])
+}
+
+/// One row per buyer answer. `orderTotal` is denormalised from OrderCache so the
+/// dashboard reads a single indexed table instead of joining. Null means the
+/// orders/create webhook has not landed yet — render as "Pending", never $0.00.
+model SurveyResponse {
+  id          String   @id @default(cuid())
+  shopId      String
+  orderId     String
+  channel     String
+  otherText   String?
+  currency    String?
+  orderTotal  Decimal? @db.Decimal(12, 2)
+  locale      String?
+  submittedAt DateTime @default(now())
+  isLocked    Boolean  @default(false)
+  reconciled  Boolean  @default(false)
+  /// Set when the order webhook never arrived within 24h. Excluded from
+  /// revenue, never deleted.
+  unreconcilable Boolean @default(false)
+  createdAt   DateTime @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, orderId])
+  @@index([shopId, submittedAt])
+  @@index([shopId, channel])
+  @@index([shopId, isLocked])
+  @@index([shopId, reconciled])
+  @@index([shopId, orderId])
+}
+
+/// Cached order facts from webhooks. Never holds customer PII.
+model OrderCache {
+  id              String   @id @default(cuid())
+  shopId          String
+  orderId         String
+  orderNumber     String?
+  currency        String
+  totalPrice      Decimal  @db.Decimal(12, 2)
+  totalRefunded   Decimal  @default(0) @db.Decimal(12, 2)
+  financialStatus String?
+  isTest          Boolean  @default(false)
+  isCancelled     Boolean  @default(false)
+  cancelledAt     DateTime?
+  createdAtShop   DateTime
+  updatedAtShop   DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, orderId])
+  @@index([shopId, updatedAtShop])
+  @@index([shopId, isTest, isCancelled])
+}
+
+/// Idempotency ledger. `webhookId` is X-Shopify-Webhook-Id; the unique
+/// constraint makes insert-first atomic, so a Shopify retry can redo partial
+/// work while a completed delivery costs nothing.
+model WebhookEvent {
+  id           String    @id @default(cuid())
+  shopId       String?
+  webhookId    String    @unique
+  topic        String
+  apiVersion   String?
+  triggerRef   String?
+  payloadJson  String
+  processedAt  DateTime?
+  error        String?
+  createdAt    DateTime  @default(now())
+
+  shop Shop? @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, createdAt])
+  @@index([processedAt])
+}
+
+/// Monthly response counter for the Free-plan cap. Boundaries are UTC
+/// (docs/03 FLOW 15). Increment happens even when isLocked is set, so the
+/// merchant sees true volume.
+model BillingUsage {
+  id             String   @id @default(cuid())
+  shopId         String
+  periodStart    DateTime
+  periodEnd      DateTime
+  responsesCount Int      @default(0)
+  cap            Int?
+  updatedAt      DateTime @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, periodStart])
+  @@index([shopId, periodStart])
+}
+
+/// Session storage for the embedded admin. Managed by
+/// @shopify/shopify-app-session-storage-prisma; do not hand-edit.
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String?
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+
+  @@index([shop])
+}
