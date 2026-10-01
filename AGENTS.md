@@ -146,9 +146,19 @@ Source: `node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenti
 ## Checkout extensions: verified 2026-07 APIs
 
 Targets: `purchase.thank-you.block.render` and
-`customer-account.order-status.block.render`. API version `2026-07`, packages
-`@shopify/ui-extensions@2026.7.4` + `@shopify/ui-extensions-react@2026.0.0`
-(the React wrapper has no 2026.7 release).
+`customer-account.order-status.block.render`. Packages
+`@shopify/ui-extensions@2025.7.4` + `@shopify/ui-extensions-react@2025.7.4`.
+
+**Both packages must stay on the same exact version.** The React wrapper declares
+an exact-version peer on the core package, so any mismatch fails `npm ci` with
+`ERESOLVE` before the build starts. This is not a preference; the earlier
+`2026.7.4` + `2026.0.0` pairing could never have installed.
+
+In this API version the render APIs are **remote subscribables, not plain
+objects** — `api.orderConfirmation.value` and `api.order.value` do not exist.
+Unwrap them with `useRemoteSubscription` from `@remote-ui/react`, which is a
+transitive dependency (do not add it directly: its React peer range excludes
+React 19 and that breaks `npm ci`).
 
 The two surfaces also have no shared import path: thank-you imports from
 `@shopify/ui-extensions-react/checkout`, order status from

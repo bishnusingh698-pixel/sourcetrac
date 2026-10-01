@@ -24,6 +24,22 @@ and picks Node 22+. If you must pin it, set `NODE_VERSION=22` as an env var.
 There is a `docker-start` script (`npm run setup && npm run start`) but **no Dockerfile**
 in the repo. Ignore it.
 
+### Do NOT put `npm run setup` in the build command
+`setup` = `prisma generate && prisma migrate deploy`. `migrate deploy` needs a
+reachable database, so if `DATABASE_URL` is even briefly unreachable the build
+aborts on a non-zero exit and the deploy fails. Use `npm ci && npm run build`
+and run migrations once by hand:
+
+```bash
+DATABASE_URL="postgresql://...-pooler.../neondb?sslmode=require" npx prisma migrate deploy
+```
+
+### The ui-extensions versions are pinned together on purpose
+`@shopify/ui-extensions` and `@shopify/ui-extensions-react` must be the **same**
+version — the React package declares an exact-version peer on the core package,
+not a range. Mismatched versions fail `npm ci` with `ERESOLVE` before the build
+ever starts. Both are pinned to `2025.7.4`; bump them together or not at all.
+
 ---
 
 ## 2. Environment variables

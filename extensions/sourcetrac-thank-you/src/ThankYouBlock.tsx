@@ -1,3 +1,4 @@
+import { useRemoteSubscription } from "@remote-ui/react";
 import {
   BlockStack,
   Button,
@@ -29,7 +30,11 @@ export default function ThankYouBlock() {
   // Typed against this target so `orderConfirmation` resolves. The
   // unparameterised hook returns the generic StandardApi, which lacks it.
   const api = useApi<"purchase.thank-you.block.render">();
-  const orderId = api.orderConfirmation.value.order?.id;
+  // `orderConfirmation` is a remote subscribable in this API version, not a
+  // plain object, so `.value` does not exist on it. Unwrap it with the
+  // subscription hook; it re-renders when the confirmation resolves.
+  const { order } = useRemoteSubscription(api.orderConfirmation);
+  const orderId = order?.id;
 
   const sessionToken = useSessionToken();
   const translate = useTranslate();

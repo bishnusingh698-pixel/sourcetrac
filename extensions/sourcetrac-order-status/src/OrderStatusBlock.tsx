@@ -1,3 +1,4 @@
+import { useRemoteSubscription } from "@remote-ui/react";
 import {
   BlockStack,
   Button,
@@ -31,7 +32,10 @@ const API_URL = process.env.API_URL ?? "https://sourcetrac.onrender.com";
  */
 export default function OrderStatusBlock() {
   const api = useApi<"customer-account.order-status.block.render">();
-  const orderId = api.order.value?.id;
+  // `order` is a remote subscribable in this API version, so `.value` does not
+  // exist on it. Unwrap with the subscription hook; it re-renders on change.
+  const order = useRemoteSubscription(api.order);
+  const orderId = order?.id;
 
   const sessionToken = useSessionToken();
   const translate = useTranslate();
