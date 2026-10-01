@@ -64,6 +64,36 @@ at all.
 Note the install count is the quickest tell. A full install is ~337 packages;
 if Render reports roughly 248, devDependencies were dropped.
 
+### Migration ordering — do not rename these back
+`prisma migrate deploy` applies migrations in **lexicographic timestamp order**.
+The two migrations must be:
+
+```
+20261001050455_init                   (creates Shop + 5 other tables)
+20261001060000_options_json_default   (ALTER TABLE "Shop" ...)
+```
+
+An earlier revision timestamped the ALTER `20261001000100`, which sorts *before*
+`init`. On an empty database that fails with `relation "Shop" does not exist`
+(SQLSTATE 42P01) and blocks every later migration, so the app can never find the
+`Session` table. `init` creates `optionsJson` as `TEXT NOT NULL` only; the
+`DEFAULT '[]'` arrives in the second migration, so `init` alone is not enough.
+
+Recovery from a half-applied failure: Prisma records the failed migration with
+`finished_at = NULL`, so it is neither applied nor rolled back and blocks
+everything after it. Clear it with:
+
+```bash
+npx prisma migrate resolve --rolled-back <migration_name>
+npx prisma migrate deploy
+```
+
+### Test database guard
+`tests/db-invariants.test.ts` refuses to run unless `DATABASE_URL` names a
+`*_test` database, because it truncates tables between tests. To run it, create
+a separate Neon branch or database whose name contains `_test` and point
+`DATABASE_URL` at that. Never point it at production.
+
 
 ### The ui-extensions versions are pinned together on purpose
 `@shopify/ui-extensions` and `@shopify/ui-extensions-react` must be the **same**
