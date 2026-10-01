@@ -28,7 +28,6 @@ The annotated tree lives in `02-architecture-and-costs.md` §7. This file covers
 
 | Variable | Required | Notes |
 |---|---|---|
-| `SHOPIFY_APP_ID` | ✅ | Needed for billing flows and the Admin API app GID. |
 
 > **Not needed today:** `PARTNER_API_CLIENT_TOKEN`, `PARTNER_ORG_ID`. Only add these if you migrate to Shopify App Pricing (finding A12).
 

@@ -14,7 +14,6 @@ const schema = z.object({
   SHOPIFY_API_KEY: z.string().min(1, "Required."),
   SHOPIFY_API_SECRET: z.string().min(1, "Required."),
   SHOPIFY_API_VERSION: z.string().regex(/^\d{4}-\d{2}$/, "Must look like 2026-07."),
-  SHOPIFY_APP_ID: z.string().min(1, "Required."),
   SCOPES: z.string().min(1, "Required."),
   APP_URL: z.string().url("Must be an absolute URL."),
   TOKEN_ENCRYPTION_KEY: HEX_32,

@@ -41,7 +41,6 @@ DATABASE_URL=postgresql://user:pass@ep-xxx-pooler.aws.neon.tech/neondb?sslmode=r
 # From Partner Dashboard → your app → Settings
 SHOPIFY_API_KEY=your_client_id
 SHOPIFY_API_SECRET=shpss_...
-SHOPIFY_APP_ID=your_numeric_app_id
 SHOPIFY_API_VERSION=2026-07
 SCOPES=read_orders
 
@@ -62,8 +61,8 @@ SUPPORT_EMAIL=you@yourdomain.com
 > in Render's secret storage, never in a commit.
 
 ### Required vs optional
-`app/lib/env.ts` hard-requires all eight of: `DATABASE_URL`, `SHOPIFY_API_KEY`,
-`SHOPIFY_API_SECRET`, `SHOPIFY_API_VERSION`, `SHOPIFY_APP_ID`, `SCOPES`, `APP_URL`,
+`app/lib/env.ts` hard-requires all seven of: `DATABASE_URL`, `SHOPIFY_API_KEY`,
+`SHOPIFY_API_SECRET`, `SHOPIFY_API_VERSION`, `SCOPES`, `APP_URL`,
 `TOKEN_ENCRYPTION_KEY`. Optional: `SUPPORT_EMAIL`, `LOG_LEVEL`, `NODE_ENV`
 (defaults to `development`).
 
