@@ -128,3 +128,17 @@ DATABASE_URL for tests: `postgresql://sourcetrac:sourcetrac@localhost:5432/sourc
 against real Postgres 16.15. Auth is fully delegated to
 `authenticate.public.checkout()` / `authenticate.webhook()`; hand-rolled JWT, HMAC
 and CORS modules were deleted.
+
+## Testing gotcha: the Shopify library rejects bots before auth runs
+
+`authenticate.public.checkout()` and the embedded-admin auth call
+`respondToBotRequest()` first. If the `User-Agent` matches `isbot`, it throws
+**410 Gone** and session-token validation never executes.
+
+`curl` counts as a bot, so `curl localhost:3000/api/responses` returns 410 and
+looks like a routing bug. Always send a browser User-Agent when testing auth.
+
+410 = bot-blocked (auth not attempted). 401 = auth actually ran and rejected.
+Shopify POS/Mobile agents are exempted and allowed through.
+
+Source: `node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/helpers/reject-bot-request.mjs`
