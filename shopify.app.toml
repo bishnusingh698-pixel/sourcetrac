@@ -4,7 +4,7 @@
 client_id = "REPLACE_WITH_YOUR_CLIENT_ID"
 name = "SourceTrac"
 handle = "sourcetrac"
-application_url = "https://REPLACE_WITH_YOUR_DEPLOYMENT.onrender.com"
+application_url = "https://sourcetrac.onrender.com"
 embedded = true
 
 # Single scope. We cache order totals via webhook and never mutate an order.
@@ -20,8 +20,8 @@ scopes_api_version = "2026-07"
 
 [auth]
 redirect_urls = [
-  "https://REPLACE_WITH_YOUR_DEPLOYMENT.onrender.com/auth/callback",
-  "https://REPLACE_WITH_YOUR_DEPLOYMENT.onrender.com/auth/shopify/callback",
+  "https://sourcetrac.onrender.com/auth/callback",
+  "https://sourcetrac.onrender.com/auth/shopify/callback",
 ]
 
 [webhooks]
