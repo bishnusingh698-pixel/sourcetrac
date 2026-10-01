@@ -16,13 +16,14 @@
     "typecheck": "react-router typegen && tsc --noEmit",
     "typecheck:extensions": "tsc -p tsconfig.extension.json",
     "check:extensions": "node scripts/check-extensions.cjs",
-    "check": "npm run typecheck && npm run typecheck:extensions && npm run check:extensions && npm run test",
+    "check": "npm run typecheck && npm run typecheck:extensions && npm run check:extensions && npm run check:build-deps && npm run test",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:db": "vitest run tests/db-invariants.test.ts",
     "docker-start": "npm run setup && npm run start",
     "shopify": "shopify",
-    "prisma": "prisma"
+    "prisma": "prisma",
+    "check:build-deps": "node scripts/check-build-deps.cjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

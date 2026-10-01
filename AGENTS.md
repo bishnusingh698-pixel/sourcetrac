@@ -154,6 +154,17 @@ extension TOML declares `api_version = "2026-07"`, and the Admin API calls
 is installed. Pinning the packages to 2025.7.4 does **not** mean targeting an old
 API — it only chooses which binding layer is available.
 
+### Build dependency invariant (do not "fix" by moving packages)
+Render omits devDependencies, but the build needs several of them. `.npmrc` sets
+`include=dev` to keep them. `npm run check:build-deps` fails if `.npmrc` loses
+that line or if a build config imports an undeclared package.
+
+`prisma` is the exception and must stay in `dependencies`: it is a
+*peerDependency* of `@prisma/client`, so nothing else provides its CLI, and
+`prisma generate` is what makes `@prisma/client` importable at build time.
+Moving `vite` / `vite-tsconfig-paths` into `dependencies` to chase a build error
+is the wrong fix and bloats the runtime image.
+
 **Both packages must stay on the same exact version.** The React wrapper declares
 an exact-version peer on the core package, so any mismatch fails `npm ci` with
 `ERESOLVE` before the build starts.

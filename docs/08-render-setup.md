@@ -49,6 +49,22 @@ Render's build runs `npm ci` with devDependencies omitted. If `prisma` is only i
 works at build time. `@prisma/client` declares `prisma` as a *peer* dependency,
 so it will not be pulled in automatically — this has to be explicit.
 
+### Why `.npmrc` exists — do not delete it
+Render omits devDependencies, but `react-router build` loads `vite.config.ts`,
+which imports `vite` and `vite-tsconfig-paths`. Without them the build dies with
+`Cannot find package 'vite-tsconfig-paths'`.
+
+`.npmrc` contains `include=dev`, which re-adds devDependencies for the install
+while keeping the production omit for the deployed image. Do not "fix" this by
+moving build tools into `dependencies` one at a time — that is what caused the
+prisma failure. `npm run check:build-deps` guards both: it fails if `.npmrc`
+loses `include=dev`, or if a build config imports a package that is not declared
+at all.
+
+Note the install count is the quickest tell. A full install is ~337 packages;
+if Render reports roughly 248, devDependencies were dropped.
+
+
 ### The ui-extensions versions are pinned together on purpose
 `@shopify/ui-extensions` and `@shopify/ui-extensions-react` must be the **same**
 version — the React package declares an exact-version peer on the core package,
