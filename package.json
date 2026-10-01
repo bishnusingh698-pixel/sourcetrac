@@ -6,17 +6,20 @@
   "type": "module",
   "author": "SourceTrac",
   "scripts": {
-    "build": "vite build",
+    "build": "react-router build",
     "dev": "shopify app dev",
-    "start": "node ./build/server/index.js",
+    "start": "react-router-serve ./build/server/index.js",
     "setup": "prisma generate && prisma migrate deploy",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "react-router typegen && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:db": "vitest run tests/db-invariants.test.ts"
+    "test:db": "vitest run tests/db-invariants.test.ts",
+    "docker-start": "npm run setup && npm run start",
+    "shopify": "shopify",
+    "prisma": "prisma"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

@@ -8,6 +8,12 @@ import { logger } from "~/lib/logger";
  * request that needs no data. A real readiness check lives at /readyz.
  */
 
+/**
+ * Captured at module init so a pinger can tell a freshly-booted cold start
+ * apart from one that has been serving for a while.
+ */
+const BOOTED_AT = new Date().toISOString();
+
 export const loader = async () => {
   // Logging is one stdout write, not a network round trip. At pinger cadence
   // this is negligible; set LOG_LEVEL=error to silence it entirely.
@@ -17,7 +23,7 @@ export const loader = async () => {
     JSON.stringify({
       status: "ok",
       service: "sourcetrac",
-      booted_at: process.env.BOOTED_AT ?? null,
+      booted_at: BOOTED_AT,
     }),
     {
       status: 200,

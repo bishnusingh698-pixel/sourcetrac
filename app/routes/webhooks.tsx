@@ -1,7 +1,7 @@
 import { logger } from "~/lib/logger";
 import { handleCustomerRedact, handleDataRequest, handleShopRedact } from "~/lib/compliance.server";
 import { claimWebhook, markWebhookFailed, markWebhookProcessed, processWebhook } from "~/lib/webhooks.server";
-import { getAccessToken } from "~/lib/shop.server";
+import { findShopByDomain, getAccessToken } from "~/lib/shop.server";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -100,7 +100,6 @@ export const action = async ({ request }: { request: Request }) => {
  * simply yields a null token.
  */
 async function getAccessTokenForShop(shopDomain: string): Promise<string | null> {
-  const { findShopByDomain } = await import("~/lib/shop.server");
   const record = await findShopByDomain(shopDomain);
   if (!record) return null;
   return getAccessToken(record.id);
