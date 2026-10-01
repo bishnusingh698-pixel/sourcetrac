@@ -12,14 +12,26 @@
 
 export type CurrencyCode = string;
 
-/** Currencies with no minor unit. Everything else uses 2. */
+/**
+ * Currencies whose minor unit is not 1/100.
+ *
+ * The three-decimal set matters for correctness, not tidiness: a Kuwaiti dinar
+ * order total of "1.234" has three fractional digits, and treating it as
+ * two-decimal rejects the value as over-precise. That would drop a real order's
+ * revenue rather than mis-round it.
+ */
 const ZERO_DECIMAL_CURRENCIES = new Set([
   "BIF", "CLP", "DJF", "GNF", "ISK", "JPY", "KMF", "KRW",
   "PYG", "RWF", "UGX", "VND", "VUV", "XAF", "XOF", "XPF",
 ]);
 
+const THREE_DECIMAL_CURRENCIES = new Set(["BHD", "IQD", "JOD", "KWD", "LYD", "OMR", "TND"]);
+
 export function minorUnitDigits(currency: CurrencyCode): number {
-  return ZERO_DECIMAL_CURRENCIES.has(currency.toUpperCase()) ? 0 : 2;
+  const code = currency.toUpperCase();
+  if (ZERO_DECIMAL_CURRENCIES.has(code)) return 0;
+  if (THREE_DECIMAL_CURRENCIES.has(code)) return 3;
+  return 2;
 }
 
 export type ParseResult =

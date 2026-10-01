@@ -1,0 +1,19 @@
+api_version = "2026-07"
+
+[[extensions]]
+name = "SourceTrac survey"
+handle = "sourcetrac-survey-order-status"
+description = "Asks the customer how they heard about us, then attributes their order to that channel."
+uid = "a4d314ed-131c-4826-9804-33b94da63e00"
+type = "ui_extension"
+
+[extensions.capabilities]
+network_access = true
+
+[[extensions.targeting]]
+module = "./src/OrderStatusBlock.tsx"
+target = "customer-account.order-status.block.render"
+
+# The only host the extension may contact. Must match APP_URL.
+[extensions.settings]
+allowed_urls = ["https://sourcetrac.onrender.com"]

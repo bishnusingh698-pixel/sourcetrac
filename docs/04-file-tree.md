@@ -16,6 +16,7 @@ The annotated tree lives in `02-architecture-and-costs.md` §7. This file covers
 | `DATABASE_URL` | ✅ | `postgresql://user:pass@ep-xxx.aws.neon.tech/neondb?sslmode=require` | Use the **pooled** connection string for the server, not the direct one. |
 | `TOKEN_ENCRYPTION_KEY` | ✅ | 32-byte hex | AES-256-GCM key for `access_token_encrypted`. Generate: `openssl rand -hex 32`. **Rotating this without re-encrypting orphans every token.** |
 | `APP_URL` | ✅ | `https://sourcetrac.onrender.com` | Public base URL. Used for `returnUrl`, webhook registration, and absolute links. Must be HTTPS. |
+| `API_URL` | ✅ | `https://sourcetrac.onrender.com` | Same URL, read by both checkout UI extensions at **build time**. Must match `APP_URL` and each extension's `allowed_urls`. |
 | `SHOPIFY_API_VERSION` | ✅ | `2026-07` | Keep identical to `shopify.app.toml`. |
 | `NODE_ENV` | ✅ | `production` | |
 | `LOG_LEVEL` | | `info` | `debug` in development. |

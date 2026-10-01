@@ -142,3 +142,118 @@ looks like a routing bug. Always send a browser User-Agent when testing auth.
 Shopify POS/Mobile agents are exempted and allowed through.
 
 Source: `node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/helpers/reject-bot-request.mjs`
+
+## Checkout extensions: verified 2026-07 APIs
+
+Targets: `purchase.thank-you.block.render` and
+`customer-account.order-status.block.render`. API version `2026-07`, packages
+`@shopify/ui-extensions@2026.7.4` + `@shopify/ui-extensions-react@2026.0.0`
+(the React wrapper has no 2026.7 release).
+
+The two surfaces also have no shared import path: thank-you imports from
+`@shopify/ui-extensions-react/checkout`, order status from
+`.../customer-account`. Shared code lives in `extensions/shared/src/` and takes
+the layout primitives as props.
+
+### The extension↔backend wire contract (check this before renaming anything)
+
+Extensions and routes do not share a type, so nothing but discipline keeps them
+aligned. Verified fields:
+
+- `SurveyOption` is `{ value, label, emoji }`. **`value` is the channel key**, not
+  `id`. The submit route allowlists it against the merchant's options.
+- Submit body is `{ orderId, channel, otherText }`. Sending `optionId` 422s.
+- Config response is `{ enabled, questionText, options, allowOther, orderId,
+  alreadyAnswered }`. `alreadyAnswered` is what makes the two pages mutually
+  exclusive — it must hide the block, not just be logged.
+- `OTHER_CHANNEL` (`"other"`) must equal `OTHER_CHANNEL_VALUE` in
+  `app/lib/settings.ts`.
+- Submit returns `{ ok, counted }` for **both** a fresh write and a duplicate,
+  because a buyer who answered always sees confirmation. There is no
+  `stored`/`locked`/`duplicate` flag on the wire; `counted: false` is the
+  over-cap signal and only the merchant is prompted.
+
+`api.survey-config.tsx` and `api.responses.tsx` are the reference for this.
+
+Things that changed and will bite if written from memory:
+
+- `sessionToken()` is gone. It is now the `useSessionToken()` hook, and it
+  returns a `SessionToken` **object** with an async `.get()` that caches and
+  re-mints on expiry. Calling `.get()` per request is the documented pattern,
+  and it is what makes cold-start retries safe: a token captured before a 60s
+  retry would otherwise be stale.
+- The order id on the thank-you page is **not** in `useSettings()`. Use
+  `useApi<"purchase.thank-you.block.render">().orderConfirmation.value.order.id`.
+  Order status uses `api.order.value?.id`.
+- `useSettings<T>()` returns `Partial<T>` over `ExtensionSettings`, whose values
+  are `string | number | boolean` — it is for merchant preferences, not order
+  identity.
+- `Box` no longer exists; `View` is the container.
+- Translation is `useTranslate()`, not an `i18n` object.
+- `network_access = true` is required in `shopify.extension.toml`, plus
+  `allowed_urls` naming the exact backend host. Without it the extension cannot
+  call `fetch` and the survey silently never loads.
+- The backend must return `Access-Control-Allow-Origin: *`.
+
+### The React 18/19 types split
+
+`@remote-ui/react` pins `@types/react` to `>=17 <19`; the admin app uses React 19.
+So `BlockStack` and friends resolve to two incompatible `ComponentClass`
+identities and fail on `contextType`. `extensions/shared/src/SurveyView.tsx`
+takes injected components typed as `Primitive = any` to sidestep it. Do not
+"fix" this to `React.ComponentType` — it reintroduces the error.
+
+The two surfaces also have no shared import path: thank-you imports from
+`@shopify/ui-extensions-react/checkout`, order status from
+`.../customer-account`. Shared code lives in `extensions/shared/src/` and takes
+the layout primitives as props.
+
+### Hand-authored extension configs
+
+Shopify's generator could not run here (device auth expired), so the TOMLs are
+written by hand. `npm run check:extensions` guards against the mistakes that
+actually happened: malformed UUIDs, wrong target, missing `network_access`, and a
+`module` path that does not exist.
+
+`npm run typecheck:extensions` typechecks extensions separately — they are not
+covered by the root `tsc --noEmit`.
+
+## Money invariants
+
+`orderTotal` is stored in **major** decimal units (e.g. `19.99`), not minor
+units. Anything converting to minor units must divide by `10 ** decimals`,
+never multiply. This bit the CSV export once already.
+
+`minorUnitDigits` covers zero-decimal (JPY) *and* three-decimal (KWD) currencies.
+Three-decimal matters: without it a KWD order total of `1.234` is rejected as
+over-precise and that order's revenue is silently dropped.
+
+Refunds only reduce revenue once Shopify reports `financialStatus` as
+`partially_refunded`. Before that flip the refund amount is ignored, because the
+refund may still be in dispute.
+
+Revenue is never summed across currencies. `rollupByCurrency` and
+`sumByCurrency` exist specifically so no caller can flatten them into one number.
+
+## Settings validation gotchas
+
+`validateSurveySettings` reports the question field as `questionText`, matching
+what the Settings form reads from `error.fields.field`. An earlier snake_case
+key meant the question error never rendered inline.
+
+Duplicate-option detection must compare the raw slug. Calling
+`slugifyChannel(label, taken)` first salts the collision, so the subsequent
+`taken.has(value)` check could never fire and "Instagram" / "instagram"
+silently became two channels with split revenue.
+
+## Tests
+
+`npm test` includes `tests/db-invariants.test.ts`, which **refuses to run**
+unless `DATABASE_URL` names a `*_test` database — it calls `reset()` and would
+wipe real data. Run non-DB tests with:
+
+    npx vitest run --exclude 'tests/db-invariants.test.ts'
+
+The integration test in `tests/integration/` drives the real `createSurveyApi`
+with only `fetch` stubbed, and uses fake timers so the 60s cold-start budget is
+tested in milliseconds.

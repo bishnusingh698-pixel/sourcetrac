@@ -52,6 +52,11 @@ export function evaluateRevenue(order: OrderFacts): RevenueDecision {
   const total = parseMoneyToMinor(order.totalPrice, order.currency);
   if (!total.ok) return { included: false, reason: "unparseable_total" };
 
+  // A negative order total is not something Shopify sends, so it means a
+  // malformed payload. Exclude it rather than let it subtract from a channel's
+  // revenue and report a total the merchant cannot explain.
+  if (total.minor < 0) return { included: false, reason: "unparseable_total" };
+
   if (status === "partially_refunded") {
     const refunded = parseMoneyToMinor(order.totalRefunded ?? 0, order.currency);
     // An unparseable refund amount falls back to gross rather than

@@ -53,20 +53,20 @@ export function slugifyChannel(label: string, existing: Set<string>): string {
 function validateQuestionText(raw: unknown): string {
   if (typeof raw !== "string") {
     throw new ValidationError("Question text is required.", "Type a question to ask your buyers.", {
-      field: "question_text",
+      field: "questionText",
     });
   }
   const trimmed = raw.replace(/\s+/g, " ").trim();
   if (trimmed.length === 0) {
     throw new ValidationError("Question text is required.", "Type a question to ask your buyers.", {
-      field: "question_text",
+      field: "questionText",
     });
   }
   if (trimmed.length > MAX_QUESTION_LENGTH) {
     throw new ValidationError(
       `Question text must be ${MAX_QUESTION_LENGTH} characters or fewer.`,
       `Shorten it by ${trimmed.length - MAX_QUESTION_LENGTH} characters.`,
-      { field: "question_text", length: trimmed.length },
+      { field: "questionText", length: trimmed.length },
     );
   }
   return trimmed;
@@ -160,16 +160,20 @@ export function validateSurveySettings(
     // Prefer the existing value when the slug is unchanged, so historical
     // responses keep pointing at the right channel after a rename.
     const slug = slugifyChannel(label, new Set());
-    const value = previousBySlug.get(slug) ?? slugifyChannel(label, taken);
+    const value = previousBySlug.get(slug) ?? slug;
 
-    if (taken.has(value)) {
+    // Compare the raw slug, not the de-duplicated value. Checking `taken` after
+    // slugifyChannel had already salted the collision would never match, which
+    // silently let "Instagram" and "instagram" become two separate channels
+    // and split the same source's revenue across two rows.
+    if (taken.has(slug)) {
       throw new ValidationError(
         `Two options are the same: "${label}".`,
         "Make each answer option distinct.",
         { field: `options.${index}.label` },
       );
     }
-    taken.add(value);
+    taken.add(slug);
     options.push({ value, label, emoji });
   });
 

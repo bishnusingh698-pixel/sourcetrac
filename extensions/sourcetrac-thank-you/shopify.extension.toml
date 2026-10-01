@@ -1,0 +1,21 @@
+api_version = "2026-07"
+
+[[extensions]]
+name = "SourceTrac survey"
+handle = "sourcetrac-survey-thank-you"
+description = "Asks the buyer how they heard about us, then attributes their order to that channel."
+uid = "3428ac9c-29f6-4e29-aaf6-7af29d2d8a81"
+type = "ui_extension"
+
+[extensions.capabilities]
+# Required to POST survey responses to our backend. Without it the extension
+# cannot call fetch() at all and the survey would silently never load.
+network_access = true
+
+[[extensions.targeting]]
+module = "./src/ThankYouBlock.tsx"
+target = "purchase.thank-you.block.render"
+
+# The only host the extension may contact. Must match APP_URL.
+[extensions.settings]
+allowed_urls = ["https://sourcetrac.onrender.com"]
