@@ -40,6 +40,14 @@ version — the React package declares an exact-version peer on the core package
 not a range. Mismatched versions fail `npm ci` with `ERESOLVE` before the build
 ever starts. Both are pinned to `2025.7.4`; bump them together or not at all.
 
+**This does not mean the app targets an old Shopify API.** The npm package version
+and the declared `api_version` are separate. The extensions declare
+`api_version = "2026-07"` in `shopify.extension.toml` and the backend calls
+`SHOPIFY_API_VERSION=2026-07`. The 2025.7.4 package only determines *which
+binding* is available: 2026.x ships a Preact binding, 2025.7.x ships the
+React/remote-ui binding this code is written against. See AGENTS.md for the
+migration path if Shopify publishes a 2026.x React binding.
+
 ---
 
 ## 2. Environment variables

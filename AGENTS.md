@@ -146,19 +146,38 @@ Source: `node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenti
 ## Checkout extensions: verified 2026-07 APIs
 
 Targets: `purchase.thank-you.block.render` and
-`customer-account.order-status.block.render`. Packages
-`@shopify/ui-extensions@2025.7.4` + `@shopify/ui-extensions-react@2025.7.4`.
+`customer-account.order-status.block.render`.
+
+**The npm package version and the declared `api_version` are independent.** The
+extension TOML declares `api_version = "2026-07"`, and the Admin API calls
+`SHOPIFY_API_VERSION=2026-07`. Neither is affected by which npm package version
+is installed. Pinning the packages to 2025.7.4 does **not** mean targeting an old
+API — it only chooses which binding layer is available.
 
 **Both packages must stay on the same exact version.** The React wrapper declares
 an exact-version peer on the core package, so any mismatch fails `npm ci` with
-`ERESOLVE` before the build starts. This is not a preference; the earlier
-`2026.7.4` + `2026.0.0` pairing could never have installed.
+`ERESOLVE` before the build starts.
 
-In this API version the render APIs are **remote subscribables, not plain
-objects** — `api.orderConfirmation.value` and `api.order.value` do not exist.
-Unwrap them with `useRemoteSubscription` from `@remote-ui/react`, which is a
-transitive dependency (do not add it directly: its React peer range excludes
-React 19 and that breaks `npm ci`).
+The two available engines, verified from the published `dependencies`:
+
+| Core package | Rendering engine | Binding |
+|---|---|---|
+| `2026.x` | `preact` + `@preact/signals` (peer) | `@shopify/ui-extensions/preact` |
+| `2025.7.x` | `@remote-ui/core` | `@shopify/ui-extensions-react/*` |
+
+So the real choice is **Preact/web-components or React/remote-ui** — not "old vs
+new API". `2026.x` has no React binding published, which is why the aligned
+2025.7.4 pair is the only way to keep this React code. Migrating to 2026.x means
+rewriting both blocks onto `@shopify/ui-extensions/preact` plus Polaris web
+components (`s-stack`, `s-clickable`, …), which is the direction Phase 1 research
+already identified as the long-term target.
+
+**Upgrade path when Shopify ships a 2026.x React binding:** bump both packages
+together and re-check the render APIs. In 2025.7.x those APIs are **remote
+subscribables, not plain objects** — `api.orderConfirmation.value` and
+`api.order.value` do not exist. Unwrap them with `useRemoteSubscription` from
+`@remote-ui/react`, which is a transitive dependency (do not add it directly: its
+React peer range excludes React 19 and that breaks `npm ci`).
 
 The two surfaces also have no shared import path: thank-you imports from
 `@shopify/ui-extensions-react/checkout`, order status from
