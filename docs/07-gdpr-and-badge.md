@@ -16,9 +16,9 @@ nothing.
 | Webhook HMAC verified by the library | Done |
 | `customers/redact` actually deletes | **Fixed 2026-10-02** |
 | `customers/data_request` avoids over-disclosure | **Fixed 2026-10-02** |
+| 24-month / 30-day retention enforced | **Implemented 2026-10-02** |
 | Customer contact details stored | None — by design |
 | `read_orders` only, Level 1 protected data | Correct |
-| 24-month retention purge job | **Missing** |
 
 ## What was actually broken
 
@@ -56,22 +56,54 @@ count, cached order count, and a channel breakdown. With no stored identifier
 there is no way to scope a response to one individual, so no per-customer list
 is produced. That is the honest answer, and it is the smaller disclosure.
 
-## Still missing: the retention purge
+## Retention: now enforced
 
-The docs promise 24-month retention on responses and orders, and 30 days on
-webhook payloads. **No code implements this.** There is no `jobs.server.ts`, no
-`deleteMany` outside the redact handlers, and no scheduled endpoint.
+The 24-month and 30-day windows were documented but never enforced — no
+`jobs.server.ts`, no scheduled endpoint, no `deleteMany` outside the redact
+handlers. Webhook payloads, the one table that can carry customer fields,
+accumulated indefinitely against a 0.5 GB free tier.
 
-Two consequences:
+`app/lib/retention.server.ts` now enforces it:
 
-- **Compliance.** The published privacy policy promised a window that does not
-  run. Webhook payloads can contain customer fields — exactly what the 30-day
-  policy exists to bound.
-- **Storage.** The Neon free tier's 0.5 GB is consumed without bound, and the
-  capacity estimates in `06-deployment.md` assume a purge that does not exist.
+| Data | Window | Column used |
+| --- | --- | --- |
+| Webhook payloads (processed) | 30 days | `createdAt` |
+| Cached orders | 24 months | `createdAt` |
+| Survey responses | 24 months | `submittedAt` |
 
-This is the one substantive GDPR gap remaining. It is a self-contained job and
-worth doing before App Store review.
+Two decisions worth knowing:
+
+- **Unprocessed webhook rows are never purged**, however old. An unprocessed row
+  still holds state we are committed to finishing; deleting it would silently
+  lose work the app owes. Only rows with a non-null `processedAt` are eligible.
+- **Order cache is deleted before responses.** A response carries the reconciled
+  order total, so it must not outlive the order it describes.
+
+Trigger it with `POST /jobs/retention`, authenticated by
+`RETENTION_JOB_SECRET` in the `x-retention-secret` header. It returns `404` for
+a missing *or* wrong secret so the endpoint cannot be probed for existence, and
+`503` when unconfigured — it fails closed rather than ever running an
+unauthenticated delete.
+
+There is no in-process scheduler: Render's free tier has no cron, and a
+`setInterval` would drift and die with the container. Point an external
+scheduler at it once a day (cron-job.org is free; Render Cron is available on a
+paid tier).
+
+Covered by `tests/db-retention.test.ts` (11 tests). The fixtures pin 30 and 730
+days as literals rather than importing the constants — deriving them from the
+module made every "keeps a recent row" case pass for any window length, so
+shrinking retention to 7 days still went green. It now fails 3 tests.
+
+## Scheduling retention
+
+```sh
+curl -X POST https://sourcetrac.onrender.com/jobs/retention \
+  -H "x-retention-secret: $RETENTION_JOB_SECRET"
+```
+
+Expect `{"status":"ok","webhookEventsDeleted":0,...}`. Non-zero counts mean it
+is reclaiming space.
 
 ## What is genuinely compliant
 
@@ -91,8 +123,6 @@ worth doing before App Store review.
 
 ### Level 1 obligations still outstanding
 
-- **Retention periods must be documented and enforced.** Documented; not
-  enforced. See above.
 - **Merchant consent** — merchants must opt in to Level 1 protected data. If
   your app was created before the requirement, merchants may not have been
   asked. Check the Partner Dashboard.
@@ -124,8 +154,8 @@ Dashboard** — most criteria are self-evaluated there.
 
 ## Suggested order
 
-1. Implement the retention purge. Closes the last GDPR gap and protects the
-   free-tier storage.
+1. Set `RETENTION_JOB_SECRET` in Render and schedule the daily call. Without
+   this, the code enforces nothing until someone calls it.
 2. Get the Co-Processor Agreement signed.
 3. Confirm merchant consent for Level 1 protected data.
 4. `shopify app deploy`, then submit for review.

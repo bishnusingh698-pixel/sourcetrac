@@ -20,6 +20,12 @@ const schema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).optional(),
   SUPPORT_EMAIL: z.string().email().optional(),
+  /**
+   * Shared secret for POST /jobs/retention. Optional at boot so a developer can
+   * run the app without it, but the route fails closed without it -- it never
+   * runs an unauthenticated delete.
+   */
+  RETENTION_JOB_SECRET: z.string().min(16, "Must be at least 16 characters.").optional(),
 });
 
 export type Env = z.infer<typeof schema>;
