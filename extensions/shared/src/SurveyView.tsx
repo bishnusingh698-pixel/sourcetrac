@@ -1,5 +1,7 @@
 import type { CSSProperties } from "react";
 
+import { OTHER_CHANNEL } from "./survey-logic";
+
 /**
  * A checkout primitive, typed structurally rather than via React's
  * `ComponentType`.
@@ -139,7 +141,7 @@ export function SurveyView({
         ))}
       </BlockStack>
 
-      {allowOther && selected === "other" ? (
+      {allowOther && selected === OTHER_CHANNEL ? (
         <BlockStack spacing="tight">
           <TextField
             label={t("sourcetrac.otherLabel", "Tell us more (optional)")}

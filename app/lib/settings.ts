@@ -32,7 +32,13 @@ export type SurveySettings = {
 
 /** Emoji are multi-codepoint (skin tones, ZWJ sequences, flags). */
 const EMOJI_PATTERN = /^\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic}|\p{Emoji_Modifier}|[\u{1F3FB}-\u{1F3FF}])*$/u;
-const EMOJI_MAX_LENGTH = 12;
+
+/**
+ * Exported so the Settings form's `maxLength` can be bound to it. A ZWJ family
+ * sequence is 7 code points and a flag is 8, so a tighter client-side cap silently
+ * blocked emoji the server would have accepted.
+ */
+export const EMOJI_MAX_LENGTH = 12;
 
 /** Slugify a label into a stable, collision-checked channel value. */
 export function slugifyChannel(label: string, existing: Set<string>): string {

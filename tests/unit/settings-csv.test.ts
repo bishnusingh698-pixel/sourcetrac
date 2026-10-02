@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
 
 import { escapeCsvValue, toCsv, CSV_HEADERS, csvFilename } from "~/lib/csv";
@@ -254,5 +257,36 @@ describe("toCsv", () => {
 describe("csvFilename", () => {
   it("includes the date", () => {
     expect(csvFilename(new Date("2026-10-01T00:00:00.000Z"))).toBe("sourcetrac-responses-2026-10-01.csv");
+  });
+});
+
+describe("Settings form limits match the server limits", () => {
+  /**
+   * The form's `maxLength` attributes had drifted from the constants the server
+   * validates against: the question field allowed 140 characters while the server
+   * rejects anything over 120, and the emoji field allowed 8 while the server
+   * accepts up to 12. `tsc` catches neither, because both are just numbers, and the
+   * symptom is a merchant typing something the form happily accepted and the
+   * server then refused — with the error surfacing only after a round trip.
+   *
+   * Asserted against the source because the constants are the single source of
+   * truth; a copy of their values here would drift exactly the same way.
+   */
+  const read = (relative: string) =>
+    readFileSync(fileURLToPath(new URL(`../../${relative}`, import.meta.url)), "utf8");
+
+  it("binds every maxLength to a shared constant", () => {
+    const form = read("app/routes/app.settings.tsx");
+
+    for (const constant of ["MAX_QUESTION_LENGTH", "EMOJI_MAX_LENGTH", "MAX_OPTION_LABEL_LENGTH"]) {
+      expect(form).toContain(`maxLength={${constant}}`);
+    }
+
+    // A bare numeric literal is the drift itself.
+    expect(form).not.toMatch(/maxLength=\{\d+\}/);
+  });
+
+  it("exports the emoji limit so the form can bind to it", () => {
+    expect(read("app/lib/settings.ts")).toMatch(/export const EMOJI_MAX_LENGTH = \d+;/);
   });
 });

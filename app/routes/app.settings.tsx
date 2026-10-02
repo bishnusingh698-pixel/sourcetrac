@@ -10,7 +10,15 @@ import {
 import { Banner, Panel } from "~/components/admin-ui";
 import { ValidationError } from "~/lib/errors";
 import { logger } from "~/lib/logger";
-import { MAX_OPTIONS, MIN_OPTIONS, parseSurveySettings, validateSurveySettings } from "~/lib/settings";
+import {
+  EMOJI_MAX_LENGTH,
+  MAX_OPTION_LABEL_LENGTH,
+  MAX_OPTIONS,
+  MAX_QUESTION_LENGTH,
+  MIN_OPTIONS,
+  parseSurveySettings,
+  validateSurveySettings,
+} from "~/lib/settings";
 import { findShopByDomain, updateSettings } from "~/lib/shop.server";
 import { authenticate } from "~/shopify.server";
 
@@ -213,7 +221,7 @@ export default function Settings() {
               defaultValue={data.questionText}
               details="Shown at the top of the survey. Example: How did you hear about us?"
               error={fieldErrors.questionText}
-              maxLength={140}
+              maxLength={MAX_QUESTION_LENGTH}
               required
             />
           </Panel>
@@ -240,7 +248,7 @@ export default function Settings() {
                     label={index === 0 ? "Emoji" : "Emoji"}
                     name="emoji"
                     value={option.emoji}
-                    maxLength={8}
+                    maxLength={EMOJI_MAX_LENGTH}
                     // The emoji is decorative; the adjacent label carries the
                     // meaning, so it is not announced twice.
                     labelAccessibilityVisibility="exclusive"
@@ -251,7 +259,7 @@ export default function Settings() {
                     label={index === 0 ? "Option" : "Option"}
                     name="label"
                     value={option.label}
-                    maxLength={60}
+                    maxLength={MAX_OPTION_LABEL_LENGTH}
                     required
                     error={fieldErrors[`options.${index}.label`]}
                     onInput={(event) => updateOption(index, { label: fieldValue(event) })}
