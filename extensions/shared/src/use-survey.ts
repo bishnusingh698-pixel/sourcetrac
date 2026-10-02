@@ -34,6 +34,22 @@ export interface SurveyApi {
  * - Never ask twice. The server's unique constraint is the real guard; the ref
  *   below just avoids wasting a cold start on a double-tap.
  */
+
+/**
+ * Decide whether a free-text "Other" answer is worth submitting.
+ *
+ * The field is labelled optional, so a blank box means "nothing to add" rather
+ * than a distinct response. Submitting it anyway would store the `other` channel
+ * with no text: the merchant then sees a channel in the breakdown that carries
+ * no information, and it counts against the free-tier response cap.
+ *
+ * Returns the trimmed text, or null when there is nothing to send.
+ */
+export function normaliseOtherAnswer(otherText: string): string | null {
+  const text = otherText.trim();
+  return text.length > 0 ? text : null;
+}
+
 export function useSurvey(orderId: string, surface: SurveySurface, api: SurveyApi) {
   const [phase, setPhase] = useState<SurveyPhase>("loading");
   const [config, setConfig] = useState<SurveyConfig | null>(null);
@@ -148,7 +164,11 @@ export function useSurvey(orderId: string, surface: SurveySurface, api: SurveyAp
     otherText,
     setOtherText,
     select,
-    submitOther: () => void send(OTHER_CHANNEL, otherText.trim() || null),
+    submitOther: () => {
+      const answer = normaliseOtherAnswer(otherText);
+      if (answer === null) return;
+      void send(OTHER_CHANNEL, answer);
+    },
     busy: phase === "sending",
     t: api.t,
   };

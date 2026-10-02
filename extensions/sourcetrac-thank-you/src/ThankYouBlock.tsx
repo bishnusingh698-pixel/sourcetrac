@@ -17,7 +17,8 @@ import { SurveyView } from "../../shared/src/SurveyView";
 import { createSurveyApi } from "../../shared/src/survey-logic";
 import { useSurvey } from "../../shared/src/use-survey";
 
-/** Must match APP_URL and this extension's `allowed_urls` in the TOML. */
+/** Must match the APP_URL the backend is reached on, and the host
+ *  allowed by the Partner Dashboard network-access opt-in for this app. */
 const API_URL = process.env.API_URL ?? "https://sourcetrac.onrender.com";
 
 /**

@@ -147,7 +147,11 @@ export function SurveyView({
             autoComplete="off"
           />
           <InlineStack justify="end">
-            <Button onClick={onSubmitOther} disabled={disabled} submit={busy}>
+            <Button
+              onClick={onSubmitOther}
+              disabled={disabled || otherText.trim().length === 0}
+              submit={busy}
+            >
               {busy ? t("sourcetrac.sending", "Sending…") : t("sourcetrac.submit", "Submit")}
             </Button>
           </InlineStack>
