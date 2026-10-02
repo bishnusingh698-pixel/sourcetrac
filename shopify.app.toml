@@ -1,7 +1,7 @@
 # SourceTrac — app configuration
 # Docs: https://shopify.dev/docs/apps/build/cli-for-apps/app-configuration
 
-client_id = "REPLACE_WITH_YOUR_CLIENT_ID"
+client_id = "f39f9aee3d2f11db2b07386f0a0c5474"
 name = "SourceTrac"
 handle = "sourcetrac"
 application_url = "https://sourcetrac.onrender.com"
