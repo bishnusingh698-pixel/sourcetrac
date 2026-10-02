@@ -1,6 +1,6 @@
 # Bug audit and fix report — SourceTrac
 
-**Branch:** `fix/full-bug-audit`
+**Branch:** `main` (consolidated from `fix/full-bug-audit`, `sourcetrac-v1` and `feat/i18n-and-ui-polish`)
 **Date:** 2026-10-02
 **Scope:** every tracked file except `node_modules/`, `build/` and `package-lock.json` — 20 routes, 21 library modules, 2 components, 6 extension sources, 5 Prisma migrations, 3 scripts, 12 test files.
 
