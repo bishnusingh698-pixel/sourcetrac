@@ -62,4 +62,8 @@ embedded = false
 
 [build]
 automatically_update_urls_on_dev = false
-include_config_on_deploy = true
+
+# include_config_on_deploy was removed here. Shopify CLI 4.8.3 rejects it as
+# unsupported and strips it from the file on every deploy, so keeping it in the
+# repo only produced a local edit that never reached git. App configuration is
+# now always included on deploy.
