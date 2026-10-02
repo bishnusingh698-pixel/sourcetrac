@@ -28,6 +28,19 @@ for (const [name, expectedTarget] of Object.entries(EXPECTED)) {
   if (target !== expectedTarget) problems.push(`target is ${target}, expected ${expectedTarget}`);
   if (apiVersion !== "2026-07") problems.push(`api_version is ${apiVersion}, expected 2026-07`);
   if (!contents.includes("network_access = true")) problems.push("network_access is not enabled");
+
+  // network_access with no allowed_urls grants the capability but no host, so
+  // every fetch is rejected at runtime and the survey silently never loads.
+  // This exact omission shipped once, which is why it is asserted here.
+  const allowed = contents.match(/^allowed_urls = \[(.+)\]$/m)?.[1] ?? "";
+  if (!allowed.includes("http")) problems.push("allowed_urls does not name any host");
+  const apiUrl = fs
+    .readFileSync(`extensions/${name}/${module?.replace("./", "") ?? ""}`, "utf8")
+    .match(/process\.env\.API_URL \?\? "([^"]+)"/)?.[1];
+  if (apiUrl && !allowed.includes(apiUrl)) {
+    problems.push(`allowed_urls does not cover API_URL ${apiUrl}`);
+  }
+
   if (!module || !fs.existsSync(`extensions/${name}/${module.replace("./", "")}`)) {
     problems.push(`module ${module} does not exist`);
   }

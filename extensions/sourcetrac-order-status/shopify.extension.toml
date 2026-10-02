@@ -8,7 +8,13 @@ uid = "a4d314ed-131c-4826-9804-33b94da63e00"
 type = "ui_extension"
 
 [extensions.capabilities]
+# Required to POST survey responses to our backend. Without it the extension
+# cannot call fetch() at all and the survey would silently never load.
 network_access = true
+# Must match API_URL in src/OrderStatusBlock.tsx. Without this the manifest
+# declares the capability but grants no host, Shopify rejects the fetch at
+# runtime, and the survey silently never loads with no visible error.
+allowed_urls = [ "https://sourcetrac.onrender.com/*" ]
 
 [[extensions.targeting]]
 module = "./src/OrderStatusBlock.tsx"
