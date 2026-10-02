@@ -64,6 +64,10 @@
   },
   "allowScripts": {
     "embedded-postgres@18.4.0-beta.17": true,
-    "@embedded-postgres/linux-x64@18.4.0-beta.17": true
+    "@embedded-postgres/linux-x64@18.4.0-beta.17": true,
+    "prisma": true,
+    "@prisma/client": true,
+    "@prisma/engines": true,
+    "esbuild": true
   }
 }
