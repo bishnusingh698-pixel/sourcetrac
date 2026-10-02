@@ -13,8 +13,8 @@ import { describe, expect, it, beforeAll, beforeEach, afterAll } from "vitest";
 
 import { PrismaClient } from "@prisma/client";
 
-import { fetchResponsesInWindow } from "~/lib/analytics-queries.server";
-import { processWebhook } from "~/lib/webhooks.server";
+import { fetchResponsesInWindow, toDecidedAmounts } from "~/lib/analytics-queries.server";
+import { claimWebhook, markWebhookFailed, markWebhookProcessed, processWebhook } from "~/lib/webhooks.server";
 
 import { isSupportedLanguage } from "~/lib/i18n";
 
@@ -441,5 +441,251 @@ describe("order webhook money reconciliation", () => {
 
     const [response] = await prisma.surveyResponse.findMany({ where: { shopId: shopRowId } });
     expect(response?.orderTotal).toBeNull();
+  });
+});
+
+describe("orders with a null financial_status still contribute revenue", () => {
+  /**
+   * `OrderCache.financialStatus` is nullable, and Shopify leaves it null while an
+   * order is unpaid or authorized-but-pending. `toResponseWithOrder` used to treat
+   * a null `financialStatus` as evidence that no order row matched, so such an
+   * order collapsed to `order: null` and its real revenue vanished from the
+   * dashboard — and it was not even reported as "Pending", because the answer
+   * itself had reconciled.
+   *
+   * The only thing that distinguishes "no order" from "an order we know about" is
+   * the join itself: currency, totalPrice, isTest and isCancelled are NOT NULL on
+   * OrderCache, so their absence is the signal. A null financialStatus is a
+   * legitimate order state, not a missing row.
+   */
+  const SHOP_DOMAIN = "finstatus.myshopify.com";
+  let shopRowId = "";
+
+  const WINDOW = {
+    start: new Date("2026-10-01T00:00:00Z"),
+    end: new Date("2026-10-02T00:00:00Z"),
+  };
+
+  beforeAll(async () => {
+    const shop = await seedShop(SHOP_DOMAIN, SHOP_DOMAIN);
+    shopRowId = shop.id;
+  });
+
+  beforeEach(async () => {
+    await prisma.surveyResponse.deleteMany({ where: { shopId: shopRowId } });
+    await prisma.orderCache.deleteMany({ where: { shopId: shopRowId } });
+  });
+
+  it("keeps the order attached and counts its revenue", async () => {
+    await prisma.orderCache.create({
+      data: {
+        shopId: shopRowId,
+        orderId: "56001",
+        currency: "USD",
+        totalPrice: "42.50",
+        financialStatus: null,
+        isTest: false,
+        isCancelled: false,
+        createdAtShop: new Date("2026-10-01T00:00:00Z"),
+        updatedAtShop: new Date("2026-10-01T00:00:00Z"),
+      },
+    });
+    await prisma.surveyResponse.create({
+      data: {
+        shopId: shopRowId,
+        orderId: "56001",
+        channel: "instagram",
+        reconciled: true,
+        submittedAt: new Date("2026-10-01T01:00:00Z"),
+      },
+    });
+
+    const rows = await fetchResponsesInWindow({ shopId: shopRowId, ...WINDOW });
+    const row = rows.find((r) => r.orderId === "56001");
+
+    expect(row?.order).not.toBeNull();
+    // Postgres renders the column at its declared scale, so a USD total stored as
+    // 42.50 comes back as "42.500". See the "decimal scale" describe below.
+    expect(row?.order?.totalPrice).toBe("42.500");
+    expect(row?.order?.financialStatus).toBeNull();
+
+    expect(toDecidedAmounts(rows)).toEqual([
+      expect.objectContaining({ channel: "instagram", currency: "USD", minor: 4250 }),
+    ]);
+  });
+
+  it("still reports a genuinely missing order as null", async () => {
+    // The control: with no OrderCache row at all the LEFT JOIN miss shape must
+    // survive, so the fix cannot degenerate into "always attach an order".
+    await prisma.surveyResponse.create({
+      data: {
+        shopId: shopRowId,
+        orderId: "56002",
+        channel: "google",
+        submittedAt: new Date("2026-10-01T02:00:00Z"),
+      },
+    });
+
+    const rows = await fetchResponsesInWindow({ shopId: shopRowId, ...WINDOW });
+    const row = rows.find((r) => r.orderId === "56002");
+
+    expect(row?.order).toBeNull();
+    expect(toDecidedAmounts(rows)).toEqual([]);
+  });
+});
+
+describe("money columns whose text form is over-precise for the currency", () => {
+  /**
+   * `Decimal(12,3)` was widened from `Decimal(12,2)` so KWD/BHD/OMR totals would
+   * survive an insert. But Postgres renders a numeric at its *declared* scale, so
+   * every stored amount now comes back through the `::text` cast as "42.500" —
+   * including plain USD and JPY.
+   *
+   * `parseMoneyToMinor` rejects a value with more precision than the currency
+   * allows, and 3 > 2 for USD, so every two-decimal order's total failed to parse
+   * and `evaluateRevenue` excluded it as `unparseable_total`. The revenue did not
+   * merely lose its last cent: it disappeared from the dashboard entirely, while
+   * the answer showed as reconciled rather than pending, so nothing looked wrong.
+   *
+   * The fix is to stop treating insignificant trailing zeros as extra precision.
+   */
+  const SHOP_DOMAIN = "scale.myshopify.com";
+  let shopRowId = "";
+
+  const WINDOW = {
+    start: new Date("2026-10-01T00:00:00Z"),
+    end: new Date("2026-10-02T00:00:00Z"),
+  };
+
+  beforeAll(async () => {
+    const shop = await seedShop(SHOP_DOMAIN, SHOP_DOMAIN);
+    shopRowId = shop.id;
+  });
+
+  beforeEach(async () => {
+    await prisma.surveyResponse.deleteMany({ where: { shopId: shopRowId } });
+    await prisma.orderCache.deleteMany({ where: { shopId: shopRowId } });
+  });
+
+  it("counts a two-decimal currency total stored in a three-decimal column", async () => {
+    await prisma.orderCache.create({
+      data: {
+        shopId: shopRowId,
+        orderId: "57001",
+        currency: "USD",
+        totalPrice: "42.50",
+        financialStatus: "paid",
+        createdAtShop: new Date("2026-10-01T00:00:00Z"),
+        updatedAtShop: new Date("2026-10-01T00:00:00Z"),
+      },
+    });
+    await prisma.surveyResponse.create({
+      data: {
+        shopId: shopRowId,
+        orderId: "57001",
+        channel: "instagram",
+        reconciled: true,
+        submittedAt: new Date("2026-10-01T01:00:00Z"),
+      },
+    });
+
+    const rows = await fetchResponsesInWindow({ shopId: shopRowId, ...WINDOW });
+    expect(rows[0]?.order?.totalPrice).toBe("42.500");
+
+    expect(toDecidedAmounts(rows)).toEqual([
+      expect.objectContaining({ channel: "instagram", currency: "USD", minor: 4250 }),
+    ]);
+  });
+
+  it("still preserves genuine three-decimal precision", async () => {
+    await prisma.orderCache.create({
+      data: {
+        shopId: shopRowId,
+        orderId: "57002",
+        currency: "KWD",
+        totalPrice: "1.234",
+        financialStatus: "paid",
+        createdAtShop: new Date("2026-10-01T00:00:00Z"),
+        updatedAtShop: new Date("2026-10-01T00:00:00Z"),
+      },
+    });
+    await prisma.surveyResponse.create({
+      data: {
+        shopId: shopRowId,
+        orderId: "57002",
+        channel: "instagram",
+        reconciled: true,
+        submittedAt: new Date("2026-10-01T01:00:00Z"),
+      },
+    });
+
+    const rows = await fetchResponsesInWindow({ shopId: shopRowId, ...WINDOW });
+    expect(toDecidedAmounts(rows)).toEqual([
+      expect.objectContaining({ currency: "KWD", minor: 1234 }),
+    ]);
+  });
+
+  it("keeps a zero-decimal currency exact", async () => {
+    await prisma.orderCache.create({
+      data: {
+        shopId: shopRowId,
+        orderId: "57003",
+        currency: "JPY",
+        totalPrice: "5000",
+        financialStatus: "paid",
+        createdAtShop: new Date("2026-10-01T00:00:00Z"),
+        updatedAtShop: new Date("2026-10-01T00:00:00Z"),
+      },
+    });
+    await prisma.surveyResponse.create({
+      data: {
+        shopId: shopRowId,
+        orderId: "57003",
+        channel: "instagram",
+        reconciled: true,
+        submittedAt: new Date("2026-10-01T01:00:00Z"),
+      },
+    });
+
+    const rows = await fetchResponsesInWindow({ shopId: shopRowId, ...WINDOW });
+    expect(toDecidedAmounts(rows)).toEqual([
+      expect.objectContaining({ currency: "JPY", minor: 5000 }),
+    ]);
+  });
+});
+
+describe("webhook retry after a failed processing", () => {
+  /**
+   * The ledger is insert-first, so a retry that loses the insert is reported as a
+   * duplicate and the route returns 200 without reprocessing. Correct for a
+   * *completed* delivery, but it also swallowed retries of a delivery that had
+   * previously thrown: the row existed with `processedAt: null` and an error, so
+   * the retry was dropped as a duplicate. Shopify stops retrying once it sees a
+   * 200, so a single transient database fault silently and permanently lost that
+   * order — and with it every answer waiting to be reconciled against it.
+   *
+   * The module's own header already states the intent: "a retry can redo partial
+   * work".
+   */
+  it("re-claims a delivery that previously failed", async () => {
+    await prisma.webhookEvent.create({
+      data: { webhookId: "wh-failed-1", topic: "orders/create", payloadJson: "{}" },
+    });
+    await markWebhookFailed("wh-failed-1", "connection reset");
+
+    expect(
+      await claimWebhook({ webhookId: "wh-failed-1", topic: "orders/create", apiVersion: null, payload: "{}" }),
+    ).toEqual({ claimed: true });
+  });
+
+  it("still refuses a delivery that already completed", async () => {
+    await prisma.webhookEvent.create({
+      data: { webhookId: "wh-done-1", topic: "orders/create", payloadJson: "{}" },
+    });
+    await markWebhookProcessed("wh-done-1", null);
+
+    expect(
+      await claimWebhook({ webhookId: "wh-done-1", topic: "orders/create", apiVersion: null, payload: "{}" }),
+    ).toEqual({ claimed: false });
   });
 });

@@ -51,7 +51,10 @@ export function parseMoneyToMinor(value: string | number | null | undefined, cur
   }
 
   const raw = typeof value === "number" ? String(value) : value.trim();
-  if (!/^-?\d*(\.\d+)?$/.test(raw)) {
+  // At least one digit is required. `\d*` alone accepts "", "   " and "-", all of
+  // which fall through to a clean 0 and read as a real zero-value order rather
+  // than as a payload we could not understand.
+  if (!/^-?\d+(\.\d+)?$/.test(raw)) {
     return { ok: false, reason: `not_a_decimal:${raw.slice(0, 20)}` };
   }
 
@@ -60,11 +63,19 @@ export function parseMoneyToMinor(value: string | number | null | undefined, cur
   const unsigned = negative ? raw.slice(1) : raw;
   const [whole = "0", fraction = ""] = unsigned.split(".");
 
-  if (fraction.length > decimals) {
-    return { ok: false, reason: `too_many_decimals:${fraction.length}>${decimals}` };
+  // Trailing zeros are not extra precision. Postgres renders a numeric at its
+  // declared column scale, so a USD total stored in a `Decimal(12,3)` column
+  // comes back as "42.500" — rejecting that would drop every two-decimal order's
+  // revenue from the dashboard. Only genuinely significant digits past the
+  // currency's precision are an error.
+  const significant = fraction.replace(/0+$/, "");
+  if (significant.length > decimals) {
+    return { ok: false, reason: `too_many_decimals:${significant.length}>${decimals}` };
   }
 
-  const padded = fraction.padEnd(decimals, "0");
+  // Pad from the trimmed fraction. Padding the untrimmed one would inflate the
+  // value: "42.500" would become 42.5 * 1000 minor units instead of * 100.
+  const padded = significant.padEnd(decimals, "0");
   const minor = Number.parseInt(`${whole}${padded}` || "0", 10);
   if (!Number.isSafeInteger(minor)) {
     return { ok: false, reason: "out_of_safe_range" };

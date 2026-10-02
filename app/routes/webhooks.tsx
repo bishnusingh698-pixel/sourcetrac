@@ -11,8 +11,10 @@ import { authenticate } from "~/shopify.server";
  * returns already-parsed fields, so we never re-implement signature checking.
  *
  * Idempotency is layered on top: we insert `webhookId` into `webhook_events`
- * with a unique constraint BEFORE processing. A repeat or out-of-order delivery
- * loses that insert and returns 200 immediately, so Shopify stops retrying.
+ * with a unique constraint BEFORE processing. A repeat of an already-completed
+ * delivery loses that insert and returns 200 immediately, so Shopify stops
+ * retrying. A delivery that previously *failed* is re-claimed instead, so a
+ * transient fault is retried rather than permanently dropped.
  */
 
 /** Topics that must never fail — Shopify treats a non-2xx as a failed action. */

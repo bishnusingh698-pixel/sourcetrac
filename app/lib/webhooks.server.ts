@@ -70,8 +70,19 @@ export async function refreshCheckoutSupport(internalShopId: string): Promise<vo
 export type ClaimResult = { claimed: true } | { claimed: false };
 
 /**
- * Claim a webhook delivery. Returns claimed:false when this delivery ID was
- * already recorded — the caller must return 200 without reprocessing.
+ * Claim a webhook delivery.
+ *
+ * Insert-first, so a concurrent or repeated delivery loses the insert and is
+ * refused — the caller returns 200 and Shopify stops retrying. That is correct for
+ * a delivery that already *completed*.
+ *
+ * It is not correct for one that failed. A row left behind by a throw carries
+ * `processedAt: null`, and refusing the retry would make a transient database
+ * fault permanent: Shopify sees the 200 and stops, so that order — and every
+ * answer waiting to reconcile against it — is lost with no way back. A row with
+ * no `processedAt` is therefore re-claimed and its partial work redone, which is
+ * what this module's stated idempotency contract ("a retry can redo partial
+ * work") requires. Every downstream handler is written to be idempotent.
  */
 export async function claimWebhook(params: {
   webhookId: string;
@@ -92,11 +103,21 @@ export async function claimWebhook(params: {
     });
     return { claimed: true };
   } catch (error) {
-    if (isUniqueViolation(error)) {
+    if (!isUniqueViolation(error)) throw error;
+
+    // Lost the insert: this delivery id is already in the ledger. Re-claim only if
+    // it never completed.
+    const existing = await retryDb(() =>
+      db.webhookEvent.findUnique({ where: { webhookId: params.webhookId }, select: { processedAt: true } }),
+    );
+
+    if (existing?.processedAt) {
       logger.info("webhook_duplicate_skipped", { webhook_id: params.webhookId, topic: params.topic });
       return { claimed: false };
     }
-    throw error;
+
+    logger.info("webhook_reclaimed_after_failure", { webhook_id: params.webhookId, topic: params.topic });
+    return { claimed: true };
   }
 }
 

@@ -173,6 +173,42 @@ describe("parseMoneyToMinor", () => {
     expect(parseMoneyToMinor(null, "USD").ok).toBe(false);
     expect(parseMoneyToMinor(undefined, "USD").ok).toBe(false);
   });
+
+  /**
+   * Postgres renders a numeric at its declared column scale, so a USD total stored
+   * in a `Decimal(12,3)` column reads back as "42.500". Insignificant trailing
+   * zeros must not be read as precision, or every two-decimal order's revenue is
+   * excluded from the dashboard as `unparseable_total`.
+   */
+  it("ignores insignificant trailing zeros past the currency's precision", () => {
+    expect(parseMoneyToMinor("42.500", "USD")).toEqual({ ok: true, minor: 4250, decimals: 2 });
+    expect(parseMoneyToMinor("42.000", "USD")).toEqual({ ok: true, minor: 4200, decimals: 2 });
+    expect(parseMoneyToMinor("7.000", "JPY")).toEqual({ ok: true, minor: 7, decimals: 0 });
+    expect(parseMoneyToMinor("19.990", "KWD")).toEqual({ ok: true, minor: 19990, decimals: 3 });
+  });
+
+  it("still rejects precision the currency genuinely cannot represent", () => {
+    expect(parseMoneyToMinor("42.501", "USD").ok).toBe(false);
+    expect(parseMoneyToMinor("42.5001", "KWD").ok).toBe(false);
+    expect(parseMoneyToMinor("5000.5", "JPY").ok).toBe(false);
+  });
+
+  /**
+   * The previous pattern `^-?\d*(\.\d+)?$` accepted "", "   " and "-", all of
+   * which fell through to a clean zero and read as a real $0.00 order rather than
+   * as a payload we could not interpret.
+   */
+  it("rejects a blank or digit-less amount instead of reading it as zero", () => {
+    expect(parseMoneyToMinor("   ", "USD").ok).toBe(false);
+    expect(parseMoneyToMinor("-", "USD").ok).toBe(false);
+    expect(parseMoneyToMinor(".", "USD").ok).toBe(false);
+  });
+
+  it("still parses a leading-decimal amount", () => {
+    // Shopify does not send this, but rejecting it would be a behaviour change
+    // beyond the bug being fixed.
+    expect(parseMoneyToMinor("0.5", "USD")).toEqual({ ok: true, minor: 50, decimals: 2 });
+  });
 });
 
 describe("minorUnitDigits", () => {

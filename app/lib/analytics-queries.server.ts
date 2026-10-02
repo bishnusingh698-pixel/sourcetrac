@@ -114,6 +114,12 @@ type ResponseWithOrderRow = {
  * partially-populated object. `evaluateResponseRevenue` treats both as
  * unreconciled, but a null object keeps every downstream check honest about the
  * difference between "no order yet" and "an order with no totals".
+ *
+ * Only the NOT NULL columns are used to detect a miss. `financialStatus` is
+ * deliberately excluded: it is nullable, and Shopify leaves it null while an order
+ * is unpaid or authorized-but-pending. Treating that null as "no order" silently
+ * dropped real revenue from the dashboard — worse, it did so invisibly, because
+ * the answer had genuinely reconciled and so was not listed as "Pending" either.
  */
 function toResponseWithOrder(row: ResponseWithOrderRow): ResponseWithOrder {
   const { currency, totalPrice, totalRefunded, financialStatus, isTest, isCancelled, ...response } = row;
@@ -122,8 +128,7 @@ function toResponseWithOrder(row: ResponseWithOrderRow): ResponseWithOrder {
     currency !== null &&
     totalPrice !== null &&
     isTest !== null &&
-    isCancelled !== null &&
-    financialStatus !== null;
+    isCancelled !== null;
 
   return {
     ...response,
