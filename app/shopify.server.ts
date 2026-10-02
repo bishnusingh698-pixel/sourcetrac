@@ -1,6 +1,7 @@
 import { ApiVersion, shopifyApp } from "@shopify/shopify-app-react-router/server";
 
 import { env } from "~/lib/env";
+import { provisionShop } from "~/lib/provision.server";
 import { sessionStorage } from "~/session-storage.server";
 
 /**
@@ -21,6 +22,12 @@ const shopify = shopifyApp({
   appUrl: env().APP_URL,
   authPathPrefix: "/auth",
   sessionStorage,
+  hooks: {
+    // Token-exchange installs never hit /auth/callback, so create the shops row here.
+    afterAuth: async ({ session }) => {
+      await provisionShop(session);
+    },
+  },
 });
 
 export const { addDocumentResponseHeaders, authenticate, registerWebhooks, unauthenticated } = shopify;

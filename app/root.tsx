@@ -97,17 +97,17 @@ type ShellLoaderData = { language: string } | undefined;
  * already run by the time the document renders, so there is no extra round trip
  * and no extra DB load on `/healthz`, which still resolves to English.
  */
-export function DocumentLanguage() {
+export function useDocumentLanguage(): string {
   const root = useRouteLoaderData<typeof loader>("root");
   const shell = useRouteLoaderData<ShellLoaderData>("routes/app");
 
-  return <html lang={shell?.language ?? root?.language ?? "en"} />;
+  return shell?.language ?? root?.language ?? "en";
 }
 
 export default function App() {
+  const lang = useDocumentLanguage();
   return (
-    <>
-      <DocumentLanguage />
+    <html lang={lang}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -120,7 +120,7 @@ export default function App() {
         <ScrollRestoration />
         <Scripts />
       </body>
-    </>
+    </html>
   );
 }
 
@@ -140,10 +140,10 @@ export function ErrorBoundary() {
     : error instanceof Error
       ? error.message
       : "Unknown error";
+  const lang = useDocumentLanguage();
 
   return (
-    <>
-      <DocumentLanguage />
+    <html lang={lang}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -161,6 +161,6 @@ export function ErrorBoundary() {
         </main>
         <Scripts />
       </body>
-    </>
+    </html>
   );
 }

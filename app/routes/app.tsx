@@ -5,9 +5,11 @@ import {
   useLoaderData,
   useRouteError,
   useRouteLoaderData,
+  type HeadersFunction,
   type LoaderFunctionArgs,
 } from "react-router";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
+import { boundary } from "@shopify/shopify-app-react-router/server";
 
 /**
  * Type-only import, for the shape of the root loader's return value.
@@ -31,7 +33,7 @@ import { languageFor } from "~/lib/i18n/languages";
 import { resolveRequestLanguage } from "~/lib/i18n/resolve.server";
 import { evaluateCap, planFor } from "~/lib/plans";
 import { getUsageCount } from "~/lib/responses.server";
-import { requireShopByDomain as requireShop } from "~/lib/shop.server";
+import { ensureShop } from "~/lib/provision.server";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -63,7 +65,7 @@ const NAV = [
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-  const shop = await requireShop(session.shop);
+  const shop = await ensureShop(session);
   const used = await getUsageCount(shop.id);
 
   const url = new URL(request.url);
@@ -232,7 +234,6 @@ export default function AdminLayout() {
           </s-grid-item>
         </s-grid>
       </s-page>
-      );
     </AppProvider>
   );
 }
@@ -245,6 +246,9 @@ export default function AdminLayout() {
  * with a bare page, losing the admin chrome. This keeps the shell and names the
  * failure instead.
  */
+/** Lets Shopify's re-auth / retry headers through on thrown auth responses. */
+export const headers: HeadersFunction = (headersArgs) => boundary.headers(headersArgs);
+
 export function ErrorBoundary() {
   const error = useRouteError();
 
