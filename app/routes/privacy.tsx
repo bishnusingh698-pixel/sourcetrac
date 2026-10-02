@@ -43,8 +43,11 @@ export default function PrivacyPolicy() {
       <h2>Data retention</h2>
       <p>
         When you uninstall SourceTrac, your shop's data and access tokens are deleted.
-        Buyers may also request deletion of their data through the merchant, which we
-        action through Shopify's mandatory compliance webhooks.
+        Buyers may also request deletion of their data through the merchant. We
+        action that request through Shopify's mandatory compliance webhooks: when
+        Shopify sends a redaction request naming the orders that belong to that
+        buyer, we delete the matching survey responses and cached order rows
+        immediately, and only those.
       </p>
 
       <h2>Sub-processors</h2>

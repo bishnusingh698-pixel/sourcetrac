@@ -118,7 +118,14 @@ async function handleCompliance(topic: string, shopDomain: string, payload: Reco
   }
 
   if (topic === "customers/redact") {
-    await handleCustomerRedact({ shopDomain });
+    // `orders_to_redact` is the whole point of this webhook. It is an array of
+    // numeric order IDs; the identifiers inside the payload cannot match our
+    // rows because we store none of them.
+    const raw = Array.isArray(payload.orders_to_redact) ? payload.orders_to_redact : [];
+    const orderIds = raw
+      .map((v) => (typeof v === "number" ? String(v) : typeof v === "string" ? v : null))
+      .filter((v): v is string => v !== null && /^\d+$/.test(v));
+    await handleCustomerRedact({ shopDomain, orderIds });
     return;
   }
 

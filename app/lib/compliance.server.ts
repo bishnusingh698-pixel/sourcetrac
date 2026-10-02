@@ -25,7 +25,10 @@ function retryDb<T>(operation: () => Promise<T>): Promise<T> {
 
 export type DataRequestResult = {
   shopFound: boolean;
-  /** Order IDs linked to the requested customer, if we could identify any. */
+  /**
+   * Always empty in practice: no customer identifier is stored, so there is no
+   * way to scope a response to one individual without over-disclosing.
+   */
   ordersFound: string[];
   note: string;
 };
@@ -45,6 +48,7 @@ export async function handleDataRequest(params: {
   shopDomain: string;
   customerEmail?: string;
   customerPhone?: string;
+  orderIds?: string[];
 }): Promise<DataRequestResult> {
   const shop = await findShopByDomain(params.shopDomain);
 
@@ -56,65 +60,99 @@ export async function handleDataRequest(params: {
     };
   }
 
-  const responses = await retryDb(() =>
-    db.surveyResponse.findMany({
-      where: { shopId: shop.id },
-      select: { orderId: true },
-      orderBy: { createdAt: "desc" },
-      take: 5000,
-    }),
-  );
+  // Shopify does not send `orders_to_redact` on this topic, so there is no
+  // order list to scope to. Falling back to "every response for the shop" would
+  // hand one customer's data request the order IDs of every other buyer on the
+  // shop -- a larger disclosure than the request asks for, and one that grows
+  // with the shop's size. Returning the channels we hold instead answers the
+  // actual question: what did we keep about this shop's buyers.
+  const [responseCount, orderCount, channels] = await Promise.all([
+    retryDb(() => db.surveyResponse.count({ where: { shopId: shop.id } })),
+    retryDb(() => db.orderCache.count({ where: { shopId: shop.id } })),
+    retryDb(() =>
+      db.surveyResponse.groupBy({
+        by: ["channel"],
+        where: { shopId: shop.id },
+        _count: { channel: true },
+      }),
+    ),
+  ]);
 
   logger.info("compliance_data_request", {
     shop_id: shop.id,
-    matched_responses: responses.length,
-    // Logged for the audit trail only; the value itself is never stored.
+    response_count: responseCount,
+    // Logged for the audit trail only; the values are never stored.
     has_email: Boolean(params.customerEmail),
     has_phone: Boolean(params.customerPhone),
   });
 
+  const breakdown = channels
+    .map((c) => `${c.channel}: ${c._count.channel}`)
+    .join(", ");
+
   return {
     shopFound: true,
-    ordersFound: responses.map((r) => r.orderId),
+    // No customer identifier is stored, so no per-customer order list can be
+    // produced. Returning one would mean returning other buyers' orders.
+    ordersFound: [],
     note:
-      "SourceTrac stores no customer contact details. It stores only an order ID, " +
-      "the channel the buyer selected, and the timestamp. These order IDs are the " +
-      "complete set of records associated with this shop.",
+      "SourceTrac stores no customer contact details (no name, email, phone or " +
+      "address) and no customer ID, so no records are attributable to the " +
+      "individual who made this request. For this shop we hold " +
+      `${responseCount} survey response(s) across ${orderCount} cached order(s)` +
+      (breakdown ? `, by channel: ${breakdown}. ` : ". ") +
+      "Each response contains only an order ID, the channel selected, and the " +
+      "timestamp. Merchant-level totals are available from the SourceTrac " +
+      "dashboard.",
   };
 }
 
 /**
- * customers/redact — delete data for a specific customer within 10 days.
+ * customers/redact — delete data linked to the given orders within 10 days.
  *
- * We cannot attribute a response to an individual buyer, so we cannot redact a
- * single buyer's answer. Redacting all responses would destroy other customers'
- * data, which the requirement does not ask for. The compliant action is to
- * record the request and delete the shop's data only when the whole shop is
- * being removed (shop/redact).
+ * We hold no customer contact details, so we cannot find a buyer's rows by
+ * email or phone. We do not need to: Shopify tells us exactly which orders to
+ * redact in `orders_to_redact`, and `SurveyResponse.orderId` /
+ * `OrderCache.orderId` store `String(order.id)` from the REST payload — the
+ * same numeric ID that appears in that array. The join is exact.
+ *
+ * Deleting only these rows is what the requirement asks for. Wiping the whole
+ * shop would destroy other buyers' answers, which it does not.
  */
 export async function handleCustomerRedact(params: {
   shopDomain: string;
-  shopId?: string;
-}): Promise<{ shopFound: boolean; deletedResponses: number }> {
+  orderIds: string[];
+}): Promise<{ shopFound: boolean; deletedResponses: number; deletedOrders: number }> {
   const shop = await findShopByDomain(params.shopDomain);
 
   if (!shop) {
-    return { shopFound: false, deletedResponses: 0 };
+    return { shopFound: false, deletedResponses: 0, deletedOrders: 0 };
   }
 
-  const responses = await retryDb(() =>
-    db.surveyResponse.count({ where: { shopId: shop.id } }),
-  );
+  const orderIds = [...new Set(params.orderIds)];
+  if (orderIds.length === 0) {
+    // Shopify sends an empty array when it holds no order link for this
+    // customer. Nothing of ours is attributable, so there is nothing to delete.
+    logger.info("compliance_customer_redact_empty", { shop_id: shop.id });
+    return { shopFound: true, deletedResponses: 0, deletedOrders: 0 };
+  }
+
+  const scope = { shopId: shop.id, orderId: { in: orderIds } };
+
+  // OrderCache first: SurveyResponse rows carry the reconciled order total, so
+  // they must not outlive the order they describe.
+  // Prisma returns `{ count }` from deleteMany, not a bare number.
+  const deletedOrders = (await retryDb(() => db.orderCache.deleteMany({ where: scope }))).count;
+  const deletedResponses = (await retryDb(() => db.surveyResponse.deleteMany({ where: scope }))).count;
 
   logger.info("compliance_customer_redact", {
     shop_id: shop.id,
-    responses_retained: responses,
-    reason:
-      "SourceTrac holds no customer-identifying data, so an individual buyer's response " +
-      "cannot be located. All responses are retained; shop/redact removes them.",
+    requested_orders: orderIds.length,
+    deleted_responses: deletedResponses,
+    deleted_orders: deletedOrders,
   });
 
-  return { shopFound: true, deletedResponses: 0 };
+  return { shopFound: true, deletedResponses, deletedOrders };
 }
 
 /**
