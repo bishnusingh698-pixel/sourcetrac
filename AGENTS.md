@@ -567,3 +567,82 @@ wipe real data. Run non-DB tests with:
 The integration test in `tests/integration/` drives the real `createSurveyApi`
 with only `fetch` stubbed, and uses fake timers so the 60s cold-start budget is
 tested in milliseconds.
+
+## Decimal column scale corrupts the money text form (found 2026-10-02)
+
+The `Decimal(12,3)` widening described above is **load-bearing in a way that is
+easy to undo**. Postgres renders a `numeric` at its *declared* scale, so every
+stored amount comes back through the `::text` cast padded to 3 places - a USD
+total reads as `"42.500"`, JPY `"5000.000"`.
+
+`parseMoneyToMinor` therefore compares only the *significant* digits
+(`fraction.replace(/0+$/, "")`) against `minorUnitDigits`, and the padded minor
+units must be derived from that same trimmed string. Two mistakes were made and
+caught while fixing this, and neither is visible to the type system:
+
+- Counting the untrimmed length rejects `"42.500"` as over-precise, so
+  `evaluateRevenue` excludes **every** two-decimal order as `unparseable_total`.
+  No currency's revenue counts at all.
+- Padding from the untrimmed fraction inflates by 10x (`"42.500"` becomes 42500
+  minor units instead of 4250).
+
+The pattern is `^-?\d+(\.\d+)?$`, not `\d*`: the old `\d*` accepted `""`, `"   "`
+and `"-"`, which fell through to a clean `0` and read as a real $0.00 order.
+
+Tests in `tests/unit/revenue.test.ts` and `tests/db-invariants.test.ts` cover all
+three decimal widths. Do not "simplify" the trailing-zero trim away.
+
+## `hasOrder` must key on NOT NULL columns, not `financialStatus`
+
+`toResponseWithOrder` detects a `LEFT JOIN` miss. `OrderCache.financialStatus` is
+**nullable** and Shopify leaves it null while an order is unpaid or
+authorized-but-pending, so requiring it non-null collapsed real orders to
+`order: null` and dropped their revenue. Only the NOT NULL columns
+(`totalPrice`, `createdAtShop`, ...) may signal a missing row.
+
+## Webhook retries: key the re-claim on `error`, not on `processedAt`
+
+`claimWebhook` is insert-first. A unique violation means the id is already in the
+ledger and the delivery is refused - correct for a *completed* one. But a delivery
+that **threw** would also be refused, so the route returns 200, Shopify stops
+retrying, and one transient DB fault permanently loses that order.
+
+`markWebhookFailed` is what distinguishes "we tried this and it broke" from "we
+are still working on it", so the re-claim condition is
+`existing.error && !existing.processedAt`. Keying on `!processedAt` alone would
+also re-claim an **in-flight** delivery and run the handler twice in parallel,
+which is the single case insert-first exists to prevent. All three cases are
+tested in `tests/db-invariants.test.ts`.
+
+## Plan reconciliation can un-cancel a subscription - unfixed on purpose
+
+`app/routes/app.plans.tsx` maps `paidPlanFromSubscriptions(...) ?? "free"` into
+`setPlan(..., { planStatus: "active" })`. That function returns `null` for both
+"genuinely on free" and "a subscription we do not recognise" (it requires
+`name.startsWith("sourcetrac")` and `status === "ACTIVE"`), so a merchant whose
+status reads anything unexpected is downgraded, and a cancelled merchant gets
+`planStatus` forced back to `active`. Left unfixed: whether a transient Shopify
+read failure should downgrade a paying merchant is a billing-policy decision, not
+a bug fix. Tracked in `BUG_FIX_REPORT.md`.
+
+## Local env: `.env` points at the non-test DB
+
+A local `.env` sets `DATABASE_URL` to `sourcetrac`, so a bare `npm run check`
+makes `tests/db-invariants.test.ts` refuse to run (its `*_test` guard) and the
+suite reports `23 skipped` plus a failed file. That is the guard working, not a
+regression. Run the full chain with an explicit override:
+
+    DATABASE_URL="postgresql://sourcetrac:sourcetrac@127.0.0.1:5432/sourcetrac_test?schema=public" npm run check
+
+## This sandbox cannot `git push` (403)
+
+`GITHUB_TOKEN` authenticates fine against the API - `GET /repos/:owner/:repo`
+returns 200 and reports `admin: true, push: true` - but **every** git transport
+is refused with `remote: Permission to <owner>/<repo>.git denied`. Verified
+against three transports: the remote URL's embedded credential, a
+`https://<user>:<token>@...` URL, and `GIT_ASKPASS` with `credential.helper=` and
+`http.extraheader=` cleared.
+
+Do not burn turns re-attempting pushes here. If push is required, either have the
+human push the local branch, or provision a credential scoped for git write (a
+classic PAT with `repo`, not a fine-grained/App token carrying only API read).
