@@ -76,6 +76,11 @@ export function createI18n(language: LanguageCode) {
     supportedLngs: Object.keys(RESOURCES),
     ns: ["translation"],
     defaultNS: "translation",
+    // Without this the instance has no translations at all and every `t()` call
+    // returns its own key as a string, so the admin renders `nav.dashboard`
+    // rather than "Dashboard". Bundled, so there is no async load to await and
+    // `getFixedT` below is usable synchronously.
+    resources: RESOURCES,
     interpolation: {
       // React escapes text for us. Escaping again would show literal `&amp;`
       // in the UI, and interpolating HTML is how translation files become an
@@ -99,6 +104,12 @@ export function intlLocaleFor(language: LanguageCode): string {
   return languageFor(language).intlLocale;
 }
 
-export { DEFAULT_LANGUAGE, languageFor, resolveLanguage, LANGUAGES } from "./languages";
+export {
+  DEFAULT_LANGUAGE,
+  isSupportedLanguage,
+  languageFor,
+  resolveLanguage,
+  LANGUAGES,
+} from "./languages";
 export type { LanguageCode, Language } from "./languages";
 export { RESOURCES };

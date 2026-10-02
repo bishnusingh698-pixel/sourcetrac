@@ -146,18 +146,6 @@ export function isUniqueViolation(error: unknown): boolean {
 }
 
 /**
- * Whether this order already has a response. The extension calls this before
- * rendering so a buyer who already answered on the Thank-you page is not asked
- * again on the Order-status page.
- */
-export async function hasResponse(shopId: string, orderId: string): Promise<boolean> {
-  const count = await retryDb(() =>
-    db.surveyResponse.count({ where: { shopId, orderId } }),
-  );
-  return count > 0;
-}
-
-/**
  * Attach cached order data to a response that arrived before its webhook.
  * Called from the orders/create and orders/updated handlers.
  */

@@ -2,6 +2,7 @@ import { useLoaderData, type LoaderFunctionArgs, type MetaFunction } from "react
 
 import { Panel } from "~/components/admin-ui";
 import { CSV_HEADERS } from "~/lib/csv";
+import { formatDecimalForCurrency } from "~/lib/money";
 import { db } from "~/db.server";
 import { findShopByDomain } from "~/lib/shop.server";
 import { authenticate } from "~/shopify.server";
@@ -50,7 +51,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       orderId: row.orderId,
       submittedAt: row.submittedAt.toISOString(),
       channel: row.channel,
-      orderTotal: row.orderTotal === null ? "" : Number(row.orderTotal).toFixed(2),
+      // Same helper the CSV route uses, so the preview is byte-identical to
+      // the file rather than a two-decimal approximation of it.
+      orderTotal: formatDecimalForCurrency(row.orderTotal, row.currency ?? "USD") ?? "",
       currency: row.currency ?? "",
     })),
   };

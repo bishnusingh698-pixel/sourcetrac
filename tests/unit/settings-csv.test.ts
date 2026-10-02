@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { escapeCsvValue, toCsv, CSV_HEADERS, csvFilename } from "~/lib/csv";
 import { ValidationError } from "~/lib/errors";
+import { formatDecimalForCurrency } from "~/lib/money";
 import {
   MAX_OPTIONS,
   MAX_OPTION_LABEL_LENGTH,
@@ -130,6 +131,41 @@ describe("validateSurveySettings", () => {
       [],
     );
     expect(result.allowOther).toBe(false);
+  });
+});
+
+describe("formatDecimalForCurrency", () => {
+  // The export path must not re-round to a fixed two places. These three cases
+  // are exactly what a hardcoded `toFixed(2)` got wrong.
+  it("keeps three decimal places for KWD", () => {
+    expect(formatDecimalForCurrency("1.234", "KWD")).toBe("1.234");
+    expect(formatDecimalForCurrency("0.001", "KWD")).toBe("0.001");
+  });
+
+  it("keeps zero decimal places for JPY", () => {
+    expect(formatDecimalForCurrency("5000", "JPY")).toBe("5000");
+    expect(formatDecimalForCurrency(5000, "JPY")).toBe("5000");
+  });
+
+  it("keeps two decimal places for USD", () => {
+    expect(formatDecimalForCurrency("19.9", "USD")).toBe("19.90");
+    expect(formatDecimalForCurrency("19.99", "USD")).toBe("19.99");
+  });
+
+  it("accepts a Prisma Decimal-like object", () => {
+    // Prisma returns Decimal, not string. Only the numeric string form matters.
+    const decimal = { toString: () => "1.234" };
+    expect(formatDecimalForCurrency(decimal, "KWD")).toBe("1.234");
+  });
+
+  it("returns null for null, undefined and empty input", () => {
+    expect(formatDecimalForCurrency(null, "USD")).toBeNull();
+    expect(formatDecimalForCurrency(undefined, "USD")).toBeNull();
+    expect(formatDecimalForCurrency("", "USD")).toBeNull();
+  });
+
+  it("returns null rather than a bogus number for unparseable input", () => {
+    expect(formatDecimalForCurrency("not-a-number", "USD")).toBeNull();
   });
 });
 

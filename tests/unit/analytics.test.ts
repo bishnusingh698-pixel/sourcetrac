@@ -93,6 +93,73 @@ describe("computeStats", () => {
     expect(summary.revenueByCurrency).toEqual([]);
   });
 
+  it("divides AOV only by orders that contributed revenue, not by all responses", () => {
+    // Three responses: one normal $100 order, one fully refunded and one test
+    // order. Both of the latter are excluded by evaluateRevenue but are NOT
+    // "pending", so a denominator of totalResponses - pendingResponses would
+    // report $33.33 instead of the correct $100.00.
+    const { summary } = computeStats({
+      responses: [response(), response(), response()],
+      decidedAmounts: [amount({ minor: 10000 })],
+      ordersInWindow: 3,
+    });
+
+    expect(summary.pendingResponses).toBe(0);
+    expect(summary.totalResponses).toBe(3);
+    expect(summary.revenueOrdersByCurrency).toEqual([{ currency: "USD", count: 1 }]);
+    expect(summary.aovByCurrency).toEqual([{ currency: "USD", minor: 10000 }]);
+  });
+
+  it("uses a separate AOV denominator per currency", () => {
+    // A shop selling in two currencies: EUR 100 and USD 60. Dividing both by
+    // the shared response total would report EUR 50 and USD 30.
+    const { summary } = computeStats({
+      responses: [response(), response()],
+      decidedAmounts: [amount({ minor: 10000, currency: "EUR" }), amount({ minor: 6000, currency: "USD" })],
+      ordersInWindow: 2,
+    });
+
+    expect(summary.revenueOrdersByCurrency).toEqual([
+      { currency: "EUR", count: 1 },
+      { currency: "USD", count: 1 },
+    ]);
+    expect(summary.aovByCurrency).toEqual([
+      { currency: "EUR", minor: 10000 },
+      { currency: "USD", minor: 6000 },
+    ]);
+  });
+
+  it("applies the same per-currency denominator to each channel", () => {
+    // Two EUR Instagram orders and one USD Google order.
+    const { channels } = computeStats({
+      responses: [response(), response(), response({ channel: "google" })],
+      decidedAmounts: [
+        amount({ minor: 10000, currency: "EUR" }),
+        amount({ minor: 5000, currency: "EUR" }),
+        amount({ minor: 3000, currency: "USD", channel: "google" }),
+      ],
+      ordersInWindow: 3,
+    });
+
+    const instagram = channels.find((c) => c.channel === "instagram");
+    // 15000 EUR over 2 orders = 7500, not over 3 responses.
+    expect(instagram?.aovByCurrency).toEqual([{ currency: "EUR", minor: 7500 }]);
+
+    const google = channels.find((c) => c.channel === "google");
+    expect(google?.aovByCurrency).toEqual([{ currency: "USD", minor: 3000 }]);
+  });
+
+  it("omits AOV for a currency whose only responses were excluded from revenue", () => {
+    // Both responses reconciled, but neither produced decided revenue. There is
+    // no denominator, so there is no AOV rather than a $0.00 average.
+    const { summary } = computeStats({
+      responses: [response(), response()],
+      decidedAmounts: [],
+      ordersInWindow: 2,
+    });
+    expect(summary.aovByCurrency).toEqual([]);
+  });
+
   it("groups per channel", () => {
     const { channels } = computeStats({
       responses: [response(), response({ channel: "google" }), response({ channel: "google" })],
@@ -144,6 +211,23 @@ describe("buildTrend", () => {
       now: NOW,
     });
     expect(trend.reduce((sum, p) => sum + p.responses, 0)).toBe(0);
+  });
+
+  it("counts every response on a day, not just the first", () => {
+    // A busy Saturday is exactly when a merchant most wants to see the spike.
+    // Guarding on `!map.has(key)` used to cap the whole chart at 1 per day.
+    const day = new Date("2026-10-10T09:00:00.000Z");
+    const trend = buildTrend({
+      responses: Array.from({ length: 7 }, (_, i) =>
+        response({ submittedAt: new Date(day.getTime() + i * 60_000) }),
+      ),
+      decidedAmounts: [],
+      days: 7,
+      now: NOW,
+    });
+
+    expect(trend.find((p) => p.date === "2026-10-10")?.responses).toBe(7);
+    expect(trend.reduce((sum, p) => sum + p.responses, 0)).toBe(7);
   });
 
   it("keeps per-currency revenue separate within a day", () => {

@@ -1,8 +1,10 @@
 import { data } from "react-router";
 import { z } from "zod";
 
+import { orderIdSchema } from "~/lib/settings";
+
 import { toResponse } from "~/lib/http.server";
-import { ValidationError } from "~/lib/errors";
+import { serialiseError, ValidationError } from "~/lib/errors";
 import { logger } from "~/lib/logger";
 import { BUCKETS, consumeToken } from "~/lib/rate-limit.server";
 import { DEFAULT_OPTIONS, parseSurveySettings } from "~/lib/settings";
@@ -21,77 +23,82 @@ import { authenticate } from "~/shopify.server";
  * claim, never anything in the query string or body.
  */
 
-const querySchema = z.object({
-  orderId: z
-    .string()
-    .min(1)
-    .max(64)
-    // Shopify order IDs are numeric. Rejecting anything else keeps arbitrary
-    // strings out of the database before they reach a query.
-    .regex(/^\d+$/, "orderId must be numeric"),
-});
+const querySchema = z.object({ orderId: orderIdSchema });
 
 export const loader = async ({ request }: { request: Request }) => {
   const requestId = `cfg_${Date.now().toString(36)}`;
 
-  // Throws a 401 Response when the token is missing, invalid or expired.
+  // Throws a 401 Response when the token is missing, invalid or expired. That
+  // must keep propagating: the library adds its own CORS headers for it.
   const { sessionToken, cors } = await authenticate.public.checkout(request);
   const shopDomain = sessionToken.dest.toLowerCase();
 
-  const url = new URL(request.url);
-  const parsed = querySchema.safeParse({ orderId: url.searchParams.get("orderId") });
+  // As in /api/responses, every exit from here is CORS-wrapped. A thrown error
+  // would be serialised by React Router without an Access-Control-Allow-Origin
+  // header, so the extension would retry a permanent 400 as a network failure.
+  try {
+    const url = new URL(request.url);
+    const parsed = querySchema.safeParse({ orderId: url.searchParams.get("orderId") });
 
-  if (!parsed.success) {
-    throw new ValidationError("A valid orderId is required.", "Reload the checkout page and try again.", {
-      field: "orderId",
+    if (!parsed.success) {
+      throw new ValidationError("A valid orderId is required.", "Reload the checkout page and try again.", {
+        field: "orderId",
+      });
+    }
+
+    consumeToken(`config:${shopDomain}`, BUCKETS.surveyConfig);
+
+    const shop = await findShopByDomain(shopDomain);
+
+    // An unknown or uninstalled store is not an error the buyer should see.
+    // Returning `enabled: false` lets the extension hide itself cleanly.
+    if (!shop || shop.installState === "uninstalled") {
+      logger.info("survey_config_no_shop", { request_id: requestId, shop_domain: shopDomain });
+      return cors(toResponse(data({ enabled: false, reason: "not_installed" })));
+    }
+
+    // Unsupported plan: hide the survey rather than render a block that cannot work.
+    if (shop.checkoutSupported === false) {
+      logger.info("survey_config_plan_unsupported", { request_id: requestId, shop_domain: shopDomain });
+      return cors(toResponse(data({ enabled: false, reason: "plan_unsupported" })));
+    }
+
+    const settings = parseSurveySettings(shop.optionsJson, {
+      questionText: shop.questionText,
+      options: DEFAULT_OPTIONS,
+      allowOther: shop.allowOther,
     });
+
+    const alreadyAnswered = await hasResponseFor(shop.id, parsed.data.orderId);
+
+    // Fire-and-forget: this is the request path that runs most often, and the
+    // sweep rate-limits itself. Kept off the critical path so housekeeping can
+    // never delay the buyer seeing the survey.
+    void maybeMarkUnreconcilable();
+
+    logger.info("survey_config_served", {
+      request_id: requestId,
+      shop_domain: shopDomain,
+      order_id: parsed.data.orderId,
+      already_answered: alreadyAnswered,
+    });
+
+    return cors(
+      toResponse(data({
+        enabled: true,
+        questionText: settings.questionText,
+        options: settings.options.map(({ value, label, emoji }) => ({ value, label, emoji })),
+        allowOther: settings.allowOther,
+        orderId: parsed.data.orderId,
+        alreadyAnswered,
+      })),
+    );
+  } catch (error) {
+    const { status, body } = serialiseError(error, {
+      request_id: requestId,
+      shop_domain: shopDomain,
+      route: "api_survey_config",
+    });
+    return cors(toResponse(body, { status }));
   }
-
-  consumeToken(`config:${shopDomain}`, BUCKETS.surveyConfig);
-
-  const shop = await findShopByDomain(shopDomain);
-
-  // An unknown or uninstalled store is not an error the buyer should see.
-  // Returning `enabled: false` lets the extension hide itself cleanly.
-  if (!shop || shop.installState === "uninstalled") {
-    logger.info("survey_config_no_shop", { request_id: requestId, shop_domain: shopDomain });
-    return cors(toResponse(data({ enabled: false, reason: "not_installed" })));
-  }
-
-  // Unsupported plan: hide the survey rather than render a block that cannot work.
-  if (shop.checkoutSupported === false) {
-    logger.info("survey_config_plan_unsupported", { request_id: requestId, shop_domain: shopDomain });
-    return cors(toResponse(data({ enabled: false, reason: "plan_unsupported" })));
-  }
-
-  const settings = parseSurveySettings(shop.optionsJson, {
-    questionText: shop.questionText,
-    options: DEFAULT_OPTIONS,
-    allowOther: shop.allowOther,
-  });
-
-  const alreadyAnswered = await hasResponseFor(shop.id, parsed.data.orderId);
-
-  // Fire-and-forget: this is the request path that runs most often, and the
-  // sweep rate-limits itself. Kept off the critical path so housekeeping can
-  // never delay the buyer seeing the survey.
-  void maybeMarkUnreconcilable();
-
-  logger.info("survey_config_served", {
-    request_id: requestId,
-    shop_domain: shopDomain,
-    order_id: parsed.data.orderId,
-    already_answered: alreadyAnswered,
-  });
-
-  return cors(
-    toResponse(data({
-      enabled: true,
-      questionText: settings.questionText,
-      options: settings.options.map(({ value, label, emoji }) => ({ value, label, emoji })),
-      allowOther: settings.allowOther,
-      orderId: parsed.data.orderId,
-      alreadyAnswered,
-    })),
-  );
 };

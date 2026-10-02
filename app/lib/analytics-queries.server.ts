@@ -1,3 +1,5 @@
+import { Prisma } from "@prisma/client";
+
 import { db, isRetryableDbError } from "~/db.server";
 import { previousWindowBounds, windowBounds } from "~/lib/analytics";
 import { evaluateResponseRevenue } from "~/lib/revenue";
@@ -31,28 +33,114 @@ export type ResponseWithOrder = {
   } | null;
 };
 
-const RESPONSE_INCLUDE = {
-  shop: false,
-  order: true,
-} as const;
-
+/**
+ * `SurveyResponse` and `OrderCache` deliberately share no Prisma relation.
+ *
+ * They are joined on `(shopId, orderId)` because that pair is the logical link,
+ * but a response can exist with no matching order — it arrives before
+ * `orders/create` and stays unreconciled until the webhook lands. A `has`
+ * relation would have demanded the order row and dropped those answers, which is
+ * the one thing we must never do. A raw LEFT JOIN also lets us select only the
+ * six revenue columns instead of every `OrderCache` column.
+ *
+ * `totalPrice`/`totalRefunded` are cast to text in SQL and arrive as strings.
+ * The columns are `Decimal`, and a `Decimal` instance stringifies as `"19.99"`
+ * via its own `toString`, which `parseMoneyToMinor` happens to accept — but it
+ * is incidental, and passing the object straight into a decimal regex would be
+ * rejected. Selecting the text form makes the type honest.
+ *
+ * Every value is a bound parameter. Nothing here is string-interpolated, so a
+ * shop domain or channel containing a quote cannot alter the query.
+ */
 export async function fetchResponsesInWindow(params: {
   shopId: string;
   start: Date;
   end: Date;
   channel?: string;
 }): Promise<ResponseWithOrder[]> {
-  return retryDb(() =>
-    db.surveyResponse.findMany({
-      where: {
-        shopId: params.shopId,
-        submittedAt: { gte: params.start, lt: params.end },
-        ...(params.channel ? { channel: params.channel } : {}),
-      },
-      orderBy: { submittedAt: "desc" },
-      include: RESPONSE_INCLUDE,
-    }),
+  // Built per call rather than as a module constant because the shop id, window
+  // and channel filter are all bound parameters — never string-interpolated.
+  const rows = await retryDb(() =>
+    db.$queryRaw<ResponseWithOrderRow[]>`
+      SELECT
+        r.id,
+        r."orderId",
+        r.channel,
+        r."otherText",
+        r."submittedAt",
+        r."isLocked",
+        r.reconciled,
+        r."unreconcilable",
+        o.currency,
+        o."totalPrice"::text AS "totalPrice",
+        o."totalRefunded"::text AS "totalRefunded",
+        o."financialStatus",
+        o."isTest",
+        o."isCancelled"
+      FROM "SurveyResponse" r
+      LEFT JOIN "OrderCache" o
+        ON o."shopId" = r."shopId" AND o."orderId" = r."orderId"
+      WHERE r."shopId" = ${params.shopId}
+        AND r."submittedAt" >= ${params.start}
+        AND r."submittedAt" < ${params.end}
+        ${params.channel ? Prisma.sql`AND r.channel = ${params.channel}` : Prisma.empty}
+      ORDER BY r."submittedAt" DESC
+    `,
   );
+
+  return rows.map(toResponseWithOrder);
+}
+
+type ResponseWithOrderRow = {
+  id: string;
+  orderId: string;
+  channel: string;
+  otherText: string | null;
+  submittedAt: Date;
+  isLocked: boolean;
+  reconciled: boolean;
+  unreconcilable: boolean;
+  currency: string | null;
+  totalPrice: string | null;
+  totalRefunded: string | null;
+  financialStatus: string | null;
+  isTest: boolean | null;
+  isCancelled: boolean | null;
+};
+
+/**
+ * A LEFT JOIN with no match yields all-null order columns, so the absence of an
+ * order is represented by collapsing that row to `order: null` rather than by a
+ * partially-populated object. `evaluateResponseRevenue` treats both as
+ * unreconciled, but a null object keeps every downstream check honest about the
+ * difference between "no order yet" and "an order with no totals".
+ */
+function toResponseWithOrder(row: ResponseWithOrderRow): ResponseWithOrder {
+  const { currency, totalPrice, totalRefunded, financialStatus, isTest, isCancelled, ...response } = row;
+
+  const hasOrder =
+    currency !== null &&
+    totalPrice !== null &&
+    isTest !== null &&
+    isCancelled !== null &&
+    financialStatus !== null;
+
+  return {
+    ...response,
+    order: hasOrder
+      ? {
+          currency,
+          totalPrice,
+          // `totalRefunded` is NOT NULL in the schema with a 0 default, but the
+          // column being null in a LEFT JOIN miss is indistinguishable, and a
+          // missing refund amount must parse as zero rather than throw.
+          totalRefunded: totalRefunded ?? "0",
+          financialStatus,
+          isTest,
+          isCancelled,
+        }
+      : null,
+  };
 }
 
 /** Denormalised count, used for the previous-period comparison. */

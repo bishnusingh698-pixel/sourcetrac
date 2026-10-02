@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useRemoteSubscription } from "@remote-ui/react";
 import {
   BlockStack,
@@ -40,12 +41,17 @@ export default function OrderStatusBlock() {
   const sessionToken = useSessionToken();
   const translate = useTranslate();
 
-  const surveyApi = createSurveyApi(API_URL, {
-    // `sessionToken.get()` re-mints when its cached JWT has expired, so a retry
-    // after a long cold start never sends a stale token.
-    getSessionToken: () => sessionToken.get(),
-    translate,
-  });
+  const surveyApi = useMemo(
+    () =>
+      createSurveyApi(API_URL, {
+        // `sessionToken.get()` re-mints when its cached JWT has expired, so a
+        // retry after a long cold start never sends a stale token. Safe to call
+        // per attempt, so it is wrapped rather than captured once.
+        getSessionToken: () => sessionToken.get(),
+        translate,
+      }),
+    [sessionToken, translate],
+  );
 
   const survey = useSurvey(orderId ?? "", "order-status", surveyApi);
 

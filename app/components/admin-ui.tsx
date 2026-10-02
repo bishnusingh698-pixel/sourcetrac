@@ -17,6 +17,12 @@ import type { ReactNode } from "react";
 export type Tone = "info" | "success" | "warning" | "critical";
 
 /**
+ * `s-badge` and `s-progress` accept `neutral`, which `s-banner` does not. Kept
+ * as its own type so a `neutral` badge can never reach a `Banner`.
+ */
+export type BadgeTone = "neutral" | Tone;
+
+/**
  * Renders one entry per currency.
  *
  * Amounts arrive already formatted by `formatMoney` on the server, because
@@ -29,10 +35,24 @@ export type Tone = "info" | "success" | "warning" | "critical";
 export function MoneyList({ amounts }: { amounts: ReadonlyArray<{ currency: string; text: string }> }) {
   if (amounts.length === 0) return <s-text color="subdued">—</s-text>;
 
+  // A single-currency store is the overwhelmingly common case. Collapse to one
+  // line so the metric tiles do not each grow a row per currency; only a
+  // genuinely multi-currency store pays the vertical cost of the stack.
+  const [only] = amounts;
+  if (amounts.length === 1 && only) {
+    return (
+      <s-text fontVariantNumeric="tabular-nums" type="strong">
+        {only.text}
+      </s-text>
+    );
+  }
+
   return (
     <s-stack gap="small">
       {amounts.map((entry) => (
-        <s-text key={entry.currency}>{entry.text}</s-text>
+        <s-text key={entry.currency} fontVariantNumeric="tabular-nums">
+          {entry.text}
+        </s-text>
       ))}
     </s-stack>
   );
@@ -42,15 +62,29 @@ export function Metric({
   label,
   children,
   help,
+  trend,
 }: {
   label: string;
   children: ReactNode;
   help?: string;
+  /**
+   * Optional period-over-period delta. A `s-badge` carries it so the number and
+   * its direction stay on one line at any width.
+   */
+  trend?: { text: string; tone: BadgeTone } | null;
 }) {
   return (
-    <s-box padding="small" border="base" borderRadius="base">
+    <s-box padding="small" border="base" borderRadius="base" background="subdued">
       <s-stack gap="small">
-        <s-text type="strong">{label}</s-text>
+        {/* Label and delta share a row and push apart, so a tile without a delta
+            looks identical to one that has it. The badge is always reserved via
+            alignItems, never inserted, so the row below never shifts. */}
+        <s-stack justifyContent="space-between" alignItems="center" gap="small">
+          <s-text type="strong" fontSize="small">
+            {label}
+          </s-text>
+          {trend ? <s-badge tone={trend.tone}>{trend.text}</s-badge> : null}
+        </s-stack>
         <s-heading>{children}</s-heading>
         {help ? (
           <s-text color="subdued" fontSize="small">

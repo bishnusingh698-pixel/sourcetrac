@@ -141,6 +141,31 @@ export function formatMoney(minor: number | null, currency: CurrencyCode, locale
   }
 }
 
+/** Anything with a numeric string form: Prisma Decimal, string, or number. */
+type DecimalLike = { toString(): string } | string | number | null | undefined;
+
+/**
+ * Render a stored major-unit value at its currency's true precision.
+ *
+ * `orderTotal` and `OrderCache.totalPrice` arrive from Prisma as Decimal, so the
+ * export path must not re-round them to a fixed two places: a Kuwaiti dinar order
+ * of 1.234 would export as 1.23 and a JPY order of 5000 as 5000.00. Both are wrong
+ * in a file the merchant is going to reconcile against Shopify.
+ */
+export function formatDecimalForCurrency(value: DecimalLike, currency: CurrencyCode): string | null {
+  if (value === null || value === undefined) return null;
+
+  const raw = value.toString();
+  if (raw === "") return null;
+
+  const decimals = minorUnitDigits(currency);
+  const numeric = Number(raw);
+  if (!Number.isFinite(numeric)) return null;
+
+  // toFixed is safe up to 100 fractional digits; currencies never exceed 3.
+  return numeric.toFixed(decimals);
+}
+
 /** Percentage change between two periods. Null when the baseline is zero. */
 export function percentChange(current: number, previous: number): number | null {
   if (!Number.isFinite(previous) || previous === 0) return null;

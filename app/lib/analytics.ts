@@ -55,6 +55,8 @@ export type ChannelStat = {
   revenueByCurrency: Array<{ currency: CurrencyCode; minor: number }>;
   /** AOV per currency. Entry absent when there is no countable revenue. */
   aovByCurrency: Array<{ currency: CurrencyCode; minor: number }>;
+  /** Orders that actually contributed revenue, per currency. The AOV denominator. */
+  revenueOrdersByCurrency: Array<{ currency: CurrencyCode; count: number }>;
 };
 
 export type Summary = {
@@ -63,6 +65,8 @@ export type Summary = {
   pendingResponses: number;
   revenueByCurrency: Array<{ currency: CurrencyCode; minor: number }>;
   aovByCurrency: Array<{ currency: CurrencyCode; minor: number }>;
+  /** Orders that actually contributed revenue, per currency. The AOV denominator. */
+  revenueOrdersByCurrency: Array<{ currency: CurrencyCode; count: number }>;
   /** null when there are no orders in the window; rendered as an em dash. */
   responseRate: number | null;
   responseRateChange: number | null;
@@ -73,6 +77,12 @@ export type Summary = {
  *
  * `ordersInWindow` is the count of eligible (non-test, non-cancelled) orders
  * from orders_cache for the same window — the denominator for response rate.
+ *
+ * AOV is revenue divided by the number of orders that actually contributed
+ * revenue, counted per currency. That count cannot be derived from the response
+ * total: `evaluateRevenue` also excludes test, cancelled, voided and fully
+ * refunded orders, and none of those are "pending". Counting them would silently
+ * understate AOV on any store that has ever taken a refund.
  */
 export function computeStats(params: {
   responses: ReadonlyArray<ResponseRow>;
@@ -85,7 +95,6 @@ export function computeStats(params: {
   const responseCountByChannel = new Map<string, number>();
   const lockedByChannel = new Map<string, number>();
   const pendingByChannel = new Map<string, number>();
-  const revenueByChannel = new Map<string, Array<{ currency: CurrencyCode; minor: number }>>();
 
   for (const row of responses) {
     responseCountByChannel.set(row.channel, (responseCountByChannel.get(row.channel) ?? 0) + 1);
@@ -99,44 +108,57 @@ export function computeStats(params: {
     }
   }
 
+  // One entry per decided order, so counting the rows gives the true denominator
+  // per currency. Grouped here once rather than per channel so the summary and
+  // every channel row agree on what "an order with revenue" means.
+  const amountsByChannel = new Map<string, Array<{ currency: CurrencyCode; minor: number }>>();
   for (const entry of decidedAmounts) {
-    const existing = revenueByChannel.get(entry.channel) ?? [];
+    const existing = amountsByChannel.get(entry.channel) ?? [];
     existing.push({ currency: entry.currency, minor: entry.minor });
-    revenueByChannel.set(entry.channel, existing);
+    amountsByChannel.set(entry.channel, existing);
   }
 
   const channels: ChannelStat[] = [...responseCountByChannel.keys()]
     .map((channel) => {
-      const rolled = rollupByCurrency(revenueByChannel.get(channel) ?? []);
-      const count = responseCountByChannel.get(channel) ?? 0;
-      const withRevenue = count - (pendingByChannel.get(channel) ?? 0);
+      const rolled = rollupByCurrency(amountsByChannel.get(channel) ?? []);
+      const orderCounts = rollupCountsByCurrency(amountsByChannel.get(channel) ?? []);
+      const countFor = (currency: CurrencyCode) => orderCounts.find((e) => e.currency === currency)?.count ?? 0;
 
       return {
         channel,
-        responses: count,
+        responses: responseCountByChannel.get(channel) ?? 0,
         lockedResponses: lockedByChannel.get(channel) ?? 0,
         pendingResponses: pendingByChannel.get(channel) ?? 0,
         revenueByCurrency: rolled,
         aovByCurrency: rolled
-          .map(({ currency, minor }) => ({ currency, minor: averageOrderValue(minor, withRevenue) }))
+          .map(({ currency, minor }) => ({
+            currency,
+            minor: averageOrderValue(minor, countFor(currency)),
+          }))
           .filter((entry): entry is { currency: CurrencyCode; minor: number } => entry.minor !== null),
+        revenueOrdersByCurrency: orderCounts,
       };
     })
     .sort((a, b) => b.responses - a.responses);
 
   const totalResponses = responses.length;
   const pendingResponses = [...pendingByChannel.values()].reduce((sum, n) => sum + n, 0);
-  const totalRevenue = rollupByCurrency(decidedAmounts.map(({ currency, minor }) => ({ currency, minor })));
+  const totalAmounts = decidedAmounts.map(({ currency, minor }) => ({ currency, minor }));
+  const totalRevenue = rollupByCurrency(totalAmounts);
+  const totalOrderCounts = rollupCountsByCurrency(totalAmounts);
 
-  const revenueOrders = totalResponses - pendingResponses;
   const summary: Summary = {
     totalResponses,
     lockedResponses: [...lockedByChannel.values()].reduce((sum, n) => sum + n, 0),
     pendingResponses,
     revenueByCurrency: totalRevenue,
     aovByCurrency: totalRevenue
-      .map(({ currency, minor }) => ({ currency, minor: averageOrderValue(minor, revenueOrders) }))
+      .map(({ currency, minor }) => ({
+        currency,
+        minor: averageOrderValue(minor, totalOrderCounts.find((e) => e.currency === currency)?.count ?? 0),
+      }))
       .filter((entry): entry is { currency: CurrencyCode; minor: number } => entry.minor !== null),
+    revenueOrdersByCurrency: totalOrderCounts,
     // Divide-by-zero guard: zero orders yields null, rendered as "—".
     responseRate:
       ordersInWindow > 0 && Number.isFinite(ordersInWindow) ? (totalResponses / ordersInWindow) * 100 : null,
@@ -147,6 +169,19 @@ export function computeStats(params: {
   };
 
   return { summary, channels };
+}
+
+/** Count rows per currency. The AOV denominator, kept separate from any money sum. */
+function rollupCountsByCurrency(
+  entries: ReadonlyArray<{ currency: CurrencyCode; minor: number }>,
+): Array<{ currency: CurrencyCode; count: number }> {
+  const counts = new Map<CurrencyCode, number>();
+  for (const { currency } of entries) {
+    counts.set(currency, (counts.get(currency) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([currency, count]) => ({ currency, count }))
+    .sort((a, b) => a.currency.localeCompare(b.currency));
 }
 
 export type TrendPoint = {
@@ -174,18 +209,18 @@ export function buildTrend(params: {
     dayKeys.push(toUtcDateKey(new Date(start.getTime() + i * 24 * 60 * 60 * 1000)));
   }
 
+  const dayKeySet = new Set(dayKeys);
   const responsesByDay = new Map<string, number>();
   for (const row of responses) {
     const key = toUtcDateKey(row.submittedAt);
-    if (!responsesByDay.has(key) && dayKeys.includes(key)) {
-      responsesByDay.set(key, (responsesByDay.get(key) ?? 0) + 1);
-    }
+    if (!dayKeySet.has(key)) continue;
+    responsesByDay.set(key, (responsesByDay.get(key) ?? 0) + 1);
   }
 
   const revenueByDay = new Map<string, Array<{ currency: CurrencyCode; minor: number }>>();
   for (const entry of decidedAmounts) {
     const key = toUtcDateKey(entry.submittedAt);
-    if (!dayKeys.includes(key)) continue;
+    if (!dayKeySet.has(key)) continue;
     const bucket = revenueByDay.get(key) ?? [];
     bucket.push({ currency: entry.currency, minor: entry.minor });
     revenueByDay.set(key, bucket);

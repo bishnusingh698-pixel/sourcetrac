@@ -36,16 +36,17 @@ export type DataRequestResult = {
  * The webhook payload identifies the customer by email/phone. We do not index
  * those, so we cannot match them to specific responses. We return the shop's
  * orders that have a survey response, and document why.
+ *
+ * There is no `shopId` parameter. The shop is always resolved from the payload's
+ * `shop_domain`, which the webhook handler already verified; accepting an id as
+ * well would have been an unvalidated second way to address the same shop.
  */
 export async function handleDataRequest(params: {
   shopDomain: string;
   customerEmail?: string;
   customerPhone?: string;
-  shopId?: string;
 }): Promise<DataRequestResult> {
-  const shop = params.shopId
-    ? await findShopByDomain(params.shopDomain)
-    : await findShopByDomain(params.shopDomain);
+  const shop = await findShopByDomain(params.shopDomain);
 
   if (!shop) {
     return {

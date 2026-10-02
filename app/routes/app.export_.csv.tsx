@@ -2,6 +2,7 @@ import { redirect, type LoaderFunctionArgs } from "react-router";
 
 import { db } from "~/db.server";
 import { csvFilename, toCsv } from "~/lib/csv";
+import { formatDecimalForCurrency } from "~/lib/money";
 import { findShopByDomain } from "~/lib/shop.server";
 import { authenticate } from "~/shopify.server";
 
@@ -45,8 +46,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       // `orderTotal` is stored in major units (see responses.server.ts, which
       // writes `minor / 10 ** decimals`), so it is emitted as a plain decimal
       // string. Converting back through minor units here would be wrong twice
-      // over for zero-decimal currencies like JPY.
-      orderTotal: row.orderTotal === null ? null : Number(row.orderTotal).toFixed(2),
+      // over for zero-decimal currencies like JPY. Precision follows the
+      // currency: three places for KWD/BHD/OMR, none for JPY.
+      orderTotal: formatDecimalForCurrency(row.orderTotal, row.currency ?? "USD"),
       currency: row.currency,
     })),
   );

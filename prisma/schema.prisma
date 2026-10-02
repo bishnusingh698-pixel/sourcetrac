@@ -51,6 +51,12 @@ model Shop {
   /// able to render a working survey before the merchant visits Settings.
   optionsJson            String   @default("[]")
   allowOther             Boolean  @default(false)
+  /// Merchant's chosen admin UI language, e.g. "de" or "pt-BR". Null means they
+  /// have never chosen one, so we fall back to detecting Shopify's admin locale.
+  /// Deliberately a free String rather than an enum: adding a language must not
+  /// require a migration, and `resolveLanguage` already rejects anything we do
+  /// not ship, so a stale value degrades to English instead of erroring.
+  language               String?
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
@@ -72,7 +78,10 @@ model SurveyResponse {
   channel     String
   otherText   String?
   currency    String?
-  orderTotal  Decimal? @db.Decimal(12, 2)
+  /// Stored in MAJOR units, not minor. Three fractional places because KWD, BHD,
+  /// OMR and friends are three-decimal currencies; Decimal(12,2) would round a
+  /// 1.234 KWD order to 1.23 on insert and silently lose the difference.
+  orderTotal  Decimal? @db.Decimal(12, 3)
   locale      String?
   submittedAt DateTime @default(now())
   isLocked    Boolean  @default(false)
@@ -99,8 +108,10 @@ model OrderCache {
   orderId         String
   orderNumber     String?
   currency        String
-  totalPrice      Decimal  @db.Decimal(12, 2)
-  totalRefunded   Decimal  @default(0) @db.Decimal(12, 2)
+  /// Major units, three fractional places for three-decimal currencies. See
+  /// SurveyResponse.orderTotal.
+  totalPrice      Decimal  @db.Decimal(12, 3)
+  totalRefunded   Decimal  @default(0) @db.Decimal(12, 3)
   financialStatus String?
   isTest          Boolean  @default(false)
   isCancelled     Boolean  @default(false)

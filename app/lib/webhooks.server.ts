@@ -77,7 +77,6 @@ export async function claimWebhook(params: {
   webhookId: string;
   topic: string;
   apiVersion: string | null;
-  shopDomain: string | null;
   payload: string;
 }): Promise<ClaimResult> {
   try {
@@ -244,6 +243,9 @@ async function upsertOrderCache(shopInternalId: string, order: ShopifyOrder): Pr
   }
 
   const refundedParsed = parseMoneyToMinor(order.total_refunded ?? 0, order.currency);
+  // `OrderCache.totalPrice` is NOT NULL, so an unparseable total still has to be
+  // written as something. "0.00" is the only value that cannot be mistaken for
+  // real revenue, and it is safe here *because* reconciliation is skipped below.
   const totalDecimal = totalParsed.ok
     ? (totalParsed.minor / 10 ** totalParsed.decimals).toFixed(totalParsed.decimals)
     : "0.00";
@@ -283,6 +285,16 @@ async function upsertOrderCache(shopInternalId: string, order: ShopifyOrder): Pr
       },
     }),
   );
+
+  // Reconcile only from a total we actually parsed. Passing the "0.00" fallback
+  // through would parse cleanly and stamp every waiting response with a zero
+  // order total: the answer would silently stop counting as revenue, and the
+  // merchant would see a real order reported at $0.00 with no way to tell that
+  // apart from a genuine free order. Staying unreconciled is the honest state —
+  // the dashboard already renders it as "Pending".
+  if (!totalParsed.ok) {
+    return 0;
+  }
 
   // Idempotent and safe to run repeatedly: only rows still unreconciled change.
   const { reconciled } = await reconcileResponsesForOrder({

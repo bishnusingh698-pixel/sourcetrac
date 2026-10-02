@@ -50,11 +50,14 @@ describe("extension -> backend", () => {
     const fetchMock = vi.fn().mockResolvedValue(json(CONFIG));
     vi.stubGlobal("fetch", fetchMock);
 
-    const result = await api().fetchSurveyConfig("gid://shopify/Order/1", "thank-you");
+    const result = await api().fetchSurveyConfig("1", "thank-you");
 
     expect(result).toMatchObject({ questionText: "How did you hear about us?" });
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe(`${API_URL}/api/survey-config?orderId=gid%3A%2F%2Fshopify%2FOrder%2F1`);
+    // `orderConfirmation.value.order.id` is the numeric id, the same value the
+    // orders/create webhook puts in `order_id`. A GID here would be rejected by
+    // the route's numeric check and never attributed.
+    expect(url).toBe(`${API_URL}/api/survey-config?orderId=1`);
     expect((init.headers as Record<string, string>).Authorization).toBe("Bearer test-session-token");
   });
 
@@ -64,7 +67,7 @@ describe("extension -> backend", () => {
     const fetchMock = vi.fn().mockResolvedValue(json({ error: "unauthorized" }, 401));
     vi.stubGlobal("fetch", fetchMock);
 
-    const promise = api().fetchSurveyConfig("gid://shopify/Order/1", "thank-you");
+    const promise = api().fetchSurveyConfig("1", "thank-you");
     await vi.runAllTimersAsync();
     const result = await promise;
 
@@ -80,7 +83,7 @@ describe("extension -> backend", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const promise = api().fetchSurveyConfig("gid://shopify/Order/1", "thank-you");
+    const promise = api().fetchSurveyConfig("1", "thank-you");
     await vi.runAllTimersAsync();
     const result = await promise;
 
@@ -97,7 +100,7 @@ describe("extension -> backend", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const promise = api().fetchSurveyConfig("gid://shopify/Order/1", "thank-you");
+    const promise = api().fetchSurveyConfig("1", "thank-you");
     await vi.runAllTimersAsync();
 
     await expect(promise).resolves.toMatchObject({ allowOther: false });
@@ -112,7 +115,7 @@ describe("extension -> backend", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const promise = api().fetchSurveyConfig("gid://shopify/Order/1", "thank-you");
+    const promise = api().fetchSurveyConfig("1", "thank-you");
     await vi.runAllTimersAsync();
 
     await expect(promise).resolves.not.toBeNull();
@@ -125,7 +128,7 @@ describe("extension -> backend", () => {
     const fetchMock = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
     vi.stubGlobal("fetch", fetchMock);
 
-    const promise = api().submitResponse("gid://shopify/Order/1", "instagram", null, "thank-you");
+    const promise = api().submitResponse("1", "instagram", null, "thank-you");
     await vi.runAllTimersAsync();
 
     await expect(promise).resolves.toBeNull();
@@ -137,7 +140,7 @@ describe("extension -> backend", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const started = Date.now();
-    const promise = api().fetchSurveyConfig("gid://shopify/Order/1", "thank-you");
+    const promise = api().fetchSurveyConfig("1", "thank-you");
     await vi.runAllTimersAsync();
     const result = await promise;
 
@@ -160,7 +163,7 @@ describe("extension -> backend", () => {
       ),
     );
 
-    const promise = api().fetchSurveyConfig("gid://shopify/Order/1", "thank-you");
+    const promise = api().fetchSurveyConfig("1", "thank-you");
     await vi.runAllTimersAsync();
 
     await expect(promise).resolves.toBeNull();
@@ -172,14 +175,14 @@ describe("extension -> backend", () => {
       .mockResolvedValue(json({ ok: true, alreadyAnswered: false, status: "recorded" }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const promise = api().submitResponse("gid://shopify/Order/1", "instagram", null, "thank-you");
+    const promise = api().submitResponse("1", "instagram", null, "thank-you");
     await vi.runAllTimersAsync();
     const result = await promise;
 
     expect(result).toMatchObject({ ok: true });
     const [, submitInit] = fetchMock.mock.calls[0] as [string, RequestInit];
     const body = JSON.parse(String(submitInit.body));
-    expect(body).toMatchObject({ orderId: "gid://shopify/Order/1", channel: "instagram" });
+    expect(body).toMatchObject({ orderId: "1", channel: "instagram" });
   });
 
   it("treats a duplicate submission as a success, not an error", async () => {
@@ -189,7 +192,7 @@ describe("extension -> backend", () => {
       .mockResolvedValue(json({ ok: true, alreadyAnswered: true, status: "duplicate" }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const promise = api().submitResponse("gid://shopify/Order/1", "instagram", null, "thank-you");
+    const promise = api().submitResponse("1", "instagram", null, "thank-you");
     await vi.runAllTimersAsync();
 
     await expect(promise).resolves.toMatchObject({ ok: true, alreadyAnswered: true });
@@ -206,7 +209,7 @@ describe("extension -> backend", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const bound = createSurveyApi(API_URL, { getSessionToken, translate: (k: string) => k });
-    const promise = bound.fetchSurveyConfig("gid://shopify/Order/1", "thank-you");
+    const promise = bound.fetchSurveyConfig("1", "thank-you");
     await vi.runAllTimersAsync();
     await promise;
 
@@ -215,5 +218,44 @@ describe("extension -> backend", () => {
 
   it("marks permanent failures as non-retryable", () => {
     expect(new TransientError(false, "x").retryable).toBe(false);
+  });
+});
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+describe("use-survey orderId guard", () => {
+  /**
+   * Both extension blocks call `useSurvey(orderId ?? "", ...)` because the id
+   * comes from an async remote-ui subscription and is undefined on first render.
+   * The hook must therefore refuse to fetch until a real id arrives — otherwise
+   * every Thank-you / Order-status load fires `?orderId=`, which the route
+   * rejects as a permanent 422 and the retry loop logs as a give-up.
+   *
+   * NOTE: this asserts the guard's *presence in the source*, not the hook's
+   * runtime behaviour — there is no React renderer or jsdom in this project, so
+   * mounting `useSurvey` would mean adding a test-renderer dependency. It is a
+   * structural check: it fails if the early return is deleted or moved after the
+   * fetch, which is the regression that matters, but it cannot catch a guard that
+   * is present yet bypassed. Behavioural coverage of the fetch/retry logic lives
+   * in the tests above, which drive the real `createSurveyApi`.
+   */
+  it("guards the config effect with an empty-orderId early return", () => {
+    const source = readFileSync(
+      join(import.meta.dirname, "..", "..", "extensions", "shared", "src", "use-survey.ts"),
+      "utf8",
+    );
+
+    const effect = /useEffect\(\(\) => \{[\s\S]*?\n  \}, \[orderId, surface\]\);/.exec(source);
+    expect(effect, "expected a useEffect whose deps include orderId").not.toBeNull();
+
+    const body = effect?.[0] ?? "";
+    const guardIndex = body.indexOf("if (!orderId) return;");
+    const fetchIndex = body.indexOf("fetchSurveyConfig(");
+
+    expect(guardIndex, "useEffect must early-return on an empty orderId").toBeGreaterThan(-1);
+    expect(
+      fetchIndex,
+      "the guard must precede fetchSurveyConfig, otherwise it guards nothing",
+    ).toBeGreaterThan(guardIndex);
   });
 });

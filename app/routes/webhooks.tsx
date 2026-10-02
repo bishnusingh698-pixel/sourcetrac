@@ -36,7 +36,6 @@ export const action = async ({ request }: { request: Request }) => {
     webhookId,
     topic,
     apiVersion: null,
-    shopDomain: shop,
     payload: JSON.stringify(payload),
   });
 

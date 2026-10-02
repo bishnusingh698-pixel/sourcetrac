@@ -103,10 +103,16 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
   async function attempt<T>(path: string, init: RequestInit): Promise<T> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), ATTEMPT_TIMEOUT_MS);
-    const token = await binding.getSessionToken();
 
     let response: Response;
     try {
+      // Minted inside the try so the attempt timeout covers it. `getSessionToken`
+      // asks Shopify to sign a JWT, which is a network call of its own; when it
+      // hangs, the timer aborts the fetch that follows but the await above it
+      // would have kept the promise alive indefinitely, pushing the loop past
+      // its budget on a single stuck attempt.
+      const token = await binding.getSessionToken();
+
       response = await fetch(`${apiUrl}${path}`, {
         ...init,
         signal: controller.signal,
@@ -173,7 +179,17 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
           return null;
         }
 
-        // Never sleep past the budget; a retry we cannot finish is wasted time.
+        // Back off, but never past the deadline.
+        //
+        // No attempt is skipped for being "too expensive". During a cold start
+        // attempts fail *fast* — connection refused, not a 30s hang — and the
+        // whole point of the 60s budget is to keep retrying through exactly
+        // that. Requiring `remaining` to exceed ATTEMPT_TIMEOUT_MS would abandon
+        // a booting service after 30s, the scenario the budget exists for.
+        //
+        // The residual overrun when the host is hard-down is bounded: this
+        // deadline check runs on every iteration, so the worst case is the final
+        // attempt running to its own timeout past the budget, then giving up.
         const wait = Math.min(backoff, remaining);
         log(`${label}_retrying`, { surface, attempt: attemptNumber, wait_ms: wait });
         await sleep(wait);

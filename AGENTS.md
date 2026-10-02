@@ -56,6 +56,15 @@ Read `docs/01-verification-report.md` before writing any code — it contains th
 
 ## Toolchain gotchas (learned 2026-10-01, Phase 2)
 
+- **AGENTS.md contained real mojibake, not a terminal rendering artefact.**
+  Every em-dash had been written as the 5-character run `čéąÉąż`, arrows as
+  `čéą¢ąó`, ellipses as `čéąÉąČ`, and the "extension↔backend" heading as
+  `čéą¢ąż` — 44 occurrences in total. An earlier pass dismissed this as a
+  display artefact because the file parsed as UTF-8; it did not, the bytes were
+  simply valid *wrong* characters. Do not re-raise that dismissal.
+  Detect it by scanning for runs of ≥3 consecutive non-ASCII characters rather
+  than by eyeballing the terminal — CJK strings and box-drawing art are also
+  non-ASCII and are legitimate, so match the specific tokens, not the class.
 - **The `file_editor` tool can leave a trailing `</content>` or `</text>` line in
   files it creates.** This breaks the build with `TS1110: Type expected` and is
   easily mistaken for a code error. After writing files in bulk, run:
@@ -122,12 +131,57 @@ DATABASE_URL for tests: `postgresql://sourcetrac:sourcetrac@localhost:5432/sourc
 - Prisma `@@unique` creates a unique **index**, not a table constraint. Query
   `pg_indexes` (not `pg_constraint`) when asserting uniqueness in SQL.
 
-## Verified build state (2026-10-01)
+## Verified build state (2026-10-02)
 
-`npx tsc --noEmit` clean, `npm run build` clean, `tests/db-invariants.test.ts` 6/6 green
-against real Postgres 16.15. Auth is fully delegated to
-`authenticate.public.checkout()` / `authenticate.webhook()`; hand-rolled JWT, HMAC
-and CORS modules were deleted.
+`npm run typecheck`, `typecheck:extensions` and `npm run build` clean.
+`npx vitest run` is **193 passed across 10 files**, including
+`tests/db-invariants.test.ts` (15) against real Postgres 16.15. Auth is fully
+delegated to `authenticate.public.checkout()` / `authenticate.webhook()`;
+hand-rolled JWT, HMAC and CORS modules were deleted.
+
+### Starting the test database
+
+`node scripts/dev-postgres.mjs start` **exits after creating the databases**, which
+takes the spawned postgres down with it — the child dies with the parent, so the
+next command finds the port closed. It must be started detached:
+
+    setsid nohup node scripts/dev-postgres.mjs start --hold > /tmp/pg.log 2>&1 < /dev/null & disown
+
+Two follow-on traps: `stop` leaves `/tmp/sourcetrac-pg` behind, and a plain
+`start` then fails with `directory exists but is not empty` — remove the directory
+before initialising. The suite also needs `npx prisma migrate deploy` against
+`sourcetrac_test` on a fresh instance, and the full `~/lib/env` schema, or every
+test file fails at import with `Invalid environment configuration`.
+
+### A green test run is not evidence on its own
+
+Each of these was confirmed to **fail** when its fix was reverted, so they are
+regression tests rather than assertions that merely pass:
+
+- `orderId` money guard — reverting `if (!totalParsed.ok) return 0;` in
+  `upsertOrderCache` fails with `expected 0 to be null`: the answer gets stamped
+  with a fabricated `$0.00` order total and silently stops counting as revenue.
+- `resources: RESOURCES` in `createI18n` — removing it renders the admin keys
+  literally (`nav.dashboard`). The failure is silent, so it needs this test.
+- `if (!orderId) return;` in `use-survey.ts` — removing it fires
+  `?orderId=`, a request the route 422s permanently.
+- The dashboard query — dropping its `shopId` filter, or turning its `LEFT JOIN`
+  into an inner join, both fail. An inner join hides every unreconciled answer.
+
+DB tests must call the production function (`fetchResponsesInWindow`,
+`processWebhook`), never a copy of its SQL: an earlier version asserted against
+duplicated SQL and would have passed while production was broken.
+
+`orderIdSchema` lives in `app/lib/settings.ts` and is shared by both extension
+routes. That sharing is deliberate — the routes and `orders/create` must agree on
+the id format, and `tests/unit/order-id.test.ts` fails if a route goes back to
+inlining its own regex. The ui-extensions type is only `id: string`, so **the
+type system cannot catch a GID/numeric mismatch**; the evidence is that the
+webhook stores `String(order.id)` from the REST payload.
+
+React 19 hoists a nested `<html lang={…} />` into correct document order, so
+`DocumentLanguage` in `root.tsx` is not a rendering mistake — verified with
+`renderToStaticMarkup`.
 
 ## Testing gotcha: the Shopify library rejects bots before auth runs
 
@@ -225,6 +279,15 @@ Things that changed and will bite if written from memory:
 - The order id on the thank-you page is **not** in `useSettings()`. Use
   `useApi<"purchase.thank-you.block.render">().orderConfirmation.value.order.id`.
   Order status uses `api.order.value?.id`.
+- That `id` is the **numeric** order id — the same value `orders/create` puts in
+  `order_id` — not the `gid://shopify/Order/...` GID. Both API routes reject a
+  non-numeric `orderId` with a 422. Test fixtures must match; an older fixture
+  using a GID still passed because the client is id-agnostic and never ran the
+  route's validator.
+- Both blocks therefore call `useSurvey(orderId ?? "", ...)`, because the id
+  arrives from an async remote-ui subscription and is undefined on first render.
+  `useSurvey` must early-return on an empty id, or every page load fires
+  `?orderId=`, which 422s as a permanent failure and logs a give-up.
 - `useSettings<T>()` returns `Partial<T>` over `ExtensionSettings`, whose values
   are `string | number | boolean` — it is for merchant preferences, not order
   identity.
@@ -268,12 +331,116 @@ never multiply. This bit the CSV export once already.
 Three-decimal matters: without it a KWD order total of `1.234` is rejected as
 over-precise and that order's revenue is silently dropped.
 
+### Three-decimal currencies need the column widened too
+
+`parseMoneyToMinor` / `minorToDecimalString` were correct all along for JPY and
+KWD. A real audit claim that they "rejected zero-decimal currencies" was
+**disproven** — do not re-raise it. `JPY "5000"` -> minor `5000` is correct.
+
+The actual precision loss was downstream, in two places:
+
+- **Column type.** `Decimal(12,2)` rounds on *insert*, so a KWD order of `1.234`
+  was already `1.23` in the database. Formatting fixes cannot recover it. The
+  money columns are now `Decimal(12,3)` (migration
+  `20261001163000_money_decimal_precision`). Widening the type preserves stored
+  values, so no data conversion was needed.
+- **Export formatting.** A hardcoded `.toFixed(2)` emitted `1.23` for KWD and
+  `5000.00` for JPY. Use `formatDecimalForCurrency(value, currency)`, which
+  reads precision from `minorUnitDigits`. It accepts Prisma `Decimal`, `string`
+  and `number`, and returns `null` for null/empty/unparseable input.
+
+Both the CSV route and the export *preview* use that helper so the preview is
+byte-identical to the downloaded file.
+
 Refunds only reduce revenue once Shopify reports `financialStatus` as
 `partially_refunded`. Before that flip the refund amount is ignored, because the
 refund may still be in dispute.
 
+### Never reconcile from an unparsed total
+
+`OrderCache.totalPrice` is `NOT NULL`, so `upsertOrderCache` must write
+*something* when `parseMoneyToMinor` rejects the payload. It writes `"0.00"` —
+and that value is safe **only** because `upsertOrderCache` returns before
+calling `reconcileResponsesForOrder` when `!totalParsed.ok`.
+
+Passing the fallback through would defeat the guard in
+`reconcileResponsesForOrder`, which exists precisely to catch an unparseable
+total: `"0.00"` parses cleanly, so every waiting response would be stamped with
+a zero order total and silently stop counting as revenue. The merchant would see
+a real order reported at $0.00, indistinguishable from a genuine free order.
+Unreconciled ("Pending") is the honest state.
+
+If you make `totalPrice` nullable, delete this guard in the same commit — it
+becomes redundant but the fallback string stays dangerous.
+
+## A React Router ErrorBoundary cannot fix CORS
+
+The original audit finding "the API routes throw errors without CORS headers" is
+real but the suggested fix is impossible. A thrown error is serialised by React
+Router itself, and the route's `ErrorBoundary` cannot set
+`Access-Control-Allow-Origin` on that response. The extension would then read a
+genuine 400 as an opaque network failure and retry it.
+
+The fix is `try { ... } catch { return cors(toResponse(body, { status })) }`
+around the body of each API action/loader, **after**
+`authenticate.public.checkout()`. The auth call stays outside the try: its 401
+already carries the library's own CORS headers. `serialiseError` logs once and
+returns a body with no stack or SQL detail.
+
+## Extension api identity must not drive fetches
+
+`createSurveyApi(...)` was called inline in both block components, so its
+identity changed on every render, and `useSurvey` listed `api` in its effect
+dependencies. Every re-render refetched the config, burned a
+`BUCKETS.surveyConfig` token and hit the database.
+
+Fixed on both sides: `useMemo` in `ThankYouBlock.tsx` and
+`OrderStatusBlock.tsx`, and an `apiRef` in `use-survey.ts` so the effect keys
+on `[orderId, surface]` alone. Changing either without the other leaves the
+storm in place.
+
+## Analytics: AOV denominators and per-day counting
+
+Two real bugs, both with regression tests in `tests/unit/analytics.test.ts`:
+
+- **AOV** divided total revenue by the *response* count, so pending
+  (no-revenue) responses and multi-currency shops both skewed it. It now
+  divides by the count of actual decided revenue-contributing orders, per
+  currency. `Summary` carries `revenueOrdersByCurrency`.
+- **Trend** collapsed each UTC day to its first response, so a day with seven
+  answers plotted as one. Every response on a day is now counted.
+
+## Dashboard copy must not contradict the numbers
+
+The at-cap banners said locked answers were "paused from your dashboard totals"
+and would "appear as soon as you upgrade". They were never excluded from
+`computeStats` — only flagged `isLocked` for the upgrade prompt. AGENTS.md is
+explicit: *never hide the merchant's own data to create urgency*. So the copy
+was wrong, not the totals, and the copy was corrected in `app.tsx` and
+`app._index.tsx`. Do not "fix" this by excluding locked rows from analytics.
+
 Revenue is never summed across currencies. `rollupByCurrency` and
 `sumByCurrency` exist specifically so no caller can flatten them into one number.
+
+## Admin i18n gotchas
+
+**`createInstance().init()` MUST receive `resources`.** Omitting it is silent:
+the instance initialises cleanly, `t()` returns its own key as a string, and
+every translated string in the admin renders as `nav.dashboard` instead of
+"Dashboard". There is no error and no warning — this shipped once with all ten
+locale files committed and correctly populated. `tests/unit/i18n.test.ts` now
+asserts a known key resolves to real prose, which is the only thing that
+catches it.
+
+**A plural key does not resolve without `count`.** Keys stored as
+`key_one` / `key_other` need `{ count: n }` passed, or `t()` returns the
+unsuffixed key untranslated — the same raw-key symptom as a missing `resources`,
+so the two are easy to confuse. All current plural forms are identical across
+languages (the counts are digits, so no locale needs a different form), but
+`count` must still be passed for the lookup to happen.
+
+`getFixedT` works synchronously only because resources are bundled. Do not
+switch to a lazy backend loader without re-checking every caller.
 
 ## Settings validation gotchas
 
@@ -285,6 +452,63 @@ Duplicate-option detection must compare the raw slug. Calling
 `slugifyChannel(label, taken)` first salts the collision, so the subsequent
 `taken.has(value)` check could never fire and "Instagram" / "instagram"
 silently became two channels with split revenue.
+
+## Polaris theming rules for the embedded admin
+
+Merchants can theme the embedded admin. Anything that hardcodes a colour fights
+that, so the dashboard follows these rules:
+
+- **No hex, `rgb()`, or `hsl()` anywhere.** Not in a `style` attribute, not in
+  the SVG. Verify with
+  `git diff -U0 app/ | grep "^+" | grep -iE "#[0-9a-f]{3,8}|rgb\(|hsl\("`.
+- **These elements do not accept `style` at all.** Layout must come from their
+  documented attributes (`padding`, `gap`, `gridTemplateColumns`,
+  `background`, `border`, …). `admin-ui.tsx` says so at the top; a stray
+  `style=` there is silently ignored rather than applied.
+- **Themeable colour comes from tokens**: `s-badge tone`, `s-progress tone`,
+  `s-box background`, `s-text color`, `s-divider color`. Prefer these over
+  hand-rolled markup.
+- **In hand-rolled SVG, use `currentColor`** with an `opacity` attribute for
+  the faded variants (`fillOpacity`, `strokeOpacity`). `currentColor` inherits
+  whatever the theme sets, so the chart stays legible on both light and dark.
+- **Money and metric numbers get `fontVariantNumeric="tabular-nums"`** so
+  columns align and digits do not jitter as they change.
+
+Two tone sets, and mixing them is a type error on purpose:
+`Tone` = `info | success | warning | critical` for `s-banner`;
+`BadgeTone` = `neutral | Tone` for `s-badge` / `s-progress`, which also accept
+`neutral`. Declaring `neutral` on a `Banner` must not compile.
+
+### Attribute values must be read from the installed types, not guessed
+
+`node_modules/@shopify/polaris-types/dist/custom-elements.json` is the source of
+truth. It is nested as `modules[].declarations[]` with `kind: "class"` — there is
+no top-level `elements` array, and no `type`-kind declarations, so
+`MaybeAllValuesShorthandProperty<BoxBorderRadii>` has to be resolved from
+`dist/polaris.d.ts` instead. Guessing cost two wrong attributes in one pass:
+`size="small"` on `s-badge` (valid values are `base | large | large-100`) and
+`neutral` on a banner tone.
+
+`noUncheckedIndexedAccess` is on. `points[0]`, `amounts[0]` and
+`points[points.length - 1]` are all possibly-undefined, which matters because an
+empty trend array has no peak. Destructure (`const [only] = amounts`), use
+`.at(-1)`, or seed a `reduce` with `undefined` and narrow.
+
+## Dashboard chart invariants
+
+- **Share bars are relative to the busiest channel**, not to 100%. A flat
+  distribution (40/30/30) should read as three comparable bars, not three
+  unrelated slivers.
+- **`responseRateChange` null means "no comparable previous period"**, not zero.
+  Render no badge at all rather than `0%`, which would be a fabricated
+  measurement.
+- **A metric's value must never be conditional** — only its badge is. Making the
+  number itself appear/disappear resizes the tile and jumps the whole row.
+- **`YYYY-MM-DD` is formatted from its string parts**, never `new Date(key)`,
+  which parses as UTC midnight and renders as the previous day at negative UTC
+  offsets.
+- **An empty or single-point trend renders a panel, not a broken line.** The
+  "not enough data" copy must never depend on `canDrawLine` being inverted again.
 
 ## Tests
 

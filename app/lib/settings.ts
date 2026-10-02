@@ -6,6 +6,8 @@
  * what a valid survey is.
  */
 
+import { z } from "zod";
+
 import { ValidationError } from "./errors";
 
 export const MIN_OPTIONS = 6;
@@ -211,3 +213,24 @@ export const DEFAULT_OPTIONS: SurveyOption[] = [
 ];
 
 export const OTHER_CHANNEL_VALUE = "other";
+
+/**
+ * Order id accepted from the extension endpoints.
+ *
+ * Shared because two things have to agree and neither can enforce it alone: the
+ * routes must reject anything that is not an order id, and `orders/create` must
+ * write an id in the same shape. The webhook stores `String(order.id)` from the
+ * REST Admin API's `orders/create` payload, which is numeric. The ui-extensions
+ * type for both surfaces only says `id: string`, so the type system cannot catch
+ * a mismatch here.
+ *
+ * If these ever diverge, survey answers are written with an order id that no
+ * `OrderCache` row can match: the answer never reconciles, stays "Pending", and
+ * its revenue is invisible on the dashboard. The test asserting a GID is
+ * rejected exists to make that failure loud rather than silent.
+ */
+export const orderIdSchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .regex(/^\d+$/, "orderId must be numeric");

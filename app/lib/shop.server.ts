@@ -22,6 +22,8 @@ export type ShopRecord = {
   questionText: string;
   optionsJson: string;
   allowOther: boolean;
+  /// Merchant's chosen admin UI language, or null if never chosen.
+  language: string | null;
   checkoutSupported: boolean | null;
   installState: "installed" | "uninstalled";
 };
@@ -100,6 +102,7 @@ export async function findShopByDomain(shopDomain: string): Promise<ShopRecord |
         questionText: true,
         optionsJson: true,
         allowOther: true,
+        language: true,
         checkoutSupported: true,
         installState: true,
       },
@@ -129,6 +132,7 @@ export async function findShopById(shopId: string): Promise<ShopRecord | null> {
         questionText: true,
         optionsJson: true,
         allowOther: true,
+        language: true,
         checkoutSupported: true,
         installState: true,
       },
@@ -191,6 +195,30 @@ export async function updateSettings(
         optionsJson: data.optionsJson,
         allowOther: data.allowOther,
       },
+    }),
+  );
+}
+
+/**
+ * Record the merchant's language choice.
+ *
+ * A separate function rather than another field on `updateSettings` because the
+ * two are written at completely different moments: `updateSettings` is the
+ * survey form's Save button, whereas language is changed from a dropdown that
+ * applies immediately. Sharing one function would mean a language click could
+ * accidentally overwrite survey settings with stale form state.
+ *
+ * The value is validated by the caller against `isSupportedLanguage`; a null
+ * clears the override and restores locale detection.
+ */
+export async function setLanguage(
+  internalShopId: string,
+  language: string | null,
+): Promise<void> {
+  await retryDb(() =>
+    db.shop.update({
+      where: { id: internalShopId },
+      data: { language },
     }),
   );
 }

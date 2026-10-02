@@ -44,6 +44,12 @@ export function useSurvey(orderId: string, surface: SurveySurface, api: SurveyAp
   const submitted = useRef(false);
   // Guards against setting state after unmount during a long cold-start retry.
   const mounted = useRef(true);
+  // The caller builds `api` inline, so its identity changes on every render.
+  // Reading it through a ref keeps the config effect keyed on orderId + surface
+  // only: otherwise each re-render would refetch the config, burn a rate-limit
+  // token and hit the database again.
+  const apiRef = useRef(api);
+  apiRef.current = api;
 
   useEffect(() => {
     mounted.current = true;
@@ -55,7 +61,15 @@ export function useSurvey(orderId: string, surface: SurveySurface, api: SurveyAp
   useEffect(() => {
     let cancelled = false;
 
-    api.fetchSurveyConfig(orderId, surface).then((result) => {
+    // The order id arrives from an async subscription, so the first render passes
+    // "". Fetching then would send `?orderId=`, which the route rejects with a
+    // 422 — a request that can never succeed, fired on every Thank-you and
+    // Order-status page load, and logged by the retry loop as a permanent
+    // failure. The route validates before consuming a rate-limit token, so this
+    // costs no quota; it is purely noise. Wait for a real id.
+    if (!orderId) return;
+
+    apiRef.current.fetchSurveyConfig(orderId, surface).then((result) => {
       if (cancelled || !mounted.current) return;
 
       // A null result means we never reached the backend within the retry
@@ -82,7 +96,7 @@ export function useSurvey(orderId: string, surface: SurveySurface, api: SurveyAp
     return () => {
       cancelled = true;
     };
-  }, [orderId, surface, api]);
+  }, [orderId, surface]);
 
   const send = useCallback(
     async (optionId: string, other: string | null) => {
@@ -90,7 +104,7 @@ export function useSurvey(orderId: string, surface: SurveySurface, api: SurveyAp
       submitted.current = true;
       setPhase("sending");
 
-      const result = await api.submitResponse(orderId, optionId, other, surface);
+      const result = await apiRef.current.submitResponse(orderId, optionId, other, surface);
       if (!mounted.current) return;
 
       if (result === null) {
@@ -106,7 +120,7 @@ export function useSurvey(orderId: string, surface: SurveySurface, api: SurveyAp
         if (mounted.current) setPhase("hidden");
       }, CONFIRMATION_MS);
     },
-    [api, orderId, surface],
+    [orderId, surface],
   );
 
   /**
