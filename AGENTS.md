@@ -111,9 +111,21 @@ There is no Docker socket and no root, so `apt-get install postgresql` fails.
 Use `embedded-postgres`, which ships real Postgres binaries that run unprivileged:
 
 ```
-node scripts/dev-postgres.mjs start   # creates sourcetrac + sourcetrac_test on :5432
+node scripts/dev-postgres.mjs start --hold   # creates sourcetrac + sourcetrac_test on :5432
 node scripts/dev-postgres.mjs stop
 ```
+
+`--hold` is **required**. Without it the process exits, and the child postgres
+is killed with it, so the next command finds nothing listening on 5432.
+
+Run it detached (`setsid ... < /dev/null &`) so it survives the invoking shell —
+`nohup` alone is not enough here.
+
+If it still refuses to start with a bare `EBADF`, the cause is IPv6, not the
+schema: this container has no IPv6 loopback, postgres tries to bind `::1`, and
+exits. The script now passes `postgresFlags: ["-c", "listen_addresses=127.0.0.1"]`.
+A stale `/tmp/sourcetrac-pg` from a killed run also causes a confusing
+`directory exists but is not empty` — `rm -rf` it.
 
 DATABASE_URL for tests: `postgresql://sourcetrac:sourcetrac@localhost:5432/sourcetrac_test?schema=public`
 
@@ -182,6 +194,40 @@ webhook stores `String(order.id)` from the REST payload.
 React 19 hoists a nested `<html lang={…} />` into correct document order, so
 `DocumentLanguage` in `root.tsx` is not a rendering mistake — verified with
 `renderToStaticMarkup`.
+
+## App Bridge mounting and the silent blank panel
+
+App Bridge is what renders this app into the Shopify admin iframe. Without it,
+every loader still succeeds, `npm run check` stays green, and `/healthz` still
+returns 200 — the merchant just sees an empty panel. Nothing at runtime catches
+this, so `tests/unit/app-bridge-wiring.test.ts` asserts the wiring against the
+source instead.
+
+- `AppProvider` comes from **`@shopify/shopify-app-react-router/react`**.
+  `@shopify/app-bridge-react` v4 does **not** export it.
+- `AppProvider` injects the Polaris web-components script itself. Do **not** add
+  a manual `polaris.js` `<script>` in `root.tsx`; it loads the bundle twice.
+- `optimizeDeps.include` is a hard require at dev-server start. Never name a
+  package there that is not installed — it fails to resolve and takes the dev
+  server down.
+
+### `process.env` in a component is a runtime crash
+
+`process.env` does not exist in the browser, and **Vite does not replace it** —
+the expression survives verbatim into `build/client`. Read it in a loader only,
+never in a component.
+
+This bit the error boundary: it read `process.env.SHOPIFY_API_KEY` directly, so
+on any child-route failure the boundary threw a second time and the merchant got
+React Router's default page — the exact symptom the boundary existed to prevent.
+
+The key now lives in the **root** loader and is read back with
+`useRouteLoaderData`. The shell's own loader cannot be the source, because a
+boundary renders precisely when that loader has failed. The root import is
+`import type` only, so the shell never pulls its parent into its own graph.
+
+To verify: `grep -o "process\.env\.[A-Z_]*" build/client/assets/*.js` must be
+empty.
 
 ## Testing gotcha: the Shopify library rejects bots before auth runs
 
