@@ -1,0 +1,12 @@
+-- Stop persisting webhook payload bodies.
+--
+-- An orders/* payload embeds a full customer object (name, email, phone,
+-- address). The app never reads this column back, so the body was dead weight.
+-- Its only stated purpose was "raw, for post-mortems" -- a debugging
+-- affordance that was never used. Making the column nullable lets new rows
+-- record only the idempotency ledger.
+--
+-- Existing rows are deliberately left alone: the 30-day retention purge
+-- deletes them on its normal schedule, and blanking them here would misreport
+-- what we actually stored.
+ALTER TABLE "WebhookEvent" ALTER COLUMN "payloadJson" DROP NOT NULL;

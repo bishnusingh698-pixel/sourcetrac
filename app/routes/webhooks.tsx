@@ -38,7 +38,6 @@ export const action = async ({ request }: { request: Request }) => {
     webhookId,
     topic,
     apiVersion: null,
-    payload: JSON.stringify(payload),
   });
 
   if (!claim.claimed) {

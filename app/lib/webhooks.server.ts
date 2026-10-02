@@ -88,7 +88,6 @@ export async function claimWebhook(params: {
   webhookId: string;
   topic: string;
   apiVersion: string | null;
-  payload: string;
 }): Promise<ClaimResult> {
   try {
     await db.webhookEvent.create({
@@ -98,7 +97,11 @@ export async function claimWebhook(params: {
         apiVersion: params.apiVersion,
         // shopId here is the FK to Shop.id; resolved by the caller before insert.
         shopId: null,
-        payloadJson: params.payload.slice(0, 20_000),
+        // The payload body is deliberately not persisted. Idempotency needs only
+        // webhookId, and an orders/* payload embeds a full customer object
+        // (name, email, phone, address) that this app has no use for. Storing it
+        // would make us hold exactly the data we exist to avoid.
+        payloadJson: null,
       },
     });
     return { claimed: true };
@@ -153,12 +156,16 @@ export async function markWebhookFailed(webhookId: string, message: string): Pro
   );
 }
 
+/// The subset of the orders/* payload this app uses.
+///
+/// Customer fields (name, email, phone, address) are deliberately absent. They
+/// are present in the webhook body, but nothing here reads them and nothing
+/// downstream persists them — omitting them from the type makes it impossible to
+/// store a customer's contact details by accident.
 type ShopifyOrder = {
   id: number;
   name?: string | null;
   order_number?: number;
-  email?: string;
-  contact_email?: string;
   currency: string;
   current_total_price: string;
   total_price: string;

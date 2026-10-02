@@ -131,6 +131,11 @@ model OrderCache {
 /// Idempotency ledger. `webhookId` is X-Shopify-Webhook-Id; the unique
 /// constraint makes insert-first atomic, so a Shopify retry can redo partial
 /// work while a completed delivery costs nothing.
+///
+/// `payloadJson` is deliberately never written. An orders/* payload embeds a
+/// full customer object (name, email, phone, address) that this app has no use
+/// for, and no code path reads the column back. Keeping it nullable means the
+/// historic rows still age out through the 30-day retention purge.
 model WebhookEvent {
   id           String    @id @default(cuid())
   shopId       String?
@@ -138,7 +143,7 @@ model WebhookEvent {
   topic        String
   apiVersion   String?
   triggerRef   String?
-  payloadJson  String
+  payloadJson  String?
   processedAt  DateTime?
   error        String?
   createdAt    DateTime  @default(now())

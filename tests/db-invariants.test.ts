@@ -674,7 +674,7 @@ describe("webhook retry after a failed processing", () => {
     await markWebhookFailed("wh-failed-1", "connection reset");
 
     expect(
-      await claimWebhook({ webhookId: "wh-failed-1", topic: "orders/create", apiVersion: null, payload: "{}" }),
+      await claimWebhook({ webhookId: "wh-failed-1", topic: "orders/create", apiVersion: null }),
     ).toEqual({ claimed: true });
   });
 
@@ -685,7 +685,7 @@ describe("webhook retry after a failed processing", () => {
     await markWebhookProcessed("wh-done-1", null);
 
     expect(
-      await claimWebhook({ webhookId: "wh-done-1", topic: "orders/create", apiVersion: null, payload: "{}" }),
+      await claimWebhook({ webhookId: "wh-done-1", topic: "orders/create", apiVersion: null }),
     ).toEqual({ claimed: false });
   });
 
@@ -698,7 +698,7 @@ describe("webhook retry after a failed processing", () => {
     });
 
     expect(
-      await claimWebhook({ webhookId: "wh-inflight-1", topic: "orders/create", apiVersion: null, payload: "{}" }),
+      await claimWebhook({ webhookId: "wh-inflight-1", topic: "orders/create", apiVersion: null }),
     ).toEqual({ claimed: false });
   });
 });
