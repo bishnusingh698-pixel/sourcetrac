@@ -15,7 +15,3 @@ network_access = true
 [[extensions.targeting]]
 module = "./src/ThankYouBlock.tsx"
 target = "purchase.thank-you.block.render"
-
-# The only host the extension may contact. Must match APP_URL.
-[extensions.settings]
-allowed_urls = ["https://sourcetrac.onrender.com"]

@@ -13,7 +13,3 @@ network_access = true
 [[extensions.targeting]]
 module = "./src/OrderStatusBlock.tsx"
 target = "customer-account.order-status.block.render"
-
-# The only host the extension may contact. Must match APP_URL.
-[extensions.settings]
-allowed_urls = ["https://sourcetrac.onrender.com"]
