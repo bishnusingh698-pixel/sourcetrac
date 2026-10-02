@@ -9,8 +9,8 @@ embedded = true
 
 # Single scope. We cache order totals via webhook and never mutate an order.
 # See docs/02-architecture-and-costs.md §4 for the justification of each exclusion.
-scopes = "read_orders"
-
+# Declared only under [access_scopes]: the top-level `scopes` key is the legacy
+# format and Shopify CLI 4.8.3 rejects the whole file as invalid if it is present.
 [access_scopes]
 scopes = "read_orders"
 
