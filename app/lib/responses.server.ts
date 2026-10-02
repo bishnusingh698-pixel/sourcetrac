@@ -194,19 +194,33 @@ export async function reconcileResponsesForOrder(params: {
  * Mark responses that never received an order after 24 hours. They stay in the
  * dashboard as "Pending" with an explanation rather than being deleted —
  * the answer is real even if the order total is missing.
+ *
+ * Scoped to one shop. The sweep was a single platform-wide UPDATE, so one
+ * merchant's traffic rewrote another merchant's rows and the returned count was
+ * a whole-platform number the caller could not use for anything. `shopId` is
+ * required rather than optional: an unscoped sweep is the bug, so there must be
+ * no way to ask for one.
  */
-export async function markUnreconcilable(olderThanHours = 24, now = new Date()): Promise<number> {
+export async function markUnreconcilable(
+  shopId: string,
+  olderThanHours = 24,
+  now = new Date(),
+): Promise<number> {
   const cutoff = new Date(now.getTime() - olderThanHours * 60 * 60 * 1000);
 
   const result = await retryDb(() =>
     db.surveyResponse.updateMany({
-      where: { reconciled: false, unreconcilable: false, submittedAt: { lt: cutoff } },
+      where: { shopId, reconciled: false, unreconcilable: false, submittedAt: { lt: cutoff } },
       data: { unreconcilable: true },
     }),
   );
 
   if (result.count > 0) {
-    logger.info("responses_marked_unreconcilable", { count: result.count, older_than_hours: olderThanHours });
+    logger.info("responses_marked_unreconcilable", {
+      shop_id: shopId,
+      count: result.count,
+      older_than_hours: olderThanHours,
+    });
   }
 
   return result.count;
@@ -219,28 +233,31 @@ export async function markUnreconcilable(olderThanHours = 24, now = new Date()):
  * Render's free tier grants 750 instance hours per month against 744 in a
  * 31-day month, so a second service for scheduled work would guarantee a
  * mid-month suspension. Sweeping inline keeps the deployment to one web
- * service. The guard is per-process, not per-request, because this is a
- * write on an otherwise read-only path.
+ * service. The guard is per shop per process, not per request, because this is
+ * a write on an otherwise read-only path.
  */
-let lastUnreconcilableSweep: number | undefined;
+const lastUnreconcilableSweep: Map<string, number> = new Map();
 
-export async function maybeMarkUnreconcilable(olderThanHours = 24): Promise<void> {
+export async function maybeMarkUnreconcilable(shopId: string, olderThanHours = 24): Promise<void> {
   const intervalMs = 60 * 60 * 1000;
   const now = Date.now();
 
-  if (lastUnreconcilableSweep !== undefined && now - lastUnreconcilableSweep < intervalMs) {
+  // Per shop rather than per process: the throttle must not let a busy store
+  // starve a quiet one out of the sweep entirely.
+  const last = lastUnreconcilableSweep.get(shopId);
+  if (last !== undefined && now - last < intervalMs) {
     return;
   }
 
   // Set before awaiting so concurrent requests on a cold process cannot both
   // trigger a sweep.
-  lastUnreconcilableSweep = now;
+  lastUnreconcilableSweep.set(shopId, now);
 
   try {
-    await markUnreconcilable(olderThanHours);
+    await markUnreconcilable(shopId, olderThanHours);
   } catch (error) {
     // Must not fail the caller's request: this is housekeeping, and the
     // retry inside markUnreconcilable has already been exhausted.
-    logger.warn("unreconcilable_sweep_failed", serialiseError(error));
+    logger.warn("unreconcilable_sweep_failed", { shop_id: shopId, ...serialiseError(error) });
   }
 }

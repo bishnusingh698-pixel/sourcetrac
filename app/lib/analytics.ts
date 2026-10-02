@@ -202,11 +202,24 @@ export function buildTrend(params: {
   now?: Date;
 }): TrendPoint[] {
   const { responses, decidedAmounts, days, now = new Date() } = params;
-  const { start, end } = windowBounds(days, now);
+
+  /**
+   * Anchor the series on whole UTC days ending *today*, not on `start`.
+   *
+   * The window is a sliding [now − N days, now], so `start` lands mid-afternoon.
+   * Advancing from `start` in 24-hour steps therefore drifts half a day off every
+   * calendar date: the last point fell on yesterday and today's responses had no
+   * bucket at all, so the chart silently disagreed with the tiles above it.
+   * Deriving the keys from the calendar instead means every point is a real day
+   * and today is always included.
+   */
+  const today = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0),
+  );
 
   const dayKeys: string[] = [];
-  for (let i = 0; i < days; i += 1) {
-    dayKeys.push(toUtcDateKey(new Date(start.getTime() + i * 24 * 60 * 60 * 1000)));
+  for (let i = days - 1; i >= 0; i -= 1) {
+    dayKeys.push(toUtcDateKey(new Date(today.getTime() - i * 24 * 60 * 60 * 1000)));
   }
 
   const dayKeySet = new Set(dayKeys);

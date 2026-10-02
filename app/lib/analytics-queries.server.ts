@@ -62,24 +62,7 @@ export async function fetchResponsesInWindow(params: {
   // and channel filter are all bound parameters — never string-interpolated.
   const rows = await retryDb(() =>
     db.$queryRaw<ResponseWithOrderRow[]>`
-      SELECT
-        r.id,
-        r."orderId",
-        r.channel,
-        r."otherText",
-        r."submittedAt",
-        r."isLocked",
-        r.reconciled,
-        r."unreconcilable",
-        o.currency,
-        o."totalPrice"::text AS "totalPrice",
-        o."totalRefunded"::text AS "totalRefunded",
-        o."financialStatus",
-        o."isTest",
-        o."isCancelled"
-      FROM "SurveyResponse" r
-      LEFT JOIN "OrderCache" o
-        ON o."shopId" = r."shopId" AND o."orderId" = r."orderId"
+      ${RESPONSE_WITH_ORDER_SELECT}
       WHERE r."shopId" = ${params.shopId}
         AND r."submittedAt" >= ${params.start}
         AND r."submittedAt" < ${params.end}
@@ -90,6 +73,67 @@ export async function fetchResponsesInWindow(params: {
 
   return rows.map(toResponseWithOrder);
 }
+
+/**
+ * The shared projection, so the windowed dashboard query and the unfiltered
+ * export query cannot drift into selecting different columns and disagreeing
+ * about what "an order exists" means.
+ *
+ * Only the projection and the join are fixed here. Every value the WHERE clauses
+ * bind is still a bound parameter, so this is not string interpolation of
+ * anything a caller controls.
+ */
+const RESPONSE_WITH_ORDER_SELECT = Prisma.sql`
+  SELECT
+    r.id,
+    r."orderId",
+    r.channel,
+    r."otherText",
+    r."submittedAt",
+    r."isLocked",
+    r.reconciled,
+    r.unreconcilable,
+    o.currency,
+    o."totalPrice"::text AS "totalPrice",
+    o."totalRefunded"::text AS "totalRefunded",
+    o."financialStatus",
+    o."isTest",
+    o."isCancelled"
+  FROM "SurveyResponse" r
+  LEFT JOIN "OrderCache" o
+    ON o."shopId" = r."shopId" AND o."orderId" = r."orderId"
+`;
+
+/**
+ * Every response for a shop, oldest first, with its order attached.
+ *
+ * The export has no time window -- the merchant is entitled to all of their
+ * answers -- but it uses the same join and therefore the same revenue policy as
+ * the dashboard, so a row in the CSV always carries the figure the dashboard
+ * attributed to that channel. Reading `orderTotal` off the response row alone
+ * cannot do that: a partially refunded order still has the gross total stored
+ * there, no code path ever reduces it, and the file overstated revenue by the
+ * refunded amount.
+ *
+ * `limit` exists for the export *preview*, which shows ten rows and must not
+ * pull a shop's whole history into memory just to slice the last ten off it.
+ */
+export async function fetchAllResponsesWithOrder(
+  shopId: string,
+  limit?: number,
+): Promise<ResponseWithOrder[]> {
+  const rows = await retryDb(() =>
+    db.$queryRaw<ResponseWithOrderRow[]>`
+      ${RESPONSE_WITH_ORDER_SELECT}
+      WHERE r."shopId" = ${shopId}
+      ORDER BY r."submittedAt" DESC
+      ${limit === undefined ? Prisma.empty : Prisma.sql`LIMIT ${limit}`}
+    `,
+  );
+
+  return rows.map(toResponseWithOrder);
+}
+
 
 type ResponseWithOrderRow = {
   id: string;

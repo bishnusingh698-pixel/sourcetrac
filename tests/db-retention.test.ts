@@ -10,6 +10,7 @@ import { describe, expect, it, beforeAll, beforeEach, afterAll } from "vitest";
 import { PrismaClient } from "@prisma/client";
 
 import { runRetentionPurge } from "~/lib/retention.server";
+import { markUnreconcilable } from "~/lib/responses.server";
 
 /**
  * Deliberately literal, NOT imported from the module.
@@ -156,6 +157,66 @@ describe("retention purge deletes only expired rows", () => {
   });
 });
 
+describe("markUnreconcilable is scoped to the shop that asked", () => {
+  async function seedOtherShop() {
+    return prisma.shop.upsert({
+      where: { shopId: "gid://shopify/Shop/3000003" },
+      update: { shopDomain: "sweep-other.myshopify.com", installState: "installed" },
+      create: {
+        id: "sweep-other",
+        shopId: "gid://shopify/Shop/3000003",
+        shopDomain: "sweep-other.myshopify.com",
+        installState: "installed",
+      },
+    });
+  }
+
+  it("does not mark another tenant's responses", async () => {
+    // The sweep was a single global UPDATE across every shop, triggered from a
+    // public endpoint that any buyer's page load reaches. One store's traffic
+    // therefore rewrote another store's rows, and the count it returned was a
+    // whole-platform number the caller could not use for anything.
+    const other = await seedOtherShop();
+    await prisma.surveyResponse.create({
+      data: {
+        shopId: other.id,
+        orderId: "other-stale",
+        channel: "google",
+        submittedAt: daysBefore(48),
+        unreconcilable: false,
+      },
+    });
+
+    try {
+      const swept = await markUnreconcilable("ret-shop", 24);
+
+      expect(swept).toBe(0);
+      const row = await prisma.surveyResponse.findUnique({
+        where: { shopId_orderId: { shopId: other.id, orderId: "other-stale" } },
+        select: { unreconcilable: true },
+      });
+      expect(row?.unreconcilable).toBe(false);
+    } finally {
+      await prisma.surveyResponse.deleteMany({ where: { shopId: other.id } });
+      await prisma.shop.deleteMany({ where: { id: other.id } });
+    }
+  });
+
+  it("still marks the calling shop's own stale responses", async () => {
+    // The control: scoping must narrow the sweep, not disable it.
+    await seedResponse("stale-own", daysBefore(48));
+
+    const swept = await markUnreconcilable("ret-shop", 24);
+
+    expect(swept).toBe(1);
+    const row = await prisma.surveyResponse.findUnique({
+      where: { shopId_orderId: { shopId: "ret-shop", orderId: "stale-own" } },
+      select: { unreconcilable: true },
+    });
+    expect(row?.unreconcilable).toBe(true);
+  });
+});
+
 describe("retention purge is safe to run repeatedly", () => {
   it("is idempotent across consecutive runs", async () => {
     await seedResponse("dup-1", daysBefore(RECORD_RETENTION_DAYS + 10));
@@ -181,6 +242,51 @@ describe("retention purge is safe to run repeatedly", () => {
 
     expect(report.orderCacheDeleted).toBe(1);
     expect(report.surveyResponsesDeleted).toBe(1);
+    expect(await prisma.orderCache.count({ where: { shopId: "ret-shop" } })).toBe(0);
+  });
+
+  it("does not orphan a live response by deleting its order first", async () => {
+    // The defect: orders were cut on `createdAt` and responses on `submittedAt`,
+    // and the order delete ran *first*.
+    //
+    // So an order we first cached over 24 months ago, whose buyer answered
+    // yesterday, had its order row deleted while the response survived. That
+    // response is now permanently unreconcilable -- the answer is still counted
+    // in the response-rate denominator but can never contribute revenue again,
+    // and no webhook can ever fix it because the order is gone.
+    //
+    // Both cuts describe the same 24-month window, so a response inside its
+    // window must be able to keep its order alive regardless of how old the
+    // cached row is.
+    const staleCacheRow = daysBefore(RECORD_RETENTION_DAYS + 10);
+    await prisma.orderCache.create({
+      data: {
+        shopId: "ret-shop", orderId: "orphan-1", currency: "USD", totalPrice: "10.000",
+        createdAtShop: staleCacheRow, updatedAtShop: staleCacheRow,
+        createdAt: staleCacheRow,
+      },
+    });
+    // A brand new answer to that old order -- entirely ordinary.
+    await seedResponse("orphan-1", daysBefore(1));
+
+    await runRetentionPurge();
+
+    expect(await prisma.surveyResponse.count({ where: { shopId: "ret-shop" } })).toBe(1);
+    expect(await prisma.orderCache.count({ where: { shopId: "ret-shop" } })).toBe(1);
+  });
+
+  it("deletes the order only once every response to it has aged out", async () => {
+    // The control for the case above: once the last response expires, the order
+    // has no revenue left to protect and must go too, rather than lingering in
+    // the cache forever as a row nobody reads.
+    const old = daysBefore(RECORD_RETENTION_DAYS + 10);
+    await seedResponse("reclaim-1", old);
+    await seedOrder("reclaim-1", old);
+
+    const report = await runRetentionPurge();
+
+    expect(report.surveyResponsesDeleted).toBe(1);
+    expect(report.orderCacheDeleted).toBe(1);
     expect(await prisma.orderCache.count({ where: { shopId: "ret-shop" } })).toBe(0);
   });
 

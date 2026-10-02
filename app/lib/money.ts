@@ -183,3 +183,17 @@ export function percentChange(current: number, previous: number): number | null 
   const change = ((current - previous) / Math.abs(previous)) * 100;
   return Number.isFinite(change) ? change : null;
 }
+
+/**
+ * Render minor units as the amount string the Shopify Admin API expects.
+ *
+ * GraphQL's `Decimal` scalar is a *string* carrying major units — `"29.99"` is
+ * twenty-nine dollars and ninety-nine cents, not 2999 cents. Every price in
+ * `PLANS` is stored in minor units to keep float money out of the rest of the
+ * app, so handing the raw integer to `appRecurringPricingDetails.price.amount`
+ * charges the merchant 100x the advertised price. One conversion, so the
+ * billing mutation and the plans page cannot disagree.
+ */
+export function shopifyDecimalAmount(priceMinor: number, currency: CurrencyCode): string {
+  return (priceMinor / 10 ** minorUnitDigits(currency)).toFixed(minorUnitDigits(currency));
+}

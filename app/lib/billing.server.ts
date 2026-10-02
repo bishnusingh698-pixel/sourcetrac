@@ -1,5 +1,6 @@
 import { env } from "./env";
 import { logger } from "./logger";
+import { shopifyDecimalAmount } from "./money";
 import { BILLING_INTERVAL, PLANS, isPlanKey, type PlanKey } from "./plans";
 import { PLANS_QUERY, shopifyGraphql } from "./shopify-graphql.server";
 
@@ -90,7 +91,14 @@ export async function createSubscription(params: {
         {
           plan: {
             appRecurringPricingDetails: {
-              price: { amount: definition.priceMinor, currencyCode: definition.currencyCode },
+              // Major units, as a string. `PLANS` holds minor units, so passing
+              // the raw integer billed Growth at $1,900/month for an app sold
+              // at $19 — the merchant approves the price on Shopify's own
+              // confirmation screen, so the two must agree exactly.
+              price: {
+                amount: shopifyDecimalAmount(definition.priceMinor, definition.currencyCode),
+                currencyCode: definition.currencyCode,
+              },
               interval: BILLING_INTERVAL,
             },
           },

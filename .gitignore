@@ -17,3 +17,4 @@ node_modules
 # each extension would be committed.
 /extensions/*/dist
 /extensions/*/manifest.json
+.env

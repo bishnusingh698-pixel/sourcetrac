@@ -69,19 +69,39 @@ export async function runRetentionPurge(now: Date = new Date()): Promise<Retenti
     )
   ).count;
 
-  // Then order cache, before responses: a response carries the reconciled order
+  // Responses first, then orders: a response carries the reconciled order
   // total, so it must not outlive the order row it describes.
-  const orderCacheDeleted = (
-    await retryDb(() => db.orderCache.deleteMany({ where: { createdAt: { lt: recordCutoff } } }))
-  ).count;
-
+  //
+  // The order cut is driven by the responses it still serves, not by the order's
+  // own age. The response window is `submittedAt` and the order cache row's is
+  // `createdAt` -- when we first cached the order -- so the two windows disagreed:
+  // an order refreshed by a recent orders/updated webhook survived while its
+  // long-expired response was deleted, leaving the answer with no order to
+  // reconcile against and its revenue permanently unrecoverable.
+  //
+  // `OrderCache` and `SurveyResponse` deliberately share no Prisma relation (they
+  // are joined on (shopId, orderId) precisely because a response can exist with
+  // no order yet), so this is raw SQL. `NOT EXISTS` keeps an order that any
+  // surviving response still points at, however old the order itself is -- the
+  // normal shape of a recent answer to an old order.
   const surveyResponsesDeleted = (
     await retryDb(() => db.surveyResponse.deleteMany({ where: { submittedAt: { lt: recordCutoff } } }))
   ).count;
 
+  const orderCacheDeleted = await retryDb(() =>
+    db.$executeRaw`
+      DELETE FROM "OrderCache" o
+      WHERE o."createdAt" < ${recordCutoff}
+        AND NOT EXISTS (
+          SELECT 1 FROM "SurveyResponse" r
+          WHERE r."shopId" = o."shopId" AND r."orderId" = o."orderId"
+        )
+    `,
+  );
+
   const report: RetentionReport = {
     webhookEventsDeleted,
-    orderCacheDeleted,
+    orderCacheDeleted: Number(orderCacheDeleted),
     surveyResponsesDeleted,
     ranAt: now.toISOString(),
   };

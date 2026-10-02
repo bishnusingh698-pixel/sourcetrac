@@ -2,7 +2,9 @@ import { useLoaderData, type LoaderFunctionArgs, type MetaFunction } from "react
 
 import { Panel } from "~/components/admin-ui";
 import { CSV_HEADERS } from "~/lib/csv";
-import { formatDecimalForCurrency } from "~/lib/money";
+import { fetchAllResponsesWithOrder } from "~/lib/analytics-queries.server";
+import { formatDecimalForCurrency, minorUnitDigits } from "~/lib/money";
+import { evaluateResponseRevenue } from "~/lib/revenue";
 import { db } from "~/db.server";
 import { findShopByDomain } from "~/lib/shop.server";
 import { authenticate } from "~/shopify.server";
@@ -29,33 +31,44 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   const count = await db.surveyResponse.count({ where: { shopId: shop.id } });
 
-  // A preview of the newest rows, so merchants can confirm the file looks right
-  // before downloading. Values are shown exactly as they will be written.
-  const recent = await db.surveyResponse.findMany({
-    where: { shopId: shop.id },
-    orderBy: { submittedAt: "desc" },
-    take: 10,
-    select: {
-      orderId: true,
-      submittedAt: true,
-      channel: true,
-      currency: true,
-      orderTotal: true,
-    },
-  });
+  /**
+   * A preview of the newest rows, so merchants can confirm the file looks right
+   * before downloading.
+   *
+   * Built from the same shared join and the same `evaluateResponseRevenue` policy
+   * as /app/export.csv, so the preview is genuinely byte-identical to the file.
+   * Reading `orderTotal` off the response row here instead showed the gross
+   * order total while the dashboard — and now the file — show the net of
+   * refunds, so the preview promised a file it did not describe. The limit is
+   * pushed into SQL rather than applied with `.slice()` so a shop with a long
+   * history does not load every row to show ten.
+   */
+  // The shared query returns newest-first, so LIMIT 10 is already the preview.
+  const recent = await fetchAllResponsesWithOrder(shop.id, 10);
 
   return {
     count,
     headers: [...CSV_HEADERS],
-    recent: recent.map((row) => ({
-      orderId: row.orderId,
-      submittedAt: row.submittedAt.toISOString(),
-      channel: row.channel,
-      // Same helper the CSV route uses, so the preview is byte-identical to
-      // the file rather than a two-decimal approximation of it.
-      orderTotal: formatDecimalForCurrency(row.orderTotal, row.currency ?? "USD") ?? "",
-      currency: row.currency ?? "",
-    })),
+    recent: recent.map((row) => {
+      const decision = evaluateResponseRevenue(
+        { reconciled: row.reconciled, unreconcilable: row.unreconcilable },
+        row.order,
+      );
+      const currency = row.order?.currency ?? "USD";
+
+      return {
+        orderId: row.orderId,
+        submittedAt: row.submittedAt.toISOString(),
+        channel: row.channel,
+        orderTotal: decision.included
+          ? (formatDecimalForCurrency(
+              decision.minor / 10 ** minorUnitDigits(currency),
+              currency,
+            ) ?? "")
+          : "",
+        currency: row.order?.currency ?? "",
+      };
+    }),
   };
 };
 

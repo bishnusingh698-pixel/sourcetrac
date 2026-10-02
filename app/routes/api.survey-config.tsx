@@ -74,7 +74,7 @@ export const loader = async ({ request }: { request: Request }) => {
     // Fire-and-forget: this is the request path that runs most often, and the
     // sweep rate-limits itself. Kept off the critical path so housekeeping can
     // never delay the buyer seeing the survey.
-    void maybeMarkUnreconcilable();
+    void maybeMarkUnreconcilable(shop.id);
 
     logger.info("survey_config_served", {
       request_id: requestId,

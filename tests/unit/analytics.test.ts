@@ -243,6 +243,54 @@ describe("buildTrend", () => {
     const day = trend.find((p) => p.date === "2026-10-10");
     expect(day?.revenueByCurrency).toHaveLength(2);
   });
+it("ends the series on today rather than a day short of it", () => {
+    // The window is [now - N days, now]. Walking forward in whole days from
+    // `start` produced keys for [start, start + N days), which stops short of
+    // today — so every response from the current day was dropped from the chart
+    // while the metric tiles above it still counted them.
+    const trend = buildTrend({ responses: [], decidedAmounts: [], days: 7, now: NOW });
+
+    expect(trend.at(-1)?.date).toBe("2026-10-15");
+  });
+
+  it("counts a response submitted today", () => {
+    const trend = buildTrend({
+      responses: [response({ submittedAt: new Date("2026-10-15T09:00:00.000Z") })],
+      decidedAmounts: [],
+      days: 7,
+      now: NOW,
+    });
+
+    expect(trend.find((p) => p.date === "2026-10-15")?.responses).toBe(1);
+    expect(trend.reduce((sum, p) => sum + p.responses, 0)).toBe(1);
+  });
+
+  it("covers every response inside the window, so the series totals the tiles", () => {
+    // One response per day across the whole window. The chart's own total must
+    // equal what the dashboard reports, which is what makes the two reconcilable.
+    const inside = Array.from({ length: 7 }, (_, i) =>
+      response({ submittedAt: new Date(NOW.getTime() - i * 24 * 60 * 60 * 1000) }),
+    );
+
+    const trend = buildTrend({ responses: inside, decidedAmounts: [], days: 7, now: NOW });
+
+    expect(trend.reduce((sum, p) => sum + p.responses, 0)).toBe(7);
+  });
+
+  it("anchors on today when now is just past UTC midnight", () => {
+    // 00:30 UTC. `start` is then 6 days 23.5 hours back, so advancing in whole
+    // days from `start` drifts and can never land on today's date key.
+    const justAfterMidnight = new Date("2026-10-15T00:30:00.000Z");
+    const trend = buildTrend({
+      responses: [response({ submittedAt: new Date("2026-10-15T00:10:00.000Z") })],
+      decidedAmounts: [],
+      days: 7,
+      now: justAfterMidnight,
+    });
+
+    expect(trend.at(-1)?.date).toBe("2026-10-15");
+    expect(trend.reduce((sum, p) => sum + p.responses, 0)).toBe(1);
+  });
 });
 
 describe("toUtcDateKey", () => {
