@@ -11,3 +11,9 @@ node_modules
 .vscode
 /coverage
 /.react-router
+
+# Extension build output. The leading slash above only matches the repo root, so
+# without these the dist/ and manifest.json that `shopify app build` writes into
+# each extension would be committed.
+/extensions/*/dist
+/extensions/*/manifest.json
