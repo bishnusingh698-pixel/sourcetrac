@@ -634,6 +634,20 @@ regression. Run the full chain with an explicit override:
 
     DATABASE_URL="postgresql://sourcetrac:sourcetrac@127.0.0.1:5432/sourcetrac_test?schema=public" npm run check
 
+## Branch layout: `main` only (consolidated 2026-10-02)
+
+There is exactly one branch, `main`, and it is also the GitHub default branch.
+The former `sourcetrac-v1`, `feat/i18n-and-ui-polish` and `fix/full-bug-audit`
+branches were deleted after `main` was verified to be a strict superset of all
+three (the only commits not carried over were a write-access probe that added
+then deleted `.probe-write-test.txt`, netting to zero content).
+
+Do not reintroduce long-lived branches here. `main` is unprotected, so treat
+every push to it as a release: run `npm run check` first.
+
+Note that `sourcetrac-v1` was the *old* default branch, so any tooling,
+webhook config or CI reference still naming it is stale.
+
 ## Git push needs a git-write-scoped token, not the sandbox's default one
 
 The sandbox's injected `GITHUB_TOKEN` authenticates fine against the API --
