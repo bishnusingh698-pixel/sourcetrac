@@ -19,6 +19,15 @@ const db = new EmbeddedPostgres({
   password: "sourcetrac",
   port: PORT,
   persistent: true,
+  /**
+   * Bind IPv4 only.
+   *
+   * The container has no IPv6 address on loopback, so postgres's default
+   * `listen_addresses` tries ::1, fails to assign it, and exits — leaving the
+   * dev database unreachable with a bare "EBADF" from the wrapper. This is an
+   * environment limitation, not a schema problem.
+   */
+  postgresFlags: ["-c", "listen_addresses=127.0.0.1"],
 });
 
 const command = process.argv[2] ?? "start";
