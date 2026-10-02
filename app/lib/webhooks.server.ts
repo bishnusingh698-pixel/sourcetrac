@@ -76,13 +76,13 @@ export type ClaimResult = { claimed: true } | { claimed: false };
  * refused — the caller returns 200 and Shopify stops retrying. That is correct for
  * a delivery that already *completed*.
  *
- * It is not correct for one that failed. A row left behind by a throw carries
- * `processedAt: null`, and refusing the retry would make a transient database
+ * It is not correct for one that failed. A row left behind by a throw is
+ * annotated by `markWebhookFailed`, and refusing its retry would make a transient
  * fault permanent: Shopify sees the 200 and stops, so that order — and every
- * answer waiting to reconcile against it — is lost with no way back. A row with
- * no `processedAt` is therefore re-claimed and its partial work redone, which is
- * what this module's stated idempotency contract ("a retry can redo partial
- * work") requires. Every downstream handler is written to be idempotent.
+ * answer waiting to reconcile against it — is lost with no way back. A failed row
+ * is therefore re-claimed and its partial work redone, which is what this
+ * module's stated idempotency contract ("a retry can redo partial work")
+ * requires. Every downstream handler is written to be idempotent.
  */
 export async function claimWebhook(params: {
   webhookId: string;
@@ -105,13 +105,22 @@ export async function claimWebhook(params: {
   } catch (error) {
     if (!isUniqueViolation(error)) throw error;
 
-    // Lost the insert: this delivery id is already in the ledger. Re-claim only if
-    // it never completed.
+    // Lost the insert: this delivery id is already in the ledger. Re-claim only a
+    // delivery that we have already recorded as failed.
+    //
+    // Keyed on `error` rather than on `processedAt` alone. A row with no
+    // `processedAt` and no error is a delivery that is still in flight, and
+    // re-claiming that would let a concurrent duplicate run the handler a second
+    // time alongside the original. `markWebhookFailed` is what distinguishes "we
+    // tried this and it broke" from "we are still working on it".
     const existing = await retryDb(() =>
-      db.webhookEvent.findUnique({ where: { webhookId: params.webhookId }, select: { processedAt: true } }),
+      db.webhookEvent.findUnique({
+        where: { webhookId: params.webhookId },
+        select: { processedAt: true, error: true },
+      }),
     );
 
-    if (existing?.processedAt) {
+    if (!existing?.error || existing.processedAt) {
       logger.info("webhook_duplicate_skipped", { webhook_id: params.webhookId, topic: params.topic });
       return { claimed: false };
     }

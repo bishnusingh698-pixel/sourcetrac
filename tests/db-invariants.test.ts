@@ -688,4 +688,17 @@ describe("webhook retry after a failed processing", () => {
       await claimWebhook({ webhookId: "wh-done-1", topic: "orders/create", apiVersion: null, payload: "{}" }),
     ).toEqual({ claimed: false });
   });
+
+  it("still refuses a delivery that is still in flight", async () => {
+    // A row with neither processedAt nor error is a delivery another request is
+    // working on right now. Re-claiming it would run the handler twice in
+    // parallel, which is the one case insert-first exists to prevent.
+    await prisma.webhookEvent.create({
+      data: { webhookId: "wh-inflight-1", topic: "orders/create", payloadJson: "{}" },
+    });
+
+    expect(
+      await claimWebhook({ webhookId: "wh-inflight-1", topic: "orders/create", apiVersion: null, payload: "{}" }),
+    ).toEqual({ claimed: false });
+  });
 });
