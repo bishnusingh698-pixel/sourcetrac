@@ -121,7 +121,9 @@ export function SurveyView({
               borderRadius="base"
               borderWidth="025"
               borderColor="border"
-              background={selected === option.value ? "bg-fill-secondary" : "surface"}
+              background={
+                selected === option.value ? "bg-fill-secondary" : "surface"
+              }
               style={TAP_TARGET_STYLE}
             >
               <InlineStack align="center" spacing="small">
@@ -152,7 +154,9 @@ export function SurveyView({
               disabled={disabled || otherText.trim().length === 0}
               submit={busy}
             >
-              {busy ? t("sourcetrac.sending", "Sending…") : t("sourcetrac.submit", "Submit")}
+              {busy
+                ? t("sourcetrac.sending", "Sending…")
+                : t("sourcetrac.submit", "Submit")}
             </Button>
           </InlineStack>
         </BlockStack>

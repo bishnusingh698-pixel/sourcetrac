@@ -15,7 +15,10 @@ export type SurveyPhase = "loading" | "asking" | "sending" | "done" | "hidden";
 const CONFIRMATION_MS = 2500;
 
 export interface SurveyApi {
-  fetchSurveyConfig: (orderId: string, surface: SurveySurface) => Promise<SurveyConfig | null>;
+  fetchSurveyConfig: (
+    orderId: string,
+    surface: SurveySurface,
+  ) => Promise<SurveyConfig | null>;
   submitResponse: (
     orderId: string,
     channel: string,
@@ -50,7 +53,11 @@ export function normaliseOtherAnswer(otherText: string): string | null {
   return text.length > 0 ? text : null;
 }
 
-export function useSurvey(orderId: string, surface: SurveySurface, api: SurveyApi) {
+export function useSurvey(
+  orderId: string,
+  surface: SurveySurface,
+  api: SurveyApi,
+) {
   const [phase, setPhase] = useState<SurveyPhase>("loading");
   const [config, setConfig] = useState<SurveyConfig | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -96,10 +103,17 @@ export function useSurvey(orderId: string, surface: SurveySurface, api: SurveyAp
       // mutually exclusive: whichever the customer used first wins, and the
       // other page hides rather than asking again.
       const alreadyAnswered = result?.alreadyAnswered === true;
-      if (!result || !result.enabled || alreadyAnswered || result.options.length === 0) {
+      if (
+        !result ||
+        !result.enabled ||
+        alreadyAnswered ||
+        result.options.length === 0
+      ) {
         log("survey_hidden", {
           surface,
-          reason: alreadyAnswered ? "already_answered" : (result?.reason ?? "backend_unreachable"),
+          reason: alreadyAnswered
+            ? "already_answered"
+            : (result?.reason ?? "backend_unreachable"),
         });
         setPhase("hidden");
         return;
@@ -120,7 +134,12 @@ export function useSurvey(orderId: string, surface: SurveySurface, api: SurveyAp
       submitted.current = true;
       setPhase("sending");
 
-      const result = await apiRef.current.submitResponse(orderId, optionId, other, surface);
+      const result = await apiRef.current.submitResponse(
+        orderId,
+        optionId,
+        other,
+        surface,
+      );
       if (!mounted.current) return;
 
       if (result === null) {

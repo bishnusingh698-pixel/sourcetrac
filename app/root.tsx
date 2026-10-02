@@ -49,7 +49,22 @@ export async function loader({ request }: LoaderFunctionArgs) {
     acceptLanguage: request.headers.get("accept-language"),
   });
 
-  return { language };
+  return {
+    language,
+    /**
+     * App Bridge's public Client ID, for the error boundary only.
+     *
+     * The boundary has to render outside the admin shell, because a crash in the
+     * shell's own render is one of the things it exists to catch. It therefore
+     * needs its own copy of the key rather than reading the shell's loader data.
+     *
+     * This must be resolved here, on the server. `process.env` is not defined in
+     * the browser bundle, so a component that read it directly would silently
+     * produce `""`, and App Bridge would mount against an empty key and do
+     * nothing — the exact blank-panel failure the boundary is meant to reveal.
+     */
+    apiKey: process.env.SHOPIFY_API_KEY ?? "",
+  };
 }
 
 /**

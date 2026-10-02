@@ -4,9 +4,21 @@ import {
   Outlet,
   useLoaderData,
   useRouteError,
+  useRouteLoaderData,
   type LoaderFunctionArgs,
 } from "react-router";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
+
+/**
+ * Type-only import, for the shape of the root loader's return value.
+ *
+ * Deliberately not a value import: `app.tsx` is rendered by `root.tsx`, so
+ * importing the module for its value would pull the root route back into its own
+ * child at runtime and risk a cycle. The shape alone is enough, and it stays in
+ * sync automatically because TypeScript re-checks it whenever the root loader
+ * changes.
+ */
+import type { loader as rootLoader } from "~/root";
 
 import { Banner } from "~/components/admin-ui";
 import { LanguageForm } from "~/components/language-selector";
@@ -236,6 +248,18 @@ export default function AdminLayout() {
 export function ErrorBoundary() {
   const error = useRouteError();
 
+  /**
+   * Read from the root loader, not `process.env`.
+   *
+   * An error boundary replaces the component that threw, so this one renders
+   * when the shell's own loader has failed and `useLoaderData` is unavailable.
+   * The root loader still succeeds in that case, and it resolves the key on the
+   * server. Reading `process.env` here would throw `ReferenceError` in the
+   * browser, so the boundary would crash a second time and the merchant would
+   * get React Router's default page instead of the message below.
+   */
+  const root = useRouteLoaderData<typeof rootLoader>("root");
+
   const detail = isRouteErrorResponse(error)
     ? `${error.status} ${error.statusText}`
     : error instanceof Error
@@ -243,7 +267,7 @@ export function ErrorBoundary() {
       : "An unknown error occurred.";
 
   return (
-    <AppProvider apiKey={process.env.SHOPIFY_API_KEY ?? ""}>
+    <AppProvider apiKey={root?.apiKey ?? ""}>
       <s-page>
         <s-section heading="Something went wrong">
           <s-stack gap="base">
