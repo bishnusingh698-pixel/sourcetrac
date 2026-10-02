@@ -634,15 +634,29 @@ regression. Run the full chain with an explicit override:
 
     DATABASE_URL="postgresql://sourcetrac:sourcetrac@127.0.0.1:5432/sourcetrac_test?schema=public" npm run check
 
-## This sandbox cannot `git push` (403)
+## Git push needs a git-write-scoped token, not the sandbox's default one
 
-`GITHUB_TOKEN` authenticates fine against the API - `GET /repos/:owner/:repo`
-returns 200 and reports `admin: true, push: true` - but **every** git transport
-is refused with `remote: Permission to <owner>/<repo>.git denied`. Verified
-against three transports: the remote URL's embedded credential, a
-`https://<user>:<token>@...` URL, and `GIT_ASKPASS` with `credential.helper=` and
-`http.extraheader=` cleared.
+The sandbox's injected `GITHUB_TOKEN` authenticates fine against the API --
+`GET /repos/:owner/:repo` returns 200 and reports `admin: true, push: true` --
+but **every** git transport is refused with
+`remote: Permission to <owner>/<repo>.git denied`. Verified against three
+transports: the remote URL's embedded credential, a `https://<user>:<token>@...`
+URL, and `GIT_ASKPASS` with `credential.helper=` and `http.extraheader=` cleared.
 
-Do not burn turns re-attempting pushes here. If push is required, either have the
-human push the local branch, or provision a credential scoped for git write (a
-classic PAT with `repo`, not a fine-grained/App token carrying only API read).
+A user-supplied fine-grained PAT (`github_pat_...`) **does** push successfully.
+Use it via `GIT_ASKPASS`, never embedded in the remote URL, so the credential is
+not persisted to `.git/config`:
+
+    printf '#!/bin/sh\ncase "$1" in *Username*) echo x-access-token;; *Password*) echo <TOKEN>; esac\n' > /tmp/ap.sh
+    chmod +x /tmp/ap.sh
+    GIT_ASKPASS=/tmp/ap.sh GIT_TERMINAL_PROMPT=0 git -c credential.helper= push <url> <branch>
+    rm -f /tmp/ap.sh
+
+**Such a token still cannot create a PR.** `POST /pulls` returns
+`403 Resource not accessible by personal access token` while `GET /pulls` returns
+`200` -- it carries contents/git write but not **Pull requests: write**. Creating
+the PR has to be done by a human, or by a token whose fine-grained permissions
+include that box.
+
+The repo's default branch is **`sourcetrac-v1`**, not `main`.
+`fix/full-bug-audit` fast-forwards cleanly onto it.
