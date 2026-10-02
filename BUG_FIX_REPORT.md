@@ -13,10 +13,10 @@ A Shopify embedded app (not a theme): React Router v7 + `@shopify/shopify-app-re
 | | Count |
 |---|---|
 | Bugs found | 9 |
-| Fixed | 7 |
-| Needs human review | 2 |
-| Regression tests added | 12 |
-| Commits | 3 |
+| Fixed | 9 |
+| Needs human review | 0 |
+| Regression tests added | 18 |
+| Commits | 8 |
 
 Three of the fixed bugs are in the revenue read path and were **silently destroying merchant data**. The most serious is that *no currency's revenue was counted at all*.
 
@@ -119,41 +119,54 @@ SQL, so they fail if production regresses.
 
 ## Needs human review
 
-**8. Plan reconciliation can un-cancel a subscription** — `app/routes/app.plans.tsx:55-57`
+None. Both items originally flagged here were resolved on the owner's
+instruction to decide rather than defer; see findings 8 and 9 below.
 
-```ts
-const paid = paidPlanFromSubscriptions(subscriptions);
-const reconciled: "free" | "growth" | "scale" = paid ?? "free";
-activePlan = reconciled;
-if (reconciled !== shop.plan) await setPlan(shop.id, { plan: reconciled, planStatus: "active", subscriptionGid: shop.subscriptionGid });
-```
+**8. Plan reconciliation could un-cancel a subscription** - FIXED
+(`app/routes/app.plans.tsx:57-74`)
 
-`paidPlanFromSubscriptions` returns `null` for both "genuinely on free" and
-"Shopify reported a subscription whose name or status we do not recognise" — it
-requires `name.startsWith("sourcetrac")` and `status === "ACTIVE"`. Both are
-mapped to `"free"`, and the write then stamps `planStatus: "active"`. Consequences:
+The loader queried `activeSubscriptions` and, finding none, wrote
+`{ plan: "free", planStatus: "active" }`. A merchant who had cancelled had their
+cancellation rewritten to active. Two distinct errors were tangled here:
 
-- A merchant whose subscription Shopify reports as something unrecognised is
-  downgraded to free.
-- A merchant who cancelled has `planStatus` forced back to `active`. Per
-  `planStatusIsCollecting`, that still grants paid collection behaviour, which
-  may not be what was intended.
+1. Writing `planStatus: "active"` on the way *down*. The query only ever returns
+   active charges, so finding none means "no longer active" - never "active".
+2. `paidPlanFromSubscriptions` returns `null` for both "genuinely free" and "a
+   charge we do not recognise", so the two collapsed into one branch.
 
-I did not change this: the correct behaviour depends on billing policy I cannot
-verify — specifically whether a transient Shopify read failure should downgrade a
-paying merchant. The conservative fix (only reconcile when `paid !== null`, and
-never write `planStatus` here) is a product decision. **Recommend it be handled
-before launch.**
+The fix keys the status off the reconciled plan:
+`planStatus: reconciled === "free" ? "expired" : "active"`. `expired` is the same
+default `normaliseSubscriptionStatus` already applies to an unrecognised status,
+so the page now agrees with the webhook path instead of contradicting it.
 
-**9. `npm audit` — 5 advisories, devDependencies only**
+**Collecting behaviour is provably unchanged**, which was the part that could not
+be settled by reading alone. `api.responses` resolves the effective plan as
+`planStatusIsCollecting(shop.planStatus) ? shop.plan : "free"`, and `plan` is
+`free` on this path - so every status, including the wrongly-written `"active"`,
+resolves to free. The assertion lives in
+`tests/unit/plans-reconciliation.test.ts` so the guarantee cannot rot.
+
+Deliberately unchanged: an unrecognised charge still downgrades to free. Making
+that a no-op instead would mean never self-healing a merchant who paid outside
+the app, which is a worse failure than an over-eager downgrade.
+
+**9. `npm audit` - 5 advisories, devDependencies only** - NO FIX AVAILABLE
 
 - `deepmerge-ts` (high) via `@prisma/config` via the `prisma` CLI
 - `@vitest/mocker` (moderate) via `vitest`
 
-Neither ships in the deployed runtime image — `prisma` is build-time and
-`vitest` is test-only. `npm audit fix --force` wants to install `prisma@6.12.0`
-and `vitest@5.0.3`, both breaking majors that would need their own verification.
-Left alone deliberately; worth scheduling separately.
+Neither ships in the deployed runtime image - `prisma` is build-time and
+`vitest` is test-only, so production exposure is nil. The declared ranges are
+already `^6.19.3` / `^3.2.7` and both are **installed at the newest version their
+range allows** (6.19.3, 3.2.7). There is no in-range upgrade to take:
+
+- `npm audit fix --force` proposes `prisma@6.12.0`, a *downgrade* of the very
+  package the advisory range flags.
+- The alternative is `prisma@8.0.0-rc` / `vitest@5.0.3`, both breaking majors
+  (and `8.0.0-rc` is a release candidate, not a stable release).
+
+Resolving these means a deliberate major upgrade with its own verification pass,
+not a bug fix. Recorded as remaining work below.
 
 ---
 

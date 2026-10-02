@@ -54,7 +54,25 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       const paid = paidPlanFromSubscriptions(subscriptions);
       const reconciled: "free" | "growth" | "scale" = paid ?? "free";
       activePlan = reconciled;
-      if (reconciled !== shop.plan) await setPlan(shop.id, { plan: reconciled, planStatus: "active", subscriptionGid: shop.subscriptionGid });
+      if (reconciled !== shop.plan) {
+        // `planStatus` records whether a charge is actually live, and the
+        // `app_subscriptions/*` webhooks own it. This page only sees
+        // `activeSubscriptions`, so finding none means the charge is no longer
+        // active -- never that it is. Stamping "active" here (the old
+        // behaviour) rewrote a cancelled or expired subscription back to
+        // active and destroyed the record of the cancellation.
+        //
+        // `expired` is the same default `normaliseSubscriptionStatus` uses when
+        // a status is unrecognised, so this agrees with the webhook path.
+        // Collecting behaviour is unaffected either way: `api.responses`
+        // resolves the effective plan as `planStatusIsCollecting(planStatus) ?
+        // plan : "free"`, and `plan` is now free.
+        await setPlan(shop.id, {
+          plan: reconciled,
+          planStatus: reconciled === "free" ? "expired" : "active",
+          subscriptionGid: shop.subscriptionGid,
+        });
+      }
     } catch (error) {
       // Fall back to the stored plan rather than blocking the page. The webhook
       // will correct it on the next charge change.
