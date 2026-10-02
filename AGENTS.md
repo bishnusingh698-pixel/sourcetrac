@@ -674,3 +674,73 @@ include that box.
 
 The repo's default branch is **`sourcetrac-v1`**, not `main`.
 `fix/full-bug-audit` fast-forwards cleanly onto it.
+
+## Money has two unit systems: minor units internally, major units to Shopify
+
+`PlanDefinition.priceMinor` and everything else in `app/lib` is **minor units**
+($19.00 is `1900`). But GraphQL's `Decimal` scalar is a **string in major units**
+(`"19.00"`). Handing `priceMinor` straight to
+`appRecurringPricingDetails.price.amount` therefore charges 100x the advertised
+price -- it shipped this way and billed Growth at $1,900/month.
+
+Convert with `shopifyDecimalAmount(priceMinor, currency)` in `app/lib/money.ts`.
+It uses `minorUnitDigits`, so JPY (0) and KWD (3) are correct too, and it is the
+one function both the billing mutation and the plans page derive from.
+
+## Revenue is decided by `evaluateResponseRevenue`, not by a stored column
+
+`SurveyResponse.orderTotal` is the **gross** order total and is never reduced
+anywhere. Only `app/lib/revenue.ts` knows the policy (net of refunds; test,
+cancelled and unreconcilable orders contribute nothing). Anything that needs a
+revenue figure -- the dashboard, the CSV, the export preview -- must call
+`evaluateResponseRevenue` against the response + order join, never read
+`orderTotal` directly. The CSV shipped reading that column while its own
+docblock promised the net figure.
+
+## `SurveyResponse` and `OrderCache` have no Prisma relation on purpose
+
+They are joined on `(shopId, orderId)` because a response can exist before its
+order arrives, which is exactly the "Pending" state. So anything needing both
+rows uses raw SQL (`app/lib/analytics-queries.server.ts`,
+`app/lib/retention.server.ts`). Mixed-case columns must stay quoted --
+`r."isLocked"`, `o."isTest"`, `o."isCancelled"`. Postgres lower-cases unquoted
+identifiers, and `Prisma.sql` will not save you.
+
+## Retention must delete responses before the orders they reference
+
+Responses are cut on `submittedAt`, order cache rows on `createdAt` (first
+cached, not order age), and the order delete used to run first -- so a stale
+cache row lost its order while a recent answer survived, permanently stranding
+that answer's revenue. Orders are now deleted only when `NOT EXISTS` a
+surviving response references them.
+
+## Every multi-tenant write must be shop-scoped, and say so in the signature
+
+`markUnreconcilable` was a platform-wide `updateMany` triggered from the public
+survey-config endpoint. `shopId` is now a **required** first argument -- an
+unscoped sweep is the bug, so there should be no way to ask for one. Same for
+the inline throttle: make it a `Map` keyed by shop so a busy store cannot starve
+a quiet one out of housekeeping.
+
+## Sliding windows do not produce whole-day buckets
+
+`windowBounds(days, now)` is a sliding `[now - N days, now]`, so its `start`
+lands mid-afternoon. Iterating `start + i * 24h` drifts half a day off every
+calendar date and the series ends on yesterday. `buildTrend` now derives keys
+from whole UTC days ending today.
+
+## Local test setup
+
+    cp .env.example .env   # then fill DATABASE_URL, SHOPIFY_*, SCOPES, APP_URL, TOKEN_ENCRYPTION_KEY
+    node scripts/dev-postgres.mjs   # embedded postgres, data in /tmp/sourcetrac-pg
+    npx prisma migrate deploy
+    npm run check
+
+`npm test` guards against pointing at a real database: the DB suites refuse to
+run unless `DATABASE_URL` names a `*_test` database.
+
+## The default branch is now `main`
+
+`sourcetrac-v1` is gone; `fix/full-bug-audit` and the other consolidation
+branches were merged into `main`. Any note naming `sourcetrac-v1` as the default
+is stale.
