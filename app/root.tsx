@@ -1,9 +1,11 @@
 import {
+  isRouteErrorResponse,
   Links,
   Meta,
   Outlet,
   Scripts,
   ScrollRestoration,
+  useRouteError,
   useRouteLoaderData,
   type LinksFunction,
   type LoaderFunctionArgs,
@@ -17,13 +19,14 @@ import stylesheet from "~/styles/app.css?url";
  *
  * Polaris Web Components ship from a Shopify CDN script tag rather than npm —
  * the `@shopify/polaris` React package is deprecated. TypeScript types come from
- * the separate `@shopify/polaris-types` package. The script must load in the
- * document head: it scans the DOM and upgrades `s-*` elements in place, so
- * deferring it to the end of the body causes a visible flash of unstyled admin
- * chrome on first paint.
+ * the separate `@shopify/polaris-types` package. The script itself is injected by
+ * `AppProvider` in the admin shell, not here: this route also renders the public
+ * privacy policy, which has no App Bridge and must not pull it in.
  */
 
-export const links: LinksFunction = () => [{ rel: "stylesheet", href: stylesheet }];
+export const links: LinksFunction = () => [
+  { rel: "stylesheet", href: stylesheet },
+];
 
 /**
  * Root loader.
@@ -94,13 +97,53 @@ export default function App() {
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <link rel="preconnect" href="https://cdn.shopify.com/" />
-        <script src="https://cdn.shopify.com/shopifycloud/polaris.js" />
         <Meta />
         <Links />
       </head>
       <body>
         <Outlet />
         <ScrollRestoration />
+        <Scripts />
+      </body>
+    </>
+  );
+}
+
+/**
+ * Root error boundary.
+ *
+ * Without this React Router renders its own default boundary, which in an
+ * embedded iframe is a blank page with no visible cause — the merchant sees the
+ * admin shell's title bar and an empty body. This renders an explanation and a
+ * reload path instead.
+ */
+export function ErrorBoundary() {
+  const error = useRouteError();
+
+  const message = isRouteErrorResponse(error)
+    ? `${error.status} ${error.statusText}`
+    : error instanceof Error
+      ? error.message
+      : "Unknown error";
+
+  return (
+    <>
+      <DocumentLanguage />
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <link rel="preconnect" href="https://cdn.shopify.com/" />
+        <Meta />
+        <Links />
+      </head>
+      <body>
+        <main style={{ padding: "2rem", fontFamily: "system-ui, sans-serif" }}>
+          <h1 style={{ fontSize: "1.25rem", marginBottom: "0.5rem" }}>
+            Something went wrong
+          </h1>
+          <p style={{ marginBottom: "1rem" }}>{message}</p>
+          <a href="/app">Back to dashboard</a>
+        </main>
         <Scripts />
       </body>
     </>

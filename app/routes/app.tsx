@@ -1,13 +1,20 @@
 import {
+  isRouteErrorResponse,
   NavLink,
   Outlet,
   useLoaderData,
+  useRouteError,
   type LoaderFunctionArgs,
 } from "react-router";
+import { AppProvider } from "@shopify/shopify-app-react-router/react";
 
 import { Banner } from "~/components/admin-ui";
 import { LanguageForm } from "~/components/language-selector";
-import { createTranslator, intlLocaleFor, isSupportedLanguage } from "~/lib/i18n";
+import {
+  createTranslator,
+  intlLocaleFor,
+  isSupportedLanguage,
+} from "~/lib/i18n";
 import { languageFor } from "~/lib/i18n/languages";
 import { resolveRequestLanguage } from "~/lib/i18n/resolve.server";
 import { evaluateCap, planFor } from "~/lib/plans";
@@ -56,6 +63,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   });
 
   return {
+    /**
+     * App Bridge needs the public Client ID on the client. This is the
+     * publishable Partner Dashboard key, never the API secret.
+     */
+    apiKey: process.env.SHOPIFY_API_KEY ?? "",
     shop,
     used,
     plan: planFor(shop.plan),
@@ -80,111 +92,168 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
  */
 
 export default function AdminLayout() {
-  const { shop, plan, cap, language, hasExplicitLanguage } = useLoaderData<typeof loader>();
+  const { apiKey, shop, plan, cap, language, hasExplicitLanguage } =
+    useLoaderData<typeof loader>();
   const t = createTranslator(language);
   const locale = intlLocaleFor(language);
 
   return (
-    <s-page>
-      <s-grid gridTemplateColumns="auto 1fr" gap="base">
-        <s-grid-item>
-          <s-box background="subdued" padding="small" borderRadius="base">
-            <s-stack gap="base">
-              <s-stack gap="small">
-                <s-text type="strong">SourceTrac</s-text>
-                <s-text color="subdued" fontSize="small">
-                  {shop.shopDomain}
-                </s-text>
+    <AppProvider apiKey={apiKey}>
+      <s-page>
+        <s-grid gridTemplateColumns="auto 1fr" gap="base">
+          <s-grid-item>
+            <s-box background="subdued" padding="small" borderRadius="base">
+              <s-stack gap="base">
+                <s-stack gap="small">
+                  <s-text type="strong">SourceTrac</s-text>
+                  <s-text color="subdued" fontSize="small">
+                    {shop.shopDomain}
+                  </s-text>
+                </s-stack>
+
+                <s-divider />
+
+                {/* Nav is a list so screen readers announce position and count. */}
+                <nav aria-label={t("nav.label")}>
+                  <s-unordered-list>
+                    {NAV.map((item) => (
+                      <li key={item.to}>
+                        <NavLink to={item.to} end={item.end}>
+                          {({ isActive }) => (
+                            <s-text type={isActive ? "strong" : "generic"}>
+                              {t(item.key)}
+                            </s-text>
+                          )}
+                        </NavLink>
+                      </li>
+                    ))}
+                  </s-unordered-list>
+                </nav>
+
+                <s-divider />
+
+                <s-stack gap="small">
+                  <s-text color="subdued" fontSize="small">
+                    {plan.name}
+                  </s-text>
+                  {cap.cap !== null ? (
+                    <s-progress
+                      value={cap.used}
+                      max={cap.cap}
+                      accessibilityLabel={t("plans.usage_aria", {
+                        count: cap.used,
+                        cap: cap.cap,
+                      })}
+                    />
+                  ) : null}
+                  <s-text color="subdued" fontSize="small">
+                    {cap.cap === null
+                      ? t("plans.unlimited")
+                      : t("plans.usage", { count: cap.used, cap: cap.cap })}
+                  </s-text>
+                </s-stack>
               </s-stack>
+            </s-box>
+          </s-grid-item>
 
-              <s-divider />
-
-              {/* Nav is a list so screen readers announce position and count. */}
-              <nav aria-label={t("nav.label")}>
-                <s-unordered-list>
-                  {NAV.map((item) => (
-                    <li key={item.to}>
-                      <NavLink to={item.to} end={item.end}>
-                        {({ isActive }) => (
-                          <s-text type={isActive ? "strong" : "generic"}>{t(item.key)}</s-text>
-                        )}
-                      </NavLink>
-                    </li>
-                  ))}
-                </s-unordered-list>
-              </nav>
-
-              <s-divider />
-
-              <s-stack gap="small">
-                <s-text color="subdued" fontSize="small">
-                  {plan.name}
-                </s-text>
-                {cap.cap !== null ? (
-                  <s-progress
-                    value={cap.used}
-                    max={cap.cap}
-                    accessibilityLabel={t("plans.usage_aria", { count: cap.used, cap: cap.cap })}
-                  />
-                ) : null}
-                <s-text color="subdued" fontSize="small">
-                  {cap.cap === null
-                    ? t("plans.unlimited")
-                    : t("plans.usage", { count: cap.used, cap: cap.cap })}
-                </s-text>
-              </s-stack>
-            </s-stack>
-          </s-box>
-        </s-grid-item>
-
-        <s-grid-item>
-          <s-box padding="base">
-            <s-stack gap="base">
-              {/* Plan-blocked takes precedence: the survey cannot appear at all,
+          <s-grid-item>
+            <s-box padding="base">
+              <s-stack gap="base">
+                {/* Plan-blocked takes precedence: the survey cannot appear at all,
                   so explaining the cap would be a distraction. */}
-              {shop.checkoutSupported === false ? (
-                <Banner tone="warning" heading={t("shell.plan_blocked_title")}>
-                  {t("shell.plan_blocked_body")}
-                </Banner>
-              ) : cap.atWarning && !cap.atCap ? (
-                <Banner
-                  tone="warning"
-                  heading={t("shell.cap_warning_title", { used: cap.used, cap: cap.cap })}
-                >
-                  <s-stack gap="small">
-                    <s-text>{t("shell.cap_warning_body", { cap: cap.cap })}</s-text>
-                    <s-button href="/app/plans" variant="primary">
-                      {t("shell.cap_warning_cta")}
-                    </s-button>
-                  </s-stack>
-                </Banner>
-              ) : cap.atCap ? (
-                <Banner tone="critical" heading={t("shell.cap_reached_title")}>
-                  <s-stack gap="small">
-                    <s-text>{t("shell.cap_reached_body")}</s-text>
-                    <s-button href="/app/plans" variant="primary">
-                      {t("shell.cap_reached_cta")}
-                    </s-button>
-                  </s-stack>
-                </Banner>
-              ) : null}
+                {shop.checkoutSupported === false ? (
+                  <Banner
+                    tone="warning"
+                    heading={t("shell.plan_blocked_title")}
+                  >
+                    {t("shell.plan_blocked_body")}
+                  </Banner>
+                ) : cap.atWarning && !cap.atCap ? (
+                  <Banner
+                    tone="warning"
+                    heading={t("shell.cap_warning_title", {
+                      used: cap.used,
+                      cap: cap.cap,
+                    })}
+                  >
+                    <s-stack gap="small">
+                      <s-text>
+                        {t("shell.cap_warning_body", { cap: cap.cap })}
+                      </s-text>
+                      <s-button href="/app/plans" variant="primary">
+                        {t("shell.cap_warning_cta")}
+                      </s-button>
+                    </s-stack>
+                  </Banner>
+                ) : cap.atCap ? (
+                  <Banner
+                    tone="critical"
+                    heading={t("shell.cap_reached_title")}
+                  >
+                    <s-stack gap="small">
+                      <s-text>{t("shell.cap_reached_body")}</s-text>
+                      <s-button href="/app/plans" variant="primary">
+                        {t("shell.cap_reached_cta")}
+                      </s-button>
+                    </s-stack>
+                  </Banner>
+                ) : null}
 
-              {/*
+                {/*
                 A compact switcher sits in the main column rather than the
                 sidebar: the sidebar is already three stacked sections, and the
                 picker is a settings concern rather than navigation. It is always
                 present, not only during onboarding, so a merchant who picked
                 their language once can always change it back.
               */}
-              <div className="st-lang-bar">
-                <LanguageForm language={language} detected={!hasExplicitLanguage} inline />
-              </div>
+                <div className="st-lang-bar">
+                  <LanguageForm
+                    language={language}
+                    detected={!hasExplicitLanguage}
+                    inline
+                  />
+                </div>
 
-              <Outlet />
-            </s-stack>
-          </s-box>
-        </s-grid-item>
-      </s-grid>
-    </s-page>
+                <Outlet />
+              </s-stack>
+            </s-box>
+          </s-grid-item>
+        </s-grid>
+      </s-page>
+      );
+    </AppProvider>
+  );
+}
+
+/**
+ * Shell-level error boundary.
+ *
+ * A child route's loader failing (a database blip, an expired session mid-read)
+ * would otherwise bubble to the root boundary and replace the whole document
+ * with a bare page, losing the admin chrome. This keeps the shell and names the
+ * failure instead.
+ */
+export function ErrorBoundary() {
+  const error = useRouteError();
+
+  const detail = isRouteErrorResponse(error)
+    ? `${error.status} ${error.statusText}`
+    : error instanceof Error
+      ? error.message
+      : "An unknown error occurred.";
+
+  return (
+    <AppProvider apiKey={process.env.SHOPIFY_API_KEY ?? ""}>
+      <s-page>
+        <s-section heading="Something went wrong">
+          <s-stack gap="base">
+            <s-text>{detail}</s-text>
+            <s-button href="/app" variant="primary">
+              Back to dashboard
+            </s-button>
+          </s-stack>
+        </s-section>
+      </s-page>
+    </AppProvider>
   );
 }
