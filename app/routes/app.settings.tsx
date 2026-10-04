@@ -187,7 +187,7 @@ export default function Settings() {
       ...current,
       // A stable unique value keeps React keys correct while typing. The server
       // re-derives the real channel slug on save.
-      { value: `draft-${current.length}-${current.map((o) => o.label).join("").length}`, label: "", emoji: "" },
+      { value: `draft-${crypto.randomUUID()}`, label: "", emoji: "" },
     ]);
   };
 

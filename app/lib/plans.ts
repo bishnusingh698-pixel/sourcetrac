@@ -132,8 +132,19 @@ export function currentUtcPeriod(now = new Date()): { periodStart: Date; periodE
 }
 
 export function planStatusIsCollecting(status: string): boolean {
-  // Only an explicitly cancelled/declined/expired/frozen subscription stops a
-  // merchant being on a paid plan. Anything unknown keeps the paid behaviour so
-  // a transient webhook gap never silently downgrades a paying merchant.
+  // Paid behaviour requires a verified `active` subscription. Any other status
+  // (cancelled, declined, expired, frozen) or one we do not recognise falls back
+  // to the free cap: we never grant unlimited access on a status we cannot verify.
   return status === "active";
+}
+
+/**
+ * The plan whose limits are actually ENFORCED for a shop.
+ *
+ * The single place that combines the stored plan with its subscription status.
+ * The API (cap enforcement), the admin shell and the plans page must all use it,
+ * so what the merchant is shown can never disagree with what is applied.
+ */
+export function effectivePlan(shop: { plan: unknown; planStatus: string }): PlanKey {
+  return isPlanKey(shop.plan) && planStatusIsCollecting(shop.planStatus) ? shop.plan : PLAN_FREE;
 }

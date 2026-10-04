@@ -230,6 +230,22 @@ describe("buildTrend", () => {
     expect(trend.reduce((sum, p) => sum + p.responses, 0)).toBe(7);
   });
 
+  it("includes the current UTC day as the last point", () => {
+    // Anchoring the keys on the window start stopped the chart at yesterday, so
+    // an answer submitted this morning never appeared on it.
+    const trend = buildTrend({
+      responses: [response({ submittedAt: new Date("2026-10-15T09:00:00.000Z") })],
+      decidedAmounts: [],
+      days: 7,
+      now: NOW,
+    });
+
+    expect(trend).toHaveLength(7);
+    expect(trend.at(-1)?.date).toBe("2026-10-15");
+    expect(trend.at(-1)?.responses).toBe(1);
+    expect(trend[0]?.date).toBe("2026-10-09");
+  });
+
   it("keeps per-currency revenue separate within a day", () => {
     const trend = buildTrend({
       responses: [],

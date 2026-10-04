@@ -31,7 +31,7 @@ import {
 } from "~/lib/i18n";
 import { languageFor } from "~/lib/i18n/languages";
 import { resolveRequestLanguage } from "~/lib/i18n/resolve.server";
-import { evaluateCap, planFor } from "~/lib/plans";
+import { effectivePlan, evaluateCap, planFor } from "~/lib/plans";
 import { getUsageCount } from "~/lib/responses.server";
 import { ensureShop } from "~/lib/provision.server";
 import { authenticate } from "~/shopify.server";
@@ -67,6 +67,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
   const used = await getUsageCount(shop.id);
+  // The plan whose limits are enforced, not merely the stored one: a cancelled
+  // subscription must show the Free cap the API is actually applying.
+  const enforcedPlan = effectivePlan(shop);
 
   const url = new URL(request.url);
   const language = resolveRequestLanguage({
@@ -84,8 +87,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     apiKey: process.env.SHOPIFY_API_KEY ?? "",
     shop,
     used,
-    plan: planFor(shop.plan),
-    cap: evaluateCap(shop.plan, used),
+    plan: planFor(enforcedPlan),
+    cap: evaluateCap(enforcedPlan, used),
     language,
     /**
      * Whether the language came from the merchant's own choice. When false the

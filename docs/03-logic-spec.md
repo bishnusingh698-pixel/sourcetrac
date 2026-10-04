@@ -142,7 +142,7 @@ Shopify states it "doesn't guarantee ordering within a topic, or across differen
 
 ## FLOW 7 — `orders/create` / `orders/updated` handling
 
-1. Extract from the payload: `id`, `admin_graphql_api_id`, `name`, `currency`, `total_price`, `total_refunded`, `financial_status`, `test`, `cancelled_at`, `created_at`, `updated_at`.
+1. Extract from the payload: `id`, `admin_graphql_api_id`, `name`, `currency`, `current_total_price`, `financial_status`, `test`, `cancelled_at`, `created_at`, `updated_at`.
 2. Upsert `orders_cache` (guard on `updated_at_shop`, per FLOW 6).
 3. **Backfill:** `UPDATE survey_responses SET currency=?, order_total=?, reconciled=true WHERE shop_id=? AND order_id=? AND order_total IS NULL`.
 4. **Revenue eligibility** applied at read time, not write time (see FLOW 14). We store raw facts; interpretation lives in one function.
@@ -305,8 +305,8 @@ A response row's revenue contribution is computed at read time from `orders_cach
 | `is_cancelled = true` | **No.** | Excluded from revenue; **shown** in a "cancelled orders" note so the merchant can see why a channel's numbers differ from Shopify's |
 | `financial_status = "voided"` | **No.** | Excluded |
 | `financial_status = "refunded"` | **No.** Fully refunded = no revenue. | Excluded |
-| `financial_status = "partially_refunded"` | **Yes, net.** `net = total_price − total_refunded`. | Included at net value |
-| `financial_status = "paid"` or `null` | **Yes, gross.** | Included at `total_price` |
+| `financial_status = "partially_refunded"` | **Yes, net.** `current_total_price` is already net of refunds, returns and edits (Shopify), so it is used as-is. Nothing is subtracted from it; `total_refunded` is not a documented order field and is not stored. | Included at `current_total_price` |
+| `financial_status = "paid"` or `null` | **Yes.** | Included at `current_total_price` (also reflects order edits) |
 | `order_total IS NULL` (webhook never landed) | **No.** | "Pending" badge — explicitly not $0 |
 | `unreconcilable = true` | **No.** | "Unmatched" badge |
 

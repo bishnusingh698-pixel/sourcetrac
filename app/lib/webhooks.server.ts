@@ -2,7 +2,7 @@ import type { PlanStatus } from "@prisma/client";
 
 import { db, isRetryableDbError } from "~/db.server";
 import { logger } from "~/lib/logger";
-import { parseMoneyToMinor } from "~/lib/money";
+import { minorToDecimalString, parseMoneyToMinor } from "~/lib/money";
 import { withRetry } from "~/lib/retry.server";
 import { reconcileResponsesForOrder } from "~/lib/responses.server";
 import {
@@ -20,39 +20,52 @@ import { isPlanKey, type PlanKey } from "~/lib/plans";
 /**
  * Webhook processing.
  *
- * Two invariants:
- *   1. HMAC is verified by the route before anything here runs.
+ * Invariants:
+ *   1. HMAC is verified by the route (authenticate.webhook) before anything here runs.
  *   2. X-Shopify-Webhook-Id is inserted into webhook_events with a unique
  *      constraint BEFORE any business logic. A concurrent or repeated delivery
- *      loses that insert and returns 200 immediately. That makes retries safe
- *      and out-of-order delivery harmless without a distributed lock.
+ *      loses that insert and returns 200 immediately.
+ *   3. Order writes are guarded on `updated_at`, so an out-of-order or replayed
+ *      delivery can never overwrite newer data.
+ *   4. Only an INSTALLED shop is touched. Webhooks for an unknown or uninstalled
+ *      shop are acknowledged and ignored; the one way back to "installed" is the
+ *      auth path (provisionShop).
  */
 
 function retryDb<T>(operation: () => Promise<T>): Promise<T> {
   return withRetry(operation, { attempts: 3, baseDelayMs: 250, shouldRetry: isRetryableDbError });
 }
 
-/** Stripe the shop's token on the first order webhook for an offline install. */
-export async function ensureShopAndToken(shopDomain: string, accessToken: string | null): Promise<string> {
+/**
+ * Resolve the internal id of an INSTALLED shop, or null.
+ *
+ * This never creates a shop and never flips `installState`. A late `orders/updated`
+ * that arrives after `app/uninstalled` used to upsert the shop back to
+ * "installed" with no token; now it finds an uninstalled shop and is ignored.
+ * Reinstalling happens only through OAuth / token exchange, via provisionShop.
+ */
+export async function resolveInstalledShop(shopDomain: string, accessToken: string | null): Promise<string | null> {
   const existing = await findShopByDomain(shopDomain);
-  const { id } = await upsertShop({
-    shopDomain,
-    shopId: shopDomain,
-    accessToken: accessToken ?? null,
-  });
+  if (!existing || existing.installState !== "installed") return null;
 
-  // Only look up the plan when we just gained a token, so we do not hit the
-  // Admin API on every single webhook.
-  if (!existing || !existing.checkoutSupported) {
-    void refreshCheckoutSupport(id).catch((error: unknown) => {
+  // Keep the stored copy of the offline token fresh. upsertShop leaves the token
+  // alone when none is supplied.
+  if (accessToken) {
+    await upsertShop({ shopDomain, shopId: existing.shopId, accessToken });
+  }
+
+  // Only probe the Admin API while the plan check is unresolved or failed, so we
+  // do not hit it on every healthy webhook.
+  if (!existing.checkoutSupported) {
+    void refreshCheckoutSupport(existing.id).catch((error: unknown) => {
       logger.warn("checkout_support_refresh_failed", {
-        shop_id: id,
+        shop_id: existing.id,
         error_message: error instanceof Error ? error.message : String(error),
       });
     });
   }
 
-  return id;
+  return existing.id;
 }
 
 export async function refreshCheckoutSupport(internalShopId: string): Promise<void> {
@@ -69,20 +82,24 @@ export async function refreshCheckoutSupport(internalShopId: string): Promise<vo
 
 export type ClaimResult = { claimed: true } | { claimed: false };
 
+/** A delivery with no outcome after this long was abandoned by a crashed request. */
+export const INFLIGHT_STALE_MS = 5 * 60 * 1000;
+
 /**
  * Claim a webhook delivery.
  *
  * Insert-first, so a concurrent or repeated delivery loses the insert and is
- * refused — the caller returns 200 and Shopify stops retrying. That is correct for
- * a delivery that already *completed*.
+ * refused: the caller returns 200 and Shopify stops retrying. That is correct for
+ * a delivery that already *completed*, or one another request is working on now.
  *
- * It is not correct for one that failed. A row left behind by a throw is
- * annotated by `markWebhookFailed`, and refusing its retry would make a transient
- * fault permanent: Shopify sees the 200 and stops, so that order — and every
- * answer waiting to reconcile against it — is lost with no way back. A failed row
- * is therefore re-claimed and its partial work redone, which is what this
- * module's stated idempotency contract ("a retry can redo partial work")
- * requires. Every downstream handler is written to be idempotent.
+ * It is not correct for one that failed, or one whose request died mid-flight:
+ * Shopify sees the 200 and stops, so that order and every answer waiting to
+ * reconcile against it would be lost with no way back. Two cases are therefore
+ * re-claimed:
+ *   - a row annotated by `markWebhookFailed` (the handler threw), and
+ *   - a row with no outcome that is older than INFLIGHT_STALE_MS (the process
+ *     crashed or was recycled before it could record one).
+ * Every downstream handler is idempotent, so redoing partial work is safe.
  */
 export async function claimWebhook(params: {
   webhookId: string;
@@ -95,12 +112,11 @@ export async function claimWebhook(params: {
         webhookId: params.webhookId,
         topic: params.topic,
         apiVersion: params.apiVersion,
-        // shopId here is the FK to Shop.id; resolved by the caller before insert.
+        // shopId here is the FK to Shop.id; set when the delivery is marked processed.
         shopId: null,
         // The payload body is deliberately not persisted. Idempotency needs only
         // webhookId, and an orders/* payload embeds a full customer object
-        // (name, email, phone, address) that this app has no use for. Storing it
-        // would make us hold exactly the data we exist to avoid.
+        // (name, email, phone, address) that this app has no use for.
         payloadJson: null,
       },
     });
@@ -108,27 +124,31 @@ export async function claimWebhook(params: {
   } catch (error) {
     if (!isUniqueViolation(error)) throw error;
 
-    // Lost the insert: this delivery id is already in the ledger. Re-claim only a
-    // delivery that we have already recorded as failed.
-    //
-    // Keyed on `error` rather than on `processedAt` alone. A row with no
-    // `processedAt` and no error is a delivery that is still in flight, and
-    // re-claiming that would let a concurrent duplicate run the handler a second
-    // time alongside the original. `markWebhookFailed` is what distinguishes "we
-    // tried this and it broke" from "we are still working on it".
     const existing = await retryDb(() =>
       db.webhookEvent.findUnique({
         where: { webhookId: params.webhookId },
-        select: { processedAt: true, error: true },
+        select: { processedAt: true, error: true, createdAt: true },
       }),
     );
 
-    if (!existing?.error || existing.processedAt) {
+    if (!existing || existing.processedAt) {
       logger.info("webhook_duplicate_skipped", { webhook_id: params.webhookId, topic: params.topic });
       return { claimed: false };
     }
 
-    logger.info("webhook_reclaimed_after_failure", { webhook_id: params.webhookId, topic: params.topic });
+    const abandoned = Date.now() - existing.createdAt.getTime() > INFLIGHT_STALE_MS;
+    if (!existing.error && !abandoned) {
+      // Still being worked on by another request. Re-claiming would run the
+      // handler twice in parallel, which is what insert-first exists to prevent.
+      logger.info("webhook_duplicate_skipped", { webhook_id: params.webhookId, topic: params.topic });
+      return { claimed: false };
+    }
+
+    logger.info("webhook_reclaimed", {
+      webhook_id: params.webhookId,
+      topic: params.topic,
+      reason: existing.error ? "previous_attempt_failed" : "previous_attempt_abandoned",
+    });
     return { claimed: true };
   }
 }
@@ -160,19 +180,22 @@ export async function markWebhookFailed(webhookId: string, message: string): Pro
 ///
 /// Customer fields (name, email, phone, address) are deliberately absent. They
 /// are present in the webhook body, but nothing here reads them and nothing
-/// downstream persists them — omitting them from the type makes it impossible to
-/// store a customer's contact details by accident.
+/// downstream persists them.
+///
+/// `current_total_price` is the ONLY money field read. Shopify documents it as
+/// reflecting order edits, returns and refunds, so it is already net. There is
+/// deliberately no refund field: `total_refunded` is not a documented order
+/// property, and subtracting any refund from `current_total_price` would deduct it
+/// twice.
 type ShopifyOrder = {
-  id: number;
+  id: number | string;
   name?: string | null;
   order_number?: number;
   currency: string;
-  current_total_price: string;
-  total_price: string;
-  total_refunded: string;
-  financial_status: string | null;
+  current_total_price?: string | null;
+  financial_status?: string | null;
   test?: boolean;
-  cancelled_at: string | null;
+  cancelled_at?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -180,6 +203,9 @@ type ShopifyOrder = {
 export type OrderWebhookResult =
   | { action: "orders_upserted"; shopInternalId: string; orderId: string; reconciled: number }
   | { action: "order_cancelled"; shopInternalId: string; orderId: string }
+  | { action: "order_stale_ignored"; shopInternalId: string; orderId: string }
+  | { action: "order_payload_invalid"; topic: string }
+  | { action: "ignored_shop_not_installed"; topic: string }
   | { action: "app_uninstalled"; shopInternalId: string }
   | { action: "scopes_updated"; shopInternalId: string }
   | { action: "subscription_updated"; shopInternalId: string }
@@ -199,38 +225,53 @@ export async function processWebhook(params: {
 
   switch (topic) {
     case "orders/create":
-    case "orders/updated": {
-      const order = payload as unknown as ShopifyOrder;
-      const shopInternalId = await ensureShopAndToken(shopDomain, accessToken);
-      const reconciled = await upsertOrderCache(shopInternalId, order);
-      return { action: "orders_upserted", shopInternalId, orderId: String(order.id), reconciled };
-    }
-
+    case "orders/updated":
     case "orders/cancelled": {
-      const order = payload as unknown as ShopifyOrder;
-      const shop = await findShopByDomain(shopDomain);
-      if (!shop) {
-        // The shop was uninstalled before the cancel arrived. Nothing to update.
-        logger.info("webhook_shop_gone", { topic, shop_domain: shopDomain });
-        return { action: "order_cancelled", shopInternalId: "", orderId: String(order.id) };
+      const shopInternalId = await resolveInstalledShop(shopDomain, accessToken);
+      if (!shopInternalId) {
+        // Unknown shop, or one that has uninstalled. Acknowledge and do nothing:
+        // a webhook must never resurrect a shop.
+        logger.info("webhook_ignored_shop_not_installed", { topic, shop_domain: shopDomain });
+        return { action: "ignored_shop_not_installed", topic };
       }
 
-      await retryDb(() =>
-        db.orderCache.update({
-          where: { shopId_orderId: { shopId: shop.id, orderId: String(order.id) } },
-          data: { isCancelled: true, cancelledAt: order.cancelled_at ? new Date(order.cancelled_at) : new Date() },
-        }).catch((error: unknown) => {
-          // P2025 = row not found: the order was never cached (merchant's first
-          // webhook was the cancel). That is normal, not an error.
-          if (typeof error === "object" && error !== null && (error as { code?: string }).code === "P2025") return null;
-          throw error;
-        }),
+      const outcome = await upsertOrderCache(
+        shopInternalId,
+        payload as unknown as ShopifyOrder,
+        topic === "orders/cancelled",
       );
 
-      return { action: "order_cancelled", shopInternalId: shop.id, orderId: String(order.id) };
+      if (!outcome) {
+        logger.warn("order_payload_invalid", { topic, shop_id: shopInternalId });
+        return { action: "order_payload_invalid", topic };
+      }
+
+      if (!outcome.applied) {
+        logger.info("order_stale_delivery_ignored", {
+          topic,
+          shop_id: shopInternalId,
+          order_id: outcome.orderId,
+        });
+        return { action: "order_stale_ignored", shopInternalId, orderId: outcome.orderId };
+      }
+
+      if (topic === "orders/cancelled") {
+        return { action: "order_cancelled", shopInternalId, orderId: outcome.orderId };
+      }
+
+      return {
+        action: "orders_upserted",
+        shopInternalId,
+        orderId: outcome.orderId,
+        reconciled: outcome.reconciled,
+      };
     }
 
     case "app/uninstalled": {
+      // Sessions hold the access token in plaintext. They must not outlive the
+      // installation, whether or not we still have a shop row.
+      await retryDb(() => db.session.deleteMany({ where: { shop: shopDomain } }));
+
       const shop = await findShopByDomain(shopDomain);
       if (!shop) return { action: "app_uninstalled", shopInternalId: "" };
       // Data is RETAINED (see docs/03 FLOW 10). Only the credential is erased.
@@ -267,10 +308,54 @@ export async function processWebhook(params: {
   }
 }
 
-async function upsertOrderCache(shopInternalId: string, order: ShopifyOrder): Promise<number> {
-  const orderId = String(order.id);
+type ValidOrder = { orderId: string; createdAt: Date; updatedAt: Date; cancelledAt: Date | null };
 
-  const totalParsed = parseMoneyToMinor(order.current_total_price ?? order.total_price, order.currency);
+/** Reject a payload we cannot store, instead of throwing on every Shopify retry. */
+function readOrder(order: ShopifyOrder): ValidOrder | null {
+  const idOk =
+    (typeof order.id === "number" && Number.isSafeInteger(order.id) && order.id > 0) ||
+    (typeof order.id === "string" && /^[0-9]+$/.test(order.id));
+  if (!idOk) return null;
+  if (typeof order.currency !== "string" || order.currency.trim() === "") return null;
+
+  const createdAt = new Date(order.created_at);
+  const updatedAt = new Date(order.updated_at);
+  if (Number.isNaN(createdAt.getTime()) || Number.isNaN(updatedAt.getTime())) return null;
+
+  const cancelledAt = order.cancelled_at ? new Date(order.cancelled_at) : null;
+  if (cancelledAt && Number.isNaN(cancelledAt.getTime())) return null;
+
+  return { orderId: String(order.id), createdAt, updatedAt, cancelledAt };
+}
+
+type OrderOutcome = { orderId: string; applied: boolean; reconciled: number };
+
+/**
+ * Write an order into the cache.
+ *
+ * The write is conditional on `updatedAtShop <= incoming updated_at`, so a stale
+ * or replayed delivery changes nothing, and redelivery of the same event is a
+ * harmless re-apply. If no row matched and none exists, the order is created; if
+ * the create loses to an existing newer row, the delivery was stale.
+ *
+ * `totalPrice` is `current_total_price` (already net of refunds and edits). An
+ * unparseable total is stored as NULL on a new row and never overwrites a good
+ * stored total on an existing one; revenue then reads it as "unparseable" and the
+ * answer stays Pending, rather than reporting a fabricated $0.00.
+ */
+async function upsertOrderCache(
+  shopInternalId: string,
+  order: ShopifyOrder,
+  forceCancelled: boolean,
+): Promise<OrderOutcome | null> {
+  const valid = readOrder(order);
+  if (!valid) return null;
+
+  const { orderId, createdAt, updatedAt } = valid;
+  // orders/cancelled means cancelled even if the payload omits cancelled_at.
+  const cancelledAt = valid.cancelledAt ?? (forceCancelled ? updatedAt : null);
+
+  const totalParsed = parseMoneyToMinor(order.current_total_price, order.currency);
   if (!totalParsed.ok) {
     logger.warn("order_total_unparseable", {
       shop_id: shopInternalId,
@@ -278,62 +363,48 @@ async function upsertOrderCache(shopInternalId: string, order: ShopifyOrder): Pr
       reason: totalParsed.reason,
     });
   }
+  // Built from integer minor units, never float division.
+  const totalDecimal = totalParsed.ok ? minorToDecimalString(totalParsed.minor, order.currency) : null;
 
-  const refundedParsed = parseMoneyToMinor(order.total_refunded ?? 0, order.currency);
-  // `OrderCache.totalPrice` is NOT NULL, so an unparseable total still has to be
-  // written as something. "0.00" is the only value that cannot be mistaken for
-  // real revenue, and it is safe here *because* reconciliation is skipped below.
-  const totalDecimal = totalParsed.ok
-    ? (totalParsed.minor / 10 ** totalParsed.decimals).toFixed(totalParsed.decimals)
-    : "0.00";
-  const refundedDecimal = refundedParsed.ok
-    ? Math.abs(refundedParsed.minor / 10 ** refundedParsed.decimals).toFixed(refundedParsed.decimals)
-    : "0.00";
+  const common = {
+    orderNumber: order.name ?? (order.order_number ? String(order.order_number) : null),
+    currency: order.currency,
+    financialStatus: order.financial_status ?? null,
+    isTest: order.test === true,
+    isCancelled: cancelledAt !== null,
+    cancelledAt,
+    updatedAtShop: updatedAt,
+  };
 
-  const cancelledAt = order.cancelled_at ? new Date(order.cancelled_at) : null;
-
-  await retryDb(() =>
-    db.orderCache.upsert({
-      where: { shopId_orderId: { shopId: shopInternalId, orderId } },
-      create: {
-        shopId: shopInternalId,
-        orderId,
-        orderNumber: order.name ?? (order.order_number ? String(order.order_number) : null),
-        currency: order.currency,
-        totalPrice: totalDecimal,
-        totalRefunded: refundedDecimal,
-        financialStatus: order.financial_status,
-        isTest: order.test === true,
-        isCancelled: cancelledAt !== null,
-        cancelledAt,
-        createdAtShop: new Date(order.created_at),
-        updatedAtShop: new Date(order.updated_at),
-      },
-      update: {
-        orderNumber: order.name ?? null,
-        currency: order.currency,
-        totalPrice: totalDecimal,
-        totalRefunded: refundedDecimal,
-        financialStatus: order.financial_status,
-        isTest: order.test === true,
-        isCancelled: cancelledAt !== null,
-        cancelledAt,
-        updatedAtShop: new Date(order.updated_at),
-      },
+  const updated = await retryDb(() =>
+    db.orderCache.updateMany({
+      where: { shopId: shopInternalId, orderId, updatedAtShop: { lte: updatedAt } },
+      data: totalDecimal === null ? common : { ...common, totalPrice: totalDecimal },
     }),
   );
 
-  // Reconcile only from a total we actually parsed. Passing the "0.00" fallback
-  // through would parse cleanly and stamp every waiting response with a zero
-  // order total: the answer would silently stop counting as revenue, and the
-  // merchant would see a real order reported at $0.00 with no way to tell that
-  // apart from a genuine free order. Staying unreconciled is the honest state —
-  // the dashboard already renders it as "Pending".
-  if (!totalParsed.ok) {
-    return 0;
+  let applied = updated.count > 0;
+
+  if (!applied) {
+    try {
+      await retryDb(() =>
+        db.orderCache.create({
+          data: { shopId: shopInternalId, orderId, ...common, totalPrice: totalDecimal, createdAtShop: createdAt },
+        }),
+      );
+      applied = true;
+    } catch (error) {
+      // The row exists with a newer updatedAtShop: this delivery is stale.
+      if (!isUniqueViolation(error)) throw error;
+    }
   }
 
-  // Idempotent and safe to run repeatedly: only rows still unreconciled change.
+  if (!applied) return { orderId, applied: false, reconciled: 0 };
+
+  // Reconcile only from a total we actually parsed. Idempotent: only rows still
+  // unreconciled change.
+  if (totalDecimal === null) return { orderId, applied: true, reconciled: 0 };
+
   const { reconciled } = await reconcileResponsesForOrder({
     shopId: shopInternalId,
     orderId,
@@ -341,7 +412,7 @@ async function upsertOrderCache(shopInternalId: string, order: ShopifyOrder): Pr
     totalPrice: totalDecimal,
   });
 
-  return reconciled;
+  return { orderId, applied: true, reconciled };
 }
 
 type SubscriptionPayload = {

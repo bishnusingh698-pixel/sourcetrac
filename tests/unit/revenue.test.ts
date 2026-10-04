@@ -20,7 +20,6 @@ import {
 const order = (overrides: Partial<OrderFacts> = {}): OrderFacts => ({
   currency: "USD",
   totalPrice: "100.00",
-  totalRefunded: "0.00",
   financialStatus: "paid",
   isTest: false,
   isCancelled: false,
@@ -28,8 +27,8 @@ const order = (overrides: Partial<OrderFacts> = {}): OrderFacts => ({
 });
 
 describe("evaluateRevenue", () => {
-  it("includes a paid order at its gross total", () => {
-    expect(evaluateRevenue(order())).toEqual({ included: true, minor: 10000, treatment: "gross" });
+  it("includes a paid order at its total", () => {
+    expect(evaluateRevenue(order())).toEqual({ included: true, minor: 10000 });
   });
 
   it("excludes test orders", () => {
@@ -48,36 +47,25 @@ describe("evaluateRevenue", () => {
   });
 
   it("excludes a fully refunded order rather than reporting negative revenue", () => {
-    const result = evaluateRevenue(order({ financialStatus: "refunded", totalRefunded: "100.00" }));
+    const result = evaluateRevenue(order({ financialStatus: "refunded", totalPrice: "0.00" }));
     expect(result).toEqual({ included: false, reason: "fully_refunded" });
   });
 
-  it("subtracts refunds once Shopify reports the order as partially_refunded", () => {
+  it("takes the total as already net, so a partial refund is deducted once", () => {
+    // Shopify lowers current_total_price when it refunds, so 75.00 here IS the
+    // net amount of a 100.00 order with 25.00 refunded. Subtracting the refund
+    // again would report 50.00.
     const result = evaluateRevenue(
-      order({ financialStatus: "partially_refunded", totalRefunded: "25.00" }),
+      order({ financialStatus: "partially_refunded", totalPrice: "75.00" }),
     );
-    expect(result).toEqual({ included: true, minor: 7500, treatment: "net_of_refunds" });
+    expect(result).toEqual({ included: true, minor: 7500 });
   });
 
-  it("ignores a refund amount while the status is still 'paid'", () => {
-    // Shopify only treats refunds as final once the status flips. Counting them
-    // earlier would under-report revenue that is still in dispute.
-    const result = evaluateRevenue(order({ totalRefunded: "25.00" }));
-    expect(result).toEqual({ included: true, minor: 10000, treatment: "gross" });
-  });
-
-  it("excludes a partially refunded order that was refunded past its total", () => {
+  it("excludes a partially refunded order with nothing left", () => {
     const result = evaluateRevenue(
-      order({ financialStatus: "partially_refunded", totalRefunded: "150.00" }),
+      order({ financialStatus: "partially_refunded", totalPrice: "0.00" }),
     );
     expect(result).toEqual({ included: false, reason: "fully_refunded" });
-  });
-
-  it("falls back to gross when the refund amount is unparseable", () => {
-    const result = evaluateRevenue(
-      order({ financialStatus: "partially_refunded", totalRefunded: "oops" }),
-    );
-    expect(result).toEqual({ included: true, minor: 10000, treatment: "gross" });
   });
 
   it("includes a pending order, since the money is real but not settled", () => {
@@ -99,8 +87,8 @@ describe("evaluateRevenue", () => {
   });
 
   it("handles a zero-decimal currency without dividing wrongly", () => {
-    const result = evaluateRevenue(order({ currency: "JPY", totalPrice: "5000", totalRefunded: "0" }));
-    expect(result).toEqual({ included: true, minor: 5000, treatment: "gross" });
+    const result = evaluateRevenue(order({ currency: "JPY", totalPrice: "5000" }));
+    expect(result).toEqual({ included: true, minor: 5000 });
   });
 });
 
@@ -117,7 +105,7 @@ describe("evaluateResponseRevenue", () => {
 
   it("delegates to evaluateRevenue once reconciled", () => {
     const result = evaluateResponseRevenue({ reconciled: true, unreconcilable: false }, order());
-    expect(result).toEqual({ included: true, minor: 10000, treatment: "gross" });
+    expect(result).toEqual({ included: true, minor: 10000 });
   });
 });
 

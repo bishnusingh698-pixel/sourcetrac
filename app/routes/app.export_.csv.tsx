@@ -1,8 +1,7 @@
 import { redirect, type LoaderFunctionArgs } from "react-router";
 
-import { db } from "~/db.server";
+import { fetchResponsesInWindow, toExportRows } from "~/lib/analytics-queries.server";
 import { csvFilename, toCsv } from "~/lib/csv";
-import { formatDecimalForCurrency } from "~/lib/money";
 import { findShopByDomain } from "~/lib/shop.server";
 import { authenticate } from "~/shopify.server";
 
@@ -14,44 +13,23 @@ import { authenticate } from "~/shopify.server";
  * job by the merchant.
  *
  * Columns are fixed at order_id, submitted_at, channel, order_total, currency.
- * There is no customer name, email or address anywhere in this file — deliberate,
+ * There is no customer name, email or address anywhere in this file, deliberately,
  * both for privacy and for App Store review.
  *
- * `order_total` is the decided amount (order total minus refunds), converted to
- * a plain decimal string. It is blank when the order has not arrived yet, so an
- * empty cell means "unknown", never "free".
+ * `order_total` comes from the SAME query and the SAME revenue decision as the
+ * dashboard (`toExportRows` -> `decideRevenue`): the net amount, in the order's
+ * currency. It is blank when the dashboard would not count the answer's revenue
+ * (pending, cancelled, test, voided, fully refunded), so a blank cell means "not
+ * counted", never "free", and the file can never disagree with the dashboard.
  */
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await findShopByDomain(session.shop);
   if (!shop) return redirect("/auth?redirect=/app/export");
 
-  const responses = await db.surveyResponse.findMany({
-    where: { shopId: shop.id },
-    orderBy: { submittedAt: "asc" },
-    select: {
-      orderId: true,
-      submittedAt: true,
-      channel: true,
-      currency: true,
-      orderTotal: true,
-    },
-  });
-
-  const csv = toCsv(
-    responses.map((row) => ({
-      orderId: row.orderId,
-      submittedAt: row.submittedAt,
-      channel: row.channel,
-      // `orderTotal` is stored in major units (see responses.server.ts, which
-      // writes `minor / 10 ** decimals`), so it is emitted as a plain decimal
-      // string. Converting back through minor units here would be wrong twice
-      // over for zero-decimal currencies like JPY. Precision follows the
-      // currency: three places for KWD/BHD/OMR, none for JPY.
-      orderTotal: formatDecimalForCurrency(row.orderTotal, row.currency ?? "USD"),
-      currency: row.currency,
-    })),
-  );
+  // The query returns newest first; the file is oldest first.
+  const responses = await fetchResponsesInWindow({ shopId: shop.id });
+  const csv = toCsv(toExportRows([...responses].reverse()));
 
   return new Response(csv, {
     headers: {

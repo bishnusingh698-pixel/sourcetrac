@@ -6,7 +6,7 @@ import { orderIdSchema } from "~/lib/settings";
 import { toResponse } from "~/lib/http.server";
 import { serialiseError, ValidationError } from "~/lib/errors";
 import { logger } from "~/lib/logger";
-import { isPlanKey, planStatusIsCollecting } from "~/lib/plans";
+import { effectivePlan } from "~/lib/plans";
 import { BUCKETS, consumeToken } from "~/lib/rate-limit.server";
 import { submitResponse } from "~/lib/responses.server";
 import { DEFAULT_OPTIONS, OTHER_CHANNEL_VALUE, parseSurveySettings } from "~/lib/settings";
@@ -111,8 +111,7 @@ export const action = async ({ request }: { request: Request }) => {
     // A cancelled, declined or expired subscription must not keep unlimited paid
     // behaviour. `planStatusIsCollecting` is the single place that decides whether
     // a recorded plan status still grants paid access.
-    const plan =
-      isPlanKey(shop.plan) && planStatusIsCollecting(shop.planStatus) ? shop.plan : "free";
+    const plan = effectivePlan(shop);
 
     const result = await submitResponse({
       shopId: shop.id,

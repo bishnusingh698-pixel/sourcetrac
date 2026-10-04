@@ -110,8 +110,10 @@ model OrderCache {
   currency        String
   /// Major units, three fractional places for three-decimal currencies. See
   /// SurveyResponse.orderTotal.
-  totalPrice      Decimal  @db.Decimal(12, 3)
-  totalRefunded   Decimal  @default(0) @db.Decimal(12, 3)
+  /// Shopify's current_total_price: ALREADY net of refunds, returns and edits.
+  /// This is the only revenue figure; nothing may subtract a refund from it.
+  /// Null when the webhook total could not be parsed (never a fake 0.00).
+  totalPrice      Decimal? @db.Decimal(12, 3)
   financialStatus String?
   isTest          Boolean  @default(false)
   isCancelled     Boolean  @default(false)

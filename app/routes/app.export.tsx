@@ -1,8 +1,8 @@
 import { useLoaderData, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 
 import { Panel } from "~/components/admin-ui";
+import { fetchResponsesInWindow, toExportRows } from "~/lib/analytics-queries.server";
 import { CSV_HEADERS } from "~/lib/csv";
-import { formatDecimalForCurrency } from "~/lib/money";
 import { db } from "~/db.server";
 import { findShopByDomain } from "~/lib/shop.server";
 import { authenticate } from "~/shopify.server";
@@ -31,18 +31,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   // A preview of the newest rows, so merchants can confirm the file looks right
   // before downloading. Values are shown exactly as they will be written.
-  const recent = await db.surveyResponse.findMany({
-    where: { shopId: shop.id },
-    orderBy: { submittedAt: "desc" },
-    take: 10,
-    select: {
-      orderId: true,
-      submittedAt: true,
-      channel: true,
-      currency: true,
-      orderTotal: true,
-    },
-  });
+  const recent = toExportRows(await fetchResponsesInWindow({ shopId: shop.id, limit: 10 }));
 
   return {
     count,
@@ -51,9 +40,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       orderId: row.orderId,
       submittedAt: row.submittedAt.toISOString(),
       channel: row.channel,
-      // Same helper the CSV route uses, so the preview is byte-identical to
-      // the file rather than a two-decimal approximation of it.
-      orderTotal: formatDecimalForCurrency(row.orderTotal, row.currency ?? "USD") ?? "",
+      // Same builder the CSV route uses, so the preview is byte-identical to
+      // the file and to the dashboard's revenue decision.
+      orderTotal: row.orderTotal ?? "",
       currency: row.currency ?? "",
     })),
   };

@@ -1,7 +1,7 @@
 import { db, isRetryableDbError } from "~/db.server";
 import { serialiseError } from "~/lib/errors";
 import { logger } from "~/lib/logger";
-import { parseMoneyToMinor } from "~/lib/money";
+import { minorToDecimalString, parseMoneyToMinor } from "~/lib/money";
 import { currentUtcPeriod, evaluateCap, isPlanKey, type PlanKey } from "~/lib/plans";
 import { withRetry } from "~/lib/retry.server";
 
@@ -98,7 +98,33 @@ export async function submitResponse(input: SubmitInput): Promise<SubmitResult> 
       }),
     );
 
-    await incrementUsage(input.shopId);
+    // The answer is already stored. A failure of the usage counter must not
+    // fail the request: the extension would retry, hit the unique constraint and
+    // get "duplicate", and a unique violation raised by a concurrent
+    // first-of-month usage upsert would be misreported as a duplicate answer.
+    try {
+      await incrementUsage(input.shopId);
+    } catch (usageError) {
+      logger.warn("usage_increment_failed", {
+        shop_id: input.shopId,
+        response_id: created.id,
+        error_message: usageError instanceof Error ? usageError.message : String(usageError),
+      });
+    }
+
+    // The order webhook usually lands BEFORE the buyer answers, so there is no
+    // later orders/create to reconcile this row. Attach the cached order now;
+    // otherwise the answer would stay Pending and, after 24h, be marked
+    // unreconcilable even though its revenue is known.
+    try {
+      await reconcileFromOrderCache(input.shopId, input.orderId);
+    } catch (reconcileError) {
+      logger.warn("submit_reconcile_failed", {
+        shop_id: input.shopId,
+        response_id: created.id,
+        error_message: reconcileError instanceof Error ? reconcileError.message : String(reconcileError),
+      });
+    }
 
     logger.info("response_created", {
       shop_id: input.shopId,
@@ -139,6 +165,27 @@ export async function submitResponse(input: SubmitInput): Promise<SubmitResult> 
   }
 }
 
+/**
+ * Reconcile one answer against an order that is already cached. A no-op when the
+ * order has not arrived, or arrived with a total we could not parse.
+ */
+export async function reconcileFromOrderCache(shopId: string, orderId: string): Promise<void> {
+  const order = await retryDb(() =>
+    db.orderCache.findUnique({
+      where: { shopId_orderId: { shopId, orderId } },
+      select: { currency: true, totalPrice: true },
+    }),
+  );
+  if (!order || order.totalPrice === null) return;
+
+  await reconcileResponsesForOrder({
+    shopId,
+    orderId,
+    currency: order.currency,
+    totalPrice: order.totalPrice.toString(),
+  });
+}
+
 export function isUniqueViolation(error: unknown): boolean {
   if (typeof error !== "object" || error === null) return false;
   const code = (error as { code?: unknown }).code;
@@ -165,7 +212,8 @@ export async function reconcileResponsesForOrder(params: {
     return { reconciled: 0 };
   }
 
-  const decimal = (parsed.minor / 10 ** parsed.decimals).toFixed(parsed.decimals);
+  // From integer minor units, never float division.
+  const decimal = minorToDecimalString(parsed.minor, params.currency);
 
   const result = await retryDb(() =>
     db.surveyResponse.updateMany({

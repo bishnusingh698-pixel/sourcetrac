@@ -202,11 +202,14 @@ export function buildTrend(params: {
   now?: Date;
 }): TrendPoint[] {
   const { responses, decidedAmounts, days, now = new Date() } = params;
-  const { start, end } = windowBounds(days, now);
+  const { end } = windowBounds(days, now);
 
+  // Anchor on the window end so the last point is the current UTC day. Counting
+  // forward from the window start stopped at yesterday and silently dropped
+  // every response submitted today from the chart.
   const dayKeys: string[] = [];
-  for (let i = 0; i < days; i += 1) {
-    dayKeys.push(toUtcDateKey(new Date(start.getTime() + i * 24 * 60 * 60 * 1000)));
+  for (let i = days - 1; i >= 0; i -= 1) {
+    dayKeys.push(toUtcDateKey(new Date(end.getTime() - i * 24 * 60 * 60 * 1000)));
   }
 
   const dayKeySet = new Set(dayKeys);

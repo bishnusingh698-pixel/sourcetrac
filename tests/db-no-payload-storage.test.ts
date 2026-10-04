@@ -53,9 +53,8 @@ const ORDER_PAYLOAD = {
 };
 
 /**
- * Deliberately does not pre-create the shop row: processWebhook creates it via
- * ensureShopAndToken, and pre-creating it with our own id collides with the
- * cuid that path generates.
+ * The shop row is created before each test: a webhook never creates or revives a
+ * shop (only the auth path does), so processWebhook ignores an unknown shop.
  */
 async function reset() {
   await prisma.webhookEvent.deleteMany({ where: { webhookId: { startsWith: "nopay-" } } });
@@ -70,7 +69,12 @@ beforeAll(async () => {
   await prisma.$connect();
 });
 
-beforeEach(reset);
+beforeEach(async () => {
+  await reset();
+  await prisma.shop.create({
+    data: { shopId: SHOP, shopDomain: "nopayload.myshopify.com", installState: "installed" },
+  });
+});
 
 afterAll(async () => {
   await reset();
@@ -140,8 +144,8 @@ describe("webhook ledger stores no payload", () => {
       accessToken: null,
     });
 
-    // By orderId, not shopId: ensureShopAndToken generates the internal shop row's
-    // cuid, so SHOP above is the Shopify GID rather than the FK.
+    // By orderId, not shopId: the internal shop row's id is a cuid, so SHOP above
+    // is the Shopify GID rather than the FK.
     const order = await prisma.orderCache.findFirstOrThrow({ where: { orderId: "730001" } });
     const serialised = JSON.stringify(order);
     expect(serialised).not.toContain("buyer@example.com");

@@ -163,6 +163,10 @@ export async function handleShopRedact(params: {
   shopDomain: string;
   shopId?: string;
 }): Promise<{ shopFound: boolean; deleted: boolean }> {
+  // Sessions hold access tokens (and, for online sessions, a staff member's
+  // name and email). They are deleted even when no shop row remains.
+  await retryDb(() => db.session.deleteMany({ where: { shop: params.shopDomain } }));
+
   const shop = await findShopByDomain(params.shopDomain);
 
   if (!shop) {

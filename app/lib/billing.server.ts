@@ -184,6 +184,20 @@ export async function fetchActiveSubscriptions(params: {
   }
 }
 
+/** The live paid SourceTrac subscription on Shopify, or null. Source of truth for cancelling. */
+export function activeSourceTracSubscription(subscriptions: ActiveSubscription[]): ActiveSubscription | null {
+  return (
+    subscriptions.find((subscription) => {
+      const name = subscription.name.toLowerCase();
+      return (
+        name.startsWith("sourcetrac") &&
+        subscription.status.toUpperCase() === "ACTIVE" &&
+        (name.includes("growth") || name.includes("scale"))
+      );
+    }) ?? null
+  );
+}
+
 /** The paid plan a shop currently holds, or null for free. */
 export function paidPlanFromSubscriptions(subscriptions: ActiveSubscription[]): PlanKey | null {
   for (const subscription of subscriptions) {

@@ -12,10 +12,14 @@ import {
 import { Banner, Panel } from "~/components/admin-ui";
 import { createSubscription, cancelSubscription } from "~/lib/billing.server";
 import { logger } from "~/lib/logger";
-import { evaluateCap, isPlanKey, PLAN_ORDER, planFor, PLANS } from "~/lib/plans";
+import { effectivePlan, evaluateCap, isPlanKey, PLAN_ORDER, planFor, PLANS } from "~/lib/plans";
 import { formatMoney } from "~/lib/money";
 import { getUsageCount } from "~/lib/responses.server";
-import { fetchActiveSubscriptions, paidPlanFromSubscriptions } from "~/lib/billing.server";
+import {
+  activeSourceTracSubscription,
+  fetchActiveSubscriptions,
+  paidPlanFromSubscriptions,
+} from "~/lib/billing.server";
 import { findShopByDomain, getAccessToken, setPlan } from "~/lib/shop.server";
 import { authenticate } from "~/shopify.server";
 
@@ -44,7 +48,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   // Reconcile from Shopify rather than trusting our own column, so a charge
   // approved or cancelled outside the app is reflected here immediately.
-  let activePlan = isPlanKey(shop.plan) ? shop.plan : "free";
+  let activePlan = effectivePlan(shop);
   if (session.accessToken) {
     try {
       const subscriptions = await fetchActiveSubscriptions({
@@ -100,6 +104,40 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   };
 };
 
+/**
+ * Cancel whatever live SourceTrac subscription Shopify reports.
+ *
+ * Resolved from Shopify rather than from our stored `subscriptionGid`, which can
+ * be missing or stale. Also what "Switch to Free" does: the Free plan is the
+ * absence of a paid charge, not a $0 charge.
+ */
+async function cancelActiveSubscription(params: { shopDomain: string; accessToken: string }) {
+  let subscriptions: Awaited<ReturnType<typeof fetchActiveSubscriptions>>;
+  try {
+    subscriptions = await fetchActiveSubscriptions(params);
+  } catch {
+    return {
+      ok: false as const,
+      message: "We could not reach Shopify to find your subscription. Please try again in a moment.",
+    };
+  }
+
+  const active = activeSourceTracSubscription(subscriptions);
+  if (!active) return { ok: true as const, message: "You are already on the Free plan." };
+
+  const result = await cancelSubscription({ ...params, subscriptionGid: active.id });
+  if (!result.ok) {
+    return { ok: false as const, message: `Shopify could not cancel the subscription: ${result.error}` };
+  }
+
+  // Collection continues on the free cap rather than stopping; the webhook
+  // moves the stored plan.
+  return {
+    ok: true as const,
+    message: "Subscription cancelled. You are back on the Free plan with 50 responses a month.",
+  };
+}
+
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await findShopByDomain(session.shop);
@@ -122,6 +160,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const plan = String(form.get("plan") ?? "");
     if (!isPlanKey(plan)) return { ok: false as const, message: "That plan is not available." };
 
+    if (plan === "free") {
+      return cancelActiveSubscription({ shopDomain: shop.shopDomain, accessToken });
+    }
+
     const result = await createSubscription({ shopDomain: shop.shopDomain, accessToken, plan });
 
     if (!result.ok) {
@@ -142,20 +184,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 
   if (intent === "cancel") {
-    const gid = String(form.get("subscriptionGid") ?? "");
-    if (!gid) return { ok: false as const, message: "We could not find your subscription to cancel." };
-
-    const result = await cancelSubscription({ shopDomain: shop.shopDomain, accessToken, subscriptionGid: gid });
-    if (!result.ok) {
-      return { ok: false as const, message: `Shopify could not cancel the subscription: ${result.error}` };
-    }
-
-    // Collection continues on the free cap rather than stopping; the webhook
-    // moves the stored plan.
-    return {
-      ok: true as const,
-      message: "Subscription cancelled. You are back on the Free plan with 50 responses a month.",
-    };
+    return cancelActiveSubscription({ shopDomain: shop.shopDomain, accessToken });
   }
 
   return { ok: false as const, message: "Unknown action." };

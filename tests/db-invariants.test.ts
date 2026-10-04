@@ -262,7 +262,6 @@ describe("dashboard response/order join", () => {
         currency: "KWD",
         // Three-decimal currency: Decimal(12,2) would have rounded this away.
         totalPrice: "1.234",
-        totalRefunded: "0.111",
         financialStatus: "partially_refunded",
         isTest: false,
         isCancelled: false,
@@ -308,7 +307,6 @@ describe("dashboard response/order join", () => {
     const rows = await fetchRows();
     const matched = rows.find((r) => r.orderId === "77001");
     expect(matched?.order?.totalPrice).toBe("1.234");
-    expect(matched?.order?.totalRefunded).toBe("0.111");
     expect(matched?.order?.currency).toBe("KWD");
   });
 
@@ -432,12 +430,13 @@ describe("order webhook money reconciliation", () => {
       payload: orderPayload({ current_total_price: "not-a-number" }),
     });
 
-    // The order row still needs a value to satisfy NOT NULL, but it must not be
-    // reachable as if it were real revenue.
+    // The order row is kept (it still counts as an order), but its total is NULL:
+    // unknown, never a fabricated 0.00 that reads as a genuine free order.
     const order = await prisma.orderCache.findFirst({
       where: { shopId: shopRowId, orderId: "55001" },
     });
-    expect(order?.totalPrice.toString()).toBe("0");
+    expect(order).not.toBeNull();
+    expect(order?.totalPrice).toBeNull();
 
     const [response] = await prisma.surveyResponse.findMany({ where: { shopId: shopRowId } });
     expect(response?.orderTotal).toBeNull();
