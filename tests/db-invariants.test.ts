@@ -127,7 +127,10 @@ describe("order_cache unique(shop_id, order_id)", () => {
       where: { shopId_orderId: { shopId: shop.id, orderId: "888" } },
       data: { totalPrice: "90.00" },
     });
-    expect(updated.totalPrice.toString()).toBe("90");
+    // `totalPrice` is nullable: null means the webhook total could not be parsed,
+    // which is deliberately distinct from a genuine 0.00. Asserting the value
+    // therefore has to rule out null first, or the test asserts on "null".
+    expect(updated.totalPrice?.toString()).toBe("90");
 
     await expect(
       prisma.orderCache.create({ data: { ...base, totalPrice: "1.00" } }),
