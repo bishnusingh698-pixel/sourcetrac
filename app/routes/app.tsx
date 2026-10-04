@@ -3,6 +3,7 @@ import {
   NavLink,
   Outlet,
   useLoaderData,
+  useNavigate,
   useRouteError,
   useRouteLoaderData,
   type HeadersFunction,
@@ -273,13 +274,24 @@ export function ErrorBoundary() {
       ? error.message
       : "An unknown error occurred.";
 
+  /**
+   * Navigate via React Router so App Bridge intercepts the navigation and
+   * keeps the embedded context (host param, iframe state) intact.
+   *
+   * `<s-button href="/app">` does a full-page navigation that strips the
+   * `?host=` param Shopify requires. Without it, the embedded iframe lands on
+   * `/app` without a session token, Shopify redirects to OAuth, and the
+   * merchant sees a blank panel — the exact symptom the button exists to fix.
+   */
+  const navigate = useNavigate();
+
   return (
     <AppProvider apiKey={root?.apiKey ?? ""}>
       <s-page>
         <s-section heading="Something went wrong">
           <s-stack gap="base">
             <s-text>{detail}</s-text>
-            <s-button href="/app" variant="primary">
+            <s-button type="button" variant="primary" onClick={() => navigate("/app")}>
               Back to dashboard
             </s-button>
           </s-stack>

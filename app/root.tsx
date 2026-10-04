@@ -5,6 +5,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLocation,
   useRouteError,
   useRouteLoaderData,
   type LinksFunction,
@@ -142,6 +143,23 @@ export function ErrorBoundary() {
       : "Unknown error";
   const lang = useDocumentLanguage();
 
+  /**
+   * Preserve the embedded-admin query params (host, shop, embedded) on the
+   * dashboard link.
+   *
+   * This boundary renders outside AppProvider, so there is no App Bridge
+   * router to intercept navigation. A bare `href="/app"` strips the `?host=`
+   * param that Shopify requires to authenticate the embedded iframe — the
+   * merchant clicks the link, lands on `/app` without a session token, and
+   * Shopify redirects to OAuth, which in an iframe produces a blank panel.
+   *
+   * `useLocation` gives us the current search string, which still carries
+   * `?shop=&host=&embedded=` even when the child route has crashed. Appending
+   * it to `/app` restores the embedded context so the re-auth flow succeeds.
+   */
+  const location = useLocation();
+  const dashboardHref = `/app${location.search}`;
+
   return (
     <html lang={lang}>
       <head>
@@ -157,7 +175,7 @@ export function ErrorBoundary() {
             Something went wrong
           </h1>
           <p style={{ marginBottom: "1rem" }}>{message}</p>
-          <a href="/app">Back to dashboard</a>
+          <a href={dashboardHref}>Back to dashboard</a>
         </main>
         <Scripts />
       </body>
