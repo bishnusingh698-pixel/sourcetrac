@@ -15,17 +15,32 @@ export function isTrendWindow(value: unknown): value is TrendWindow {
   return typeof value === "number" && (TREND_WINDOWS as readonly number[]).includes(value);
 }
 
-/** Half-open UTC window ending at `now`. */
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function startOfUtcDay(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+/**
+ * Half-open UTC window `[start, now)` covering `days` calendar days: today so
+ * far plus the `days - 1` whole days before it.
+ *
+ * `start` sits on a UTC midnight, never mid-day. A rolling `now - days` start
+ * made the summary count the afternoon before the first chart bucket while the
+ * chart (which buckets by calendar day) left it out, so the two disagreed.
+ */
 export function windowBounds(days: number, now = new Date()): { start: Date; end: Date } {
   const end = new Date(now.getTime());
-  const start = new Date(end.getTime() - days * 24 * 60 * 60 * 1000);
+  const start = new Date(startOfUtcDay(now).getTime() - (days - 1) * DAY_MS);
   return { start, end };
 }
 
+/** The window of identical length immediately before the current one. */
 export function previousWindowBounds(days: number, now = new Date()): { start: Date; end: Date } {
   const { start, end } = windowBounds(days, now);
+  const length = end.getTime() - start.getTime();
   return {
-    start: new Date(start.getTime() - days * 24 * 60 * 60 * 1000),
+    start: new Date(start.getTime() - length),
     end: start,
   };
 }
@@ -202,14 +217,13 @@ export function buildTrend(params: {
   now?: Date;
 }): TrendPoint[] {
   const { responses, decidedAmounts, days, now = new Date() } = params;
-  const { end } = windowBounds(days, now);
+  const { start } = windowBounds(days, now);
 
-  // Anchor on the window end so the last point is the current UTC day. Counting
-  // forward from the window start stopped at yesterday and silently dropped
-  // every response submitted today from the chart.
+  // The window starts on a UTC midnight, so adding whole days gives exactly one
+  // key per calendar day and the last key is the current UTC day.
   const dayKeys: string[] = [];
-  for (let i = days - 1; i >= 0; i -= 1) {
-    dayKeys.push(toUtcDateKey(new Date(end.getTime() - i * 24 * 60 * 60 * 1000)));
+  for (let i = 0; i < days; i += 1) {
+    dayKeys.push(toUtcDateKey(new Date(start.getTime() + i * DAY_MS)));
   }
 
   const dayKeySet = new Set(dayKeys);

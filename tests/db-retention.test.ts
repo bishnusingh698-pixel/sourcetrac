@@ -194,6 +194,28 @@ describe("retention purge is safe to run repeatedly", () => {
     expect(await prisma.orderCache.count({ where: { shopId: "ret-shop" } })).toBe(1);
   });
 
+  it("keeps an expired order while a live response still depends on it", async () => {
+    // The buyer answered from the order-status page long after the order was
+    // cached. Purging the order would turn that answer into a permanent Pending.
+    await seedOrder("late-1", daysBefore(RECORD_RETENTION_DAYS + 10));
+    await seedResponse("late-1", daysBefore(1));
+
+    const report = await runRetentionPurge();
+
+    expect(report.orderCacheDeleted).toBe(0);
+    expect(await prisma.orderCache.count({ where: { shopId: "ret-shop", orderId: "late-1" } })).toBe(1);
+    expect(await prisma.surveyResponse.count({ where: { shopId: "ret-shop", orderId: "late-1" } })).toBe(1);
+  });
+
+  it("deletes an expired order that no response references", async () => {
+    await seedOrder("lonely-1", daysBefore(RECORD_RETENTION_DAYS + 10));
+
+    const report = await runRetentionPurge();
+
+    expect(report.orderCacheDeleted).toBe(1);
+    expect(await prisma.orderCache.count({ where: { shopId: "ret-shop" } })).toBe(0);
+  });
+
   it("reports a timestamp on every run", async () => {
     const report = await runRetentionPurge();
     expect(Number.isNaN(Date.parse(report.ranAt))).toBe(false);

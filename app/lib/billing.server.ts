@@ -1,6 +1,6 @@
 import { env } from "./env";
 import { logger } from "./logger";
-import { BILLING_INTERVAL, PLANS, isPlanKey, type PlanKey } from "./plans";
+import { BILLING_INTERVAL, PLANS, isPlanKey, planPriceAmount, type PlanKey } from "./plans";
 import { PLANS_QUERY, shopifyGraphql } from "./shopify-graphql.server";
 
 /**
@@ -90,7 +90,8 @@ export async function createSubscription(params: {
         {
           plan: {
             appRecurringPricingDetails: {
-              price: { amount: definition.priceMinor, currencyCode: definition.currencyCode },
+              // Major-unit decimal string ("19.00"), not minor units.
+              price: { amount: planPriceAmount(params.plan), currencyCode: definition.currencyCode },
               interval: BILLING_INTERVAL,
             },
           },

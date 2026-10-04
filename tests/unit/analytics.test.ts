@@ -173,16 +173,18 @@ describe("computeStats", () => {
 });
 
 describe("windowBounds and previousWindowBounds", () => {
-  it("returns a window ending now", () => {
+  it("returns a window that ends now and starts on a UTC midnight", () => {
     const { start, end } = windowBounds(7, NOW);
     expect(end.getTime()).toBe(NOW.getTime());
-    expect(end.getTime() - start.getTime()).toBe(7 * 24 * 60 * 60 * 1000);
+    // Seven calendar days: today plus the six before it.
+    expect(start.toISOString()).toBe("2026-10-09T00:00:00.000Z");
   });
 
   it("returns a previous window of the same length immediately before", () => {
     const current = windowBounds(7, NOW);
     const previous = previousWindowBounds(7, NOW);
-    expect(previous.end.getTime()).toBeLessThanOrEqual(current.start.getTime());
+    expect(previous.end.getTime()).toBe(current.start.getTime());
+    expect(previous.end.getTime() - previous.start.getTime()).toBe(current.end.getTime() - current.start.getTime());
   });
 });
 
@@ -244,6 +246,25 @@ describe("buildTrend", () => {
     expect(trend.at(-1)?.date).toBe("2026-10-15");
     expect(trend.at(-1)?.responses).toBe(1);
     expect(trend[0]?.date).toBe("2026-10-09");
+  });
+
+  it("charts exactly the responses the window fetches", () => {
+    // The summary counts [start, now); the chart must bucket the very same
+    // instants, with no afternoon fragment counted by one and not the other.
+    const { start } = windowBounds(7, NOW);
+    const trend = buildTrend({
+      responses: [
+        response({ submittedAt: start }),
+        response({ submittedAt: new Date(start.getTime() - 1) }),
+      ],
+      decidedAmounts: [],
+      days: 7,
+      now: NOW,
+    });
+
+    expect(trend[0]?.date).toBe("2026-10-09");
+    expect(trend[0]?.responses).toBe(1);
+    expect(trend.reduce((sum, p) => sum + p.responses, 0)).toBe(1);
   });
 
   it("keeps per-currency revenue separate within a day", () => {

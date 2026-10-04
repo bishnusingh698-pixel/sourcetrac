@@ -69,15 +69,26 @@ export async function runRetentionPurge(now: Date = new Date()): Promise<Retenti
     )
   ).count;
 
-  // Then order cache, before responses: a response carries the reconciled order
-  // total, so it must not outlive the order row it describes.
-  const orderCacheDeleted = (
-    await retryDb(() => db.orderCache.deleteMany({ where: { createdAt: { lt: recordCutoff } } }))
-  ).count;
-
+  // Responses first, then orders. The two age on different clocks: an order by
+  // when it was cached, an answer by when the buyer submitted it, and an answer
+  // can arrive long after the order (e.g. from the order-status page). Deleting
+  // the order by its own age would strand a live answer with no order to join,
+  // so an expired order is kept for as long as any response still references it.
+  // It goes on the first run after that response itself expires.
   const surveyResponsesDeleted = (
     await retryDb(() => db.surveyResponse.deleteMany({ where: { submittedAt: { lt: recordCutoff } } }))
   ).count;
+
+  const orderCacheDeleted = await retryDb(
+    () => db.$executeRaw`
+      DELETE FROM "OrderCache" o
+      WHERE o."createdAt" < ${recordCutoff}
+        AND NOT EXISTS (
+          SELECT 1 FROM "SurveyResponse" r
+          WHERE r."shopId" = o."shopId" AND r."orderId" = o."orderId"
+        )
+    `,
+  );
 
   const report: RetentionReport = {
     webhookEventsDeleted,

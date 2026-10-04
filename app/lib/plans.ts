@@ -6,6 +6,8 @@
  * comparison against null can never accidentally evaluate true.
  */
 
+import { minorToDecimalString } from "./money";
+
 export const PLAN_FREE = "free" as const;
 export const PLAN_GROWTH = "growth" as const;
 export const PLAN_SCALE = "scale" as const;
@@ -83,6 +85,16 @@ export function planFor(key: unknown): PlanDefinition {
 
 /** Shopify's recurring interval enum value. */
 export const BILLING_INTERVAL = "EVERY_30_DAYS" as const;
+
+/**
+ * The price as Shopify's money `amount` expects it: a decimal string in MAJOR
+ * units ("19.00"). `priceMinor` is minor units, and sending it directly bills
+ * 100x the advertised price.
+ */
+export function planPriceAmount(key: PlanKey): string {
+  const plan = PLANS[key];
+  return minorToDecimalString(plan.priceMinor, plan.currencyCode);
+}
 
 export type CapStatus = {
   cap: number | null;
