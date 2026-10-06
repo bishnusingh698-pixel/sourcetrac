@@ -136,7 +136,13 @@ export default function App() {
 export function ErrorBoundary() {
   const error = useRouteError();
 
-  const message = isRouteErrorResponse(error)
+  const hint =
+    isRouteErrorResponse(error) && typeof (error.data as { hint?: unknown } | null)?.hint === "string"
+      ? (error.data as { hint: string; reference?: string })
+      : null;
+  const message = hint
+    ? `${hint.hint}${hint.reference ? ` (reference: ${hint.reference})` : ""}`
+    : isRouteErrorResponse(error)
     ? `${error.status} ${error.statusText}`
     : error instanceof Error
       ? error.message

@@ -5,6 +5,7 @@ import { buildTrend, computeStats } from "~/lib/analytics";
 import { fetchDashboardData } from "~/lib/analytics-queries.server";
 import { formatMoney } from "~/lib/money";
 import { ensureShop } from "~/lib/provision.server";
+import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -31,7 +32,7 @@ function parseRange(value: string | null): (typeof RANGES)[number] {
   return match ?? RANGES[1];
 }
 
-export const loader = async ({ request }: LoaderFunctionArgs) => {
+export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
 
@@ -90,7 +91,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       responses: point.responses,
     })),
   };
-};
+});
 
 /**
  * `YYYY-MM-DD` -> `4 Oct`.

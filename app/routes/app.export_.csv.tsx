@@ -3,6 +3,7 @@ import type { LoaderFunctionArgs } from "react-router";
 import { fetchResponsesInWindow, toExportRows } from "~/lib/analytics-queries.server";
 import { csvFilename, toCsv } from "~/lib/csv";
 import { ensureShop } from "~/lib/provision.server";
+import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -22,7 +23,7 @@ import { authenticate } from "~/shopify.server";
  * (pending, cancelled, test, voided, fully refunded), so a blank cell means "not
  * counted", never "free", and the file can never disagree with the dashboard.
  */
-export const loader = async ({ request }: LoaderFunctionArgs) => {
+export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
 
@@ -39,4 +40,4 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       "Cache-Control": "no-store",
     },
   });
-};
+});

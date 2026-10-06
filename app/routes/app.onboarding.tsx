@@ -6,6 +6,7 @@ import { db } from "~/db.server";
 import { createTranslator, isSupportedLanguage } from "~/lib/i18n";
 import { resolveRequestLanguage } from "~/lib/i18n/resolve.server";
 import { ensureShop } from "~/lib/provision.server";
+import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -20,7 +21,7 @@ import { authenticate } from "~/shopify.server";
 
 export const meta: MetaFunction = () => [{ title: "Get started — SourceTrac" }];
 
-export const loader = async ({ request }: LoaderFunctionArgs) => {
+export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
 
@@ -52,7 +53,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
      */
     hasExplicitLanguage: isSupportedLanguage(shop.language),
   };
-};
+});
 
 type Step = { title: string; body: string; done: boolean; action?: { label: string; href: string } };
 

@@ -67,7 +67,9 @@ export async function upsertShop(params: {
         uninstalledAt: null,
       },
       update: {
-        shopId,
+        // provisionShop falls back to the domain when Shopify's identity lookup
+        // fails; that placeholder must never replace a real GID already stored.
+        ...(shopId.startsWith("gid://") ? { shopId } : {}),
         // Only overwrite the token when we actually have a new one. An
         // uninstalled shop being reinstalled gets a fresh one; a plain
         // re-auth without a token must not blank a valid stored token.
