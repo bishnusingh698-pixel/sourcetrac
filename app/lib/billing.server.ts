@@ -64,6 +64,22 @@ export type SubscriptionResult =
   | { ok: false; error: string; userErrors: BillingError[] };
 
 /**
+ * Where Shopify sends the merchant after they approve or decline a charge.
+ *
+ * It must be the app's page *inside the admin*. Shopify opens it top-level, so
+ * a bare `${APP_URL}/app/plans` arrives with no `shop`, `host` or session
+ * token: authentication cannot run and the merchant is stranded outside the
+ * admin instead of seeing their new plan. The admin URL keyed by the client id
+ * is the same one the auth library builds in `getEmbeddedAppUrl`.
+ */
+export function billingReturnUrl(shopDomain: string): string {
+  const store = shopDomain.replace(/\.myshopify\.com$/i, "");
+  return `https://admin.shopify.com/store/${encodeURIComponent(store)}/apps/${encodeURIComponent(
+    env().SHOPIFY_API_KEY,
+  )}/app/plans?billing=return`;
+}
+
+/**
  * Create a recurring charge. In development this is a test charge so the
  * merchant can approve and cancel repeatedly without being billed.
  */
@@ -73,7 +89,7 @@ export async function createSubscription(params: {
   plan: PlanKey;
 }): Promise<SubscriptionResult> {
   const definition = PLANS[params.plan];
-  const returnUrl = `${env().APP_URL}/app/plans?billing=return`;
+  const returnUrl = billingReturnUrl(params.shopDomain);
 
   try {
     const response = await shopifyGraphql<{

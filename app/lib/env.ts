@@ -35,7 +35,13 @@ let cached: Env | undefined;
 export function env(): Env {
   if (cached) return cached;
 
-  const parsed = schema.safeParse(process.env);
+  // `shopify app dev` exports its tunnel URL as SHOPIFY_APP_URL, not APP_URL,
+  // and the tunnel changes per run, so a hand-copied APP_URL goes stale and
+  // breaks auth. Fall back to the CLI's value when APP_URL is unset.
+  const parsed = schema.safeParse({
+    ...process.env,
+    APP_URL: process.env.APP_URL || process.env.SHOPIFY_APP_URL,
+  });
   if (!parsed.success) {
     const detail = parsed.error.issues
       .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
