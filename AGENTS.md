@@ -695,3 +695,10 @@ The repo's default branch is **`sourcetrac-v1`**, not `main`.
   mode cannot hold Prisma's advisory lock) and retries while Neon wakes.
 - **Retention runs itself** at most daily from the webhook route
   (`maybeRunRetention`); `/jobs/retention` remains for external schedulers.
+- **Admin loaders/actions are wrapped in `guarded()`** (`app/lib/admin-errors.server.ts`).
+  Production sanitises thrown Errors to "Unexpected Server Error", which left
+  no clue on screen. `guarded` rethrows a `data({ reference, hint }, 500)`,
+  which is not sanitised, and both boundaries render the hint. Redirects and
+  `data()` responses pass through untouched.
+- **CSV download is a `fetch` + blob**, not a link: inside the admin iframe a
+  link carries no session token. The route is `/app/export/csv`, not `.csv`.

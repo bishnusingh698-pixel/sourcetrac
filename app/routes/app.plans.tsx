@@ -21,6 +21,7 @@ import {
 } from "~/lib/billing.server";
 import { getAccessToken, setPlan } from "~/lib/shop.server";
 import { ensureShop } from "~/lib/provision.server";
+import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -37,7 +38,7 @@ import { authenticate } from "~/shopify.server";
 
 export const meta: MetaFunction = () => [{ title: "Plans — SourceTrac" }];
 
-export const loader = async ({ request }: LoaderFunctionArgs) => {
+export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
 
@@ -100,7 +101,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       };
     }),
   };
-};
+});
 
 /**
  * Cancel whatever live SourceTrac subscription Shopify reports.
@@ -136,7 +137,7 @@ async function cancelActiveSubscription(params: { shopDomain: string; accessToke
   };
 }
 
-export const action = async ({ request }: ActionFunctionArgs) => {
+export const action = guarded(async ({ request }: ActionFunctionArgs) => {
   // The library's `redirect` breaks out of the embedded iframe. Shopify's
   // charge-approval page refuses to render inside it, so a plain redirect
   // left the merchant on a blank frame and no upgrade could ever complete.
@@ -188,7 +189,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 
   return { ok: false as const, message: "Unknown action." };
-};
+});
 
 export default function Plans() {
   const data = useLoaderData<typeof loader>();

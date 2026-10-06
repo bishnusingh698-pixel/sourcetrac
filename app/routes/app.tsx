@@ -35,6 +35,7 @@ import { resolveRequestLanguage } from "~/lib/i18n/resolve.server";
 import { effectivePlan, evaluateCap, planFor } from "~/lib/plans";
 import { getUsageCount } from "~/lib/responses.server";
 import { ensureShop } from "~/lib/provision.server";
+import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -64,7 +65,7 @@ const NAV = [
   { to: "/app/help", key: "nav.help", icon: "question", end: false },
 ] as const;
 
-export const loader = async ({ request }: LoaderFunctionArgs) => {
+export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
   const used = await getUsageCount(shop.id);
@@ -97,7 +98,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
      */
     hasExplicitLanguage: isSupportedLanguage(shop.language),
   };
-};
+});
 
 /**
  * Persist a language change.
@@ -268,7 +269,14 @@ export function ErrorBoundary() {
    */
   const root = useRouteLoaderData<typeof rootLoader>("root");
 
-  const detail = isRouteErrorResponse(error)
+  // `guarded()` loaders throw `{ reference, hint }`; show the hint, not "500".
+  const failure =
+    isRouteErrorResponse(error) && typeof error.data === "object" && error.data !== null
+      ? (error.data as { reference?: unknown; hint?: unknown })
+      : null;
+  const detail = typeof failure?.hint === "string"
+    ? failure.hint
+    : isRouteErrorResponse(error)
     ? `${error.status} ${error.statusText}`
     : error instanceof Error
       ? error.message
@@ -291,6 +299,11 @@ export function ErrorBoundary() {
         <s-section heading="Something went wrong">
           <s-stack gap="base">
             <s-text>{detail}</s-text>
+            {typeof failure?.reference === "string" ? (
+              <s-text color="subdued" fontSize="small">
+                Reference: {failure.reference}
+              </s-text>
+            ) : null}
             <s-button type="button" variant="primary" onClick={() => navigate("/app")}>
               Back to dashboard
             </s-button>

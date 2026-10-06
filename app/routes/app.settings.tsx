@@ -21,6 +21,7 @@ import {
 } from "~/lib/settings";
 import { updateSettings } from "~/lib/shop.server";
 import { ensureShop } from "~/lib/provision.server";
+import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -58,7 +59,7 @@ function switchChecked(event: { currentTarget: unknown }): boolean {
   return target.checked === true;
 }
 
-export const loader = async ({ request }: LoaderFunctionArgs) => {
+export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
 
@@ -73,9 +74,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     min: MIN_OPTIONS,
     max: MAX_OPTIONS,
   };
-};
+});
 
-export const action = async ({ request }: ActionFunctionArgs) => {
+export const action = guarded(async ({ request }: ActionFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
 
@@ -138,7 +139,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       fieldErrors: {} as Record<string, string>,
     };
   }
-};
+});
 
 export default function Settings() {
   const data = useLoaderData<typeof loader>();
