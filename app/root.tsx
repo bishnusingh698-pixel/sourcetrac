@@ -14,6 +14,9 @@ import {
 
 import { createTranslator, resolveLanguage, DEFAULT_LANGUAGE } from "~/lib/i18n";
 import { resolveRequestLanguage } from "~/lib/i18n/resolve.server";
+import { boundary } from "@shopify/shopify-app-react-router/server";
+
+import { isShopifyAuthResponse } from "~/lib/shopify-boundary";
 import stylesheet from "~/styles/app.css?url";
 
 /**
@@ -136,6 +139,29 @@ export default function App() {
  */
 export function ErrorBoundary() {
   const error = useRouteError();
+  // A Shopify App Bridge redirect page that escaped the admin shell (see
+  // `isShopifyAuthResponse`) must still render as HTML, not as an error.
+  if (isShopifyAuthResponse(error)) return <RootDocumentAuthPage error={error} />;
+  return <RootErrorScreen error={error} />;
+}
+
+function RootDocumentAuthPage({ error }: { error: unknown }) {
+  return (
+    <html lang={useDocumentLanguage()}>
+      <head>
+        <meta charSet="utf-8" />
+        <Meta />
+        <Links />
+      </head>
+      <body>
+        {boundary.error(error)}
+        <Scripts />
+      </body>
+    </html>
+  );
+}
+
+function RootErrorScreen({ error }: { error: unknown }) {
 
   const hint =
     isRouteErrorResponse(error) && typeof (error.data as { hint?: unknown } | null)?.hint === "string"

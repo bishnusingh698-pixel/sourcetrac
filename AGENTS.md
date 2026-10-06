@@ -750,3 +750,28 @@ fails if a page under `app/routes/app.*.tsx` stops using a translator.
   the Online Store theme editor, where the block cannot be found. The
   `?page=thank-you` parameter could not be verified against shopify.dev (blocked
   from this container); without it the editor still opens.
+
+## Thrown 2xx auth pages must render through `boundary.error` (fixed 2026-10-06)
+
+`authenticate.admin` answers a document request that lacks `host` (billing
+return, bookmarked URL, first open after install) by **throwing a 200 HTML
+Response** — the App Bridge page that redirects into the admin. React Router
+routes that throw to the ErrorBoundary. The shell's custom boundary rendered it
+as a failure, so the merchant saw "200 Go to the dashboard" and never reached
+the dashboard or the survey editor. Both boundaries now call
+`boundary.error(error)` when `isShopifyAuthResponse(error)` (a 2xx
+`ErrorResponse`, `app/lib/shopify-boundary.ts`); real failures keep the custom
+screen. Reproduce with a browser UA: `curl -A "Mozilla/5.0 Chrome/130" "localhost:3000/app?shop=x.myshopify.com"`
+must return the `app-bridge.js` script tag, not the error text.
+
+- **Billing `returnUrl` is the admin URL**
+  (`https://admin.shopify.com/store/<store>/apps/<client_id>/app/plans`), via
+  `billingReturnUrl()`. A bare `APP_URL/app/plans` arrives top-level with no
+  `shop`/`host`/token and cannot authenticate.
+- **`<s-app-nav>`** in `app.tsx` registers the pages in the Shopify admin
+  sidebar. It is an App Bridge element, typed locally in `app/types/app-bridge.d.ts`.
+- **`APP_URL` falls back to `SHOPIFY_APP_URL`**, which `shopify app dev` exports
+  with the per-run tunnel URL.
+- Local browser checks: headless Chromium's UA is a bot (410). Stub
+  `cdn.shopify.com` and patch `fetch` to add `Authorization: Bearer <id_token>`
+  the way App Bridge does, or client-side navigation fails auth.

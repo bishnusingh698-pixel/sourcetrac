@@ -36,6 +36,7 @@ import { getUsageCount } from "~/lib/responses.server";
 import { ensureShop } from "~/lib/provision.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
+import { isShopifyAuthResponse } from "~/lib/shopify-boundary";
 
 /**
  * Authenticated shell for the embedded admin.
@@ -110,6 +111,16 @@ export default function AdminLayout() {
 
   return (
     <AppProvider apiKey={apiKey}>
+      {/* Shopify admin's own sidebar entries for this app. Without this the
+          app shows no pages under its name in the admin navigation, so the
+          survey editor is only reachable through the in-page menu below. */}
+      <s-app-nav>
+        {NAV.map((item) => (
+          <s-link key={item.to} href={item.to}>
+            {t(item.key)}
+          </s-link>
+        ))}
+      </s-app-nav>
       <s-page>
         <s-grid gridTemplateColumns="auto 1fr" gap="base">
           <s-grid-item>
@@ -250,6 +261,11 @@ export const headers: HeadersFunction = (headersArgs) => boundary.headers(header
 
 export function ErrorBoundary() {
   const error = useRouteError();
+  if (isShopifyAuthResponse(error)) return boundary.error(error);
+  return <AdminErrorScreen error={error} />;
+}
+
+function AdminErrorScreen({ error }: { error: unknown }) {
 
   /**
    * Read from the root loader, not `process.env`.
