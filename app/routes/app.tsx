@@ -27,11 +27,10 @@ import { Banner } from "~/components/admin-ui";
 import { LanguageForm } from "~/components/language-selector";
 import {
   createTranslator,
-  intlLocaleFor,
+  DEFAULT_LANGUAGE,
   isSupportedLanguage,
 } from "~/lib/i18n";
-import { languageFor } from "~/lib/i18n/languages";
-import { resolveRequestLanguage } from "~/lib/i18n/resolve.server";
+import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
 import { effectivePlan, evaluateCap, planFor } from "~/lib/plans";
 import { getUsageCount } from "~/lib/responses.server";
 import { ensureShop } from "~/lib/provision.server";
@@ -73,13 +72,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   // subscription must show the Free cap the API is actually applying.
   const enforcedPlan = effectivePlan(shop);
 
-  const url = new URL(request.url);
-  const language = resolveRequestLanguage({
-    requested: url.searchParams.get("lng"),
-    saved: shop.language,
-    shopifyLocale: url.searchParams.get("locale"),
-    acceptLanguage: request.headers.get("accept-language"),
-  });
+  const language = resolveAdminLanguage(request, shop.language);
 
   return {
     /**
@@ -114,7 +107,6 @@ export default function AdminLayout() {
   const { apiKey, shop, plan, cap, language, hasExplicitLanguage } =
     useLoaderData<typeof loader>();
   const t = createTranslator(language);
-  const locale = intlLocaleFor(language);
 
   return (
     <AppProvider apiKey={apiKey}>
@@ -153,7 +145,7 @@ export default function AdminLayout() {
 
                 <s-stack gap="small">
                   <s-text color="subdued" fontSize="small">
-                    {plan.name}
+                    {t(`plans.${plan.key}`)}
                   </s-text>
                   {cap.cap !== null ? (
                     <s-progress
@@ -197,7 +189,9 @@ export default function AdminLayout() {
                   >
                     <s-stack gap="small">
                       <s-text>
-                        {t("shell.cap_warning_body", { cap: cap.cap })}
+                        {/* Plural-only key: without `count` i18next skips the `_one` /
+                            `_other` lookup and renders the raw key. */}
+                        {t("shell.cap_warning_body", { count: cap.cap ?? 0, cap: cap.cap })}
                       </s-text>
                       <s-button href="/app/plans" variant="primary">
                         {t("shell.cap_warning_cta")}
@@ -268,6 +262,10 @@ export function ErrorBoundary() {
    * get React Router's default page instead of the message below.
    */
   const root = useRouteLoaderData<typeof rootLoader>("root");
+  // The shell's own data is gone here, so the root loader's language is the
+  // best available: it ignores the saved preference but honours `?lng=`,
+  // Shopify's `locale` and `Accept-Language`.
+  const t = createTranslator(root?.language ?? DEFAULT_LANGUAGE);
 
   // `guarded()` loaders throw `{ reference, hint }`; show the hint, not "500".
   const failure =
@@ -280,7 +278,7 @@ export function ErrorBoundary() {
     ? `${error.status} ${error.statusText}`
     : error instanceof Error
       ? error.message
-      : "An unknown error occurred.";
+      : t("errors.generic");
 
   /**
    * Navigate via React Router so App Bridge intercepts the navigation and
@@ -296,16 +294,16 @@ export function ErrorBoundary() {
   return (
     <AppProvider apiKey={root?.apiKey ?? ""}>
       <s-page>
-        <s-section heading="Something went wrong">
+        <s-section heading={t("errors.boundary_title")}>
           <s-stack gap="base">
             <s-text>{detail}</s-text>
             {typeof failure?.reference === "string" ? (
               <s-text color="subdued" fontSize="small">
-                Reference: {failure.reference}
+                {t("errors.reference", { reference: failure.reference })}
               </s-text>
             ) : null}
             <s-button type="button" variant="primary" onClick={() => navigate("/app")}>
-              Back to dashboard
+              {t("errors.not_found_cta")}
             </s-button>
           </s-stack>
         </s-section>

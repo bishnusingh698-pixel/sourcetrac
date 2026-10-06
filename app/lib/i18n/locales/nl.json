@@ -7,7 +7,7 @@
     "label": "Hoofdnavigatie",
     "dashboard": "Overzicht",
     "onboarding": "Aan de slag",
-    "settings": "Instellingen",
+    "settings": "Enquête",
     "export": "Exporteren",
     "plans": "Abonnementen",
     "help": "Help"
@@ -74,10 +74,12 @@
     "range_label": "Periode",
     "last_7": "Laatste 7 dagen",
     "last_30": "Laatste 30 dagen",
-    "last_90": "Laatste 90 dagen"
+    "last_90": "Laatste 90 dagen",
+    "channel_other": "Overig",
+    "edit_survey": "Enquête bewerken"
   },
   "settings": {
-    "title": "Instellingen",
+    "title": "Enquête",
     "subtitle": "Dit is de vraag die klanten na hun bestelling zien.",
     "saved_title": "Wijzigingen opgeslagen",
     "saved_body": "Opgeslagen. Je vraag is vanaf de volgende checkout live.",
@@ -108,7 +110,10 @@
     "save_button": "Wijzigingen opslaan",
     "language_panel_title": "Taal",
     "language_panel_description": "Kies de taal die SourceTrac gebruikt. Dit gaat meteen in.",
-    "language_label": "App-taal"
+    "language_label": "App-taal",
+    "defaults_banner_title": "Je enquête staat nog in het Engels",
+    "defaults_banner_body": "Kopers zien je vraag en antwoordopties precies zoals ze hieronder staan. Gebruik de Nederlandse tekst, controleer hem en sla op.",
+    "defaults_banner_cta": "Nederlandse tekst gebruiken"
   },
   "onboarding": {
     "title": "Aan de slag",
@@ -146,7 +151,8 @@
     "columns_note": "Kolommen: {{columns}}. Het bestand bevat geen klantnaam, e-mailadres of adres.",
     "download": "CSV downloaden",
     "preview_title": "Voorbeeld",
-    "preview_description": "Je {{count}} meest recente antwoorden, precies zoals ze worden geëxporteerd."
+    "preview_description": "Je {{count}} meest recente antwoorden, precies zoals ze worden geëxporteerd.",
+    "download_failed": "De download is niet gestart. Probeer het zo opnieuw."
   },
   "plans": {
     "title": "Abonnementen",
@@ -173,14 +179,55 @@
     "cancel_body": "Je antwoorden blijven opgeslagen en je enquête blijft werken. Je verliest de onbeperkte antwoorden.",
     "cancel_confirm": "Abonnement opzeggen",
     "keep_plan": "Mijn abonnement behouden",
-    "not_available": "Facturatie is momenteel niet beschikbaar. Probeer het zo nogmaals."
+    "not_available": "Facturatie is momenteel niet beschikbaar. Probeer het zo nogmaals.",
+    "current_banner": "Je gebruikt {{plan}}",
+    "on_free": "Je gebruikt het gratis abonnement.",
+    "switch_free": "Overstappen naar Gratis",
+    "feature_responses": "{{cap}} enquêteantwoorden per maand",
+    "feature_revenue": "Omzet en gemiddelde orderwaarde per kanaal",
+    "feature_trends": "Trends over 7, 30 en 90 dagen",
+    "feature_csv": "CSV-export",
+    "feature_unlimited": "Onbeperkt enquêteantwoorden",
+    "feature_everything_free": "Alles uit Gratis",
+    "feature_everything_growth": "Alles uit Groei",
+    "feature_priority_support": "Voorrang bij support",
+    "billing_title": "Zo werkt facturering",
+    "billing_body": "Kosten verschijnen op je Shopify-factuur naast je andere app-abonnementen. SourceTrac slaat nooit je kaartgegevens op — Shopify verwerkt de betaling en laat ons weten wanneer een abonnement begint, verandert of eindigt.",
+    "msg_shopify_unreachable": "We konden Shopify niet bereiken om de facturering te beheren. Open de app opnieuw vanuit je Shopify-beheer en probeer het nog eens.",
+    "msg_lookup_failed": "We konden Shopify niet bereiken om je abonnement te vinden. Probeer het zo opnieuw.",
+    "msg_already_free": "Je gebruikt al het abonnement Gratis.",
+    "msg_cancel_failed": "Shopify kon het abonnement niet opzeggen: {{error}}",
+    "msg_cancelled": "Abonnement opgezegd. Je zit weer op Gratis met {{cap}} antwoorden per maand.",
+    "msg_subscribe_failed": "Shopify kon het abonnement niet starten: {{error}}",
+    "msg_subscription_created": "Abonnement aangemaakt. Kwam je niet op een bevestigingspagina terecht? Controleer dan de factureringspagina in je Shopify-beheer.",
+    "msg_plan_unavailable": "Dat abonnement is niet beschikbaar."
   },
   "help": {
     "title": "Help",
     "subtitle": "Antwoorden op de vragen die we het vaakst krijgen.",
     "contact_title": "Nog vastgelopen?",
     "contact_body": "Vertel ons wat er aan de hand is en we kijken ernaar.",
-    "contact_cta": "Neem contact op met ondersteuning"
+    "contact_cta": "Neem contact op met ondersteuning",
+    "faq_title": "Veelgestelde vragen",
+    "contact_tip": "Voordat je schrijft: als de enquête ontbreekt, helpt meestal de controle in de checkout-editor uit de eerste twee antwoorden hierboven.",
+    "q_create": "Hoe maak ik mijn enquête?",
+    "a_create": "Je enquête wordt automatisch aangemaakt wanneer je SourceTrac installeert, met een kant-en-klare vraag en zes antwoordopties. Pas de vraag en opties aan op de pagina Enquête. Om hem zichtbaar te maken voor kopers: ga in je Shopify-beheer naar Instellingen › Checkout, klik op Aanpassen, kies de bedankpagina in het paginamenu bovenaan en voeg het SourceTrac-appblok toe. Doe hetzelfde voor de pagina met bestelstatus en sla op.",
+    "q_not_showing": "Waarom verschijnt de vraag niet op mijn bedankpagina?",
+    "a_not_showing": "Controleer drie dingen. Ten eerste moet het SourceTrac-blok in je checkout-editor (Instellingen › Checkout › Aanpassen) aan de bedankpagina zijn toegevoegd en zichtbaar zijn. Ten tweede biedt Shopify de bedank- en pagina met bestelstatus niet aan in het Starter-abonnement — controleer je abonnement in je Shopify-beheer. Ten derde kan het na de installatie een minuut duren voordat de eerste bestelling binnenkomt.",
+    "q_both_pages": "Waarom ziet een koper de vraag op zowel de bedankpagina als de pagina met bestelstatus?",
+    "a_both_pages": "Dat hoort niet te gebeuren. Zodra een bestelling een antwoord heeft, verbergt SourceTrac de vraag overal voor die bestelling, zodat elke koper maar één keer wordt gevraagd.",
+    "q_missing_revenue": "Waarom ontbreekt bij een van mijn antwoorden de omzet?",
+    "a_missing_revenue": "De koper antwoordde vlak voordat Shopify ons de bestelling stuurde, dus we hadden het antwoord maar nog niet het orderbedrag. De omzet verschijnt meestal binnen een minuut. Ontbreekt hij na een dag nog steeds, dan wordt het antwoord als wachtend getoond in plaats van als nul geteld, zodat je totalen eerlijk blijven.",
+    "q_refunds": "Wat gebeurt er met terugbetaalde bestellingen?",
+    "a_refunds": "Het terugbetaalde bedrag wordt van het ordertotaal afgetrokken voordat het wordt toegeschreven, dus een terugbetaalde bestelling draagt weinig of niets bij. Geannuleerde en testbestellingen tellen helemaal niet mee voor de omzet. Testbestellingen tellen ook niet mee voor je responspercentage.",
+    "q_limit": "Ik heb mijn gratis limiet bereikt. Ben ik antwoorden kwijt?",
+    "a_limit": "Nee. Antwoorden worden gewoon verzameld, opgeslagen en meegeteld in de totalen op je dashboard. Er wordt niets verborgen. Upgraden haalt alleen de maandelijkse limiet weg.",
+    "q_privacy": "Vraagt SourceTrac iets over mijn klanten?",
+    "a_privacy": "Nee. We slaan alleen het order-ID, het gekozen kanaal en het tijdstip op. We verzamelen nooit namen, e-mailadressen of adressen, en je CSV-export bevat geen klantgegevens.",
+    "q_change": "Kan ik de vraag wijzigen nadat hij live staat?",
+    "a_change": "Ja. Wijzig de tekst of opties op elk moment op de pagina Enquête. De nieuwe versie geldt vanaf de volgende bestelling. Al verzamelde antwoorden houden hun oorspronkelijke kanaal.",
+    "q_cancel": "Hoe zeg ik op?",
+    "a_cancel": "Zeg op via de pagina Abonnementen. Je enquête blijft werken op Gratis met {{cap}} antwoorden per maand, en er wordt niets verwijderd."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac is niet beschikbaar in je abonnement",
@@ -222,7 +269,9 @@
     "options_invalid_hint": "Herlaad de pagina en probeer het opnieuw.",
     "other_invalid": "De instelling \"Overig\" is niet begrepen.",
     "other_invalid_hint": "Herlaad de pagina en probeer het opnieuw.",
-    "settings_invalid": "We konden je instellingen niet lezen."
+    "settings_invalid": "We konden je instellingen niet lezen.",
+    "emoji_invalid": "Die emoji is niet geldig.",
+    "emoji_invalid_hint": "Gebruik één emoji of laat het veld leeg."
   },
   "errors": {
     "generic": "Er is iets misgegaan. Probeer het opnieuw.",
@@ -230,11 +279,22 @@
     "not_found_body": "Die pagina bestaat niet.",
     "not_found_cta": "Ga naar het overzicht",
     "shop_missing_title": "Deze winkel is nog niet geïnstalleerd",
-    "shop_missing_body": "Open SourceTrac opnieuw vanuit je Shopify-beheer om het opnieuw te installeren."
+    "shop_missing_body": "Open SourceTrac opnieuw vanuit je Shopify-beheer om het opnieuw te installeren.",
+    "boundary_title": "Er is iets misgegaan",
+    "reference": "Referentie: {{reference}}"
   },
   "a11y": {
     "skip_to_content": "Naar hoofdinhoud springen",
     "breadcrumb": "Kruimelpad",
     "decorative": "decoratief"
+  },
+  "survey_defaults": {
+    "question": "Hoe heb je over ons gehoord?",
+    "google": "Zoeken op Google",
+    "instagram": "Instagram",
+    "facebook": "Facebook",
+    "tiktok": "TikTok",
+    "friend-or-family": "Vrienden of familie",
+    "in-store": "In de winkel"
   }
 }

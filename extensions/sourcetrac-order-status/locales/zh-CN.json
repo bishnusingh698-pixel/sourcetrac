@@ -1,0 +1,10 @@
+{
+  "sourcetrac": {
+    "loading": "正在加载…",
+    "thanks": "谢谢！",
+    "other": "其他",
+    "otherLabel": "告诉我们更多（可选）",
+    "sending": "正在发送…",
+    "submit": "提交"
+  }
+}

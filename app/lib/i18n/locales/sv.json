@@ -7,7 +7,7 @@
     "label": "Huvudnavigering",
     "dashboard": "Översikt",
     "onboarding": "Kom igång",
-    "settings": "Inställningar",
+    "settings": "Enkät",
     "export": "Exportera",
     "plans": "Planer",
     "help": "Hjälp"
@@ -74,10 +74,12 @@
     "range_label": "Period",
     "last_7": "Senaste 7 dagarna",
     "last_30": "Senaste 30 dagarna",
-    "last_90": "Senaste 90 dagarna"
+    "last_90": "Senaste 90 dagarna",
+    "channel_other": "Annat",
+    "edit_survey": "Redigera enkäten"
   },
   "settings": {
-    "title": "Inställningar",
+    "title": "Enkät",
     "subtitle": "Det här är frågan kunderna ser efter att de beställt.",
     "saved_title": "Ändringar sparade",
     "saved_body": "Sparat. Din fråga är live från nästa utcheckning.",
@@ -108,7 +110,10 @@
     "save_button": "Spara ändringar",
     "language_panel_title": "Språk",
     "language_panel_description": "Välj det språk som SourceTrac använder. Det börjar gälla direkt.",
-    "language_label": "Appspråk"
+    "language_label": "Appspråk",
+    "defaults_banner_title": "Din enkät är fortfarande på engelska",
+    "defaults_banner_body": "Köpare ser din fråga och dina svarsalternativ precis som de står nedan. Använd den svenska texten, kontrollera den och spara.",
+    "defaults_banner_cta": "Använd svensk text"
   },
   "onboarding": {
     "title": "Kom igång",
@@ -146,7 +151,8 @@
     "columns_note": "Kolumner: {{columns}}. Filen innehåller inga kundnamn, e-postadresser eller adresser.",
     "download": "Ladda ner CSV",
     "preview_title": "Förhandsvisning",
-    "preview_description": "Dina {{count}} senaste svar, exakt som de exporteras."
+    "preview_description": "Dina {{count}} senaste svar, exakt som de exporteras.",
+    "download_failed": "Nedladdningen startade inte. Försök igen om en stund."
   },
   "plans": {
     "title": "Planer",
@@ -173,14 +179,55 @@
     "cancel_body": "Dina svar förblir sparade och undersökningen fungerar fortfarande. Du förlorar obestämda antal svar.",
     "cancel_confirm": "Säg upp plan",
     "keep_plan": "Behåll min plan",
-    "not_available": "Faktureringen är otillgänglig just nu. Försök igen om en stund."
+    "not_available": "Faktureringen är otillgänglig just nu. Försök igen om en stund.",
+    "current_banner": "Du har {{plan}}",
+    "on_free": "Du har gratisplanen.",
+    "switch_free": "Byt till Gratis",
+    "feature_responses": "{{cap}} enkätsvar per månad",
+    "feature_revenue": "Intäkter och genomsnittligt ordervärde per kanal",
+    "feature_trends": "Trender för 7, 30 och 90 dagar",
+    "feature_csv": "CSV-export",
+    "feature_unlimited": "Obegränsat antal enkätsvar",
+    "feature_everything_free": "Allt i Gratis",
+    "feature_everything_growth": "Allt i Tillväxt",
+    "feature_priority_support": "Prioriterad support",
+    "billing_title": "Så fungerar faktureringen",
+    "billing_body": "Avgifterna visas på din Shopify-faktura tillsammans med dina andra app-abonnemang. SourceTrac sparar aldrig dina kortuppgifter — Shopify hanterar betalningen och meddelar oss när ett abonnemang startar, ändras eller avslutas.",
+    "msg_shopify_unreachable": "Vi kunde inte nå Shopify för att hantera faktureringen. Öppna appen igen från Shopify-admin och försök på nytt.",
+    "msg_lookup_failed": "Vi kunde inte nå Shopify för att hitta ditt abonnemang. Försök igen om en stund.",
+    "msg_already_free": "Du har redan planen Gratis.",
+    "msg_cancel_failed": "Shopify kunde inte avsluta abonnemanget: {{error}}",
+    "msg_cancelled": "Abonnemanget är avslutat. Du är tillbaka på Gratis med {{cap}} svar per månad.",
+    "msg_subscribe_failed": "Shopify kunde inte starta abonnemanget: {{error}}",
+    "msg_subscription_created": "Abonnemanget har skapats. Om du inte skickades till en bekräftelsesida kan du kontrollera faktureringssidan i Shopify-admin.",
+    "msg_plan_unavailable": "Den planen är inte tillgänglig."
   },
   "help": {
     "title": "Hjälp",
     "subtitle": "Svar på de frågor vi får oftast.",
     "contact_title": "Fastnat fortfarande?",
     "contact_body": "Berätta vad som händer så tittar vi på det.",
-    "contact_cta": "Kontakta supporten"
+    "contact_cta": "Kontakta supporten",
+    "faq_title": "Vanliga frågor",
+    "contact_tip": "Innan du skriver: om enkäten saknas löser kontrollen i kassaredigeraren från de två första svaren ovan oftast problemet.",
+    "q_create": "Hur skapar jag min enkät?",
+    "a_create": "Din enkät skapas automatiskt när du installerar SourceTrac, med en färdig fråga och sex svarsalternativ. Ändra frågan och alternativen på sidan Enkät. För att köpare ska se den: gå till Inställningar › Kassa i Shopify-admin, klicka på Anpassa, välj tack-sidan i sidmenyn högst upp och lägg till SourceTracs appblock. Gör samma sak för orderstatussidan och spara.",
+    "q_not_showing": "Varför visas inte frågan på min tack-sida?",
+    "a_not_showing": "Kontrollera tre saker. För det första måste SourceTrac-blocket vara tillagt på tack-sidan i kassaredigeraren (Inställningar › Kassa › Anpassa) och vara synligt. För det andra erbjuder Shopify inte tack- och orderstatussidorna i Starter-planen — kontrollera din plan i Shopify-admin. För det tredje kan det ta en minut innan den första ordern kommer in om du precis har installerat appen.",
+    "q_both_pages": "Varför ser en köpare frågan på både tack-sidan och orderstatussidan?",
+    "a_both_pages": "Det ska inte hända. Så snart en order har ett svar döljer SourceTrac frågan överallt för den ordern, så varje köpare får bara frågan en gång.",
+    "q_missing_revenue": "Varför saknar ett av mina svar intäkter?",
+    "a_missing_revenue": "Köparen svarade strax innan Shopify skickade ordern till oss, så vi hade svaret men ännu inte ordervärdet. Intäkterna visas oftast inom en minut. Om de fortfarande saknas efter ett dygn visas svaret som väntande i stället för att räknas som noll, så att dina summor förblir rättvisande.",
+    "q_refunds": "Vad händer med återbetalda ordrar?",
+    "a_refunds": "Återbetalt belopp dras av från ordersumman innan det tillskrivs, så en återbetald order bidrar med lite eller inget. Avbrutna ordrar och testordrar räknas inte alls in i intäkterna. Testordrar räknas inte heller in i din svarsfrekvens.",
+    "q_limit": "Jag har nått min gratisgräns. Har jag förlorat svar?",
+    "a_limit": "Nej. Svaren fortsätter att samlas in, sparas och räknas in i summorna på din instrumentpanel. Inget döljs. En uppgradering tar bara bort månadsgränsen.",
+    "q_privacy": "Frågar SourceTrac efter något om mina kunder?",
+    "a_privacy": "Nej. Vi sparar bara order-ID, kanalen som köparen valde och tidpunkten. Vi samlar aldrig in namn, e-postadresser eller adresser, och din CSV-export innehåller inga kunddata.",
+    "q_change": "Kan jag ändra frågan efter att den har publicerats?",
+    "a_change": "Ja. Ändra formuleringen eller alternativen på sidan Enkät när som helst. Den nya versionen gäller från nästa order. Svar som redan samlats in behåller sin ursprungliga kanal.",
+    "q_cancel": "Hur avslutar jag?",
+    "a_cancel": "Avsluta på sidan Planer. Din enkät fortsätter att fungera på Gratis med {{cap}} svar per månad, och inget raderas."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac är inte tillgängligt med din plan",
@@ -222,7 +269,9 @@
     "options_invalid_hint": "Ladda om sidan och försök igen.",
     "other_invalid": "Inställningen ”Övrigt” kunde inte tolkas.",
     "other_invalid_hint": "Ladda om sidan och försök igen.",
-    "settings_invalid": "Vi kunde inte läsa dina inställningar."
+    "settings_invalid": "Vi kunde inte läsa dina inställningar.",
+    "emoji_invalid": "Den emojin är inte giltig.",
+    "emoji_invalid_hint": "Använd en enda emoji eller lämna fältet tomt."
   },
   "errors": {
     "generic": "Något gick fel. Försök igen.",
@@ -230,11 +279,22 @@
     "not_found_body": "Den sidan finns inte.",
     "not_found_cta": "Gå till översikten",
     "shop_missing_title": "Den här butiken är inte installerad ännu",
-    "shop_missing_body": "Öppna SourceTrac igen från din Shopify-admin för att installera om den."
+    "shop_missing_body": "Öppna SourceTrac igen från din Shopify-admin för att installera om den.",
+    "boundary_title": "Något gick fel",
+    "reference": "Referens: {{reference}}"
   },
   "a11y": {
     "skip_to_content": "Hoppa till huvudinnehåll",
     "breadcrumb": "Brödsmulor",
     "decorative": "dekorativ"
+  },
+  "survey_defaults": {
+    "question": "Hur hörde du talas om oss?",
+    "google": "Google-sökning",
+    "instagram": "Instagram",
+    "facebook": "Facebook",
+    "tiktok": "TikTok",
+    "friend-or-family": "Vänner eller familj",
+    "in-store": "I butik"
   }
 }

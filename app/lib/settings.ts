@@ -42,14 +42,25 @@ export const EMOJI_MAX_LENGTH = 12;
 
 /** Slugify a label into a stable, collision-checked channel value. */
 export function slugifyChannel(label: string, existing: Set<string>): string {
-  const base =
-    label
-      .toLowerCase()
-      .normalize("NFKD")
-      .replace(/[̀-ͯ]/g, "")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 40) || "channel";
+  // Letters and digits from any script survive. The old `[^a-z0-9]` pattern
+  // reduced every Chinese, Japanese, Cyrillic or Greek label to the fallback
+  // "channel", so the second such option was rejected as a duplicate and a
+  // merchant could not write their survey in their own language.
+  //
+  // NFKD then stripping combining accents turns "é" into "e", keeping Latin
+  // slugs exactly as before. NFC afterwards recomposes the marks that were not
+  // stripped, such as Japanese dakuten, so "ブ" stays distinct from "フ".
+  // Existing options are unaffected either way: `validateSurveySettings` maps
+  // an unchanged label back to its stored value.
+  const slug = label
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .normalize("NFC")
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/g, "");
+  // Sliced by code point so a character outside the BMP is never cut in half.
+  const base = Array.from(slug).slice(0, 40).join("").replace(/-+$/, "") || "channel";
 
   if (!existing.has(base)) return base;
 
@@ -58,23 +69,58 @@ export function slugifyChannel(label: string, existing: Set<string>): string {
   return `${base}-${n}`;
 }
 
+/**
+ * A translatable piece of text: an i18next key plus its interpolation values.
+ *
+ * Validation runs on the server, but the merchant reads the result in their own
+ * language. Each error therefore carries the keys for its message and hint
+ * alongside the English text, which stays for logs and API callers.
+ */
+export type I18nText = { key: string; params?: Record<string, string | number> };
+export type ValidationI18n = { message: I18nText; hint?: I18nText };
+
+function invalid(
+  field: string,
+  english: { message: string; hint: string },
+  i18n: ValidationI18n,
+  extra: Record<string, unknown> = {},
+): ValidationError {
+  return new ValidationError(english.message, english.hint, { field, ...extra, i18n });
+}
+
+/** The translation keys attached to a validation error, if it has any. */
+export function validationI18n(error: ValidationError): ValidationI18n | null {
+  const value = error.fields.i18n as ValidationI18n | undefined;
+  return value && typeof value.message?.key === "string" ? value : null;
+}
+
+const QUESTION_REQUIRED = {
+  message: { key: "validation.question_required" },
+  hint: { key: "validation.question_required_hint" },
+};
+
 function validateQuestionText(raw: unknown): string {
+  const required = { message: "Question text is required.", hint: "Type a question to ask your buyers." };
   if (typeof raw !== "string") {
-    throw new ValidationError("Question text is required.", "Type a question to ask your buyers.", {
-      field: "questionText",
-    });
+    throw invalid("questionText", required, QUESTION_REQUIRED);
   }
   const trimmed = raw.replace(/\s+/g, " ").trim();
   if (trimmed.length === 0) {
-    throw new ValidationError("Question text is required.", "Type a question to ask your buyers.", {
-      field: "questionText",
-    });
+    throw invalid("questionText", required, QUESTION_REQUIRED);
   }
   if (trimmed.length > MAX_QUESTION_LENGTH) {
-    throw new ValidationError(
-      `Question text must be ${MAX_QUESTION_LENGTH} characters or fewer.`,
-      `Shorten it by ${trimmed.length - MAX_QUESTION_LENGTH} characters.`,
-      { field: "questionText", length: trimmed.length },
+    const over = trimmed.length - MAX_QUESTION_LENGTH;
+    throw invalid(
+      "questionText",
+      {
+        message: `Question text must be ${MAX_QUESTION_LENGTH} characters or fewer.`,
+        hint: `Shorten it by ${over} characters.`,
+      },
+      {
+        message: { key: "validation.question_too_long", params: { max: MAX_QUESTION_LENGTH } },
+        hint: { key: "validation.question_too_long_hint", params: { count: over } },
+      },
+      { length: trimmed.length },
     );
   }
   return trimmed;
@@ -82,16 +128,27 @@ function validateQuestionText(raw: unknown): string {
 
 function validateOptionLabel(raw: unknown, index: number): string {
   if (typeof raw !== "string" || raw.trim().length === 0) {
-    throw new ValidationError(`Answer option ${index + 1} is empty.`, "Give every option a label, or delete it.", {
-      field: `options.${index}.label`,
-    });
+    throw invalid(
+      `options.${index}.label`,
+      { message: `Answer option ${index + 1} is empty.`, hint: "Give every option a label, or delete it." },
+      { message: { key: "validation.label_required" }, hint: { key: "validation.label_required_hint" } },
+    );
   }
   const trimmed = raw.replace(/\s+/g, " ").trim();
   if (trimmed.length > MAX_OPTION_LABEL_LENGTH) {
-    throw new ValidationError(
-      `Answer option ${index + 1} is too long.`,
-      `Keep it to ${MAX_OPTION_LABEL_LENGTH} characters or fewer.`,
-      { field: `options.${index}.label` },
+    throw invalid(
+      `options.${index}.label`,
+      {
+        message: `Answer option ${index + 1} is too long.`,
+        hint: `Keep it to ${MAX_OPTION_LABEL_LENGTH} characters or fewer.`,
+      },
+      {
+        message: { key: "validation.label_too_long", params: { max: MAX_OPTION_LABEL_LENGTH } },
+        hint: {
+          key: "validation.label_too_long_hint",
+          params: { count: trimmed.length - MAX_OPTION_LABEL_LENGTH },
+        },
+      },
     );
   }
   return trimmed;
@@ -99,17 +156,12 @@ function validateOptionLabel(raw: unknown, index: number): string {
 
 function validateEmoji(raw: unknown, index: number): string | null {
   if (raw === null || raw === undefined || raw === "") return null;
-  if (typeof raw !== "string") {
-    throw new ValidationError(`Emoji on option ${index + 1} is not valid.`, "Use a single emoji, or leave it blank.", {
-      field: `options.${index}.emoji`,
-    });
-  }
-  const trimmed = raw.trim();
-  if (trimmed.length > EMOJI_MAX_LENGTH || !EMOJI_PATTERN.test(trimmed)) {
-    throw new ValidationError(
-      `Emoji on option ${index + 1} is not valid.`,
-      "Use a single emoji, or leave it blank.",
-      { field: `options.${index}.emoji` },
+  const trimmed = typeof raw === "string" ? raw.trim() : "";
+  if (typeof raw !== "string" || trimmed.length > EMOJI_MAX_LENGTH || !EMOJI_PATTERN.test(trimmed)) {
+    throw invalid(
+      `options.${index}.emoji`,
+      { message: `Emoji on option ${index + 1} is not valid.`, hint: "Use a single emoji, or leave it blank." },
+      { message: { key: "validation.emoji_invalid" }, hint: { key: "validation.emoji_invalid_hint" } },
     );
   }
   return trimmed;
@@ -131,24 +183,36 @@ export function validateSurveySettings(
   const allowOther = input.allowOther === true;
 
   if (!Array.isArray(input.options)) {
-    throw new ValidationError("Answer options are missing.", "Add at least 6 answer options.", {
-      field: "options",
-    });
+    throw invalid(
+      "options",
+      { message: "Answer options are missing.", hint: `Add at least ${MIN_OPTIONS} answer options.` },
+      { message: { key: "validation.options_invalid" }, hint: { key: "validation.options_invalid_hint" } },
+    );
   }
 
   if (input.options.length < MIN_OPTIONS) {
-    throw new ValidationError(
-      `Add at least ${MIN_OPTIONS} answer options.`,
-      `You have ${input.options.length}. Add ${MIN_OPTIONS - input.options.length} more.`,
-      { field: "options", count: input.options.length, minimum: MIN_OPTIONS },
+    const count = input.options.length;
+    throw invalid(
+      "options",
+      { message: `Add at least ${MIN_OPTIONS} answer options.`, hint: `You have ${count}. Add ${MIN_OPTIONS - count} more.` },
+      {
+        message: { key: "validation.options_too_few", params: { min: MIN_OPTIONS } },
+        hint: { key: "validation.options_too_few_hint", params: { count, needed: MIN_OPTIONS - count } },
+      },
+      { count, minimum: MIN_OPTIONS },
     );
   }
 
   if (input.options.length > MAX_OPTIONS) {
-    throw new ValidationError(
-      `Use at most ${MAX_OPTIONS} answer options.`,
-      `Remove ${input.options.length - MAX_OPTIONS} to continue.`,
-      { field: "options", count: input.options.length, maximum: MAX_OPTIONS },
+    const count = input.options.length;
+    throw invalid(
+      "options",
+      { message: `Use at most ${MAX_OPTIONS} answer options.`, hint: `Remove ${count - MAX_OPTIONS} to continue.` },
+      {
+        message: { key: "validation.options_too_many", params: { max: MAX_OPTIONS } },
+        hint: { key: "validation.options_too_many_hint", params: { count: count - MAX_OPTIONS } },
+      },
+      { count, maximum: MAX_OPTIONS },
     );
   }
 
@@ -175,10 +239,10 @@ export function validateSurveySettings(
     // silently let "Instagram" and "instagram" become two separate channels
     // and split the same source's revenue across two rows.
     if (taken.has(slug)) {
-      throw new ValidationError(
-        `Two options are the same: "${label}".`,
-        "Make each answer option distinct.",
-        { field: `options.${index}.label` },
+      throw invalid(
+        `options.${index}.label`,
+        { message: `Two options are the same: "${label}".`, hint: "Make each answer option distinct." },
+        { message: { key: "validation.duplicate_channel" }, hint: { key: "validation.duplicate_channel_hint" } },
       );
     }
     taken.add(slug);
@@ -217,6 +281,29 @@ export const DEFAULT_OPTIONS: SurveyOption[] = [
   { value: "friend-or-family", label: "Friend or family", emoji: null },
   { value: "in-store", label: "In store", emoji: null },
 ];
+
+/** Must match the `questionText` default in `prisma/schema.prisma`. */
+export const DEFAULT_QUESTION_TEXT = "How did you hear about us?";
+
+/**
+ * Whether a shop's survey is still exactly the English defaults it was
+ * installed with.
+ *
+ * New shops are seeded in English whatever the merchant's language, so a
+ * German store shows German buyers an English question until someone edits
+ * it. The Survey page uses this to offer the defaults in the merchant's own
+ * language. Emoji are ignored: adding one is not rewording.
+ */
+export function isUntouchedDefaultSurvey(questionText: string, options: ReadonlyArray<SurveyOption>): boolean {
+  return (
+    questionText === DEFAULT_QUESTION_TEXT &&
+    options.length === DEFAULT_OPTIONS.length &&
+    options.every(
+      (option, index) =>
+        option.value === DEFAULT_OPTIONS[index]?.value && option.label === DEFAULT_OPTIONS[index]?.label,
+    )
+  );
+}
 
 export const OTHER_CHANNEL_VALUE = "other";
 

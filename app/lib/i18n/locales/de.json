@@ -7,7 +7,7 @@
     "label": "Hauptnavigation",
     "dashboard": "Übersicht",
     "onboarding": "Erste Schritte",
-    "settings": "Einstellungen",
+    "settings": "Umfrage",
     "export": "Export",
     "plans": "Tarife",
     "help": "Hilfe"
@@ -74,10 +74,12 @@
     "range_label": "Zeitraum",
     "last_7": "Letzte 7 Tage",
     "last_30": "Letzte 30 Tage",
-    "last_90": "Letzte 90 Tage"
+    "last_90": "Letzte 90 Tage",
+    "channel_other": "Sonstiges",
+    "edit_survey": "Umfrage bearbeiten"
   },
   "settings": {
-    "title": "Einstellungen",
+    "title": "Umfrage",
     "subtitle": "Dies ist die Frage, die Käufer nach ihrer Bestellung sehen.",
     "saved_title": "Änderungen gespeichert",
     "saved_body": "Gespeichert. Ihre Frage ist ab dem nächsten Checkout live.",
@@ -108,7 +110,10 @@
     "save_button": "Änderungen speichern",
     "language_panel_title": "Sprache",
     "language_panel_description": "Wählen Sie die Sprache für SourceTrac. Die Änderung gilt sofort.",
-    "language_label": "App-Sprache"
+    "language_label": "App-Sprache",
+    "defaults_banner_title": "Ihre Umfrage ist noch auf Englisch",
+    "defaults_banner_body": "Käufer sehen Ihre Frage und Antwortoptionen genau so, wie sie unten stehen. Übernehmen Sie die deutsche Formulierung, prüfen Sie sie und speichern Sie.",
+    "defaults_banner_cta": "Deutsche Formulierung übernehmen"
   },
   "onboarding": {
     "title": "Erste Schritte",
@@ -146,7 +151,8 @@
     "columns_note": "Spalten: {{columns}}. Die Datei enthält keine Kundennamen, E-Mail-Adressen oder Anschriften.",
     "download": "CSV herunterladen",
     "preview_title": "Vorschau",
-    "preview_description": "Ihre {{count}} neuesten Antworten, genau wie im Export."
+    "preview_description": "Ihre {{count}} neuesten Antworten, genau wie im Export.",
+    "download_failed": "Der Download wurde nicht gestartet. Bitte versuchen Sie es gleich noch einmal."
   },
   "plans": {
     "title": "Tarife",
@@ -173,14 +179,55 @@
     "cancel_body": "Ihre Antworten bleiben gespeichert und Ihre Umfrage funktioniert weiter. Sie verlieren die unbegrenzten Antworten.",
     "cancel_confirm": "Tarif kündigen",
     "keep_plan": "Tarif behalten",
-    "not_available": "Die Abrechnung ist derzeit nicht verfügbar. Bitte versuchen Sie es in Kürze erneut."
+    "not_available": "Die Abrechnung ist derzeit nicht verfügbar. Bitte versuchen Sie es in Kürze erneut.",
+    "current_banner": "Sie nutzen {{plan}}",
+    "on_free": "Sie nutzen den kostenlosen Tarif.",
+    "switch_free": "Zu Kostenlos wechseln",
+    "feature_responses": "{{cap}} Umfrageantworten pro Monat",
+    "feature_revenue": "Umsatz und durchschnittlicher Bestellwert pro Kanal",
+    "feature_trends": "Trends über 7, 30 und 90 Tage",
+    "feature_csv": "CSV-Export",
+    "feature_unlimited": "Unbegrenzte Umfrageantworten",
+    "feature_everything_free": "Alles aus Kostenlos",
+    "feature_everything_growth": "Alles aus Wachstum",
+    "feature_priority_support": "Bevorzugter Support",
+    "billing_title": "So funktioniert die Abrechnung",
+    "billing_body": "Die Gebühren erscheinen auf Ihrer Shopify-Rechnung neben Ihren anderen App-Abos. SourceTrac speichert niemals Ihre Kartendaten — Shopify wickelt die Zahlung ab und teilt uns mit, wenn ein Abo beginnt, sich ändert oder endet.",
+    "msg_shopify_unreachable": "Wir konnten Shopify für die Abrechnung nicht erreichen. Öffnen Sie die App erneut über Ihre Shopify-Administration und versuchen Sie es noch einmal.",
+    "msg_lookup_failed": "Wir konnten Shopify nicht erreichen, um Ihr Abo zu finden. Bitte versuchen Sie es gleich noch einmal.",
+    "msg_already_free": "Sie nutzen bereits den Tarif Kostenlos.",
+    "msg_cancel_failed": "Shopify konnte das Abo nicht kündigen: {{error}}",
+    "msg_cancelled": "Abo gekündigt. Sie sind wieder im Tarif Kostenlos mit {{cap}} Antworten pro Monat.",
+    "msg_subscribe_failed": "Shopify konnte das Abo nicht starten: {{error}}",
+    "msg_subscription_created": "Abo erstellt. Falls Sie nicht zu einer Bestätigungsseite weitergeleitet wurden, prüfen Sie die Abrechnungsseite in Ihrer Shopify-Administration.",
+    "msg_plan_unavailable": "Dieser Tarif ist nicht verfügbar."
   },
   "help": {
     "title": "Hilfe",
     "subtitle": "Antworten auf die Fragen, die uns am häufigsten gestellt werden.",
     "contact_title": "Noch nicht weitergekommen?",
     "contact_body": "Schildern Sie uns, was passiert, und wir schauen uns das an.",
-    "contact_cta": "Support kontaktieren"
+    "contact_cta": "Support kontaktieren",
+    "faq_title": "Häufige Fragen",
+    "contact_tip": "Bevor Sie schreiben: Fehlt die Umfrage, hilft meist die Prüfung im Checkout-Editor aus den ersten beiden Antworten oben.",
+    "q_create": "Wie erstelle ich meine Umfrage?",
+    "a_create": "Ihre Umfrage wird bei der Installation von SourceTrac automatisch erstellt, mit einer fertigen Frage und sechs Antwortoptionen. Frage und Optionen ändern Sie auf der Seite „Umfrage“. Damit Käufer sie sehen: Öffnen Sie in Ihrer Shopify-Administration Einstellungen › Checkout, klicken Sie auf Anpassen, wählen Sie oben im Seitenmenü die Bestellbestätigungsseite und fügen Sie den SourceTrac-App-Block hinzu. Wiederholen Sie das für die Bestellstatusseite und speichern Sie.",
+    "q_not_showing": "Warum erscheint die Frage nicht auf meiner Bestellbestätigungsseite?",
+    "a_not_showing": "Prüfen Sie drei Dinge. Erstens muss der SourceTrac-Block im Checkout-Editor (Einstellungen › Checkout › Anpassen) auf der Bestellbestätigungsseite hinzugefügt und sichtbar sein. Zweitens bietet Shopify die Bestellbestätigungs- und Bestellstatusseite im Starter-Tarif nicht an — prüfen Sie Ihren Tarif in Ihrer Shopify-Administration. Drittens kann es nach der Installation eine Minute dauern, bis die erste Bestellung eintrifft.",
+    "q_both_pages": "Warum sieht ein Käufer die Frage auf der Bestellbestätigungs- und der Bestellstatusseite?",
+    "a_both_pages": "Das sollte nicht passieren. Sobald eine Bestellung eine Antwort hat, blendet SourceTrac die Frage für diese Bestellung überall aus, sodass jeder Käufer nur einmal gefragt wird.",
+    "q_missing_revenue": "Warum fehlt bei einer meiner Antworten der Umsatz?",
+    "a_missing_revenue": "Der Käufer hat geantwortet, kurz bevor Shopify uns die Bestellung geschickt hat. Wir hatten also die Antwort, aber noch nicht den Bestellwert. Der Umsatz erscheint meist innerhalb einer Minute. Fehlt er nach einem Tag noch, wird die Antwort als ausstehend angezeigt statt als null gezählt, damit Ihre Summen ehrlich bleiben.",
+    "q_refunds": "Was passiert mit erstatteten Bestellungen?",
+    "a_refunds": "Erstattete Beträge werden vor der Zuordnung von der Bestellsumme abgezogen, sodass eine erstattete Bestellung wenig oder nichts beiträgt. Stornierte und Testbestellungen werden beim Umsatz komplett ausgeschlossen. Testbestellungen zählen auch nicht zu Ihrer Antwortrate.",
+    "q_limit": "Ich habe mein kostenloses Limit erreicht. Habe ich Antworten verloren?",
+    "a_limit": "Nein. Antworten werden weiterhin gesammelt, gespeichert und in Ihren Dashboard-Summen gezählt. Nichts wird ausgeblendet. Ein Upgrade entfernt nur das monatliche Limit.",
+    "q_privacy": "Fragt SourceTrac Daten über meine Kunden ab?",
+    "a_privacy": "Nein. Wir speichern nur die Bestell-ID, den gewählten Kanal und die Uhrzeit. Wir erfassen niemals Namen, E-Mail-Adressen oder Anschriften, und Ihr CSV-Export enthält keine Kundendaten.",
+    "q_change": "Kann ich die Frage nach dem Livegang ändern?",
+    "a_change": "Ja. Ändern Sie Wortlaut oder Optionen jederzeit auf der Seite „Umfrage“. Die neue Version gilt ab der nächsten Bestellung. Bereits gesammelte Antworten behalten ihren ursprünglichen Kanal.",
+    "q_cancel": "Wie kündige ich?",
+    "a_cancel": "Kündigen Sie auf der Seite „Tarife“. Ihre Umfrage läuft im Tarif Kostenlos mit {{cap}} Antworten pro Monat weiter, und nichts wird gelöscht."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac ist in Ihrem Tarif nicht verfügbar",
@@ -222,7 +269,9 @@
     "options_invalid_hint": "Laden Sie die Seite neu und versuchen Sie es erneut.",
     "other_invalid": "Die Einstellung „Sonstiges“ wurde nicht verstanden.",
     "other_invalid_hint": "Laden Sie die Seite neu und versuchen Sie es erneut.",
-    "settings_invalid": "Ihre Einstellungen konnten nicht gelesen werden."
+    "settings_invalid": "Ihre Einstellungen konnten nicht gelesen werden.",
+    "emoji_invalid": "Dieses Emoji ist ungültig.",
+    "emoji_invalid_hint": "Verwenden Sie ein einzelnes Emoji oder lassen Sie das Feld leer."
   },
   "errors": {
     "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
@@ -230,11 +279,22 @@
     "not_found_body": "Diese Seite existiert nicht.",
     "not_found_cta": "Zur Übersicht",
     "shop_missing_title": "Dieser Shop ist noch nicht installiert",
-    "shop_missing_body": "Öffnen Sie SourceTrac erneut aus Ihrer Shopify-Administration, um es neu zu installieren."
+    "shop_missing_body": "Öffnen Sie SourceTrac erneut aus Ihrer Shopify-Administration, um es neu zu installieren.",
+    "boundary_title": "Etwas ist schiefgelaufen",
+    "reference": "Referenz: {{reference}}"
   },
   "a11y": {
     "skip_to_content": "Zum Hauptinhalt springen",
     "breadcrumb": "Brotkrümelnavigation",
     "decorative": "dekorativ"
+  },
+  "survey_defaults": {
+    "question": "Wie haben Sie von uns erfahren?",
+    "google": "Google-Suche",
+    "instagram": "Instagram",
+    "facebook": "Facebook",
+    "tiktok": "TikTok",
+    "friend-or-family": "Freunde oder Familie",
+    "in-store": "Im Geschäft"
   }
 }

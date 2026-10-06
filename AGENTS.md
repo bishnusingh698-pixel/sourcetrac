@@ -708,3 +708,45 @@ The repo's default branch is **`sourcetrac-v1`**, not `main`.
   `PrismaClientValidationError` and no merchant could open the app. Local
   simulations that pre-seed a session never call `storeSession` and miss
   this; `tests/db-session-storage.test.ts` drives the real storage.
+
+## Translation coverage (fixed 2026-10-06)
+
+The locale files were complete, but Dashboard, Survey (settings), Export, Plans
+and Help hardcoded English, so a German merchant saw German navigation around
+English pages. Every admin page now translates; `tests/unit/i18n-call-params.test.ts`
+fails if a page under `app/routes/app.*.tsx` stops using a translator.
+
+- **Child pages read the shell's language with `useAdminI18n()`**
+  (`app/lib/i18n/use-admin-i18n.ts`), via `useRouteLoaderData("routes/app")`.
+  Loaders that format money or dates on the server use
+  `resolveAdminLanguage(request, shop.language)`; they cannot wait for the shell,
+  which loads in parallel. Page titles use `adminTitle(matches, key)` in `meta`.
+- **Actions return translation keys, not English.** Settings and Plans return
+  `{ key, params }` (`I18nText`), and the component calls `t()`. Validation
+  errors carry `fields.i18n`; read it with `validationI18n(error)`.
+- **`i18n-usage.test.ts` accepts `foo_one`/`foo_other` as defining `foo`**, which
+  is how `shell.cap_warning_body` shipped without `count` and rendered its raw
+  key. `i18n-call-params.test.ts` now checks every literal `t()` call passes
+  `count` for plural-only keys and every `{{placeholder}}` its string uses.
+- **Plan names are translated per locale** ("Kostenlos", "Gratuit", "無料"). New
+  strings must use the locale's own name, never "Free"/"Growth"/"Scale".
+- **German uses formal "Sie"**; es/it/nl/pt-BR/sv use the informal form.
+- **The checkout extensions have their own `locales/`** (`en.default.json` plus
+  one file per language) in *both* extension directories. Without them every
+  buyer saw English.
+- **New shops are seeded with the English survey.** The Survey page offers the
+  defaults in the merchant's language (`survey_defaults.*`) while the survey is
+  untouched and has no answers. After the first answer, rewording would re-key
+  a channel and split its history, so the offer disappears.
+- **`slugifyChannel` keeps letters from any script.** The old `[^a-z0-9]` rule
+  turned every Chinese/Japanese/Cyrillic label into `"channel"`, so a second
+  such option was rejected as a duplicate. Latin slugs are byte-identical to
+  before, which the tests pin.
+- **The "Other" choice is added by the extension** (`surveyChoices`). The config
+  only lists the merchant's options, so before this the "Allow a free-text
+  answer" switch had no effect for buyers.
+- **Step 1 of onboarding links to the checkout editor**
+  (`/settings/checkout/editor`), opened with `target="_top"`. It used to link to
+  the Online Store theme editor, where the block cannot be found. The
+  `?page=thank-you` parameter could not be verified against shopify.dev (blocked
+  from this container); without it the editor still opens.

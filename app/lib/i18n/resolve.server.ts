@@ -91,3 +91,17 @@ export function languageSwitchHref(
 
   return `${url.pathname}${url.search}`;
 }
+/**
+ * The language for an admin request, from the same inputs in the same order as
+ * the shell loader. For loaders that format text on the server (money, dates)
+ * and so cannot wait for the shell's data, which loads in parallel.
+ */
+export function resolveAdminLanguage(request: Request, saved: string | null | undefined): LanguageCode {
+  const url = new URL(request.url);
+  return resolveRequestLanguage({
+    requested: url.searchParams.get("lng"),
+    saved,
+    shopifyLocale: url.searchParams.get("locale"),
+    acceptLanguage: request.headers.get("accept-language"),
+  });
+}

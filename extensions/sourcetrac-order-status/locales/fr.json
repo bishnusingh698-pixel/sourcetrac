@@ -1,0 +1,10 @@
+{
+  "sourcetrac": {
+    "loading": "Chargement…",
+    "thanks": "Merci !",
+    "other": "Autre",
+    "otherLabel": "Dites-nous en plus (facultatif)",
+    "sending": "Envoi…",
+    "submit": "Envoyer"
+  }
+}

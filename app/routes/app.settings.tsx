@@ -11,18 +11,24 @@ import { Banner, Panel } from "~/components/admin-ui";
 import { ValidationError } from "~/lib/errors";
 import { logger } from "~/lib/logger";
 import {
+  DEFAULT_OPTIONS,
   EMOJI_MAX_LENGTH,
+  isUntouchedDefaultSurvey,
   MAX_OPTION_LABEL_LENGTH,
   MAX_OPTIONS,
   MAX_QUESTION_LENGTH,
   MIN_OPTIONS,
   parseSurveySettings,
   validateSurveySettings,
+  validationI18n,
+  type I18nText,
 } from "~/lib/settings";
+import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import { updateSettings } from "~/lib/shop.server";
 import { ensureShop } from "~/lib/provision.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
+import { db } from "~/db.server";
 
 /**
  * Survey settings: the question text and its answer options.
@@ -40,7 +46,7 @@ import { authenticate } from "~/shopify.server";
  * form and the API. Errors come back keyed by field and render inline.
  */
 
-export const meta: MetaFunction = () => [{ title: "Settings — SourceTrac" }];
+export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "settings.title");
 
 type DraftOption = { value: string; label: string; emoji: string };
 
@@ -63,14 +69,23 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
 
+  const options = parseSurveySettings(shop.optionsJson, {
+    questionText: shop.questionText,
+    options: [],
+    allowOther: shop.allowOther,
+  }).options;
+
+  // Offer translated defaults only before the first answer. Rewording an
+  // option changes its channel key, so doing it after answers exist would
+  // split one channel's history across two rows.
+  const untouched = isUntouchedDefaultSurvey(shop.questionText, options);
+  const hasResponses = untouched ? (await db.surveyResponse.count({ where: { shopId: shop.id }, take: 1 })) > 0 : true;
+
   return {
     questionText: shop.questionText,
     allowOther: shop.allowOther,
-    options: parseSurveySettings(shop.optionsJson, {
-      questionText: shop.questionText,
-      options: [],
-      allowOther: shop.allowOther,
-    }).options,
+    options,
+    offerTranslatedDefaults: untouched && !hasResponses,
     min: MIN_OPTIONS,
     max: MAX_OPTIONS,
   };
@@ -112,19 +127,26 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
 
     return {
       ok: true as const,
-      message: "Saved. Your question is live on the next checkout.",
-      hint: undefined,
-      fieldErrors: {} as Record<string, string>,
+      message: { key: "settings.saved_body" } as I18nText,
+      hint: undefined as I18nText | undefined,
+      fieldErrors: {} as Record<string, I18nText>,
     };
   } catch (error) {
     if (error instanceof ValidationError) {
       const field = error.fields.field;
+      // Keys, not English: the action cannot know which language the page
+      // is in, so the component translates. An error from a validator that
+      // predates the keys falls back to the generic message rather than
+      // showing English to a merchant reading Japanese.
+      const i18n = validationI18n(error) ?? { message: { key: "validation.settings_invalid" } };
       return {
         ok: false as const,
-        message: error.message,
-        hint: error.hint,
+        message: i18n.message,
+        hint: i18n.hint,
         fieldErrors:
-          typeof field === "string" ? { [field]: error.hint ?? error.message } : ({} as Record<string, string>),
+          typeof field === "string"
+            ? { [field]: i18n.hint ?? i18n.message }
+            : ({} as Record<string, I18nText>),
       };
     }
 
@@ -134,9 +156,9 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
     });
     return {
       ok: false as const,
-      message: "We could not save your changes. Your previous question is still live. Please try again.",
-      hint: undefined,
-      fieldErrors: {} as Record<string, string>,
+      message: { key: "settings.save_failed_body" } as I18nText,
+      hint: undefined as I18nText | undefined,
+      fieldErrors: {} as Record<string, I18nText>,
     };
   }
 });
@@ -144,17 +166,40 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
 export default function Settings() {
   const data = useLoaderData<typeof loader>();
   const fetcher = useFetcher<typeof action>();
+  const { t, language } = useAdminI18n();
+  const tx = (text: I18nText | undefined) => (text ? t(text.key, text.params) : undefined);
 
   const [options, setOptions] = useState<DraftOption[]>(
     // Stored options may have a null emoji; the editor works in plain strings.
     data.options.map((option) => ({ ...option, emoji: option.emoji ?? "" })),
   );
   const [allowOther, setAllowOther] = useState(data.allowOther);
+  const [questionText, setQuestionText] = useState(data.questionText);
+  const [usedTranslatedDefaults, setUsedTranslatedDefaults] = useState(false);
+
+  // Shown only to a non-English merchant whose survey is still the English
+  // install defaults: their buyers would otherwise be asked in English.
+  const showDefaultsOffer = data.offerTranslatedDefaults && language !== "en" && !usedTranslatedDefaults;
+
+  const applyTranslatedDefaults = () => {
+    setQuestionText(t("survey_defaults.question"));
+    setOptions(
+      DEFAULT_OPTIONS.map((option) => ({
+        value: option.value,
+        label: t(`survey_defaults.${option.value}`),
+        emoji: option.emoji ?? "",
+      })),
+    );
+    setUsedTranslatedDefaults(true);
+  };
 
   const saving = fetcher.state !== "idle";
   const result = fetcher.data;
   const fieldErrors = result?.fieldErrors ?? {};
-  const countError = fieldErrors.options;
+  const countError = tx(fieldErrors.options);
+  /** Accessible name for an option, even before the merchant has typed one. */
+  const nameOf = (option: DraftOption, index: number) =>
+    option.label || t("settings.default_option_label", { number: index + 1 });
 
   const move = (index: number, delta: number) => {
     setOptions((current) => {
@@ -188,42 +233,55 @@ export default function Settings() {
 
   return (
     <s-stack gap="base">
-      <s-section
-        heading="Settings"
-        subheading="This is the question buyers see after they order."
-        padding="none"
-      />
+      <s-section heading={t("settings.title")} subheading={t("settings.subtitle")} padding="none" />
 
       {result ? (
-        <Banner tone={result.ok ? "success" : "critical"} heading={result.ok ? "Changes saved" : "Could not save"}>
+        <Banner
+          tone={result.ok ? "success" : "critical"}
+          heading={result.ok ? t("settings.saved_title") : t("settings.save_failed_title")}
+        >
           <s-stack gap="small">
-            <s-text>{result.message}</s-text>
-            {result.hint ? <s-text>{result.hint}</s-text> : null}
+            <s-text>{tx(result.message)}</s-text>
+            {result.hint ? <s-text>{tx(result.hint)}</s-text> : null}
+          </s-stack>
+        </Banner>
+      ) : null}
+
+      {showDefaultsOffer ? (
+        <Banner tone="info" heading={t("settings.defaults_banner_title")}>
+          <s-stack gap="small">
+            <s-text>{t("settings.defaults_banner_body")}</s-text>
+            <div>
+              <s-button type="button" variant="primary" onClick={applyTranslatedDefaults}>
+                {t("settings.defaults_banner_cta")}
+              </s-button>
+            </div>
           </s-stack>
         </Banner>
       ) : null}
 
       <fetcher.Form method="post">
         <s-stack gap="base">
-          <Panel title="Your question" description="Keep it short. One tap answers it.">
+          <Panel title={t("settings.question_panel_title")} description={t("settings.question_panel_description")}>
             <s-text-field
-              label="Question"
+              label={t("settings.field_question")}
               name="questionText"
-              defaultValue={data.questionText}
-              details="Shown at the top of the survey. Example: How did you hear about us?"
-              error={fieldErrors.questionText}
+              value={questionText}
+              onInput={(event) => setQuestionText(fieldValue(event))}
+              details={t("settings.field_question_details")}
+              error={tx(fieldErrors.questionText)}
               maxLength={MAX_QUESTION_LENGTH}
               required
             />
           </Panel>
 
           <Panel
-            title="Answer options"
-            description={`Between ${data.min} and ${data.max} options. Buyers tap one to answer.`}
+            title={t("settings.options_panel_title")}
+            description={t("settings.options_panel_description", { min: data.min, max: data.max })}
           >
             <s-stack gap="base">
               {countError ? (
-                <Banner tone="critical" heading="Fix your answer options">
+                <Banner tone="critical" heading={t("settings.options_error_title")}>
                   <s-text>{countError}</s-text>
                 </Banner>
               ) : null}
@@ -236,10 +294,11 @@ export default function Settings() {
                   alignItems="end"
                 >
                   <s-text-field
-                    label={index === 0 ? "Emoji" : "Emoji"}
+                    label={t("settings.field_emoji")}
                     name="emoji"
                     value={option.emoji}
                     maxLength={EMOJI_MAX_LENGTH}
+                    error={tx(fieldErrors[`options.${index}.emoji`])}
                     // The emoji is decorative; the adjacent label carries the
                     // meaning, so it is not announced twice.
                     labelAccessibilityVisibility="exclusive"
@@ -247,12 +306,12 @@ export default function Settings() {
                   />
 
                   <s-text-field
-                    label={index === 0 ? "Option" : "Option"}
+                    label={t("settings.field_option")}
                     name="label"
                     value={option.label}
                     maxLength={MAX_OPTION_LABEL_LENGTH}
                     required
-                    error={fieldErrors[`options.${index}.label`]}
+                    error={tx(fieldErrors[`options.${index}.label`])}
                     onInput={(event) => updateOption(index, { label: fieldValue(event) })}
                   />
 
@@ -265,30 +324,36 @@ export default function Settings() {
                       variant="tertiary"
                       icon="arrow-up"
                       disabled={index === 0}
-                      accessibilityLabel={`Move ${option.label || `option ${index + 1}`} up`}
+                      accessibilityLabel={t("settings.move_up", { label: nameOf(option, index) })}
                       onClick={() => move(index, -1)}
                     >
-                      <s-text accessibilityVisibility="exclusive">Move up</s-text>
+                      <s-text accessibilityVisibility="exclusive">
+                        {t("settings.move_up", { label: nameOf(option, index) })}
+                      </s-text>
                     </s-button>
                     <s-button
                       type="button"
                       variant="tertiary"
                       icon="arrow-down"
                       disabled={index === options.length - 1}
-                      accessibilityLabel={`Move ${option.label || `option ${index + 1}`} down`}
+                      accessibilityLabel={t("settings.move_down", { label: nameOf(option, index) })}
                       onClick={() => move(index, 1)}
                     >
-                      <s-text accessibilityVisibility="exclusive">Move down</s-text>
+                      <s-text accessibilityVisibility="exclusive">
+                        {t("settings.move_down", { label: nameOf(option, index) })}
+                      </s-text>
                     </s-button>
                     <s-button
                       type="button"
                       variant="tertiary"
                       icon="delete"
                       disabled={options.length <= data.min}
-                      accessibilityLabel={`Remove ${option.label || `option ${index + 1}`}`}
+                      accessibilityLabel={t("settings.remove_option", { label: nameOf(option, index) })}
                       onClick={() => removeOption(index)}
                     >
-                      <s-text accessibilityVisibility="exclusive">Remove</s-text>
+                      <s-text accessibilityVisibility="exclusive">
+                        {t("settings.remove_option", { label: nameOf(option, index) })}
+                      </s-text>
                     </s-button>
                   </s-button-group>
                 </s-grid>
@@ -302,28 +367,30 @@ export default function Settings() {
                 disabled={options.length >= data.max}
                 accessibilityLabel={
                   options.length >= data.max
-                    ? `Maximum of ${data.max} options reached`
-                    : "Add an answer option"
+                    ? t("settings.max_reached_aria", { max: data.max })
+                    : t("settings.add_option_aria")
                 }
               >
-                {options.length >= data.max ? `Maximum of ${data.max} options` : "Add option"}
+                {options.length >= data.max
+                  ? t("settings.max_reached", { max: data.max })
+                  : t("settings.add_option")}
               </s-button>
             </s-stack>
           </Panel>
 
-          <Panel title="Other answers" description="Let buyers type their own answer instead.">
+          <Panel title={t("settings.other_panel_title")} description={t("settings.other_panel_description")}>
             <s-switch
-              label="Allow a free-text answer"
+              label={t("settings.other_switch")}
               name="allowOther"
               value="true"
               checked={allowOther}
-              details="Adds an “Other” choice where buyers can type their own. Useful while you are still discovering channels."
+              details={t("settings.other_switch_details")}
               onChange={(event) => setAllowOther(switchChecked(event))}
             />
           </Panel>
 
           <s-button type="submit" variant="primary" loading={saving}>
-            Save changes
+            {t("settings.save_button")}
           </s-button>
         </s-stack>
       </fetcher.Form>

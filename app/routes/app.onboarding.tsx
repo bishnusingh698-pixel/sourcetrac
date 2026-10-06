@@ -4,7 +4,9 @@ import { Banner, Panel } from "~/components/admin-ui";
 import { LanguageForm } from "~/components/language-selector";
 import { db } from "~/db.server";
 import { createTranslator, isSupportedLanguage } from "~/lib/i18n";
-import { resolveRequestLanguage } from "~/lib/i18n/resolve.server";
+import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
+import { adminTitle } from "~/lib/i18n/use-admin-i18n";
+import { MAX_OPTIONS, MIN_OPTIONS } from "~/lib/settings";
 import { ensureShop } from "~/lib/provision.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
@@ -19,7 +21,7 @@ import { authenticate } from "~/shopify.server";
  * extension block is toggled.
  */
 
-export const meta: MetaFunction = () => [{ title: "Get started — SourceTrac" }];
+export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "onboarding.title");
 
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -29,23 +31,15 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     db.surveyResponse.count({ where: { shopId: shop.id } }),
     db.orderCache.count({ where: { shopId: shop.id } }),
   ]);
-  const url = new URL(request.url);
-
   return {
     shopDomain: shop.shopDomain,
     hasResponses: responseCount > 0,
     hasOrders: orderCount > 0,
-    checkoutSupported: shop.checkoutSupported,
     hasOther: shop.allowOther,
     // Resolved here rather than read from the shell's loader data so this page
     // can translate itself. Same inputs in the same order, so the two can never
     // disagree about which language is on screen.
-    language: resolveRequestLanguage({
-      requested: url.searchParams.get("lng"),
-      saved: shop.language,
-      shopifyLocale: url.searchParams.get("locale"),
-      acceptLanguage: request.headers.get("accept-language"),
-    }),
+    language: resolveAdminLanguage(request, shop.language),
     /**
      * False until the merchant picks a language themselves. While it is false the
      * picker is offered here as step 1; once they choose, the shell's permanent
@@ -63,7 +57,14 @@ export default function Onboarding() {
 
   // The checkout editor URL is admin-only and needs the shop handle. Building it
   // here keeps the link correct per store rather than hardcoding a path.
-  const editorUrl = `https://admin.shopify.com/store/${data.shopDomain.replace(/\.myshopify\.com$/, "")}/themes/current/editor`;
+  //
+  // This must be the *checkout* editor (Settings › Checkout › Customize), not
+  // the Online Store theme editor (`/themes/current/editor`) it once pointed
+  // at. Thank-you and order-status blocks are checkout UI extensions and only
+  // exist in the checkout editor, so the old link sent merchants somewhere the
+  // SourceTrac block could never be found. `page=thank-you` opens the editor on
+  // the page the block belongs to.
+  const editorUrl = `https://admin.shopify.com/store/${data.shopDomain.replace(/\.myshopify\.com$/, "")}/settings/checkout/editor?page=thank-you`;
 
   const steps: Step[] = [
     {
@@ -74,7 +75,9 @@ export default function Onboarding() {
     },
     {
       title: t("onboarding.step2_title"),
-      body: data.hasOther ? t("onboarding.step2_body_other") : t("onboarding.step2_body"),
+      body: data.hasOther
+        ? t("onboarding.step2_body_other")
+        : t("onboarding.step2_body", { min: MIN_OPTIONS, max: MAX_OPTIONS }),
       done: false,
       action: { label: t("onboarding.step2_action"), href: "/app/settings" },
     },
@@ -113,13 +116,7 @@ export default function Onboarding() {
         </Panel>
       ) : null}
 
-      {data.checkoutSupported === false ? (
-        <Banner tone="warning" heading="SourceTrac is not available on your Shopify plan">
-          The survey appears on the thank-you and order status pages, which Shopify does not make
-          available on the Starter plan. Upgrade your Shopify plan to start collecting answers.
-          Everything else in SourceTrac is ready for when you do.
-        </Banner>
-      ) : null}
+      {/* Plan-blocked is shown by the shell on every page, so not repeated here. */}
 
       <Panel title={t("onboarding.progress_title", { count: complete, done: complete, total: steps.length })}>
         <s-stack gap="base">
@@ -136,7 +133,15 @@ export default function Onboarding() {
                   <s-text color="subdued">{step.body}</s-text>
                   {step.action ? (
                     <div>
-                      <s-link href={step.action.href}>{step.action.label}</s-link>
+                      {/* Shopify admin pages refuse to render inside the app's
+                          iframe, so the checkout editor opens in the top
+                          window. In-app links stay in the frame. */}
+                      <s-link
+                        href={step.action.href}
+                        target={step.action.href.startsWith("https://") ? "_top" : "auto"}
+                      >
+                        {step.action.label}
+                      </s-link>
                     </div>
                   ) : null}
                 </s-stack>
@@ -147,11 +152,7 @@ export default function Onboarding() {
       </Panel>
 
       <Banner tone="info" heading={t("onboarding.why_title")}>
-        <s-text>
-          Shopify does not tell apps whether a checkout block is switched on, so we cannot tick this
-          for you. If the survey is not appearing on your thank-you page, check that the SourceTrac
-          block is added and visible there.
-        </s-text>
+        <s-text>{t("onboarding.why_body")}</s-text>
       </Banner>
     </s-stack>
   );

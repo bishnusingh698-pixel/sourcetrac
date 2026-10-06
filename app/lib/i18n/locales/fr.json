@@ -7,7 +7,7 @@
     "label": "Navigation principale",
     "dashboard": "Tableau de bord",
     "onboarding": "Prise en main",
-    "settings": "Paramètres",
+    "settings": "Sondage",
     "export": "Export",
     "plans": "Forfaits",
     "help": "Aide"
@@ -74,10 +74,12 @@
     "range_label": "Période",
     "last_7": "7 derniers jours",
     "last_30": "30 derniers jours",
-    "last_90": "90 derniers jours"
+    "last_90": "90 derniers jours",
+    "channel_other": "Autre",
+    "edit_survey": "Modifier votre sondage"
   },
   "settings": {
-    "title": "Paramètres",
+    "title": "Sondage",
     "subtitle": "Voici la question que vos clients voient après leur commande.",
     "saved_title": "Modifications enregistrées",
     "saved_body": "Enregistré. Votre question sera en ligne dès le prochain paiement.",
@@ -108,7 +110,10 @@
     "save_button": "Enregistrer les modifications",
     "language_panel_title": "Langue",
     "language_panel_description": "Choisissez la langue utilisée par SourceTrac. La modification est immédiate.",
-    "language_label": "Langue de l'application"
+    "language_label": "Langue de l'application",
+    "defaults_banner_title": "Votre sondage est encore en anglais",
+    "defaults_banner_body": "Les acheteurs voient votre question et vos options exactement comme elles sont écrites ci-dessous. Utilisez la formulation en français, vérifiez-la, puis enregistrez.",
+    "defaults_banner_cta": "Utiliser la formulation en français"
   },
   "onboarding": {
     "title": "Prise en main",
@@ -146,7 +151,8 @@
     "columns_note": "Colonnes : {{columns}}. Le fichier ne contient aucun nom de client, e-mail ni adresse.",
     "download": "Télécharger le CSV",
     "preview_title": "Aperçu",
-    "preview_description": "Vos {{count}} réponses les plus récentes, exactement telles qu'elles seront exportées."
+    "preview_description": "Vos {{count}} réponses les plus récentes, exactement telles qu'elles seront exportées.",
+    "download_failed": "Le téléchargement n'a pas démarré. Réessayez dans un instant."
   },
   "plans": {
     "title": "Forfaits",
@@ -173,14 +179,55 @@
     "cancel_body": "Vos réponses restent enregistrées et votre sondage continue de fonctionner. Vous perdez les réponses illimitées.",
     "cancel_confirm": "Annuler le forfait",
     "keep_plan": "Conserver mon forfait",
-    "not_available": "La facturation est indisponible pour le moment. Veuillez réessayer sous peu."
+    "not_available": "La facturation est indisponible pour le moment. Veuillez réessayer sous peu.",
+    "current_banner": "Vous êtes sur le forfait {{plan}}",
+    "on_free": "Vous êtes sur le forfait gratuit.",
+    "switch_free": "Passer à Gratuit",
+    "feature_responses": "{{cap}} réponses au sondage par mois",
+    "feature_revenue": "Chiffre d'affaires et panier moyen par canal",
+    "feature_trends": "Tendances sur 7, 30 et 90 jours",
+    "feature_csv": "Export CSV",
+    "feature_unlimited": "Réponses au sondage illimitées",
+    "feature_everything_free": "Tout ce qu'inclut Gratuit",
+    "feature_everything_growth": "Tout ce qu'inclut Croissance",
+    "feature_priority_support": "Assistance prioritaire",
+    "billing_title": "Fonctionnement de la facturation",
+    "billing_body": "Les frais apparaissent sur votre facture Shopify avec vos autres abonnements d'applications. SourceTrac ne conserve jamais vos données de carte — Shopify gère le paiement et nous indique quand un abonnement commence, change ou se termine.",
+    "msg_shopify_unreachable": "Impossible de joindre Shopify pour gérer la facturation. Rouvrez l'application depuis l'administration Shopify et réessayez.",
+    "msg_lookup_failed": "Impossible de joindre Shopify pour retrouver votre abonnement. Réessayez dans un instant.",
+    "msg_already_free": "Vous êtes déjà sur le forfait Gratuit.",
+    "msg_cancel_failed": "Shopify n'a pas pu annuler l'abonnement : {{error}}",
+    "msg_cancelled": "Abonnement annulé. Vous êtes de retour sur le forfait Gratuit avec {{cap}} réponses par mois.",
+    "msg_subscribe_failed": "Shopify n'a pas pu démarrer l'abonnement : {{error}}",
+    "msg_subscription_created": "Abonnement créé. Si vous n'avez pas été redirigé vers une page de confirmation, consultez la page de facturation de votre administration Shopify.",
+    "msg_plan_unavailable": "Ce forfait n'est pas disponible."
   },
   "help": {
     "title": "Aide",
     "subtitle": "Réponses aux questions qu'on nous pose le plus.",
     "contact_title": "Toujours bloqué ?",
     "contact_body": "Dites-nous ce qui se passe et nous jetterons un œil.",
-    "contact_cta": "Contacter le support"
+    "contact_cta": "Contacter le support",
+    "faq_title": "Questions fréquentes",
+    "contact_tip": "Avant d'écrire : si le sondage n'apparaît pas, la vérification dans l'éditeur de paiement décrite dans les deux premières réponses ci-dessus règle généralement le problème.",
+    "q_create": "Comment créer mon sondage ?",
+    "a_create": "Votre sondage est créé automatiquement à l'installation de SourceTrac, avec une question prête à l'emploi et six options de réponse. Modifiez la question et les options sur la page Sondage. Pour qu'il soit visible des acheteurs : dans l'administration Shopify, allez dans Paramètres › Paiement, cliquez sur Personnaliser, choisissez la page de confirmation de commande dans le menu des pages en haut et ajoutez le bloc d'application SourceTrac. Faites de même pour la page de statut de commande, puis enregistrez.",
+    "q_not_showing": "Pourquoi la question n'apparaît-elle pas sur ma page de confirmation de commande ?",
+    "a_not_showing": "Trois points à vérifier. D'abord, le bloc SourceTrac doit être ajouté à la page de confirmation de commande dans votre éditeur de paiement (Paramètres › Paiement › Personnaliser) et être visible. Ensuite, Shopify ne propose pas les pages de confirmation et de statut de commande avec le forfait Starter — vérifiez votre forfait dans l'administration Shopify. Enfin, si vous venez d'installer l'application, la première commande peut mettre une minute à arriver.",
+    "q_both_pages": "Pourquoi un acheteur voit-il la question sur la page de confirmation de commande et sur la page de statut de commande ?",
+    "a_both_pages": "Cela ne devrait pas arriver. Dès qu'une commande a une réponse, SourceTrac masque la question partout pour cette commande : chaque acheteur n'est interrogé qu'une seule fois.",
+    "q_missing_revenue": "Pourquoi une de mes réponses n'a-t-elle pas de chiffre d'affaires ?",
+    "a_missing_revenue": "L'acheteur a répondu juste avant que Shopify nous envoie la commande : nous avions sa réponse, mais pas encore le montant. Le chiffre d'affaires apparaît généralement en moins d'une minute. S'il manque encore après un jour, la réponse est affichée en attente plutôt que comptée à zéro, pour que vos totaux restent fiables.",
+    "q_refunds": "Que deviennent les commandes remboursées ?",
+    "a_refunds": "Le montant remboursé est déduit du total de la commande avant l'attribution : une commande remboursée compte donc peu ou pas du tout. Les commandes annulées et de test sont entièrement exclues du chiffre d'affaires. Les commandes de test sont aussi exclues de votre taux de réponse.",
+    "q_limit": "J'ai atteint ma limite gratuite. Ai-je perdu mes réponses ?",
+    "a_limit": "Non. Les réponses continuent d'être collectées, enregistrées et comptées dans les totaux de votre tableau de bord. Rien n'est masqué. Passer à un forfait supérieur supprime seulement la limite mensuelle.",
+    "q_privacy": "SourceTrac demande-t-il des informations sur mes clients ?",
+    "a_privacy": "Non. Nous enregistrons uniquement l'identifiant de commande, le canal choisi par l'acheteur et l'heure. Nous ne collectons jamais de noms, d'e-mails ni d'adresses, et votre export CSV ne contient aucune donnée client.",
+    "q_change": "Puis-je modifier la question après sa mise en ligne ?",
+    "a_change": "Oui. Modifiez le libellé ou les options sur la page Sondage à tout moment. La nouvelle version s'applique dès la commande suivante. Les réponses déjà collectées conservent leur canal d'origine.",
+    "q_cancel": "Comment résilier ?",
+    "a_cancel": "Résiliez depuis la page Forfaits. Votre sondage continue de fonctionner avec le forfait Gratuit et {{cap}} réponses par mois, et rien n'est supprimé."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac n'est pas disponible avec votre forfait",
@@ -222,7 +269,9 @@
     "options_invalid_hint": "Rechargez la page et réessayez.",
     "other_invalid": "Le paramètre « Autre » n'a pas été compris.",
     "other_invalid_hint": "Rechargez la page et réessayez.",
-    "settings_invalid": "Nous n'avons pas pu lire vos paramètres."
+    "settings_invalid": "Nous n'avons pas pu lire vos paramètres.",
+    "emoji_invalid": "Cet emoji n'est pas valide.",
+    "emoji_invalid_hint": "Utilisez un seul emoji, ou laissez le champ vide."
   },
   "errors": {
     "generic": "Une erreur s'est produite. Veuillez réessayer.",
@@ -230,11 +279,22 @@
     "not_found_body": "Cette page n'existe pas.",
     "not_found_cta": "Aller au tableau de bord",
     "shop_missing_title": "Cette boutique n'est pas encore installée",
-    "shop_missing_body": "Rouvrez SourceTrac depuis votre administration Shopify pour la réinstaller."
+    "shop_missing_body": "Rouvrez SourceTrac depuis votre administration Shopify pour la réinstaller.",
+    "boundary_title": "Un problème est survenu",
+    "reference": "Référence : {{reference}}"
   },
   "a11y": {
     "skip_to_content": "Aller au contenu principal",
     "breadcrumb": "Fil d'Ariane",
     "decorative": "décoratif"
+  },
+  "survey_defaults": {
+    "question": "Comment avez-vous entendu parler de nous ?",
+    "google": "Recherche Google",
+    "instagram": "Instagram",
+    "facebook": "Facebook",
+    "tiktok": "TikTok",
+    "friend-or-family": "Ami ou famille",
+    "in-store": "En magasin"
   }
 }

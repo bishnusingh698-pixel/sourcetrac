@@ -101,7 +101,8 @@ export type LanguageSelectorLabels = {
   confirm: string;
   detected: string;
   change: string;
-  current: string;
+  /** "Current language: Deutsch". A function so the name is interpolated by i18next. */
+  current: (name: string) => string;
 };
 
 export type LanguageSelectorProps = {
@@ -185,7 +186,7 @@ export function LanguageSelector({
             the app re-rendered rather than left in silence. `s-text` has no
             `role` attribute, so the live region is a plain element. */}
         <div role="status" aria-live="polite" className="st-visually-hidden">
-          {labels.current.replace("{{name}}", endonym(pending))}
+          {labels.current(endonym(pending))}
         </div>
       </s-stack>
     );
@@ -318,7 +319,7 @@ export function LanguageForm({
         confirm: t("language.confirm"),
         detected: t("onboarding.language_detected"),
         change: t("language.change"),
-        current: t("language.current"),
+        current: (name) => t("language.current", { name }),
       }}
       onSelect={(code) => {
         // Already in this language: nothing to save, and a write here would
