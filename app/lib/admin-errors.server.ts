@@ -30,6 +30,15 @@ export function describeAdminFailure(error: unknown): AdminFailure {
       hint: "The app could not reach its database. Check DATABASE_URL on Render and that the Neon project is active, then reload.",
     };
   }
+  if (error instanceof Error && error.name === "PrismaClientValidationError") {
+    // The app's query names a field the generated client does not know: the
+    // schema and the code disagree. The argument name is safe to show.
+    const field = /Unknown (?:argument|field) `([^`]+)`/.exec(message)?.[1];
+    return {
+      reference: `schema_mismatch${field ? ` (${field})` : ""}`,
+      hint: "The app's database layout does not match its code. Redeploy the latest version on Render with the start command `npm run start`.",
+    };
+  }
   if (/Invalid environment configuration/.test(message)) {
     return {
       reference: "configuration_invalid",

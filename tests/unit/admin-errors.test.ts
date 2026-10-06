@@ -11,6 +11,13 @@ describe("admin failures reach the screen diagnosable", () => {
     );
   });
 
+  it("names a schema mismatch and the unknown field", () => {
+    const error = Object.assign(new Error("Invalid call:\nUnknown argument `refreshToken`."), {
+      name: "PrismaClientValidationError",
+    });
+    expect(describeAdminFailure(error).reference).toBe("schema_mismatch (refreshToken)");
+  });
+
   it("names an unreachable database", () => {
     expect(describeAdminFailure(Object.assign(new Error("x"), { code: "P1001" })).reference).toMatch(
       /^database_unreachable/,
