@@ -1,4 +1,3 @@
-import { redirect } from "react-router";
 import {
   Form,
   useActionData,
@@ -20,7 +19,8 @@ import {
   fetchActiveSubscriptions,
   paidPlanFromSubscriptions,
 } from "~/lib/billing.server";
-import { findShopByDomain, getAccessToken, setPlan } from "~/lib/shop.server";
+import { getAccessToken, setPlan } from "~/lib/shop.server";
+import { ensureShop } from "~/lib/provision.server";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -39,10 +39,7 @@ export const meta: MetaFunction = () => [{ title: "Plans — SourceTrac" }];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-  const shop = await findShopByDomain(session.shop);
-  if (!shop) {
-    throw new Response(null, { status: 302, headers: { Location: "/auth?redirect=/app/plans" } });
-  }
+  const shop = await ensureShop(session);
 
   const used = await getUsageCount(shop.id);
 
@@ -56,6 +53,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         accessToken: session.accessToken,
       });
       const paid = paidPlanFromSubscriptions(subscriptions);
+      const live = activeSourceTracSubscription(subscriptions);
       const reconciled: "free" | "growth" | "scale" = paid ?? "free";
       activePlan = reconciled;
       if (reconciled !== shop.plan) {
@@ -74,7 +72,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         await setPlan(shop.id, {
           plan: reconciled,
           planStatus: reconciled === "free" ? "expired" : "active",
-          subscriptionGid: shop.subscriptionGid,
+          subscriptionGid: live?.id ?? shop.subscriptionGid,
         });
       }
     } catch (error) {
@@ -139,9 +137,11 @@ async function cancelActiveSubscription(params: { shopDomain: string; accessToke
 }
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
-  const shop = await findShopByDomain(session.shop);
-  if (!shop) return { ok: false as const, message: "This store is not installed yet." };
+  // The library's `redirect` breaks out of the embedded iframe. Shopify's
+  // charge-approval page refuses to render inside it, so a plain redirect
+  // left the merchant on a blank frame and no upgrade could ever complete.
+  const { session, redirect } = await authenticate.admin(request);
+  const shop = await ensureShop(session);
 
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
@@ -175,7 +175,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     // Shopify asks the merchant to approve the charge. We do not assume success
     // here — the app_subscriptions/update webhook confirms it.
-    if (result.confirmationUrl) return redirect(result.confirmationUrl);
+    if (result.confirmationUrl) return redirect(result.confirmationUrl, { target: "_top" });
 
     return {
       ok: true as const,

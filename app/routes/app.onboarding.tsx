@@ -5,7 +5,7 @@ import { LanguageForm } from "~/components/language-selector";
 import { db } from "~/db.server";
 import { createTranslator, isSupportedLanguage } from "~/lib/i18n";
 import { resolveRequestLanguage } from "~/lib/i18n/resolve.server";
-import { findShopByDomain } from "~/lib/shop.server";
+import { ensureShop } from "~/lib/provision.server";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -22,10 +22,7 @@ export const meta: MetaFunction = () => [{ title: "Get started — SourceTrac" }
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-  const shop = await findShopByDomain(session.shop);
-  if (!shop) {
-    throw new Response(null, { status: 302, headers: { Location: "/auth?redirect=/app/onboarding" } });
-  }
+  const shop = await ensureShop(session);
 
   const [responseCount, orderCount] = await Promise.all([
     db.surveyResponse.count({ where: { shopId: shop.id } }),

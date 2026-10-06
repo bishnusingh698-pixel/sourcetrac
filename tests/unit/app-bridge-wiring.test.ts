@@ -162,28 +162,16 @@ describe("embedded admin app bridge", () => {
    * Without it, a freshly provisioned Neon database (or one that has not had
    * the latest migrations applied) will cause every admin request to fail with
    * a Prisma schema error, which surfaces as "Something went wrong" in the
-   * embedded admin. The plain `start` script is kept for local dev; `start:prod`
-   * is what Render's start command must point to.
+   * embedded admin. Both `start` and `start:prod`
+   * migrate, so whichever one Render's start command names is safe.
    */
-  it("start:prod script runs prisma migrate deploy before the server", () => {
+  it.each(["start", "start:prod"])("%s runs migrations before the server", (name) => {
     const pkg = JSON.parse(read("package.json")) as { scripts: Record<string, string> };
-
-    const startProd = pkg.scripts["start:prod"];
-    expect(
-      startProd,
-      "package.json must have a start:prod script",
-    ).toBeDefined();
-
-    expect(
-      startProd,
-      "start:prod must run prisma migrate deploy before starting the server",
-    ).toMatch(/prisma migrate deploy/);
-
-    // The server must still start after the migration.
-    expect(
-      startProd,
-      "start:prod must start the server after migrating",
-    ).toMatch(/react-router-serve/);
+    const script = pkg.scripts[name];
+    expect(script, `package.json must have a ${name} script`).toBeDefined();
+    // Migrate first, then serve; `&&` so a failed migration never boots old code on a new schema.
+    expect(script).toMatch(/^node scripts\/migrate\.mjs && react-router-serve /);
+    expect(read("scripts/migrate.mjs")).toMatch(/"prisma", "migrate", "deploy"/);
   });
 
   it("prebundles only packages that are actually installed", () => {

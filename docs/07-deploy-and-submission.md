@@ -21,7 +21,7 @@ annotated list; the required ones are:
 
 1. Create a **Web Service** from your repo.
 2. Build command: `npm ci && npm run build`
-3. Start command: `npm run start`
+3. Start command: `npm run start` (applies database migrations, then starts the server)
 4. Health check path: `/healthz`
 5. Add all env vars from §1. Add `NODE_ENV=production`.
 6. Deploy, then confirm `https://<service>.onrender.com/healthz` returns 200.

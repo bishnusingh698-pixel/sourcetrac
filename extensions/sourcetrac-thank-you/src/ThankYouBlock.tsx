@@ -19,7 +19,9 @@ import { useSurvey } from "../../shared/src/use-survey";
 
 /** Must match the APP_URL the backend is reached on, and the host
  *  allowed by the Partner Dashboard network-access opt-in for this app. */
-const API_URL = process.env.API_URL ?? "https://sourcetrac.onrender.com";
+// A literal, not an environment variable: extensions run in a Web Worker where `process`
+// is undefined, so reading it throws and the survey never renders.
+const API_URL = "https://sourcetrac.onrender.com";
 
 /**
  * purchase.thank-you.block.render

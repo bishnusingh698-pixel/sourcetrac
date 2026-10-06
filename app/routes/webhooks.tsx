@@ -1,6 +1,7 @@
 import { logger } from "~/lib/logger";
 import { handleCustomerRedact, handleDataRequest, handleShopRedact } from "~/lib/compliance.server";
 import { claimWebhook, markWebhookFailed, markWebhookProcessed, processWebhook } from "~/lib/webhooks.server";
+import { maybeRunRetention } from "~/lib/retention.server";
 import { findShopByDomain, getAccessToken } from "~/lib/shop.server";
 import { authenticate } from "~/shopify.server";
 
@@ -68,6 +69,9 @@ export const action = async ({ request }: { request: Request }) => {
     const shopInternalId = "shopInternalId" in result ? result.shopInternalId : null;
     await markWebhookProcessed(webhookId, shopInternalId || null);
     logger.info("webhook_processed", { request_id: requestId, topic, action: result.action });
+
+    // Fire-and-forget daily purge; the database is already awake here.
+    void maybeRunRetention();
 
     return new Response(JSON.stringify({ received: true }), {
       status: 200,
