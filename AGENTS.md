@@ -702,3 +702,9 @@ The repo's default branch is **`sourcetrac-v1`**, not `main`.
   `data()` responses pass through untouched.
 - **CSV download is a `fetch` + blob**, not a link: inside the admin iframe a
   link carries no session token. The route is `/app/export/csv`, not `.csv`.
+- **`Session` needs `refreshToken` / `refreshTokenExpires`.**
+  `@shopify/shopify-app-session-storage-prisma` v11 writes both on every
+  `storeSession`, so without them every token exchange threw
+  `PrismaClientValidationError` and no merchant could open the app. Local
+  simulations that pre-seed a session never call `storeSession` and miss
+  this; `tests/db-session-storage.test.ts` drives the real storage.
