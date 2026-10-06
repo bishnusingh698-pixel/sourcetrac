@@ -4,7 +4,7 @@ import { Banner, Metric, MoneyList, Panel, type BadgeTone } from "~/components/a
 import { buildTrend, computeStats } from "~/lib/analytics";
 import { fetchDashboardData } from "~/lib/analytics-queries.server";
 import { formatMoney } from "~/lib/money";
-import { findShopByDomain } from "~/lib/shop.server";
+import { ensureShop } from "~/lib/provision.server";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -33,11 +33,8 @@ function parseRange(value: string | null): (typeof RANGES)[number] {
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-  const shop = await findShopByDomain(session.shop);
+  const shop = await ensureShop(session);
 
-  // A shop row is written at install time. Absent here means the callback was
-  // bypassed, so rather than crash we send them back through OAuth.
-  if (!shop) throw new Response(null, { status: 302, headers: { Location: "/auth?redirect=/app" } });
 
   const url = new URL(request.url);
   const range = parseRange(url.searchParams.get("range"));

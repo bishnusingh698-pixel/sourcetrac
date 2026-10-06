@@ -34,9 +34,13 @@ for (const [name, expectedTarget] of Object.entries(EXPECTED)) {
   // This exact omission shipped once, which is why it is asserted here.
   const allowed = contents.match(/^allowed_urls = \[(.+)\]$/m)?.[1] ?? "";
   if (!allowed.includes("http")) problems.push("allowed_urls does not name any host");
-  const apiUrl = fs
-    .readFileSync(`extensions/${name}/${module?.replace("./", "") ?? ""}`, "utf8")
-    .match(/process\.env\.API_URL \?\? "([^"]+)"/)?.[1];
+  const source = module && fs.existsSync(`extensions/${name}/${module.replace("./", "")}`)
+    ? fs.readFileSync(`extensions/${name}/${module.replace("./", "")}`, "utf8")
+    : "";
+  // `process` does not exist in the extension Web Worker; reading it crashes the block.
+  if (/process\.env/.test(source)) problems.push("extension source reads process.env, which is undefined at runtime");
+  const apiUrl = source.match(/const API_URL = "([^"]+)"/)?.[1];
+  if (source && !apiUrl) problems.push("could not find a literal API_URL");
   if (apiUrl && !allowed.includes(apiUrl)) {
     problems.push(`allowed_urls does not cover API_URL ${apiUrl}`);
   }

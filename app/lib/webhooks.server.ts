@@ -443,6 +443,19 @@ async function applySubscription(shopInternalId: string, payload: SubscriptionPa
   }
 
   const planStatus = normaliseSubscriptionStatus(status);
+
+  // Changing plan creates a new subscription and Shopify cancels the old one,
+  // so the old charge's CANCELLED notice can land after the new one went
+  // ACTIVE. Applying it would drop a merchant who just paid back to free. A
+  // non-active status only applies to the subscription we currently hold.
+  if (planStatus !== "active") {
+    const shop = await findShopById(shopInternalId);
+    if (shop?.subscriptionGid && gid && shop.subscriptionGid !== gid) {
+      logger.info("subscription_superseded_ignored", { shop_id: shopInternalId, status: planStatus });
+      return;
+    }
+  }
+
   await setPlan(shopInternalId, {
     plan: matched.key,
     planStatus,

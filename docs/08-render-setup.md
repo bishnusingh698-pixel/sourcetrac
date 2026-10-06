@@ -14,7 +14,7 @@ Render dashboard → **New +** → **Web Service** → connect `bishnusingh698-p
 | Root Directory | *(blank)* | Monorepo root. |
 | Runtime | Node | No `Dockerfile` exists in this repo. |
 | Build Command | `npm ci && npm run build` | `build` = `react-router build`. `npm ci` (not `--omit=dev`) because Vite, `@react-router/dev` and `tsc` are devDependencies needed to build. |
-| Start Command | `npm run start` | `react-router-serve ./build/server/index.js`. |
+| Start Command | `npm run start` | Applies pending database migrations (`prisma migrate deploy`), then starts `react-router-serve`. A deploy can no longer run new code against an old schema. |
 | Health Check Path | `/healthz` | Returns 200 from memory, never queries Neon. |
 
 **Node version:** `package.json` declares `engines.node >= 22.0.0`. Render reads this
@@ -35,8 +35,9 @@ Build command:
 npm ci && npm run build
 ```
 
-Run migrations by hand, once, before the first deploy (and after any schema
-change):
+Migrations run automatically at start (`npm run start`). If the database is
+unreachable the service fails to boot and Render keeps the previous version
+live. To run them by hand instead:
 
 ```bash
 DATABASE_URL="postgresql://...-pooler.../neondb?sslmode=require" npx prisma migrate deploy

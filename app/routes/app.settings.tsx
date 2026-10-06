@@ -19,7 +19,8 @@ import {
   parseSurveySettings,
   validateSurveySettings,
 } from "~/lib/settings";
-import { findShopByDomain, updateSettings } from "~/lib/shop.server";
+import { updateSettings } from "~/lib/shop.server";
+import { ensureShop } from "~/lib/provision.server";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -59,10 +60,7 @@ function switchChecked(event: { currentTarget: unknown }): boolean {
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-  const shop = await findShopByDomain(session.shop);
-  if (!shop) {
-    throw new Response(null, { status: 302, headers: { Location: "/auth?redirect=/app/settings" } });
-  }
+  const shop = await ensureShop(session);
 
   return {
     questionText: shop.questionText,
@@ -79,15 +77,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-  const shop = await findShopByDomain(session.shop);
-  if (!shop) {
-    return {
-      ok: false as const,
-      message: "This store is not installed yet. Reopen the app to reinstall.",
-      hint: undefined,
-      fieldErrors: {} as Record<string, string>,
-    };
-  }
+  const shop = await ensureShop(session);
 
   const form = await request.formData();
 

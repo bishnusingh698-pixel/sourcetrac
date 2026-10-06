@@ -674,3 +674,24 @@ include that box.
 
 The repo's default branch is **`sourcetrac-v1`**, not `main`.
 `fix/full-bug-audit` fast-forwards cleanly onto it.
+
+## Production fixes (2026-10-06)
+
+- **Billing redirect must break out of the iframe.** Use the `redirect` returned
+  by `authenticate.admin` with `{ target: "_top" }`. React Router's plain
+  `redirect` to `confirmationUrl` renders Shopify's approval page inside the
+  embedded frame, which refuses to load, so no upgrade could complete.
+- **Superseded subscription notices are ignored.** A non-active
+  `app_subscriptions/update` only applies when its GID matches
+  `Shop.subscriptionGid`; otherwise the old plan's late CANCELLED would drop a
+  merchant who just upgraded. Test: `tests/db-subscription-supersede.test.ts`.
+- **Admin loaders use `ensureShop(session)`**, never `findShopByDomain` + a
+  redirect to `/auth`. Parent and child loaders run in parallel, and `/auth`
+  without the embedded query string cannot authenticate.
+- **Extensions must not read `process.env`** — it does not exist in the Web
+  Worker. `API_URL` is a literal; `check:extensions` enforces it.
+- **`npm run start` migrates first** via `scripts/migrate.mjs`, which uses
+  `DIRECT_URL` or strips `-pooler` from `DATABASE_URL` (PgBouncer transaction
+  mode cannot hold Prisma's advisory lock) and retries while Neon wakes.
+- **Retention runs itself** at most daily from the webhook route
+  (`maybeRunRetention`); `/jobs/retention` remains for external schedulers.

@@ -1,7 +1,8 @@
 import { data } from "react-router";
 
 import { isSupportedLanguage, type LanguageCode } from "~/lib/i18n";
-import { requireShopByDomain as requireShop, setLanguage } from "~/lib/shop.server";
+import { ensureShop } from "~/lib/provision.server";
+import { setLanguage } from "~/lib/shop.server";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -20,7 +21,7 @@ import { authenticate } from "~/shopify.server";
  */
 export async function action({ request }: { request: Request }) {
   const { session } = await authenticate.admin(request);
-  const shop = await requireShop(session.shop);
+  const shop = await ensureShop(session);
 
   const form = await request.formData();
   const requested = form.get("language");

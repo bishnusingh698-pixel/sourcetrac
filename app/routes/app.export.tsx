@@ -4,7 +4,7 @@ import { Panel } from "~/components/admin-ui";
 import { fetchResponsesInWindow, toExportRows } from "~/lib/analytics-queries.server";
 import { CSV_HEADERS } from "~/lib/csv";
 import { db } from "~/db.server";
-import { findShopByDomain } from "~/lib/shop.server";
+import { ensureShop } from "~/lib/provision.server";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -22,10 +22,7 @@ export const meta: MetaFunction = () => [{ title: "Export — SourceTrac" }];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-  const shop = await findShopByDomain(session.shop);
-  if (!shop) {
-    throw new Response(null, { status: 302, headers: { Location: "/auth?redirect=/app/export" } });
-  }
+  const shop = await ensureShop(session);
 
   const count = await db.surveyResponse.count({ where: { shopId: shop.id } });
 

@@ -1,8 +1,8 @@
-import { redirect, type LoaderFunctionArgs } from "react-router";
+import type { LoaderFunctionArgs } from "react-router";
 
 import { fetchResponsesInWindow, toExportRows } from "~/lib/analytics-queries.server";
 import { csvFilename, toCsv } from "~/lib/csv";
-import { findShopByDomain } from "~/lib/shop.server";
+import { ensureShop } from "~/lib/provision.server";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -24,8 +24,7 @@ import { authenticate } from "~/shopify.server";
  */
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-  const shop = await findShopByDomain(session.shop);
-  if (!shop) return redirect("/auth?redirect=/app/export");
+  const shop = await ensureShop(session);
 
   // The query returns newest first; the file is oldest first.
   const responses = await fetchResponsesInWindow({ shopId: shop.id });

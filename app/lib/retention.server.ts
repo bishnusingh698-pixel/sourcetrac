@@ -105,3 +105,28 @@ export async function runRetentionPurge(now: Date = new Date()): Promise<Retenti
 
   return report;
 }
+let lastOpportunisticRun: number | undefined;
+
+/**
+ * Run the purge at most once a day per process, piggybacking on traffic that
+ * already has the database awake. POST /jobs/retention still works for an
+ * external scheduler, but retention no longer depends on one being set up:
+ * a forgotten cron job would otherwise keep data past its retention window.
+ */
+export async function maybeRunRetention(now: Date = new Date()): Promise<void> {
+  const dayMs = 24 * 60 * 60 * 1000;
+  if (lastOpportunisticRun !== undefined && now.getTime() - lastOpportunisticRun < dayMs) return;
+  // Set before awaiting so concurrent requests cannot both start a purge.
+  lastOpportunisticRun = now.getTime();
+
+  try {
+    await runRetentionPurge(now);
+  } catch (error) {
+    // Housekeeping must never fail the request that triggered it. Clearing the
+    // marker lets the next request retry rather than waiting a full day.
+    lastOpportunisticRun = undefined;
+    logger.warn("retention_opportunistic_failed", {
+      error_message: error instanceof Error ? error.message : String(error),
+    });
+  }
+}

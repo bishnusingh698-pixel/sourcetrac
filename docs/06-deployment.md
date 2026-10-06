@@ -63,7 +63,7 @@ up by hand:
 | --- | --- |
 | Root directory | repository root |
 | Build command | `npm ci && npx prisma generate && npm run build` |
-| Start command | `npm run start` |
+| Start command | `npm run start` (runs migrations first) |
 | Node version | 20 or newer |
 | Health check path | `/healthz` |
 
