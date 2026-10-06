@@ -7,7 +7,7 @@
     "label": "Navegación principal",
     "dashboard": "Panel",
     "onboarding": "Primeros pasos",
-    "settings": "Configuración",
+    "settings": "Encuesta",
     "export": "Exportar",
     "plans": "Planes",
     "help": "Ayuda"
@@ -74,10 +74,12 @@
     "range_label": "Periodo",
     "last_7": "Últimos 7 días",
     "last_30": "Últimos 30 días",
-    "last_90": "Últimos 90 días"
+    "last_90": "Últimos 90 días",
+    "channel_other": "Otro",
+    "edit_survey": "Editar tu encuesta"
   },
   "settings": {
-    "title": "Configuración",
+    "title": "Encuesta",
     "subtitle": "Esta es la pregunta que ven tus clientes después de comprar.",
     "saved_title": "Cambios guardados",
     "saved_body": "Guardado. Tu pregunta estará activa en el próximo pago.",
@@ -108,7 +110,10 @@
     "save_button": "Guardar cambios",
     "language_panel_title": "Idioma",
     "language_panel_description": "Elige el idioma que usa SourceTrac. Se aplica de inmediato.",
-    "language_label": "Idioma de la aplicación"
+    "language_label": "Idioma de la aplicación",
+    "defaults_banner_title": "Tu encuesta sigue en inglés",
+    "defaults_banner_body": "Los compradores ven tu pregunta y tus opciones exactamente como están escritas abajo. Usa el texto en español, revísalo y guarda.",
+    "defaults_banner_cta": "Usar el texto en español"
   },
   "onboarding": {
     "title": "Primeros pasos",
@@ -146,7 +151,8 @@
     "columns_note": "Columnas: {{columns}}. El archivo no contiene nombres de clientes, correos electrónicos ni direcciones.",
     "download": "Descargar CSV",
     "preview_title": "Vista previa",
-    "preview_description": "Tus {{count}} respuestas más recientes, tal como se exportarán."
+    "preview_description": "Tus {{count}} respuestas más recientes, tal como se exportarán.",
+    "download_failed": "La descarga no se inició. Inténtalo de nuevo en un momento."
   },
   "plans": {
     "title": "Planes",
@@ -173,14 +179,55 @@
     "cancel_body": "Tus respuestas siguen guardadas y la encuesta sigue funcionando. Pierdes las respuestas ilimitadas.",
     "cancel_confirm": "Cancelar plan",
     "keep_plan": "Mantener mi plan",
-    "not_available": "La facturación no está disponible en este momento. Vuelve a intentarlo en un rato."
+    "not_available": "La facturación no está disponible en este momento. Vuelve a intentarlo en un rato.",
+    "current_banner": "Tienes el plan {{plan}}",
+    "on_free": "Tienes el plan gratuito.",
+    "switch_free": "Cambiar a Gratis",
+    "feature_responses": "{{cap}} respuestas de encuesta al mes",
+    "feature_revenue": "Ingresos y valor medio del pedido por canal",
+    "feature_trends": "Tendencias de 7, 30 y 90 días",
+    "feature_csv": "Exportación CSV",
+    "feature_unlimited": "Respuestas de encuesta ilimitadas",
+    "feature_everything_free": "Todo lo de Gratis",
+    "feature_everything_growth": "Todo lo de Crecimiento",
+    "feature_priority_support": "Soporte prioritario",
+    "billing_title": "Cómo funciona la facturación",
+    "billing_body": "Los cargos aparecen en tu factura de Shopify junto con tus otras suscripciones de apps. SourceTrac nunca guarda los datos de tu tarjeta — Shopify gestiona el pago y nos avisa cuando una suscripción empieza, cambia o termina.",
+    "msg_shopify_unreachable": "No pudimos conectar con Shopify para gestionar la facturación. Vuelve a abrir la app desde el panel de Shopify e inténtalo de nuevo.",
+    "msg_lookup_failed": "No pudimos conectar con Shopify para encontrar tu suscripción. Inténtalo de nuevo en un momento.",
+    "msg_already_free": "Ya tienes el plan Gratis.",
+    "msg_cancel_failed": "Shopify no pudo cancelar la suscripción: {{error}}",
+    "msg_cancelled": "Suscripción cancelada. Vuelves a tener el plan Gratis con {{cap}} respuestas al mes.",
+    "msg_subscribe_failed": "Shopify no pudo iniciar la suscripción: {{error}}",
+    "msg_subscription_created": "Suscripción creada. Si no se te redirigió a una página de confirmación, revisa la página de facturación de tu panel de Shopify.",
+    "msg_plan_unavailable": "Ese plan no está disponible."
   },
   "help": {
     "title": "Ayuda",
     "subtitle": "Respuestas a las preguntas que más nos hacen.",
     "contact_title": "¿Sigues atascado?",
     "contact_body": "Cuéntanos qué ocurre y le echaremos un vistazo.",
-    "contact_cta": "Contactar con soporte"
+    "contact_cta": "Contactar con soporte",
+    "faq_title": "Preguntas frecuentes",
+    "contact_tip": "Antes de escribir: si la encuesta no aparece, la revisión del editor de checkout de las dos primeras respuestas suele resolverlo.",
+    "q_create": "¿Cómo creo mi encuesta?",
+    "a_create": "Tu encuesta se crea automáticamente al instalar SourceTrac, con una pregunta lista y seis opciones de respuesta. Cambia la pregunta y las opciones en la página Encuesta. Para que los compradores la vean: en el panel de Shopify ve a Configuración › Checkout, haz clic en Personalizar, elige la página de confirmación de pedido en el menú de páginas de arriba y añade el bloque de la app SourceTrac. Haz lo mismo con la página de estado del pedido y guarda.",
+    "q_not_showing": "¿Por qué no aparece la pregunta en mi página de confirmación de pedido?",
+    "a_not_showing": "Conviene revisar tres cosas. Primero, el bloque de SourceTrac debe estar añadido a la página de confirmación de pedido en el editor de checkout (Configuración › Checkout › Personalizar) y visible. Segundo, Shopify no ofrece las páginas de confirmación y de estado del pedido en el plan Starter — revisa tu plan en el panel de Shopify. Tercero, si acabas de instalar la app, el primer pedido puede tardar un minuto en llegar.",
+    "q_both_pages": "¿Por qué un comprador ve la pregunta en la página de confirmación de pedido y en la de estado del pedido?",
+    "a_both_pages": "No debería ocurrir. En cuanto un pedido tiene respuesta, SourceTrac oculta la pregunta en todas partes para ese pedido, así que a cada comprador solo se le pregunta una vez.",
+    "q_missing_revenue": "¿Por qué a una de mis respuestas le faltan los ingresos?",
+    "a_missing_revenue": "El comprador respondió justo antes de que Shopify nos enviara el pedido, así que teníamos su respuesta pero aún no el importe. Los ingresos suelen aparecer en menos de un minuto. Si siguen faltando después de un día, la respuesta se muestra como pendiente en lugar de contarse como cero, para que tus totales sean fiables.",
+    "q_refunds": "¿Qué pasa con los pedidos reembolsados?",
+    "a_refunds": "El importe reembolsado se resta del total del pedido antes de atribuirlo, así que un pedido reembolsado aporta poco o nada. Los pedidos cancelados y de prueba se excluyen por completo de los ingresos. Los pedidos de prueba también se excluyen de tu tasa de respuesta.",
+    "q_limit": "Llegué a mi límite gratuito. ¿Perdí mis respuestas?",
+    "a_limit": "No. Las respuestas se siguen recogiendo, guardando y contando en los totales de tu panel. No se oculta nada. Mejorar el plan solo elimina el límite mensual.",
+    "q_privacy": "¿SourceTrac pide datos sobre mis clientes?",
+    "a_privacy": "No. Solo guardamos el ID del pedido, el canal que eligió el comprador y la hora. Nunca recogemos nombres, correos ni direcciones, y tu exportación CSV no contiene datos de clientes.",
+    "q_change": "¿Puedo cambiar la pregunta después de publicarla?",
+    "a_change": "Sí. Cambia el texto o las opciones en la página Encuesta cuando quieras. La nueva versión se aplica al siguiente pedido. Las respuestas ya recogidas conservan su canal original.",
+    "q_cancel": "¿Cómo cancelo?",
+    "a_cancel": "Cancela desde la página Planes. Tu encuesta sigue funcionando con el plan Gratis y {{cap}} respuestas al mes, y no se elimina nada."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac no está disponible en tu plan",
@@ -222,7 +269,9 @@
     "options_invalid_hint": "Recarga la página e inténtalo de nuevo.",
     "other_invalid": "No se entendió el ajuste «Otro».",
     "other_invalid_hint": "Recarga la página e inténtalo de nuevo.",
-    "settings_invalid": "No pudimos leer tu configuración."
+    "settings_invalid": "No pudimos leer tu configuración.",
+    "emoji_invalid": "Ese emoji no es válido.",
+    "emoji_invalid_hint": "Usa un solo emoji o deja el campo vacío."
   },
   "errors": {
     "generic": "Algo salió mal. Inténtalo de nuevo.",
@@ -230,11 +279,22 @@
     "not_found_body": "Esa página no existe.",
     "not_found_cta": "Ir al panel",
     "shop_missing_title": "Esta tienda aún no está instalada",
-    "shop_missing_body": "Vuelve a abrir SourceTrac desde tu administración de Shopify para reinstalarlo."
+    "shop_missing_body": "Vuelve a abrir SourceTrac desde tu administración de Shopify para reinstalarlo.",
+    "boundary_title": "Algo salió mal",
+    "reference": "Referencia: {{reference}}"
   },
   "a11y": {
     "skip_to_content": "Saltar al contenido principal",
     "breadcrumb": "Ruta de navegación",
     "decorative": "decorativo"
+  },
+  "survey_defaults": {
+    "question": "¿Cómo nos conociste?",
+    "google": "Búsqueda en Google",
+    "instagram": "Instagram",
+    "facebook": "Facebook",
+    "tiktok": "TikTok",
+    "friend-or-family": "Amigos o familia",
+    "in-store": "En tienda"
   }
 }

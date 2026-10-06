@@ -7,7 +7,7 @@
     "label": "メインナビゲーション",
     "dashboard": "ダッシュボード",
     "onboarding": "はじめに",
-    "settings": "設定",
+    "settings": "アンケート",
     "export": "エクスポート",
     "plans": "プラン",
     "help": "ヘルプ"
@@ -74,10 +74,12 @@
     "range_label": "期間",
     "last_7": "過去 7 日間",
     "last_30": "過去 30 日間",
-    "last_90": "過去 90 日間"
+    "last_90": "過去 90 日間",
+    "channel_other": "その他",
+    "edit_survey": "アンケートを編集"
   },
   "settings": {
-    "title": "設定",
+    "title": "アンケート",
     "subtitle": "これはご注文の後にお客様が見る質問です。",
     "saved_title": "変更を保存しました",
     "saved_body": "保存しました。次のチェックアウトから新しい質問が表示されます。",
@@ -108,7 +110,10 @@
     "save_button": "変更を保存",
     "language_panel_title": "言語",
     "language_panel_description": "SourceTrac が使用する言語を選択します。すぐに反映されます。",
-    "language_label": "アプリの言語"
+    "language_label": "アプリの言語",
+    "defaults_banner_title": "アンケートはまだ英語のままです",
+    "defaults_banner_body": "購入者には、下に書かれている質問と回答選択肢がそのまま表示されます。日本語の文言を入れて確認し、保存してください。",
+    "defaults_banner_cta": "日本語の文言を使う"
   },
   "onboarding": {
     "title": "はじめに",
@@ -146,7 +151,8 @@
     "columns_note": "列：{{columns}}。 お客様のお名前、メールアドレス、住所は含まれません。",
     "download": "CSV をダウンロード",
     "preview_title": "プレビュー",
-    "preview_description": "最新 {{count}} 件の回答。エクスポート時とまったく同じ形式です。"
+    "preview_description": "最新 {{count}} 件の回答。エクスポート時とまったく同じ形式です。",
+    "download_failed": "ダウンロードを開始できませんでした。しばらくしてからもう一度お試しください。"
   },
   "plans": {
     "title": "プラン",
@@ -173,14 +179,55 @@
     "cancel_body": "回答は保存されたままで、アンケートも引き続き使えます。 回答数無制限の特典は失われます。",
     "cancel_confirm": "プランをキャンセル",
     "keep_plan": "プランを維持",
-    "not_available": "現在、請求システムを利用できません。 しばらくしてからお試しください。"
+    "not_available": "現在、請求システムを利用できません。 しばらくしてからお試しください。",
+    "current_banner": "現在のプランは {{plan}} です",
+    "on_free": "現在は無料プランです。",
+    "switch_free": "無料プランに切り替える",
+    "feature_responses": "1 か月あたり {{cap}} 件のアンケート回答",
+    "feature_revenue": "チャネル別の売上と平均注文額",
+    "feature_trends": "7 日・30 日・90 日のトレンド",
+    "feature_csv": "CSV エクスポート",
+    "feature_unlimited": "アンケート回答数無制限",
+    "feature_everything_free": "無料プランのすべての機能",
+    "feature_everything_growth": "グロースのすべての機能",
+    "feature_priority_support": "優先サポート",
+    "billing_title": "請求のしくみ",
+    "billing_body": "料金はほかのアプリのサブスクリプションと一緒に Shopify の請求書に記載されます。SourceTrac がカード情報を保存することはありません — 支払いは Shopify が処理し、サブスクリプションの開始・変更・終了を当社に通知します。",
+    "msg_shopify_unreachable": "請求を管理するために Shopify に接続できませんでした。Shopify 管理画面からアプリを開き直して、もう一度お試しください。",
+    "msg_lookup_failed": "サブスクリプションを確認するために Shopify に接続できませんでした。しばらくしてからもう一度お試しください。",
+    "msg_already_free": "すでに無料プランです。",
+    "msg_cancel_failed": "Shopify でサブスクリプションを解約できませんでした：{{error}}",
+    "msg_cancelled": "サブスクリプションを解約しました。1 か月あたり {{cap}} 件の回答が可能な無料プランに戻りました。",
+    "msg_subscribe_failed": "Shopify でサブスクリプションを開始できませんでした：{{error}}",
+    "msg_subscription_created": "サブスクリプションを作成しました。確認ページに移動しなかった場合は、Shopify 管理画面の請求ページをご確認ください。",
+    "msg_plan_unavailable": "このプランは利用できません。"
   },
   "help": {
     "title": "ヘルプ",
     "subtitle": "よくいただくご質問にお答えします。",
     "contact_title": "解決進みませんか？",
     "contact_body": "状況をお知らせいただければ、確認します。",
-    "contact_cta": "サポートに連絡"
+    "contact_cta": "サポートに連絡",
+    "faq_title": "よくある質問",
+    "contact_tip": "お問い合わせの前に：アンケートが表示されない場合は、上の最初の 2 つの回答にあるチェックアウトエディタの確認で解決することがほとんどです。",
+    "q_create": "アンケートはどうやって作成しますか？",
+    "a_create": "アンケートは SourceTrac のインストール時に、用意された質問と 6 つの回答選択肢で自動的に作成されます。質問と選択肢は「アンケート」ページで変更できます。購入者に表示するには、Shopify 管理画面で「設定 › チェックアウト」を開き、「カスタマイズ」をクリックし、上部のページメニューからサンキューページを選んで SourceTrac アプリブロックを追加します。注文ステータスページでも同じ操作を行い、保存してください。",
+    "q_not_showing": "サンキューページに質問が表示されないのはなぜですか？",
+    "a_not_showing": "確認すべき点は 3 つあります。まず、チェックアウトエディタ（設定 › チェックアウト › カスタマイズ）でサンキューページに SourceTrac ブロックを追加し、表示にしておく必要があります。次に、Shopify の Starter プランではサンキューページと注文ステータスページを利用できません — Shopify 管理画面でプランをご確認ください。最後に、インストール直後は最初の注文が届くまで 1 分ほどかかる場合があります。",
+    "q_both_pages": "購入者にサンキューページと注文ステータスページの両方で質問が表示されるのはなぜですか？",
+    "a_both_pages": "そのようなことは起こらないはずです。注文に回答が付くと、SourceTrac はその注文の質問をすべての場所で非表示にするため、各購入者に質問するのは 1 回だけです。",
+    "q_missing_revenue": "回答の一部に売上が表示されないのはなぜですか？",
+    "a_missing_revenue": "Shopify から注文が送られてくる直前に購入者が回答したため、回答はあっても注文金額がまだ届いていない状態です。売上は通常 1 分以内に表示されます。1 日たっても表示されない場合、その回答はゼロとして数えずに保留中と表示されるため、合計の正確さが保たれます。",
+    "q_refunds": "返金された注文はどうなりますか？",
+    "a_refunds": "返金額は帰属の前に注文合計から差し引かれるため、返金された注文の寄与はわずか、またはゼロになります。キャンセルされた注文とテスト注文は売上から完全に除外されます。テスト注文は回答率の計算からも除外されます。",
+    "q_limit": "無料プランの上限に達しました。回答は失われましたか？",
+    "a_limit": "いいえ。回答は引き続き収集・保存され、ダッシュボードの合計にも含まれます。非表示になるものはありません。アップグレードで解除されるのは月間の上限だけです。",
+    "q_privacy": "SourceTrac は顧客について何か尋ねますか？",
+    "a_privacy": "いいえ。保存するのは注文 ID、購入者が選んだチャネル、日時だけです。氏名、メールアドレス、住所を収集することはなく、CSV エクスポートにも顧客データは含まれません。",
+    "q_change": "公開後に質問を変更できますか？",
+    "a_change": "はい。「アンケート」ページでいつでも文言や選択肢を変更できます。新しい内容は次の注文から適用されます。収集済みの回答は元のチャネルのまま残ります。",
+    "q_cancel": "解約するにはどうすればよいですか？",
+    "a_cancel": "「プラン」ページから解約できます。アンケートは 1 か月あたり {{cap}} 件の無料プランで引き続き動作し、何も削除されません。"
   },
   "shell": {
     "plan_blocked_title": "SourceTrac は現在のプランではご利用いただけません",
@@ -222,7 +269,9 @@
     "options_invalid_hint": "ページを再読み込みしてもう一度お試しください。",
     "other_invalid": "「その他」の設定を解釈できませんでした。",
     "other_invalid_hint": "ページを再読み込みしてもう一度お試しください。",
-    "settings_invalid": "設定を読み取れませんでした。"
+    "settings_invalid": "設定を読み取れませんでした。",
+    "emoji_invalid": "この絵文字は使用できません。",
+    "emoji_invalid_hint": "絵文字を 1 つだけ使うか、空欄にしてください。"
   },
   "errors": {
     "generic": "問題が発生しました。もう一度お試しください。",
@@ -230,11 +279,22 @@
     "not_found_body": "そのページは存在しません。",
     "not_found_cta": "ダッシュボードへ",
     "shop_missing_title": "このショップはまだインストールされていません",
-    "shop_missing_body": "Shopify 管理画面から SourceTrac を開き直して再インストールしてください。"
+    "shop_missing_body": "Shopify 管理画面から SourceTrac を開き直して再インストールしてください。",
+    "boundary_title": "問題が発生しました",
+    "reference": "参照番号：{{reference}}"
   },
   "a11y": {
     "skip_to_content": "メインコンテンツへスキップ",
     "breadcrumb": "パンくずリスト",
     "decorative": "装飾"
+  },
+  "survey_defaults": {
+    "question": "当店をどこで知りましたか？",
+    "google": "Google 検索",
+    "instagram": "Instagram",
+    "facebook": "Facebook",
+    "tiktok": "TikTok",
+    "friend-or-family": "友人・家族",
+    "in-store": "店舗"
   }
 }

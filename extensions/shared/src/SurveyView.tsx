@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-import { OTHER_CHANNEL } from "./survey-logic";
+import { OTHER_CHANNEL, surveyChoices } from "./survey-logic";
 
 /**
  * A checkout primitive, typed structurally rather than via React's
@@ -103,6 +103,8 @@ export function SurveyView({
 
   const disabled = busy;
 
+  const choices = surveyChoices(options, allowOther, t("sourcetrac.other", "Other"));
+
   return (
     <BlockStack spacing="base">
       <Text as="h2" appearance="strong">
@@ -110,7 +112,7 @@ export function SurveyView({
       </Text>
 
       <BlockStack spacing="tight">
-        {options.map((option) => (
+        {choices.map((option) => (
           <Pressable
             key={option.value}
             disabled={disabled}

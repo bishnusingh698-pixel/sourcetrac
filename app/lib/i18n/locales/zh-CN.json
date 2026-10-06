@@ -7,7 +7,7 @@
     "label": "主导航",
     "dashboard": "概览",
     "onboarding": "开始使用",
-    "settings": "设置",
+    "settings": "调查问卷",
     "export": "导出",
     "plans": "套餐",
     "help": "帮助"
@@ -74,10 +74,12 @@
     "range_label": "时间范围",
     "last_7": "最近 7 天",
     "last_30": "最近 30 天",
-    "last_90": "最近 90 天"
+    "last_90": "最近 90 天",
+    "channel_other": "其他",
+    "edit_survey": "编辑调查问卷"
   },
   "settings": {
-    "title": "设置",
+    "title": "调查问卷",
     "subtitle": "这是顾客下单后看到的问题。",
     "saved_title": "更改已保存",
     "saved_body": "已保存。您的提问将在结账时生效。",
@@ -108,7 +110,10 @@
     "save_button": "保存更改",
     "language_panel_title": "语言",
     "language_panel_description": "选择 SourceTrac 使用的语言。更改会立即生效。",
-    "language_label": "应用语言"
+    "language_label": "应用语言",
+    "defaults_banner_title": "您的调查问卷仍是英文",
+    "defaults_banner_body": "买家看到的问题和答案选项与下方填写的内容完全一致。请使用中文措辞，检查后保存。",
+    "defaults_banner_cta": "使用中文措辞"
   },
   "onboarding": {
     "title": "开始使用",
@@ -146,7 +151,8 @@
     "columns_note": "列：{{columns}}。文件中不包含顾客姓名、电子邮箱或地址。",
     "download": "下载 CSV",
     "preview_title": "预览",
-    "preview_description": "您最近的 {{count}} 条回答，与导出时完全一致。"
+    "preview_description": "您最近的 {{count}} 条回答，与导出时完全一致。",
+    "download_failed": "下载未能开始。请稍后重试。"
   },
   "plans": {
     "title": "套餐",
@@ -173,14 +179,55 @@
     "cancel_body": "您的回答会继续保存，问卷也会继续运作，但您将失去回答数不限的权益。",
     "cancel_confirm": "取消套餐",
     "keep_plan": "保留我的套餐",
-    "not_available": "账单服务暂时不可用，请稍后重试。"
+    "not_available": "账单服务暂时不可用，请稍后重试。",
+    "current_banner": "您当前使用的是 {{plan}}",
+    "on_free": "您当前使用的是免费套餐。",
+    "switch_free": "切换到免费套餐",
+    "feature_responses": "每月 {{cap}} 条调查回答",
+    "feature_revenue": "按渠道查看收入和平均订单价值",
+    "feature_trends": "7 天、30 天和 90 天趋势",
+    "feature_csv": "CSV 导出",
+    "feature_unlimited": "不限数量的调查回答",
+    "feature_everything_free": "包含免费套餐的全部功能",
+    "feature_everything_growth": "包含成长版的全部功能",
+    "feature_priority_support": "优先支持",
+    "billing_title": "计费方式",
+    "billing_body": "费用会和您的其他应用订阅一起显示在 Shopify 账单上。SourceTrac 从不存储您的银行卡信息 — 付款由 Shopify 处理，并在订阅开始、变更或结束时通知我们。",
+    "msg_shopify_unreachable": "无法连接 Shopify 来管理计费。请从 Shopify 后台重新打开应用后重试。",
+    "msg_lookup_failed": "无法连接 Shopify 来查找您的订阅。请稍后重试。",
+    "msg_already_free": "您已经在使用免费套餐。",
+    "msg_cancel_failed": "Shopify 无法取消订阅：{{error}}",
+    "msg_cancelled": "订阅已取消。您已回到免费套餐，每月 {{cap}} 条回答。",
+    "msg_subscribe_failed": "Shopify 无法开始订阅：{{error}}",
+    "msg_subscription_created": "订阅已创建。如果您没有被带到确认页面，请查看 Shopify 后台的账单页面。",
+    "msg_plan_unavailable": "该套餐不可用。"
   },
   "help": {
     "title": "帮助",
     "subtitle": "回答我们被问得最多的问题。",
     "contact_title": "还没解决？",
     "contact_body": "告诉我们遇到的情况，我们来看一下。",
-    "contact_cta": "联系支持"
+    "contact_cta": "联系支持",
+    "faq_title": "常见问题",
+    "contact_tip": "联系我们之前：如果调查问卷没有显示，通常按照上方前两条回答检查结账编辑器即可解决。",
+    "q_create": "如何创建我的调查问卷？",
+    "a_create": "安装 SourceTrac 时会自动为您创建调查问卷，包含一个现成的问题和六个答案选项。您可以在“调查问卷”页面修改问题和选项。要让买家看到它：在 Shopify 后台前往“设置 › 结账”，点击“自定义”，在顶部的页面菜单中选择“感谢页”，然后添加 SourceTrac 应用区块。对“订单状态页”执行相同操作，然后保存。",
+    "q_not_showing": "为什么问题没有显示在我的感谢页上？",
+    "a_not_showing": "有三点值得检查。第一，必须在结账编辑器（设置 › 结账 › 自定义）中将 SourceTrac 区块添加到感谢页并设为可见。第二，Shopify 的 Starter 套餐不提供感谢页和订单状态页 — 请在 Shopify 后台检查您的套餐。第三，如果您刚刚安装，第一笔订单可能需要一分钟才能到达。",
+    "q_both_pages": "为什么买家在感谢页和订单状态页都看到了问题？",
+    "a_both_pages": "不应该出现这种情况。一旦某个订单已有回答，SourceTrac 会在所有页面为该订单隐藏问题，因此每位买家只会被询问一次。",
+    "q_missing_revenue": "为什么我的某条回答缺少收入？",
+    "a_missing_revenue": "买家在 Shopify 向我们发送订单前不久就作答了，所以我们已有回答，但还没有订单金额。收入通常会在一分钟内显示。如果一天后仍然缺失，该回答会显示为等待中，而不是按零计算，以确保您的总数真实可靠。",
+    "q_refunds": "已退款的订单如何处理？",
+    "a_refunds": "在归因之前，退款金额会从订单总额中扣除，因此已退款订单的贡献很少或为零。已取消订单和测试订单完全不计入收入。测试订单也不计入您的回答率。",
+    "q_limit": "我已达到免费额度上限，回答会丢失吗？",
+    "a_limit": "不会。回答会继续被收集、保存，并计入您的仪表板总数。不会隐藏任何内容。升级只会取消每月限额。",
+    "q_privacy": "SourceTrac 会询问我客户的信息吗？",
+    "a_privacy": "不会。我们只存储订单 ID、买家选择的渠道和时间。我们从不收集姓名、电子邮件或地址，您的 CSV 导出中也没有任何客户数据。",
+    "q_change": "上线后还能修改问题吗？",
+    "a_change": "可以。您可以随时在“调查问卷”页面修改措辞或选项。新版本从下一笔订单开始生效。已收集的回答会保留原来的渠道。",
+    "q_cancel": "如何取消？",
+    "a_cancel": "在“套餐”页面取消。您的调查问卷会继续在免费套餐下运行，每月 {{cap}} 条回答，且不会删除任何内容。"
   },
   "shell": {
     "plan_blocked_title": "SourceTrac 在您当前的套餐中不可用",
@@ -222,7 +269,9 @@
     "options_invalid_hint": "请重新加载页面后再试。",
     "other_invalid": "无法识别“其他”设置。",
     "other_invalid_hint": "请重新加载页面后再试。",
-    "settings_invalid": "我们无法读取您的设置。"
+    "settings_invalid": "我们无法读取您的设置。",
+    "emoji_invalid": "该表情符号无效。",
+    "emoji_invalid_hint": "请使用单个表情符号，或留空。"
   },
   "errors": {
     "generic": "出了点问题，请重试。",
@@ -230,11 +279,22 @@
     "not_found_body": "该页面不存在。",
     "not_found_cta": "前往概览",
     "shop_missing_title": "此店铺尚未安装",
-    "shop_missing_body": "请从 Shopify 后台重新打开 SourceTrac 以重新安装。"
+    "shop_missing_body": "请从 Shopify 后台重新打开 SourceTrac 以重新安装。",
+    "boundary_title": "出现了问题",
+    "reference": "参考编号：{{reference}}"
   },
   "a11y": {
     "skip_to_content": "跳到主要内容",
     "breadcrumb": "面包屑导航",
     "decorative": "装饰性"
+  },
+  "survey_defaults": {
+    "question": "您是如何了解到我们的？",
+    "google": "Google 搜索",
+    "instagram": "Instagram",
+    "facebook": "Facebook",
+    "tiktok": "TikTok",
+    "friend-or-family": "朋友或家人",
+    "in-store": "实体店"
   }
 }

@@ -7,6 +7,7 @@ import { CSV_HEADERS } from "~/lib/csv";
 import { db } from "~/db.server";
 import { ensureShop } from "~/lib/provision.server";
 import { guarded } from "~/lib/admin-errors.server";
+import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -20,7 +21,7 @@ import { authenticate } from "~/shopify.server";
  * open in a spreadsheet.
  */
 
-export const meta: MetaFunction = () => [{ title: "Export — SourceTrac" }];
+export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "export.title");
 
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -49,6 +50,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
 
 export default function Export() {
   const data = useLoaderData<typeof loader>();
+  const { t } = useAdminI18n();
   const [downloading, setDownloading] = useState(false);
   const [downloadFailed, setDownloadFailed] = useState(false);
 
@@ -83,38 +85,35 @@ export default function Export() {
 
   return (
     <s-stack gap="base">
-      <s-section
-        heading="Export"
-        subheading="Download every answer as a spreadsheet, newest last."
-        padding="none"
-      />
+      <s-section heading={t("export.title")} subheading={t("export.subtitle")} padding="none" />
 
-      <Panel title="Your export">
+      <Panel title={t("export.panel_title")}>
         <s-stack gap="base">
           <s-text>
-            {data.count === 0
-              ? "You have no answers to export yet. Once buyers start answering, they will appear here."
-              : `This file will contain all ${data.count} of your answers.`}
+            {data.count === 0 ? t("export.empty_body") : t("export.count_body", { count: data.count })}
           </s-text>
 
           <s-text color="subdued" fontSize="small">
-            Columns: {data.headers.join(", ")}. There is no customer name, email or address in the
-            file.
+            {/* Column names are the file's literal headers, so they stay as-is. */}
+            {t("export.columns_note", { columns: data.headers.join(", ") })}
           </s-text>
 
           <div>
             <s-button variant="primary" icon="download" loading={downloading} onClick={download}>
-              Download CSV
+              {t("export.download")}
             </s-button>
           </div>
           {downloadFailed ? (
-            <s-text tone="critical">The download did not start. Please try again in a moment.</s-text>
+            <s-text tone="critical">{t("export.download_failed")}</s-text>
           ) : null}
         </s-stack>
       </Panel>
 
       {data.recent.length > 0 ? (
-        <Panel title="Preview" description="Your 10 most recent answers, exactly as they will export.">
+        <Panel
+          title={t("export.preview_title")}
+          description={t("export.preview_description", { count: data.recent.length })}
+        >
           <s-table>
             <s-table-header>
               <s-table-header-row>

@@ -1,0 +1,10 @@
+{
+  "sourcetrac": {
+    "loading": "Cargando…",
+    "thanks": "¡Gracias!",
+    "other": "Otro",
+    "otherLabel": "Cuéntanos más (opcional)",
+    "sending": "Enviando…",
+    "submit": "Enviar"
+  }
+}

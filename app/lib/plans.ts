@@ -25,7 +25,11 @@ export type PlanDefinition = {
   currencyCode: "USD";
   /** null = unlimited. */
   responseCap: number | null;
-  features: string[];
+  /**
+   * Translation keys, not display text: this is a module-level constant shared
+   * by every request, so it cannot hold one merchant's language.
+   */
+  features: Array<{ key: string; params?: Record<string, number> }>;
   /** Name shown to the merchant on the Shopify charge confirmation page. */
   displayName: string;
 };
@@ -39,10 +43,10 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
     responseCap: FREE_RESPONSE_CAP,
     displayName: "SourceTrac — Free",
     features: [
-      `${FREE_RESPONSE_CAP} survey responses per month`,
-      "Revenue and average order value by channel",
-      "7, 30 and 90 day trends",
-      "CSV export",
+      { key: "plans.feature_responses", params: { cap: FREE_RESPONSE_CAP } },
+      { key: "plans.feature_revenue" },
+      { key: "plans.feature_trends" },
+      { key: "plans.feature_csv" },
     ],
   },
   growth: {
@@ -53,9 +57,9 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
     responseCap: null,
     displayName: "SourceTrac — Growth",
     features: [
-      "Unlimited survey responses",
-      "Everything in Free",
-      "Priority support",
+      { key: "plans.feature_unlimited" },
+      { key: "plans.feature_everything_free" },
+      { key: "plans.feature_priority_support" },
     ],
   },
   scale: {
@@ -66,9 +70,9 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
     responseCap: null,
     displayName: "SourceTrac — Scale",
     features: [
-      "Unlimited survey responses",
-      "Everything in Growth",
-      "Priority support",
+      { key: "plans.feature_unlimited" },
+      { key: "plans.feature_everything_growth" },
+      { key: "plans.feature_priority_support" },
     ],
   },
 };

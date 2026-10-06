@@ -24,6 +24,25 @@ export interface SurveyOption {
   emoji: string | null;
 }
 
+/**
+ * The choices to render: the merchant's options, plus an "Other" choice when
+ * free-text answers are on.
+ *
+ * The config lists only the merchant's own options. Without this the buyer had
+ * nothing to tap that reveals the free-text field, so the merchant's "Allow a
+ * free-text answer" switch silently did nothing. Skipped when the merchant
+ * already named an option "Other", whose slug is the same value, so the
+ * buyer never sees two.
+ */
+export function surveyChoices(
+  options: SurveyOption[],
+  allowOther: boolean,
+  otherLabel: string,
+): SurveyOption[] {
+  if (!allowOther || options.some((option) => option.value === OTHER_CHANNEL)) return options;
+  return [...options, { value: OTHER_CHANNEL, label: otherLabel, emoji: null }];
+}
+
 export interface SurveyConfig {
   enabled: boolean;
   questionText: string;

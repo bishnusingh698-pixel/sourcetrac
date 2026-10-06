@@ -12,6 +12,7 @@ import {
   type LoaderFunctionArgs,
 } from "react-router";
 
+import { createTranslator, resolveLanguage, DEFAULT_LANGUAGE } from "~/lib/i18n";
 import { resolveRequestLanguage } from "~/lib/i18n/resolve.server";
 import stylesheet from "~/styles/app.css?url";
 
@@ -140,14 +141,15 @@ export function ErrorBoundary() {
     isRouteErrorResponse(error) && typeof (error.data as { hint?: unknown } | null)?.hint === "string"
       ? (error.data as { hint: string; reference?: string })
       : null;
+  const lang = useDocumentLanguage();
+  const t = createTranslator(resolveLanguage(lang) ?? DEFAULT_LANGUAGE);
   const message = hint
-    ? `${hint.hint}${hint.reference ? ` (reference: ${hint.reference})` : ""}`
+    ? `${hint.hint}${hint.reference ? ` (${t("errors.reference", { reference: hint.reference })})` : ""}`
     : isRouteErrorResponse(error)
     ? `${error.status} ${error.statusText}`
     : error instanceof Error
       ? error.message
-      : "Unknown error";
-  const lang = useDocumentLanguage();
+      : t("errors.generic");
 
   /**
    * Preserve the embedded-admin query params (host, shop, embedded) on the
@@ -178,10 +180,10 @@ export function ErrorBoundary() {
       <body>
         <main style={{ padding: "2rem", fontFamily: "system-ui, sans-serif" }}>
           <h1 style={{ fontSize: "1.25rem", marginBottom: "0.5rem" }}>
-            Something went wrong
+            {t("errors.boundary_title")}
           </h1>
           <p style={{ marginBottom: "1rem" }}>{message}</p>
-          <a href={dashboardHref}>Back to dashboard</a>
+          <a href={dashboardHref}>{t("errors.not_found_cta")}</a>
         </main>
         <Scripts />
       </body>

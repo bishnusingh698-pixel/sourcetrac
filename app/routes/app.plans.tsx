@@ -11,7 +11,7 @@ import {
 import { Banner, Panel } from "~/components/admin-ui";
 import { createSubscription, cancelSubscription } from "~/lib/billing.server";
 import { logger } from "~/lib/logger";
-import { effectivePlan, evaluateCap, isPlanKey, PLAN_ORDER, planFor, PLANS } from "~/lib/plans";
+import { effectivePlan, evaluateCap, FREE_RESPONSE_CAP, isPlanKey, PLAN_ORDER, planFor, PLANS } from "~/lib/plans";
 import { formatMoney } from "~/lib/money";
 import { getUsageCount } from "~/lib/responses.server";
 import {
@@ -22,6 +22,10 @@ import {
 import { getAccessToken, setPlan } from "~/lib/shop.server";
 import { ensureShop } from "~/lib/provision.server";
 import { guarded } from "~/lib/admin-errors.server";
+import { intlLocaleFor } from "~/lib/i18n";
+import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
+import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
+import type { I18nText } from "~/lib/settings";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -36,7 +40,17 @@ import { authenticate } from "~/shopify.server";
  * this action.
  */
 
-export const meta: MetaFunction = () => [{ title: "Plans — SourceTrac" }];
+export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "plans.title");
+
+/**
+ * Action results carry a translation key rather than English. The action cannot
+ * know which language the page is in, so the component translates.
+ */
+type Result = { ok: boolean; message: I18nText };
+const result = (ok: boolean, key: string, params?: I18nText["params"]): Result => ({
+  ok,
+  message: { key, params },
+});
 
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -86,6 +100,8 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     }
   }
 
+  const locale = intlLocaleFor(resolveAdminLanguage(request, shop.language));
+
   return {
     activePlan,
     used,
@@ -95,8 +111,8 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
       const plan = PLANS[key];
       return {
         key,
-        name: plan.name,
-        price: plan.priceMinor === 0 ? "Free" : `${formatMoney(plan.priceMinor, plan.currencyCode)}/month`,
+        // null for the free plan: the component renders the translated "Free".
+        price: plan.priceMinor === 0 ? null : formatMoney(plan.priceMinor, plan.currencyCode, locale),
         features: plan.features,
       };
     }),
@@ -110,31 +126,25 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
  * be missing or stale. Also what "Switch to Free" does: the Free plan is the
  * absence of a paid charge, not a $0 charge.
  */
-async function cancelActiveSubscription(params: { shopDomain: string; accessToken: string }) {
+async function cancelActiveSubscription(params: { shopDomain: string; accessToken: string }): Promise<Result> {
   let subscriptions: Awaited<ReturnType<typeof fetchActiveSubscriptions>>;
   try {
     subscriptions = await fetchActiveSubscriptions(params);
   } catch {
-    return {
-      ok: false as const,
-      message: "We could not reach Shopify to find your subscription. Please try again in a moment.",
-    };
+    return result(false, "plans.msg_lookup_failed");
   }
 
   const active = activeSourceTracSubscription(subscriptions);
-  if (!active) return { ok: true as const, message: "You are already on the Free plan." };
+  if (!active) return result(true, "plans.msg_already_free");
 
-  const result = await cancelSubscription({ ...params, subscriptionGid: active.id });
-  if (!result.ok) {
-    return { ok: false as const, message: `Shopify could not cancel the subscription: ${result.error}` };
+  const cancelled = await cancelSubscription({ ...params, subscriptionGid: active.id });
+  if (!cancelled.ok) {
+    return result(false, "plans.msg_cancel_failed", { error: cancelled.error ?? "—" });
   }
 
   // Collection continues on the free cap rather than stopping; the webhook
   // moves the stored plan.
-  return {
-    ok: true as const,
-    message: "Subscription cancelled. You are back on the Free plan with 50 responses a month.",
-  };
+  return result(true, "plans.msg_cancelled", { cap: FREE_RESPONSE_CAP });
 }
 
 export const action = guarded(async ({ request }: ActionFunctionArgs) => {
@@ -151,68 +161,63 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
   // was created as an online-only session.
   const accessToken = session.accessToken ?? (await getAccessToken(shop.id));
   if (!accessToken) {
-    return {
-      ok: false as const,
-      message: "We could not reach Shopify to manage billing. Reopen the app from Shopify admin and try again.",
-    };
+    return result(false, "plans.msg_shopify_unreachable");
   }
 
   if (intent === "subscribe") {
     const plan = String(form.get("plan") ?? "");
-    if (!isPlanKey(plan)) return { ok: false as const, message: "That plan is not available." };
+    if (!isPlanKey(plan)) return result(false, "plans.msg_plan_unavailable");
 
     if (plan === "free") {
       return cancelActiveSubscription({ shopDomain: shop.shopDomain, accessToken });
     }
 
-    const result = await createSubscription({ shopDomain: shop.shopDomain, accessToken, plan });
+    const created = await createSubscription({ shopDomain: shop.shopDomain, accessToken, plan });
 
-    if (!result.ok) {
-      return {
-        ok: false as const,
-        message: `Shopify could not start the subscription: ${result.error}`,
-      };
+    if (!created.ok) {
+      return result(false, "plans.msg_subscribe_failed", { error: created.error });
     }
 
     // Shopify asks the merchant to approve the charge. We do not assume success
     // here — the app_subscriptions/update webhook confirms it.
-    if (result.confirmationUrl) return redirect(result.confirmationUrl, { target: "_top" });
+    if (created.confirmationUrl) return redirect(created.confirmationUrl, { target: "_top" });
 
-    return {
-      ok: true as const,
-      message: "Subscription created. If you were not sent to a confirmation page, check your Shopify admin billing page.",
-    };
+    return result(true, "plans.msg_subscription_created");
   }
 
   if (intent === "cancel") {
     return cancelActiveSubscription({ shopDomain: shop.shopDomain, accessToken });
   }
 
-  return { ok: false as const, message: "Unknown action." };
+  return result(false, "errors.generic");
 });
 
 export default function Plans() {
   const data = useLoaderData<typeof loader>();
-  const result = useActionData<typeof action>();
+  const outcome = useActionData<typeof action>();
   const navigation = useNavigation();
+  const { t } = useAdminI18n();
   const busy = navigation.state !== "idle";
 
   const current = planFor(data.activePlan);
 
   return (
     <s-stack gap="base">
-      <s-section heading="Plans" subheading="You are billed through Shopify. Cancel any time." padding="none" />
+      <s-section heading={t("plans.title")} subheading={t("plans.subtitle")} padding="none" />
 
-      {result ? (
-        <Banner tone={result.ok ? "success" : "critical"} heading={result.ok ? "Done" : "Something went wrong"}>
-          <s-text>{result.message}</s-text>
+      {outcome ? (
+        <Banner
+          tone={outcome.ok ? "success" : "critical"}
+          heading={outcome.ok ? t("common.done") : t("errors.boundary_title")}
+        >
+          <s-text>{t(outcome.message.key, outcome.message.params)}</s-text>
         </Banner>
       ) : null}
 
-      <Banner tone="info" heading={`You are on ${current.name}`}>
+      <Banner tone="info" heading={t("plans.current_banner", { plan: t(`plans.${current.key}`) })}>
         {data.cap.cap === null
-          ? "Unlimited responses. Nothing is capped."
-          : `${data.cap.used} of ${data.cap.cap} responses used this month.`}
+          ? t("plans.unlimited")
+          : t("plans.usage_aria", { count: data.cap.used, cap: data.cap.cap })}
       </Banner>
 
       <s-grid gridTemplateColumns="repeat(auto-fit, minmax(260px, 1fr))" gap="base">
@@ -228,14 +233,19 @@ export default function Plans() {
             >
               <s-stack gap="base">
                 <s-stack gap="small">
-                  <s-text type="strong">{plan.name}</s-text>
-                  <s-heading>{plan.price}</s-heading>
-                  {isCurrent ? <s-badge tone="info">Current plan</s-badge> : null}
+                  <s-text type="strong">{t(`plans.${plan.key}`)}</s-text>
+                  <s-heading>{plan.price === null ? t("plans.free") : plan.price}</s-heading>
+                  {plan.price === null ? null : (
+                    <s-text color="subdued" fontSize="small">
+                      {t("plans.per_month")}
+                    </s-text>
+                  )}
+                  {isCurrent ? <s-badge tone="info">{t("plans.current_label")}</s-badge> : null}
                 </s-stack>
 
                 <s-unordered-list>
                   {plan.features.map((feature) => (
-                    <li key={feature}>{feature}</li>
+                    <li key={feature.key}>{t(feature.key, feature.params)}</li>
                   ))}
                 </s-unordered-list>
 
@@ -243,14 +253,14 @@ export default function Plans() {
                 {isCurrent ? (
                   data.activePlan === "free" ? (
                     <s-text color="subdued" fontSize="small">
-                      You are on the free plan.
+                      {t("plans.on_free")}
                     </s-text>
                   ) : (
                     <Form method="post">
                       <input type="hidden" name="intent" value="cancel" />
                       <input type="hidden" name="subscriptionGid" value={data.subscriptionGid ?? ""} />
                       <s-button type="submit" variant="tertiary" loading={busy}>
-                        Cancel subscription
+                        {t("plans.cancel_confirm")}
                       </s-button>
                     </Form>
                   )
@@ -259,7 +269,9 @@ export default function Plans() {
                     <input type="hidden" name="intent" value="subscribe" />
                     <input type="hidden" name="plan" value={plan.key} />
                     <s-button type="submit" variant="primary" loading={busy}>
-                      {plan.key === "free" ? "Switch to Free" : `Upgrade to ${plan.name}`}
+                      {plan.key === "free"
+                        ? t("plans.switch_free")
+                        : t("plans.choose_plan", { plan: t(`plans.${plan.key}`) })}
                     </s-button>
                   </Form>
                 )}
@@ -269,12 +281,8 @@ export default function Plans() {
         })}
       </s-grid>
 
-      <Panel title="How billing works">
-        <s-text>
-          Charges appear on your Shopify invoice alongside your other app subscriptions. SourceTrac
-          never stores your card details — Shopify handles the payment and tells us when a
-          subscription starts, changes or ends.
-        </s-text>
+      <Panel title={t("plans.billing_title")}>
+        <s-text>{t("plans.billing_body")}</s-text>
       </Panel>
     </s-stack>
   );
