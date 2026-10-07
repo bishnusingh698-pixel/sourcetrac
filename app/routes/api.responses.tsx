@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { orderIdSchema } from "~/lib/settings";
 
-import { toResponse } from "~/lib/http.server";
+import { readBodyText, toResponse } from "~/lib/http.server";
 import { serialiseError, ValidationError } from "~/lib/errors";
 import { logger } from "~/lib/logger";
 import { effectivePlan } from "~/lib/plans";
@@ -25,6 +25,7 @@ import { authenticate } from "~/shopify.server";
  */
 
 const MAX_OTHER_LENGTH = 140;
+const MAX_BODY_BYTES = 4096;
 
 const bodySchema = z.object({
   orderId: orderIdSchema,
@@ -46,21 +47,16 @@ export const action = async ({ request }: { request: Request }) => {
   // which cannot set `Access-Control-Allow-Origin`, so the extension would read
   // a genuine 400 as an opaque network failure and retry it.
   try {
-    const shop = await findShopByDomain(shopDomain);
-    if (!shop || shop.installState === "uninstalled") {
-      throw new ValidationError("This store is not using SourceTrac.", "Contact the store if you see this message.");
-    }
-
-    if (shop.checkoutSupported === false) {
-      throw new ValidationError(
-        "SourceTrac is not available on this store's plan.",
-        "Contact the store if you see this message.",
-      );
+    // A real answer is well under 1 KB; 4 KB leaves room for a long "Other"
+    // text in a multi-byte script.
+    const text = await readBodyText(request, MAX_BODY_BYTES);
+    if (text === null) {
+      throw new ValidationError("The request body was too large.", "Reload the page and try again.");
     }
 
     let raw: unknown;
     try {
-      raw = await request.json();
+      raw = JSON.parse(text);
     } catch {
       throw new ValidationError("The request body was not valid JSON.", "Reload the page and try again.");
     }
@@ -75,10 +71,28 @@ export const action = async ({ request }: { request: Request }) => {
     // Rate limit after validation, so a malformed flood cannot exhaust the token
     // bucket that legitimate buyers depend on.
     const usesOther = parsed.data.channel === OTHER_CHANNEL_VALUE;
+    // Shop-wide first: the per-order key below is chosen by the caller, so on
+    // its own it cannot stop a flood of made-up order ids.
+    consumeToken(`response-shop:${shopDomain}`, BUCKETS.responseShop);
     consumeToken(
       `response:${shopDomain}:${parsed.data.orderId}`,
       usesOther ? BUCKETS.otherResponse : BUCKETS.response,
     );
+
+    // Looked up only after validation and rate limiting, so neither a malformed
+    // flood nor a throttled one reaches the database (and wakes Neon, whose
+    // free compute hours are the scarcest resource this app has).
+    const shop = await findShopByDomain(shopDomain);
+    if (!shop || shop.installState === "uninstalled") {
+      throw new ValidationError("This store is not using SourceTrac.", "Contact the store if you see this message.");
+    }
+
+    if (shop.checkoutSupported === false) {
+      throw new ValidationError(
+        "SourceTrac is not available on this store's plan.",
+        "Contact the store if you see this message.",
+      );
+    }
 
     const settings = parseSurveySettings(shop.optionsJson, {
       questionText: shop.questionText,

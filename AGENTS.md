@@ -775,3 +775,41 @@ must return the `app-bridge.js` script tag, not the error text.
 - Local browser checks: headless Chromium's UA is a bot (410). Stub
   `cdn.shopify.com` and patch `fetch` to add `Authorization: Bearer <id_token>`
   the way App Bridge does, or client-side navigation fails auth.
+
+## Phone layout and hardening pass (2026-10-07)
+
+- **No in-iframe sidebar.** Shopify renders `<s-app-nav>` in its own sidebar on
+  desktop and the app title menu on phones; a second copy inside the frame took
+  a column and squeezed every page on a phone. The shell is now a compact
+  toolbar (plan badge + usage, language select) above the page.
+- **The dashboard is home.** Its `s-link` in `<s-app-nav>` carries `rel="home"`
+  (spread, since Polaris's `s-link` type has no `rel`), so it is the app's
+  landing page, not a separate "Dashboard" sub-page. The onboarding page was
+  deleted: the dashboard shows the setup guide until the first answer exists.
+- **Responsive layout comes from `@container` values**, e.g.
+  `gridTemplateColumns="@container (inline-size > 760px) repeat(4, …), …"`
+  inside `<s-query-container>`. It responds to the iframe's width, not the
+  device's. No media queries on `s-*` elements.
+- **`s-table` markup:** column headers are `<s-table-header listSlot=…>` inside
+  `<s-table-header-row>`. Wrapping the row in `s-table-header` with
+  `s-table-cell` headings (the old markup) is wrong and never collapses to the
+  list layout on narrow screens.
+- **Checkout extension props were almost all invalid** and nothing caught it,
+  because `Primitive = any`. `Pressable`/`Button` take `onPress` — `onClick`
+  meant **tapping an answer did nothing**. Also `cornerRadius` not
+  `borderRadius`, `background` is `transparent|base|subdued`, `borderWidth` is
+  `base|medium|thick`, no `style`. `SurveyView` now casts each primitive to its
+  real prop type (`Typed<PressableProps>` …), so `typecheck:extensions` checks
+  every prop. Keep it that way.
+- **`TextField.onChange` fires on blur only.** The "Other" field is
+  uncontrolled and tracked with `onInput`; controlled, Submit stayed disabled
+  while the buyer typed with the phone keyboard open.
+- **Rate limits have shop-wide backstops** (`responseShop`, `surveyConfigShop`).
+  Per-order keys are caller-chosen, so one lifted checkout token plus made-up
+  order ids got unlimited fresh buckets. `/api/responses` validates and rate
+  limits before touching the DB, and caps the body at 4 KB (`readBodyText`).
+  The bucket sweep is throttled; it used to rescan the whole map per request.
+- **Test charges never grant a paid plan in production**
+  (`paidPlanFromSubscriptions`, `allowTest`).
+- **Cancelling / switching to Free asks for confirmation** (`ConfirmCancel` in
+  `app.plans.tsx`), using the `plans.cancel_*` keys that already existed.

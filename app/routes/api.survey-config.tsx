@@ -46,7 +46,11 @@ export const loader = async ({ request }: { request: Request }) => {
       });
     }
 
-    consumeToken(`config:${shopDomain}`, BUCKETS.surveyConfig);
+    // Keyed per order, with a much larger shop-wide ceiling behind it. A single
+    // per-shop bucket let one client hammering with a valid token exhaust it and
+    // hide the survey from every other buyer of that store.
+    consumeToken(`config-shop:${shopDomain}`, BUCKETS.surveyConfigShop);
+    consumeToken(`config:${shopDomain}:${parsed.data.orderId}`, BUCKETS.surveyConfig);
 
     const shop = await findShopByDomain(shopDomain);
 

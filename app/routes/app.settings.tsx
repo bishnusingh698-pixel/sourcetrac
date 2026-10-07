@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useFetcher,
   useLoaderData,
@@ -195,6 +195,18 @@ export default function Settings() {
 
   const saving = fetcher.state !== "idle";
   const result = fetcher.data;
+
+  // The Save button sits at the end of a long form, and on a phone the result
+  // banner at the top is a screen away. A toast (rendered by the Shopify admin,
+  // so it follows the merchant's theme) confirms the save where they are.
+  useEffect(() => {
+    if (!result) return;
+    window.shopify?.toast?.show(
+      result.ok ? t("settings.saved_title") : t("settings.save_failed_title"),
+      { isError: !result.ok },
+    );
+    // Keyed on the result alone (not `t`) so each save shows exactly one toast.
+  }, [result]);
   const fieldErrors = result?.fieldErrors ?? {};
   const countError = tx(fieldErrors.options);
   /** Accessible name for an option, even before the merchant has typed one. */
@@ -287,76 +299,66 @@ export default function Settings() {
               ) : null}
 
               {options.map((option, index) => (
-                <s-grid
-                  key={option.value}
-                  gridTemplateColumns="auto 1fr auto"
-                  gap="small"
-                  alignItems="end"
-                >
-                  <s-text-field
-                    label={t("settings.field_emoji")}
-                    name="emoji"
-                    value={option.emoji}
-                    maxLength={EMOJI_MAX_LENGTH}
-                    error={tx(fieldErrors[`options.${index}.emoji`])}
-                    // The emoji is decorative; the adjacent label carries the
-                    // meaning, so it is not announced twice.
-                    labelAccessibilityVisibility="exclusive"
-                    onInput={(event) => updateOption(index, { emoji: fieldValue(event) })}
-                  />
+                // One bordered card per option. The old single row (emoji,
+                // label, three icon buttons) left the label field a few
+                // characters wide on a phone. Now the emoji and label share a
+                // row and the reorder/remove controls sit underneath, so the
+                // label always gets the full width.
+                <s-box key={option.value} padding="small" border="base" borderRadius="base">
+                  <s-stack gap="small">
+                    <s-grid gridTemplateColumns="minmax(3.5rem, 4.5rem) minmax(0, 1fr)" gap="small" alignItems="end">
+                      <s-text-field
+                        label={t("settings.field_emoji")}
+                        name="emoji"
+                        value={option.emoji}
+                        maxLength={EMOJI_MAX_LENGTH}
+                        error={tx(fieldErrors[`options.${index}.emoji`])}
+                        onInput={(event) => updateOption(index, { emoji: fieldValue(event) })}
+                      />
 
-                  <s-text-field
-                    label={t("settings.field_option")}
-                    name="label"
-                    value={option.label}
-                    maxLength={MAX_OPTION_LABEL_LENGTH}
-                    required
-                    error={tx(fieldErrors[`options.${index}.label`])}
-                    onInput={(event) => updateOption(index, { label: fieldValue(event) })}
-                  />
+                      <s-text-field
+                        label={t("settings.field_option")}
+                        name="label"
+                        value={option.label}
+                        maxLength={MAX_OPTION_LABEL_LENGTH}
+                        required
+                        error={tx(fieldErrors[`options.${index}.label`])}
+                        onInput={(event) => updateOption(index, { label: fieldValue(event) })}
+                      />
+                    </s-grid>
 
-                  {/* Reorder and remove are plain type="button" controls. They
-                      must not submit the form — s-button has no name/value, so
-                      intent is expressed through JS state instead. */}
-                  <s-button-group>
-                    <s-button
-                      type="button"
-                      variant="tertiary"
-                      icon="arrow-up"
-                      disabled={index === 0}
-                      accessibilityLabel={t("settings.move_up", { label: nameOf(option, index) })}
-                      onClick={() => move(index, -1)}
-                    >
-                      <s-text accessibilityVisibility="exclusive">
-                        {t("settings.move_up", { label: nameOf(option, index) })}
-                      </s-text>
-                    </s-button>
-                    <s-button
-                      type="button"
-                      variant="tertiary"
-                      icon="arrow-down"
-                      disabled={index === options.length - 1}
-                      accessibilityLabel={t("settings.move_down", { label: nameOf(option, index) })}
-                      onClick={() => move(index, 1)}
-                    >
-                      <s-text accessibilityVisibility="exclusive">
-                        {t("settings.move_down", { label: nameOf(option, index) })}
-                      </s-text>
-                    </s-button>
-                    <s-button
-                      type="button"
-                      variant="tertiary"
-                      icon="delete"
-                      disabled={options.length <= data.min}
-                      accessibilityLabel={t("settings.remove_option", { label: nameOf(option, index) })}
-                      onClick={() => removeOption(index)}
-                    >
-                      <s-text accessibilityVisibility="exclusive">
-                        {t("settings.remove_option", { label: nameOf(option, index) })}
-                      </s-text>
-                    </s-button>
-                  </s-button-group>
-                </s-grid>
+                    {/* Reorder and remove are plain type="button" controls. They
+                        must not submit the form — s-button has no name/value, so
+                        intent is expressed through JS state instead. */}
+                    <s-stack direction="inline" gap="small-200" justifyContent="end">
+                      <s-button
+                        type="button"
+                        variant="tertiary"
+                        icon="arrow-up"
+                        disabled={index === 0}
+                        accessibilityLabel={t("settings.move_up", { label: nameOf(option, index) })}
+                        onClick={() => move(index, -1)}
+                      />
+                      <s-button
+                        type="button"
+                        variant="tertiary"
+                        icon="arrow-down"
+                        disabled={index === options.length - 1}
+                        accessibilityLabel={t("settings.move_down", { label: nameOf(option, index) })}
+                        onClick={() => move(index, 1)}
+                      />
+                      <s-button
+                        type="button"
+                        variant="tertiary"
+                        tone="critical"
+                        icon="delete"
+                        disabled={options.length <= data.min}
+                        accessibilityLabel={t("settings.remove_option", { label: nameOf(option, index) })}
+                        onClick={() => removeOption(index)}
+                      />
+                    </s-stack>
+                  </s-stack>
+                </s-box>
               ))}
 
               <s-button

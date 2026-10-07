@@ -3,6 +3,7 @@ import { useRemoteSubscription } from "@remote-ui/react";
 import {
   BlockStack,
   Button,
+  Heading,
   InlineStack,
   Pressable,
   Text,
@@ -76,6 +77,7 @@ export default function OrderStatusBlock() {
       busy={survey.busy}
       t={survey.t}
       BlockStack={BlockStack}
+      Heading={Heading}
       InlineStack={InlineStack}
       Pressable={Pressable}
       Text={Text}

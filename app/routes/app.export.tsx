@@ -114,20 +114,24 @@ export default function Export() {
           title={t("export.preview_title")}
           description={t("export.preview_description", { count: data.recent.length })}
         >
-          <s-table>
-            <s-table-header>
-              <s-table-header-row>
-                {data.headers.map((header) => (
-                  <s-table-cell key={header}>{header}</s-table-cell>
-                ))}
-              </s-table-header-row>
-            </s-table-header>
+          {/* Column headers are `s-table-header` with list slots, so a phone
+              gets one card per answer (order on top, channel beside it, the
+              rest as labelled pairs) instead of five columns scrolling sideways.
+              Header text is the file's literal column name. */}
+          <s-table variant="auto">
+            <s-table-header-row>
+              <s-table-header listSlot="primary">{data.headers[0]}</s-table-header>
+              <s-table-header listSlot="secondary">{data.headers[2]}</s-table-header>
+              <s-table-header listSlot="labeled">{data.headers[1]}</s-table-header>
+              <s-table-header listSlot="labeled" format="currency">{data.headers[3]}</s-table-header>
+              <s-table-header listSlot="labeled">{data.headers[4]}</s-table-header>
+            </s-table-header-row>
             <s-table-body>
               {data.recent.map((row) => (
                 <s-table-row key={row.orderId}>
                   <s-table-cell>{row.orderId}</s-table-cell>
-                  <s-table-cell>{row.submittedAt}</s-table-cell>
                   <s-table-cell>{row.channel}</s-table-cell>
+                  <s-table-cell>{row.submittedAt}</s-table-cell>
                   <s-table-cell>{row.orderTotal || "—"}</s-table-cell>
                   <s-table-cell>{row.currency || "—"}</s-table-cell>
                 </s-table-row>

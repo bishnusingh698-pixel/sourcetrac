@@ -215,10 +215,21 @@ export function activeSourceTracSubscription(subscriptions: ActiveSubscription[]
   );
 }
 
-/** The paid plan a shop currently holds, or null for free. */
-export function paidPlanFromSubscriptions(subscriptions: ActiveSubscription[]): PlanKey | null {
+/**
+ * The paid plan a shop currently holds, or null for free.
+ *
+ * A test charge never grants a paid plan in production. Test charges cost the
+ * merchant nothing, and one can exist on a live store if a development build
+ * was ever pointed at it; honouring it would hand out unlimited responses for
+ * free and stamp the shop `active` on every Plans page load.
+ */
+export function paidPlanFromSubscriptions(
+  subscriptions: ActiveSubscription[],
+  { allowTest = process.env.NODE_ENV !== "production" }: { allowTest?: boolean } = {},
+): PlanKey | null {
   for (const subscription of subscriptions) {
     const name = subscription.name.toLowerCase();
+    if (subscription.test && !allowTest) continue;
     if (!name.startsWith("sourcetrac")) continue;
     if (subscription.status.toUpperCase() !== "ACTIVE") continue;
     if (name.includes("growth")) return "growth";

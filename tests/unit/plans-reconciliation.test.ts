@@ -34,6 +34,12 @@ const subscription = (over: Partial<Parameters<typeof paidPlanFromSubscriptions>
 });
 
 describe("paidPlanFromSubscriptions", () => {
+  it("never grants a paid plan from a test charge in production", () => {
+    const testCharge = subscription({ test: true });
+    expect(paidPlanFromSubscriptions([testCharge], { allowTest: false })).toBeNull();
+    expect(paidPlanFromSubscriptions([testCharge], { allowTest: true })).toBe("growth");
+  });
+
   it("reads a live growth or scale charge", () => {
     expect(paidPlanFromSubscriptions([subscription()])).toBe("growth");
     expect(paidPlanFromSubscriptions([subscription({ name: "SourceTrac Scale" })])).toBe("scale");

@@ -7,6 +7,10 @@ import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import { OTHER_CHANNEL_VALUE, parseSurveySettings } from "~/lib/settings";
 
 import { Banner, Metric, MoneyList, Panel, type BadgeTone } from "~/components/admin-ui";
+import { LanguageForm } from "~/components/language-selector";
+import { db } from "~/db.server";
+import { isSupportedLanguage, type LanguageCode } from "~/lib/i18n";
+import { MAX_OPTIONS, MIN_OPTIONS } from "~/lib/settings";
 import { buildTrend, computeStats } from "~/lib/analytics";
 import { fetchDashboardData } from "~/lib/analytics-queries.server";
 import { formatMoney } from "~/lib/money";
@@ -15,10 +19,12 @@ import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
 
 /**
- * Dashboard.
+ * Dashboard — the app's home page.
  *
- * One primary action: "Edit question" (Settings). Everything else is read-only
- * reporting, so there is no competing call to action.
+ * Until the first answer arrives this page is the setup guide (it used to be a
+ * separate "Get started" page, which meant a new merchant landed on an empty
+ * dashboard and had to find the checklist themselves). Once answers exist it
+ * is read-only reporting with one action, "Edit survey".
  *
  * All money is formatted here on the server and shipped as strings. The browser
  * never receives minor-unit integers, so it cannot sum across currencies by
@@ -60,7 +66,13 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
       .options.map((option) => [option.value, option.label] as const),
   );
 
-  const data = await fetchDashboardData({ shopId: shop.id, days: range.days });
+  const [data, firstResponse, firstOrder] = await Promise.all([
+    fetchDashboardData({ shopId: shop.id, days: range.days }),
+    // Ever, not in the window: a quiet week must not send an established
+    // merchant back to the setup guide.
+    db.surveyResponse.findFirst({ where: { shopId: shop.id }, select: { id: true } }),
+    db.orderCache.findFirst({ where: { shopId: shop.id }, select: { id: true } }),
+  ]);
   const { summary, channels } = computeStats({
     responses: data.responses,
     decidedAmounts: data.decidedAmounts,
@@ -76,6 +88,17 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   return {
     range,
     hasAnyResponse: summary.totalResponses > 0,
+    setup:
+      firstResponse === null
+        ? {
+            shopHandle: shop.shopDomain.replace(/\.myshopify\.com$/, ""),
+            hasOrders: firstOrder !== null,
+            hasOther: shop.allowOther,
+            // False until the merchant picks a language themselves; while it is
+            // false the full picker is offered as the first setup step.
+            hasExplicitLanguage: isSupportedLanguage(shop.language),
+          }
+        : null,
     ordersInWindow: data.ordersInWindow,
     summary: {
       totalResponses: summary.totalResponses,
@@ -224,11 +247,16 @@ function Sparkline({
 
   return (
     <s-stack gap="base">
-      <s-box>
+      {/* Stretched to the panel's width (preserveAspectRatio="none"): the
+          default letterboxed the chart into a narrow strip on wide screens and
+          a tiny one on phones. Strokes are non-scaling, so the line weight
+          never distorts. */}
+      <s-box padding="none">
         <svg
           viewBox="0 0 100 40"
           width="100%"
-          height="160"
+          height="140"
+          preserveAspectRatio="none"
           role="img"
           aria-label={t("dashboard.trend_aria", {
             total,
@@ -264,19 +292,26 @@ function Sparkline({
             vectorEffect="non-scaling-stroke"
           />
 
-          {/* A dot on the latest day anchors the eye to "now". */}
-          <circle
-            cx={xAt(points.length - 1)}
-            cy={yAt(points.at(-1)?.responses ?? 0)}
-            r="1.6"
-            fill="currentColor"
+          {/* A dot on the latest day anchors the eye to "now". Drawn as a
+              zero-length round-capped line rather than a <circle>: with a
+              non-uniform aspect ratio a circle would stretch into an oval,
+              while a non-scaling stroke stays round at any width. */}
+          <line
+            x1={xAt(points.length - 1)}
+            x2={xAt(points.length - 1)}
+            y1={yAt(points.at(-1)?.responses ?? 0)}
+            y2={yAt(points.at(-1)?.responses ?? 0)}
+            stroke="currentColor"
+            strokeWidth="7"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
           />
         </svg>
       </s-box>
 
       <s-stack direction="block" gap="small">
         <s-divider />
-        <s-grid gridTemplateColumns="repeat(auto-fit, minmax(120px, 1fr))" gap="small">
+        <s-grid gridTemplateColumns="repeat(auto-fit, minmax(min(100%, 7rem), 1fr))" gap="small">
           <s-stack gap="small-200">
             <s-text color="subdued" fontSize="small">
               {t("dashboard.trend_stat_total")}
@@ -311,9 +346,104 @@ function Sparkline({
   );
 }
 
+type Setup = {
+  shopHandle: string;
+  hasOrders: boolean;
+  hasOther: boolean;
+  hasExplicitLanguage: boolean;
+};
+
+/**
+ * First-run checklist, shown on the dashboard until the first answer arrives.
+ *
+ * A step is only reported as done when we can prove it from our own data. Step
+ * 1 is never ticked: the Admin API exposes no "block enabled" state and Shopify
+ * sends no event when a checkout block is toggled, so guessing would be worse
+ * than asking the merchant to confirm.
+ */
+function SetupGuide({ setup, t, language }: { setup: Setup; t: TFunction; language: LanguageCode }) {
+  // Thank-you and order-status blocks only exist in the *checkout* editor
+  // (Settings › Checkout › Customize), never the Online Store theme editor.
+  const editorUrl = `https://admin.shopify.com/store/${setup.shopHandle}/settings/checkout/editor?page=thank-you`;
+
+  const steps: Array<{ title: string; body: string; action?: { label: string; href: string } }> = [
+    {
+      title: t("onboarding.step1_title"),
+      body: setup.hasOrders ? t("onboarding.step1_body_orders") : t("onboarding.step1_body"),
+      action: { label: t("onboarding.step1_action"), href: editorUrl },
+    },
+    {
+      title: t("onboarding.step2_title"),
+      body: setup.hasOther
+        ? t("onboarding.step2_body_other")
+        : t("onboarding.step2_body", { min: MIN_OPTIONS, max: MAX_OPTIONS }),
+      action: { label: t("onboarding.step2_action"), href: "/app/settings" },
+    },
+    {
+      title: t("onboarding.step3_title"),
+      body: t("onboarding.step3_body"),
+    },
+  ];
+
+  return (
+    <s-stack gap="base">
+      {setup.hasExplicitLanguage ? null : (
+        <Panel title={t("onboarding.language_step_title")}>
+          <s-stack gap="base">
+            <s-text color="subdued">{t("onboarding.language_step_body")}</s-text>
+            {/* The full grid, not the toolbar's dropdown: a first-time visitor
+                who cannot read the current language cannot operate a dropdown
+                they cannot read either. */}
+            <LanguageForm language={language} detected />
+          </s-stack>
+        </Panel>
+      )}
+
+      <s-section heading={t("onboarding.title")}>
+        <s-stack gap="base">
+          <s-text color="subdued">{t("onboarding.subtitle")}</s-text>
+          <s-progress
+            value={0}
+            max={steps.length}
+            accessibilityLabel={t("onboarding.progress_aria", { done: 0, total: steps.length })}
+          />
+          {steps.map((step, index) => (
+            <s-box key={step.title} padding="base" border="base" borderRadius="base">
+              <s-stack gap="small">
+                <s-text type="strong">
+                  {index + 1}. {step.title}
+                </s-text>
+                <s-text color="subdued">{step.body}</s-text>
+                {step.action ? (
+                  <div>
+                    {/* Shopify admin pages refuse to render inside the app's
+                        iframe, so the checkout editor opens in the top window.
+                        In-app links stay in the frame. */}
+                    <s-button
+                      href={step.action.href}
+                      target={step.action.href.startsWith("https://") ? "_top" : "auto"}
+                      variant={index === 0 ? "primary" : "secondary"}
+                    >
+                      {step.action.label}
+                    </s-button>
+                  </div>
+                ) : null}
+              </s-stack>
+            </s-box>
+          ))}
+        </s-stack>
+      </s-section>
+
+      <Banner tone="info" heading={t("onboarding.why_title")}>
+        <s-text>{t("onboarding.why_body")}</s-text>
+      </Banner>
+    </s-stack>
+  );
+}
+
 export default function Dashboard() {
   const data = useLoaderData<typeof loader>();
-  const { t, locale } = useAdminI18n();
+  const { t, locale, language } = useAdminI18n();
   const rangeLabel = t(data.range.labelKey);
   const pending = data.summary.pendingResponses;
   const locked = data.summary.lockedResponses;
@@ -322,56 +452,76 @@ export default function Dashboard() {
   // already in the payload, so it costs no extra query.
   const maxChannelResponses = Math.max(0, ...data.channels.map((c) => c.responses));
 
+  if (data.setup) return <SetupGuide setup={data.setup} t={t} language={language} />;
+
   return (
     <s-stack gap="base">
-      <s-section heading={t("dashboard.title")} subheading={t("dashboard.subtitle")} padding="none" />
-
-      {/* Range switcher. A link rather than a select so the choice is in the URL
+      {/* Title and range switcher share a row on desktop and stack on a phone.
+          The range is a link rather than a select so the choice is in the URL
           and survives a refresh or a shared link. */}
-      <s-button-group accessibilityLabel={t("dashboard.range_label")}>
-        {RANGES.map((range) => (
-          <s-button
-            key={range.days}
-            href={`/app?range=${range.days}`}
-            variant={range.days === data.range.days ? "primary" : "secondary"}
-          >
-            {t(range.labelKey)}
-          </s-button>
-        ))}
-      </s-button-group>
+      <s-query-container>
+        <s-grid
+          gridTemplateColumns="@container (inline-size > 640px) 1fr auto, 1fr"
+          gap="small"
+          alignItems="center"
+        >
+          <s-stack gap="small-200">
+            <s-heading>{t("dashboard.title")}</s-heading>
+            <s-text color="subdued">{t("dashboard.subtitle")}</s-text>
+          </s-stack>
+          <s-button-group accessibilityLabel={t("dashboard.range_label")}>
+            {RANGES.map((range) => (
+              <s-button
+                key={range.days}
+                href={`/app?range=${range.days}`}
+                variant={range.days === data.range.days ? "primary" : "secondary"}
+              >
+                {t(range.labelKey)}
+              </s-button>
+            ))}
+          </s-button-group>
+        </s-grid>
+      </s-query-container>
 
       {data.hasAnyResponse ? (
         <>
-          <s-grid gridTemplateColumns="repeat(auto-fit, minmax(180px, 1fr))" gap="base">
-            <Metric label={t("dashboard.metric_responses")} help={rangeLabel}>
-              {data.summary.totalResponses}
-            </Metric>
-
-            <Metric label={t("dashboard.metric_revenue")} help={t("dashboard.metric_revenue_help")}>
-              <MoneyList amounts={data.summary.revenue} />
-            </Metric>
-
-            <Metric label={t("dashboard.metric_aov")} help={t("dashboard.metric_aov_help")}>
-              <MoneyList amounts={data.summary.aov} />
-            </Metric>
-
-            <Metric
-              label={t("dashboard.metric_response_rate")}
-              trend={formatDelta(data.summary.responseRateChange, t, locale)}
-              help={
-                data.summary.responseRate === null
-                  ? t("dashboard.response_rate_no_orders")
-                  : t("dashboard.response_rate_of_orders", {
-                      count: data.summary.totalResponses,
-                      total: data.ordersInWindow,
-                    })
-              }
+          {/* Two tiles per row on a phone, four on desktop. A single column
+              made the four headline numbers a long scroll on a phone. */}
+          <s-query-container>
+            <s-grid
+              gridTemplateColumns="@container (inline-size > 760px) repeat(4, minmax(0, 1fr)), (inline-size > 300px) repeat(2, minmax(0, 1fr)), minmax(0, 1fr)"
+              gap="small"
             >
-              {/* null is rendered as an em dash, never 0% or NaN — a divide by
-                  zero orders is "unknown", not "nobody answered". */}
-              {data.summary.responseRate === null ? "—" : formatPercent(data.summary.responseRate, locale)}
-            </Metric>
-          </s-grid>
+              <Metric label={t("dashboard.metric_responses")} help={rangeLabel}>
+                {data.summary.totalResponses}
+              </Metric>
+
+              <Metric label={t("dashboard.metric_revenue")} help={t("dashboard.metric_revenue_help")}>
+                <MoneyList amounts={data.summary.revenue} />
+              </Metric>
+
+              <Metric label={t("dashboard.metric_aov")} help={t("dashboard.metric_aov_help")}>
+                <MoneyList amounts={data.summary.aov} />
+              </Metric>
+
+              <Metric
+                label={t("dashboard.metric_response_rate")}
+                trend={formatDelta(data.summary.responseRateChange, t, locale)}
+                help={
+                  data.summary.responseRate === null
+                    ? t("dashboard.response_rate_no_orders")
+                    : t("dashboard.response_rate_of_orders", {
+                        count: data.summary.totalResponses,
+                        total: data.ordersInWindow,
+                      })
+                }
+              >
+                {/* null is rendered as an em dash, never 0% or NaN — a divide by
+                    zero orders is "unknown", not "nobody answered". */}
+                {data.summary.responseRate === null ? "—" : formatPercent(data.summary.responseRate, locale)}
+              </Metric>
+            </s-grid>
+          </s-query-container>
 
           {pending > 0 ? (
             <Banner tone="info" heading={t("dashboard.pending_banner_title", { count: pending })}>
@@ -385,31 +535,30 @@ export default function Dashboard() {
             </Banner>
           ) : null}
 
-          <Panel title={t("dashboard.trend_title")} description={t("dashboard.trend_subtitle", { range: rangeLabel })}>
-            <Sparkline
-              points={data.trend.map((p) => ({ date: p.date, responses: p.responses }))}
-              t={t}
-              locale={locale}
-            />
-          </Panel>
-
           <Panel title={t("dashboard.channels_title")} description={t("dashboard.channels_subtitle")}>
-            <s-table>
-              <s-table-header>
-                <s-table-header-row>
-                  <s-table-cell>{t("dashboard.col_channel")}</s-table-cell>
-                  <s-table-cell>{t("dashboard.col_share")}</s-table-cell>
-                  <s-table-cell>{t("dashboard.col_responses")}</s-table-cell>
-                  <s-table-cell>{t("dashboard.col_revenue")}</s-table-cell>
-                  <s-table-cell>{t("dashboard.col_aov")}</s-table-cell>
-                </s-table-header-row>
-              </s-table-header>
+            {/* Real column headers (`s-table-header`) with list slots, so on a
+                narrow screen Polaris re-lays each row as a card — channel name
+                on top, the numbers as labelled pairs — instead of a five-column
+                table scrolling sideways on a phone. */}
+            <s-table variant="auto">
+              <s-table-header-row>
+                <s-table-header listSlot="primary">{t("dashboard.col_channel")}</s-table-header>
+                <s-table-header listSlot="secondary" format="numeric">
+                  {t("dashboard.col_responses")}
+                </s-table-header>
+                <s-table-header listSlot="labeled">{t("dashboard.col_share")}</s-table-header>
+                <s-table-header listSlot="labeled" format="currency">
+                  {t("dashboard.col_revenue")}
+                </s-table-header>
+                <s-table-header listSlot="labeled" format="currency">
+                  {t("dashboard.col_aov")}
+                </s-table-header>
+              </s-table-header-row>
               <s-table-body>
                 {data.channels.map((channel) => {
-                  // Share of responses, so the biggest channel is obvious without
-                  // reading every number. Uses the largest channel as the
-                  // denominator: comparing every bar to 100% would make a flat
-                  // distribution look like a set of unrelated slivers.
+                  // Share of responses relative to the busiest channel, so a
+                  // flat distribution reads as comparable bars rather than
+                  // unrelated slivers of 100%.
                   const share =
                     maxChannelResponses > 0 ? (channel.responses / maxChannelResponses) * 100 : 0;
                   const name = channel.label ?? t("dashboard.channel_other");
@@ -417,7 +566,7 @@ export default function Dashboard() {
                   return (
                     <s-table-row key={channel.channel}>
                       <s-table-cell>
-                        <s-stack gap="small-200">
+                        <s-stack direction="inline" gap="small-200" alignItems="center">
                           <s-text type="strong">{name}</s-text>
                           {channel.pendingResponses > 0 ? (
                             <s-badge tone="info">
@@ -425,6 +574,9 @@ export default function Dashboard() {
                             </s-badge>
                           ) : null}
                         </s-stack>
+                      </s-table-cell>
+                      <s-table-cell>
+                        <s-text fontVariantNumeric="tabular-nums">{channel.responses}</s-text>
                       </s-table-cell>
                       <s-table-cell>
                         {/* `s-progress` is styled by the theme, so this bar tracks
@@ -435,9 +587,6 @@ export default function Dashboard() {
                           tone="info"
                           accessibilityLabel={t("dashboard.share_aria", { channel: name, share: Math.round(share) })}
                         />
-                      </s-table-cell>
-                      <s-table-cell>
-                        <s-text fontVariantNumeric="tabular-nums">{channel.responses}</s-text>
                       </s-table-cell>
                       <s-table-cell>
                         {channel.revenue.length > 0 ? (
@@ -459,21 +608,33 @@ export default function Dashboard() {
               </s-table-body>
             </s-table>
           </Panel>
+
+          <Panel title={t("dashboard.trend_title")} description={t("dashboard.trend_subtitle", { range: rangeLabel })}>
+            <Sparkline
+              points={data.trend.map((p) => ({ date: p.date, responses: p.responses }))}
+              t={t}
+              locale={locale}
+            />
+          </Panel>
+
+          <div>
+            <s-button href="/app/settings" variant="secondary" icon="edit">
+              {t("dashboard.edit_survey")}
+            </s-button>
+          </div>
         </>
       ) : (
-        <s-empty-state heading={t("dashboard.empty_title")}>
+        <s-section>
           <s-stack gap="base">
+            <s-heading>{t("dashboard.empty_title")}</s-heading>
             <s-text>{t("dashboard.empty_body")}</s-text>
-            <s-button-group>
-              <s-button href="/app/onboarding" variant="primary">
-                {t("dashboard.empty_cta")}
-              </s-button>
+            <div>
               <s-button href="/app/settings" variant="secondary">
                 {t("dashboard.edit_survey")}
               </s-button>
-            </s-button-group>
+            </div>
           </s-stack>
-        </s-empty-state>
+        </s-section>
       )}
     </s-stack>
   );
