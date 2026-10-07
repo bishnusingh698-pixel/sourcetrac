@@ -5,6 +5,10 @@
     "other": "Overig",
     "otherLabel": "Vertel ons meer (optioneel)",
     "sending": "Verzenden…",
-    "submit": "Verzenden"
+    "submit": "Verzenden",
+    "previewQuestion": "Hoe heb je over ons gehoord?",
+    "previewGoogle": "Zoeken op Google",
+    "previewFriend": "Vrienden of familie",
+    "previewNote": "Voorbeeld. Kopers zien de vraag en antwoorden die je in de SourceTrac-app instelt."
   }
 }

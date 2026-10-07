@@ -167,3 +167,52 @@ export function SurveyView(props: SurveyViewProps) {
     </BlockStack>
   );
 }
+
+export interface SurveyPreviewProps extends Components {
+  t: (key: string, fallback: string) => string;
+}
+
+/**
+ * What the block shows inside the checkout editor.
+ *
+ * The editor has no real order, so the live survey has nothing to attribute an
+ * answer to and rendered nothing at all: a merchant who added the block saw it
+ * appear empty and reasonably concluded it was broken. This shows sample
+ * answers instead, with nothing wired to submit, so a click in the editor
+ * never writes a response against a placeholder order.
+ */
+export function SurveyPreview(props: SurveyPreviewProps) {
+  const { t } = props;
+  const Text = props.Text as Typed<TextProps>;
+  const BlockStack = props.BlockStack as Typed<BlockStackProps>;
+
+  const options = [
+    { value: "instagram", label: "Instagram", emoji: null },
+    { value: "google", label: t("sourcetrac.previewGoogle", "Google search"), emoji: null },
+    { value: "friend-or-family", label: t("sourcetrac.previewFriend", "Friend or family"), emoji: null },
+  ];
+
+  return (
+    <BlockStack spacing="tight">
+      <SurveyView
+        {...props}
+        phase="asking"
+        questionText={t("sourcetrac.previewQuestion", "How did you hear about us?")}
+        options={options}
+        allowOther
+        selected={null}
+        otherText=""
+        onSelect={() => undefined}
+        onOtherTextChange={() => undefined}
+        onSubmitOther={() => undefined}
+        busy={false}
+      />
+      <Text appearance="subdued" size="small">
+        {t(
+          "sourcetrac.previewNote",
+          "Preview. Buyers see the question and answers you set in the SourceTrac app.",
+        )}
+      </Text>
+    </BlockStack>
+  );
+}

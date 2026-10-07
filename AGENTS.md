@@ -188,8 +188,9 @@ duplicated SQL and would have passed while production was broken.
 routes. That sharing is deliberate — the routes and `orders/create` must agree on
 the id format, and `tests/unit/order-id.test.ts` fails if a route goes back to
 inlining its own regex. The ui-extensions type is only `id: string`, so **the
-type system cannot catch a GID/numeric mismatch**; the evidence is that the
-webhook stores `String(order.id)` from the REST payload.
+type system cannot catch a GID/numeric mismatch**. The webhook stores the
+numeric `String(order.id)`; the extensions send GIDs, which the schema
+normalises (see "Checkout extensions" below).
 
 React 19 hoists a nested `<html lang={…} />` into correct document order, so
 `DocumentLanguage` in `root.tsx` is not a rendering mistake — verified with
@@ -325,11 +326,17 @@ Things that changed and will bite if written from memory:
 - The order id on the thank-you page is **not** in `useSettings()`. Use
   `useApi<"purchase.thank-you.block.render">().orderConfirmation.value.order.id`.
   Order status uses `api.order.value?.id`.
-- That `id` is the **numeric** order id — the same value `orders/create` puts in
-  `order_id` — not the `gid://shopify/Order/...` GID. Both API routes reject a
-  non-numeric `orderId` with a 422. Test fixtures must match; an older fixture
-  using a GID still passed because the client is id-agnostic and never ran the
-  route's validator.
+- That `id` is a **GID**, not the numeric id (fixed 2026-10-07): thank-you
+  sends `gid://shopify/OrderIdentity/<n>`, order status `gid://shopify/Order/<n>`
+  (per the JSDoc in `node_modules/@shopify/ui-extensions/src/surfaces/*/api/`).
+  An earlier note here claimed it was numeric, and `orderIdSchema` 422'd every
+  GID, so **no buyer ever saw the survey**. `orderIdSchema` now strips both
+  GID forms to the numeric id `orders/create` stores. Do not make it reject
+  GIDs again, and do not store them raw (they would never reconcile).
+- **Inside the checkout editor there is no real order.** Both blocks check
+  `api.extension.editor` and render `SurveyPreview` (sample answers, nothing
+  wired to submit) instead of returning null, which left an empty block that
+  looked broken.
 - Both blocks therefore call `useSurvey(orderId ?? "", ...)`, because the id
   arrives from an async remote-ui subscription and is undefined on first render.
   `useSurvey` must early-return on an empty id, or every page load fires

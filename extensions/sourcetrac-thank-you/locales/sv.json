@@ -5,6 +5,10 @@
     "other": "Annat",
     "otherLabel": "Berätta mer (valfritt)",
     "sending": "Skickar…",
-    "submit": "Skicka"
+    "submit": "Skicka",
+    "previewQuestion": "Hur hörde du talas om oss?",
+    "previewGoogle": "Google-sökning",
+    "previewFriend": "Vänner eller familj",
+    "previewNote": "Förhandsvisning. Köpare ser frågan och svaren som du ställer in i SourceTrac-appen."
   }
 }

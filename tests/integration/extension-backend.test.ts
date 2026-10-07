@@ -259,3 +259,34 @@ describe("use-survey orderId guard", () => {
     ).toBeGreaterThan(guardIndex);
   });
 });
+
+describe("checkout editor preview", () => {
+  /**
+   * The editor has no real order, so without a preview the block rendered
+   * nothing and a merchant who added it saw an empty block. The editor must
+   * also never fetch or submit: an answer there would be written against a
+   * placeholder order. Structural, for the same reason as the guard above.
+   */
+  for (const file of [
+    ["sourcetrac-thank-you", "ThankYouBlock.tsx"],
+    ["sourcetrac-order-status", "OrderStatusBlock.tsx"],
+  ] as const) {
+    it(`${file[1]} renders the preview in the editor without an order id`, () => {
+      const source = readFileSync(
+        join(import.meta.dirname, "..", "..", "extensions", file[0], "src", file[1]),
+        "utf8",
+      );
+
+      expect(source).toMatch(/const inEditor = api\.extension\.editor !== undefined;/);
+      expect(source).toMatch(/useSurvey\(inEditor \? "" : /);
+
+      const previewIndex = source.indexOf("<SurveyPreview");
+      const liveIndex = source.indexOf("<SurveyView");
+      const nullIndex = source.indexOf("return null;");
+      expect(previewIndex, "the editor must get the preview").toBeGreaterThan(-1);
+      // The missing-order `return null` would otherwise blank the editor again.
+      expect(previewIndex).toBeLessThan(nullIndex);
+      expect(previewIndex).toBeLessThan(liveIndex);
+    });
+  }
+});

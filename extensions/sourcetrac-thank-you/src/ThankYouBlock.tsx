@@ -14,7 +14,7 @@ import {
   View,
 } from "@shopify/ui-extensions-react/checkout";
 
-import { SurveyView } from "../../shared/src/SurveyView";
+import { SurveyPreview, SurveyView } from "../../shared/src/SurveyView";
 import { createSurveyApi } from "../../shared/src/survey-logic";
 import { useSurvey } from "../../shared/src/use-survey";
 
@@ -56,7 +56,19 @@ export default function ThankYouBlock() {
     [sessionToken, translate],
   );
 
-  const survey = useSurvey(orderId ?? "", "thank-you", surveyApi);
+  // Set only inside the checkout editor, where there is no real order.
+  const inEditor = api.extension.editor !== undefined;
+
+  // No id in the editor, so no config fetch and nothing can be submitted
+  // against a placeholder order.
+  const survey = useSurvey(inEditor ? "" : (orderId ?? ""), "thank-you", surveyApi);
+
+  const components = { BlockStack, Heading, InlineStack, Pressable, Text, TextField, View, Button };
+
+  if (inEditor) {
+    // Rendering nothing here left an empty block in the editor that looked broken.
+    return <SurveyPreview t={survey.t} {...components} />;
+  }
 
   if (!orderId) {
     // Without an order id there is nothing to attribute the answer to. Fail
@@ -77,14 +89,7 @@ export default function ThankYouBlock() {
       onSubmitOther={survey.submitOther}
       busy={survey.busy}
       t={survey.t}
-      BlockStack={BlockStack}
-      Heading={Heading}
-      InlineStack={InlineStack}
-      Pressable={Pressable}
-      Text={Text}
-      TextField={TextField}
-      View={View}
-      Button={Button}
+      {...components}
     />
   );
 }

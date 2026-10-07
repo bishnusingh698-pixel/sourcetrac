@@ -10,9 +10,10 @@ import { orderIdSchema } from "~/lib/settings";
  * `orders/create` writes `String(order.id)` from the REST Admin API payload.
  * Attribution works only if those two agree.
  *
- * The ui-extensions type for `orderConfirmation.value.order.id` and
- * `order.value.id` is only `id: string`, so the type system cannot prove the
- * shapes match — this test is the pin. It imports the production schema rather
+ * The extensions do not send that shape: Thank-you's order id is an
+ * `OrderIdentity` GID and Order status's is an `Order` GID. The ui-extensions
+ * type is only `id: string`, so the type system cannot prove the shapes
+ * match. This test is the pin. It imports the production schema rather
  * than repeating the regex, so it fails if a route stops using it.
  *
  * Consequence of divergence: answers are written with an order id no
@@ -27,10 +28,21 @@ describe("orderId format invariant", () => {
     expect(orderIdSchema.safeParse(WEBHOOK_ORDER_ID).success).toBe(true);
   });
 
-  it("rejects a GID instead of silently storing an unmatchable id", () => {
-    // If this ever passes, the extension and the webhook are writing different
-    // id shapes and every answer will be permanently unreconciled.
-    expect(orderIdSchema.safeParse(`gid://shopify/Order/${WEBHOOK_ORDER_ID}`).success).toBe(false);
+  it("normalises the Thank-you page's OrderIdentity GID to the webhook's id", () => {
+    // Rejecting this 422'd every config request, and the block hid itself on
+    // every Thank-you page.
+    const parsed = orderIdSchema.safeParse(`gid://shopify/OrderIdentity/${WEBHOOK_ORDER_ID}`);
+    expect(parsed.success && parsed.data).toBe(WEBHOOK_ORDER_ID);
+  });
+
+  it("normalises the Order status page's Order GID to the webhook's id", () => {
+    const parsed = orderIdSchema.safeParse(`gid://shopify/Order/${WEBHOOK_ORDER_ID}`);
+    expect(parsed.success && parsed.data).toBe(WEBHOOK_ORDER_ID);
+  });
+
+  it("rejects a GID for anything other than an order", () => {
+    expect(orderIdSchema.safeParse(`gid://shopify/Customer/${WEBHOOK_ORDER_ID}`).success).toBe(false);
+    expect(orderIdSchema.safeParse("gid://shopify/Order/abc").success).toBe(false);
   });
 
   it("rejects an empty id, which is what an unloaded extension sends", () => {

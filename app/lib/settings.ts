@@ -308,22 +308,38 @@ export function isUntouchedDefaultSurvey(questionText: string, options: Readonly
 export const OTHER_CHANNEL_VALUE = "other";
 
 /**
- * Order id accepted from the extension endpoints.
+ * Order GIDs the checkout surfaces hand an extension.
+ *
+ * Thank-you's `orderConfirmation.order.id` is `gid://shopify/OrderIdentity/<n>`
+ * and Order status's `order.id` is `gid://shopify/Order/<n>`. Both carry the
+ * same numeric id the order webhooks use, so the trailing number is the order.
+ */
+const ORDER_GID = /^gid:\/\/shopify\/(?:Order|OrderIdentity)\/(\d+)$/;
+
+/** The numeric order id inside an order GID, or the input unchanged. */
+export function normaliseOrderId(raw: string): string {
+  return ORDER_GID.exec(raw)?.[1] ?? raw;
+}
+
+/**
+ * Order id accepted from the extension endpoints, normalised to numeric.
  *
  * Shared because two things have to agree and neither can enforce it alone: the
- * routes must reject anything that is not an order id, and `orders/create` must
- * write an id in the same shape. The webhook stores `String(order.id)` from the
- * REST Admin API's `orders/create` payload, which is numeric. The ui-extensions
- * type for both surfaces only says `id: string`, so the type system cannot catch
- * a mismatch here.
+ * routes must store an order id in the same shape `orders/create` writes. The
+ * webhook stores `String(order.id)` from the REST Admin API payload, which is
+ * numeric. The extensions send GIDs (see `ORDER_GID`), and the ui-extensions
+ * type only says `id: string`, so the type system cannot catch a mismatch.
  *
- * If these ever diverge, survey answers are written with an order id that no
- * `OrderCache` row can match: the answer never reconciles, stays "Pending", and
- * its revenue is invisible on the dashboard. The test asserting a GID is
- * rejected exists to make that failure loud rather than silent.
+ * This once accepted digits only and rejected every GID with a 422, a
+ * permanent failure the extension answers by hiding itself: no buyer ever
+ * saw the survey. Rejecting the GID would hide it again; storing it raw would
+ * write an id no `OrderCache` row can match, so the answer stays "Pending"
+ * and its revenue never reaches the dashboard. Both are pinned by
+ * tests/unit/order-id.test.ts.
  */
 export const orderIdSchema = z
   .string()
   .min(1)
   .max(64)
-  .regex(/^\d+$/, "orderId must be numeric");
+  .transform(normaliseOrderId)
+  .pipe(z.string().regex(/^\d+$/, "orderId must be numeric"));
