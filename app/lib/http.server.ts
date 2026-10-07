@@ -1,20 +1,53 @@
 /**
- * Convert a React Router `data()` result into a plain `Response`.
+ * The object React Router's `data()` returns. Its class is not exported at
+ * runtime, so it is recognised by shape.
+ */
+interface DataWithInit {
+  type: "DataWithResponseInit";
+  data: unknown;
+  init: ResponseInit | null;
+}
+
+function isDataWithInit(value: unknown): value is DataWithInit {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (value as { type?: unknown }).type === "DataWithResponseInit" &&
+    "data" in value
+  );
+}
+
+/**
+ * Convert a React Router `data()` result (or a plain value) into a `Response`.
  *
  * `data()` is the React Router v7 way to return structured data from a loader,
  * but the `cors()` helper returned by `authenticate.public.checkout` operates
  * on a `Response`, so we bridge the two here rather than duplicating JSON
  * serialisation across the extension routes.
+ *
+ * The `data()` wrapper must be unwrapped, not serialised. Serialising it sent
+ * `{"type":"DataWithResponseInit","data":{"enabled":true,...}}`, so the
+ * extension read `enabled` as undefined and hid the survey on every order.
  */
 export function toResponse(value: unknown, init: ResponseInit = {}): Response {
   if (value instanceof Response) return value;
 
-  const headers = new Headers(init.headers);
+  let body = value;
+  let merged: ResponseInit = init;
+  if (isDataWithInit(value)) {
+    body = value.data;
+    const inner = value.init ?? {};
+    const headers = new Headers(inner.headers);
+    new Headers(init.headers).forEach((v, k) => headers.set(k, v));
+    merged = { ...inner, ...init, headers };
+  }
+
+  const headers = new Headers(merged.headers);
   if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   // Buyer-facing answers must never be served from an intermediary cache.
   if (!headers.has("Cache-Control")) headers.set("Cache-Control", "no-store");
 
-  return new Response(JSON.stringify(value), { ...init, headers });
+  return new Response(JSON.stringify(body), { ...merged, headers });
 }
 /**
  * Read a request body as text, refusing anything over `maxBytes`.
