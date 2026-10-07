@@ -820,3 +820,31 @@ must return the `app-bridge.js` script tag, not the error text.
   (`paidPlanFromSubscriptions`, `allowTest`).
 - **Cancelling / switching to Free asks for confirmation** (`ConfirmCancel` in
   `app.plans.tsx`), using the `plans.cancel_*` keys that already existed.
+
+## Why the survey never appeared (fixed 2026-10-07, second pass)
+
+Found by driving the built server with a signed checkout session token, not by
+the unit tests, which stub `fetch` with the shape the extension expects.
+`tests/db-extension-routes.test.ts` now calls the real routes that way.
+
+- **`toResponse(data(...))` serialised the wrapper.** Every extension response
+  was `{"type":"DataWithResponseInit","data":{...},"init":null}`, so the
+  extension read `enabled` as undefined and hid the survey on every order.
+  `toResponse` now unwraps `data()` (recognised by shape; its class is not
+  exported at runtime) and keeps its status and headers.
+- **`/api/responses` had no loader.** React Router sends OPTIONS to the loader,
+  so the browser's preflight got a 400 without CORS and no answer could be
+  sent. The loader calls `authenticate.public.checkout`, which answers OPTIONS
+  with a CORS 204. Any extension route needs both a loader and the auth call.
+- **No plan gate in the extension routes.** Shopify only runs the block where the
+  plan supports it, so our stored plan reading could only hide the survey
+  wrongly. Trial / Plus Trial were classed unsupported, which hid the survey and
+  dropped answers on exactly the stores where merchants test.
+  `UNSUPPORTED_PLANS` now only drives the admin banner.
+- **`allowed_urls` is not in Shopify's extension schema** (checked against the
+  CLI's capability schema: network_access, block_progress, api_access,
+  collect_buyer_consent, iframe, bundle_size_exception). The CLI ignores it;
+  `network_access = true` alone permits fetch.
+- Simulating with Node `fetch` returns **410** (bot filter) unless a browser
+  `User-Agent` is set, and the session token's `dest` is the bare
+  `store.myshopify.com`.

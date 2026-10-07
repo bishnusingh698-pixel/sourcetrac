@@ -11,9 +11,9 @@ type = "ui_extension"
 # Required to POST survey responses to our backend. Without it the extension
 # cannot call fetch() at all and the survey would silently never load.
 network_access = true
-# Must match API_URL in src/ThankYouBlock.tsx. Without this the manifest
-# declares the capability but grants no host, Shopify rejects the fetch at
-# runtime, and the survey silently never loads with no visible error.
+# Not part of Shopify's extension schema: the CLI ignores it, and
+# network_access alone allows fetch to any host. Kept so check:extensions can
+# assert it names the same host as API_URL in src/, which documents the backend.
 allowed_urls = [ "https://sourcetrac.onrender.com/*" ]
 
 [[extensions.targeting]]

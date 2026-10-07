@@ -58,8 +58,15 @@ export const PLAN_DISPLAY_NAMES = [
   "Trial",
 ] as const;
 
-/** Plans that cannot host the Thank-you / Order-status surfaces. */
-export const UNSUPPORTED_PLANS = new Set(["Starter", "Trial", "Plus Trial", "Inactive", "Paused", "Shop Component"]);
+/**
+ * Plans that cannot host the Thank-you / Order-status surfaces. Only drives the
+ * admin warning banner; the extension routes do not gate on it.
+ *
+ * Trial and Plus Trial are not here: Shopify excludes only Starter, and a store
+ * on its trial is exactly where a new merchant tests the survey. Listing them
+ * told those merchants the survey could not appear.
+ */
+export const UNSUPPORTED_PLANS = new Set(["Starter", "Inactive", "Paused", "Shop Component"]);
 
 export function classifyPlan(publicDisplayName: string | null | undefined): ShopPlan {
   const raw = (publicDisplayName ?? "").trim();

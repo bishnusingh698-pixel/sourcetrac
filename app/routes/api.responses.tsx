@@ -34,6 +34,19 @@ const bodySchema = z.object({
   locale: z.string().max(32).optional().nullable(),
 });
 
+/**
+ * The browser preflights every submit with an OPTIONS request (it carries an
+ * Authorization header and a JSON body). React Router sends OPTIONS to the
+ * loader, and with no loader here it answered 400 without CORS headers, so the
+ * browser blocked every answer before the POST was sent.
+ * `authenticate.public.checkout` answers OPTIONS itself with a CORS 204; any
+ * other non-POST request gets a CORS-wrapped 405.
+ */
+export const loader = async ({ request }: { request: Request }) => {
+  const { cors } = await authenticate.public.checkout(request);
+  return cors(toResponse({ error: { code: "method_not_allowed" } }, { status: 405, headers: { Allow: "POST, OPTIONS" } }));
+};
+
 export const action = async ({ request }: { request: Request }) => {
   const requestId = `resp_${Date.now().toString(36)}`;
 
@@ -87,12 +100,8 @@ export const action = async ({ request }: { request: Request }) => {
       throw new ValidationError("This store is not using SourceTrac.", "Contact the store if you see this message.");
     }
 
-    if (shop.checkoutSupported === false) {
-      throw new ValidationError(
-        "SourceTrac is not available on this store's plan.",
-        "Contact the store if you see this message.",
-      );
-    }
+    // No plan gate: a request here means Shopify rendered the block, and
+    // refusing would drop an answer the buyer already gave.
 
     const settings = parseSurveySettings(shop.optionsJson, {
       questionText: shop.questionText,

@@ -61,11 +61,10 @@ export const loader = async ({ request }: { request: Request }) => {
       return cors(toResponse(data({ enabled: false, reason: "not_installed" })));
     }
 
-    // Unsupported plan: hide the survey rather than render a block that cannot work.
-    if (shop.checkoutSupported === false) {
-      logger.info("survey_config_plan_unsupported", { request_id: requestId, shop_domain: shopDomain });
-      return cors(toResponse(data({ enabled: false, reason: "plan_unsupported" })));
-    }
+    // No plan gate here. On a plan that cannot host the block, Shopify never
+    // runs the extension, so this request never arrives. Gating on our own
+    // stored plan reading only ever hid the survey where Shopify did render it
+    // (trial stores were classified as unsupported).
 
     const settings = parseSurveySettings(shop.optionsJson, {
       questionText: shop.questionText,
