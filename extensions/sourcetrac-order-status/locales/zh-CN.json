@@ -5,6 +5,10 @@
     "other": "其他",
     "otherLabel": "告诉我们更多（可选）",
     "sending": "正在发送…",
-    "submit": "提交"
+    "submit": "提交",
+    "previewQuestion": "您是如何了解到我们的？",
+    "previewGoogle": "Google 搜索",
+    "previewFriend": "朋友或家人",
+    "previewNote": "预览。买家看到的是您在 SourceTrac 应用中设置的问题和答案。"
   }
 }

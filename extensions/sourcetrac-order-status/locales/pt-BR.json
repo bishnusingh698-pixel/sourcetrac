@@ -5,6 +5,10 @@
     "other": "Outro",
     "otherLabel": "Conte mais (opcional)",
     "sending": "Enviando…",
-    "submit": "Enviar"
+    "submit": "Enviar",
+    "previewQuestion": "Como você ficou sabendo de nós?",
+    "previewGoogle": "Pesquisa no Google",
+    "previewFriend": "Amigos ou família",
+    "previewNote": "Pré-visualização. Os compradores veem a pergunta e as respostas que você definir no app SourceTrac."
   }
 }

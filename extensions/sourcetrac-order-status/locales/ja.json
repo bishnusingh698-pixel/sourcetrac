@@ -5,6 +5,10 @@
     "other": "その他",
     "otherLabel": "詳しく教えてください（任意）",
     "sending": "送信中…",
-    "submit": "送信"
+    "submit": "送信",
+    "previewQuestion": "当店をどこで知りましたか？",
+    "previewGoogle": "Google 検索",
+    "previewFriend": "友人・家族",
+    "previewNote": "プレビューです。購入者には SourceTrac アプリで設定した質問と回答が表示されます。"
   }
 }
