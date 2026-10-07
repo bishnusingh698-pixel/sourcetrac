@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { type MetaFunction } from "react-router";
 
 import { Panel } from "~/components/admin-ui";
@@ -36,7 +35,6 @@ const FAQ = [
 
 export default function Help() {
   const { t } = useAdminI18n();
-  const [open, setOpen] = useState<string | null>(FAQ[0]);
 
   return (
     <s-stack gap="base">
@@ -44,30 +42,23 @@ export default function Help() {
 
       <Panel title={t("help.faq_title")}>
         <s-stack gap="small">
-          {FAQ.map((id) => {
-            const isOpen = open === id;
-            const panelId = `faq-answer-${id}`;
-            return (
-              <s-box key={id} padding="small" border="base" borderRadius="base">
-                <s-stack gap="small">
-                  {/* Each question is a real button so it is keyboard reachable
-                      and announced as expandable. */}
-                  <s-button
-                    variant="tertiary"
-                    aria-expanded={isOpen}
-                    aria-controls={panelId}
-                    onClick={() => setOpen(isOpen ? null : id)}
-                  >
-                    {t(`help.q_${id}`)}
-                  </s-button>
-
-                  {isOpen ? (
-                    <s-text id={panelId}>{t(`help.a_${id}`, { cap: FREE_RESPONSE_CAP })}</s-text>
-                  ) : null}
-                </s-stack>
-              </s-box>
-            );
-          })}
+          {/* Native disclosure elements rather than `s-button` toggles. A
+              button label is a single line, so on a phone a long question was
+              cut off mid-sentence; a summary wraps. It is also keyboard and
+              screen-reader accessible with no script, and several answers can
+              be open at once. */}
+          {FAQ.map((id, index) => (
+            <s-box key={id} padding="small" border="base" borderRadius="base">
+              <details className="st-faq" open={index === 0}>
+                <summary>
+                  <s-text type="strong">{t(`help.q_${id}`)}</s-text>
+                </summary>
+                <s-box paddingBlockStart="small">
+                  <s-text>{t(`help.a_${id}`, { cap: FREE_RESPONSE_CAP })}</s-text>
+                </s-box>
+              </details>
+            </s-box>
+          ))}
         </s-stack>
       </Panel>
 

@@ -1,3 +1,4 @@
+import { useState, type ReactNode } from "react";
 import {
   Form,
   useActionData,
@@ -106,7 +107,6 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     activePlan,
     used,
     cap: evaluateCap(activePlan, used),
-    subscriptionGid: shop.subscriptionGid,
     plans: PLAN_ORDER.map((key) => {
       const plan = PLANS[key];
       return {
@@ -197,7 +197,9 @@ export default function Plans() {
   const outcome = useActionData<typeof action>();
   const navigation = useNavigation();
   const { t } = useAdminI18n();
-  const busy = navigation.state !== "idle";
+  // Only the card that was submitted shows a spinner; the others stay usable
+  // to read. `formData` identifies which form is in flight.
+  const pendingPlan = navigation.state !== "idle" ? String(navigation.formData?.get("plan") ?? "cancel") : null;
 
   const current = planFor(data.activePlan);
 
@@ -220,7 +222,7 @@ export default function Plans() {
           : t("plans.usage_aria", { count: data.cap.used, cap: data.cap.cap })}
       </Banner>
 
-      <s-grid gridTemplateColumns="repeat(auto-fit, minmax(260px, 1fr))" gap="base">
+      <s-grid gridTemplateColumns="repeat(auto-fit, minmax(min(100%, 16rem), 1fr))" gap="base">
         {data.plans.map((plan) => {
           const isCurrent = plan.key === data.activePlan;
           return (
@@ -249,29 +251,34 @@ export default function Plans() {
                   ))}
                 </s-unordered-list>
 
-                {/* One primary action per card. */}
+                {/* One primary action per card. Anything that ends a paid
+                    subscription asks for confirmation first: on a phone a
+                    stray tap is easy, and a cancellation is not undoable. */}
                 {isCurrent ? (
                   data.activePlan === "free" ? (
                     <s-text color="subdued" fontSize="small">
                       {t("plans.on_free")}
                     </s-text>
                   ) : (
-                    <Form method="post">
+                    <ConfirmCancel
+                      label={t("plans.cancel_confirm")}
+                      busy={pendingPlan === "cancel"}
+                      t={t}
+                    >
                       <input type="hidden" name="intent" value="cancel" />
-                      <input type="hidden" name="subscriptionGid" value={data.subscriptionGid ?? ""} />
-                      <s-button type="submit" variant="tertiary" loading={busy}>
-                        {t("plans.cancel_confirm")}
-                      </s-button>
-                    </Form>
+                    </ConfirmCancel>
                   )
+                ) : plan.key === "free" ? (
+                  <ConfirmCancel label={t("plans.switch_free")} busy={pendingPlan === "free"} t={t}>
+                    <input type="hidden" name="intent" value="subscribe" />
+                    <input type="hidden" name="plan" value="free" />
+                  </ConfirmCancel>
                 ) : (
                   <Form method="post">
                     <input type="hidden" name="intent" value="subscribe" />
                     <input type="hidden" name="plan" value={plan.key} />
-                    <s-button type="submit" variant="primary" loading={busy}>
-                      {plan.key === "free"
-                        ? t("plans.switch_free")
-                        : t("plans.choose_plan", { plan: t(`plans.${plan.key}`) })}
+                    <s-button type="submit" variant="primary" loading={pendingPlan === plan.key}>
+                      {t("plans.choose_plan", { plan: t(`plans.${plan.key}`) })}
                     </s-button>
                   </Form>
                 )}
@@ -285,5 +292,55 @@ export default function Plans() {
         <s-text>{t("plans.billing_body")}</s-text>
       </Panel>
     </s-stack>
+  );
+}
+/**
+ * A cancel/downgrade control that asks before submitting.
+ *
+ * The first tap only reveals the consequence and a confirm button; nothing is
+ * posted until the merchant confirms. "Keep my plan" is the default-looking
+ * escape so the safe choice is the easy one.
+ */
+function ConfirmCancel({
+  label,
+  busy,
+  t,
+  children,
+}: {
+  label: string;
+  busy: boolean;
+  t: ReturnType<typeof useAdminI18n>["t"];
+  children: ReactNode;
+}) {
+  const [asking, setAsking] = useState(false);
+
+  if (!asking) {
+    return (
+      <div>
+        <s-button type="button" variant="secondary" onClick={() => setAsking(true)}>
+          {label}
+        </s-button>
+      </div>
+    );
+  }
+
+  return (
+    <s-box padding="small" border="base" borderRadius="base">
+      <Form method="post">
+        {children}
+        <s-stack gap="small">
+          <s-text type="strong">{t("plans.cancel_title")}</s-text>
+          <s-text color="subdued">{t("plans.cancel_body")}</s-text>
+          <s-stack direction="inline" gap="small">
+            <s-button type="button" variant="primary" onClick={() => setAsking(false)}>
+              {t("plans.keep_plan")}
+            </s-button>
+            <s-button type="submit" variant="secondary" tone="critical" loading={busy}>
+              {label}
+            </s-button>
+          </s-stack>
+        </s-stack>
+      </Form>
+    </s-box>
   );
 }

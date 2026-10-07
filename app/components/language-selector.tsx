@@ -157,6 +157,9 @@ export function LanguageSelector({
         <s-select
           {...passthrough({
             label: labels.change,
+            // The flag and endonym already say what this control is; a visible
+            // label would cost the compact toolbar a whole line on a phone.
+            labelAccessibilityVisibility: "exclusive",
             value: pending,
             disabled,
             style: flagStyle(FLAGS[pending]),

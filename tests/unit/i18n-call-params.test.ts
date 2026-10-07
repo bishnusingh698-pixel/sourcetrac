@@ -132,7 +132,7 @@ describe("admin pages are translated", () => {
   );
 
   it("finds the admin pages", () => {
-    expect(routes.length).toBeGreaterThanOrEqual(6);
+    expect(routes.length).toBeGreaterThanOrEqual(5);
   });
 
   for (const file of routes) {

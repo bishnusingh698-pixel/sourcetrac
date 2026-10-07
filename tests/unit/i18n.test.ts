@@ -35,7 +35,7 @@ function flatten(value: unknown, prefix = ""): Set<string> {
 /**
  * Keys used by the onboarding screen.
  *
- * Duplicated from `app/routes/app.onboarding.tsx` on purpose: a test that imported
+ * Duplicated from the setup guide in `app/routes/app._index.tsx` on purpose: a test that imported
  * the route could not read the keys out of a component. Restating them means the
  * test fails when a key is dropped from the page, which is the case worth
  * catching.

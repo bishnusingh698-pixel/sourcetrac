@@ -1,4 +1,14 @@
-import type { CSSProperties } from "react";
+import type { ReactElement, ReactNode } from "react";
+import type {
+  BlockStackProps,
+  ButtonProps,
+  HeadingProps,
+  InlineStackProps,
+  PressableProps,
+  TextFieldProps,
+  TextProps,
+  ViewProps,
+} from "@shopify/ui-extensions/checkout";
 
 import { OTHER_CHANNEL, surveyChoices } from "./survey-logic";
 
@@ -27,6 +37,7 @@ export type Primitive = any;
 export interface Components {
   BlockStack: Primitive;
   InlineStack: Primitive;
+  Heading: Primitive;
   Pressable: Primitive;
   Text: Primitive;
   TextField: Primitive;
@@ -35,14 +46,17 @@ export interface Components {
 }
 
 /**
- * Minimum 44px. Checkout tap-target guidance; anything smaller is unreliable on
- * a phone held one-handed immediately after payment.
+ * The injected primitives, re-typed against the real 2025.7 prop definitions.
+ *
+ * `Primitive` is `any` at the boundary (see above), which used to switch off
+ * prop checking entirely. Every prop here was once wrong and nothing noticed:
+ * `onClick` instead of `onPress` (so tapping an answer did nothing at all),
+ * `borderRadius` instead of `cornerRadius`, background tokens and border widths
+ * that do not exist in this API, and a CSS `style` object, which checkout
+ * extensions cannot take. Casting to these signatures restores the checks
+ * inside this file without touching the React 18/19 identity problem.
  */
-const TAP_TARGET_STYLE: CSSProperties = {
-  minHeight: "44px",
-  display: "flex",
-  alignItems: "center",
-};
+type Typed<P> = (props: P & { children?: ReactNode }) => ReactElement | null;
 
 export interface SurveyViewProps extends Components {
   phase: "loading" | "asking" | "sending" | "done" | "hidden";
@@ -58,112 +72,97 @@ export interface SurveyViewProps extends Components {
   t: (key: string, fallback: string) => string;
 }
 
-export function SurveyView({
-  phase,
-  questionText,
-  options,
-  allowOther,
-  selected,
-  otherText,
-  onSelect,
-  onOtherTextChange,
-  onSubmitOther,
-  busy,
-  t,
-  BlockStack,
-  InlineStack,
-  Pressable,
-  Text,
-  TextField,
-  View,
-  Button,
-}: SurveyViewProps) {
-  // Hidden and done collapse the block entirely; nothing is left on the page.
+export function SurveyView(props: SurveyViewProps) {
+  const { phase, questionText, options, allowOther, selected, otherText, onSelect, onOtherTextChange, onSubmitOther, busy, t } =
+    props;
+  const BlockStack = props.BlockStack as Typed<BlockStackProps>;
+  const InlineStack = props.InlineStack as Typed<InlineStackProps>;
+  const Heading = props.Heading as Typed<HeadingProps>;
+  const Pressable = props.Pressable as Typed<PressableProps>;
+  const Text = props.Text as Typed<TextProps>;
+  const TextField = props.TextField as Typed<TextFieldProps<string>>;
+  const View = props.View as Typed<ViewProps>;
+  const Button = props.Button as Typed<ButtonProps>;
+
+  // Hidden collapses the block entirely; nothing is left on the page.
   if (phase === "hidden") return null;
 
   if (phase === "loading") {
     return (
-      <BlockStack spacing="tight">
-        <Text as="p" appearance="subdued">
-          {t("sourcetrac.loading", "Loading…")}
-        </Text>
-      </BlockStack>
+      <Text appearance="subdued" size="small">
+        {t("sourcetrac.loading", "Loading…")}
+      </Text>
     );
   }
 
   if (phase === "done") {
-    return (
-      <BlockStack spacing="tight">
-        <Text as="p" appearance="subdued">
-          {t("sourcetrac.thanks", "Thanks!")}
-        </Text>
-      </BlockStack>
-    );
+    return <Text appearance="success">{t("sourcetrac.thanks", "Thanks!")}</Text>;
   }
-
-  const disabled = busy;
 
   const choices = surveyChoices(options, allowOther, t("sourcetrac.other", "Other"));
 
   return (
     <BlockStack spacing="base">
-      <Text as="h2" appearance="strong">
-        {questionText}
-      </Text>
+      <Heading level={2}>{questionText}</Heading>
 
+      {/* One full-width tile per answer, stacked. Most buyers reach the
+          thank-you page on a phone, held one-handed right after paying, so
+          every tile is a large target (`minBlockSize` 48 — above the 44px
+          guideline) and a single tap submits. Colours, corner radius and font
+          all come from the merchant's checkout branding: only theme tokens are
+          used, never a fixed colour. */}
       <BlockStack spacing="tight">
-        {choices.map((option) => (
-          <Pressable
-            key={option.value}
-            disabled={disabled}
-            onClick={() => onSelect(option.value)}
-            accessibilityRole="button"
-            accessibilityLabel={option.label}
-          >
-            <View
+        {choices.map((option) => {
+          const isSelected = selected === option.value;
+          return (
+            <Pressable
+              key={option.value}
+              disabled={busy}
+              onPress={() => onSelect(option.value)}
+              accessibilityRole="button"
+              accessibilityLabel={option.label}
+              border="base"
+              borderWidth={isSelected ? "medium" : "base"}
+              cornerRadius="base"
+              background={isSelected ? "subdued" : "transparent"}
               padding="base"
-              borderRadius="base"
-              borderWidth="025"
-              borderColor="border"
-              background={
-                selected === option.value ? "bg-fill-secondary" : "surface"
-              }
-              style={TAP_TARGET_STYLE}
+              minBlockSize={48}
+              blockAlignment="center"
             >
-              <InlineStack align="center" spacing="small">
-                {option.emoji ? (
-                  <Text as="span" ariaHidden="true">
-                    {option.emoji}
-                  </Text>
-                ) : null}
-                <Text as="span">{option.label}</Text>
+              <InlineStack spacing="tight" blockAlignment="center">
+                {option.emoji ? <Text>{option.emoji}</Text> : null}
+                <Text emphasis={isSelected ? "bold" : undefined}>{option.label}</Text>
               </InlineStack>
-            </View>
-          </Pressable>
-        ))}
+            </Pressable>
+          );
+        })}
       </BlockStack>
 
       {allowOther && selected === OTHER_CHANNEL ? (
-        <BlockStack spacing="tight">
-          <TextField
-            label={t("sourcetrac.otherLabel", "Tell us more (optional)")}
-            value={otherText}
-            onChange={onOtherTextChange}
-            maxLength={140}
-            autoComplete="off"
-          />
-          <InlineStack justify="end">
+        <View>
+          <BlockStack spacing="tight">
+            {/* Uncontrolled on purpose. `onChange` only fires when the field
+                loses focus, so a controlled field left Submit disabled while
+                the buyer was still typing with the phone keyboard open. Input
+                is tracked with `onInput` and never written back as `value`. */}
+            <TextField
+              label={t("sourcetrac.otherLabel", "Tell us more (optional)")}
+              onInput={onOtherTextChange}
+              onChange={onOtherTextChange}
+              maxLength={140}
+              autocomplete={false}
+            />
             <Button
-              onClick={onSubmitOther}
-              disabled={disabled || otherText.trim().length === 0}
-              submit={busy}
+              kind="primary"
+              onPress={onSubmitOther}
+              disabled={busy || otherText.trim().length === 0}
+              loading={busy}
+              loadingLabel={t("sourcetrac.sending", "Sending…")}
             >
-              {busy
-                ? t("sourcetrac.sending", "Sending…")
-                : t("sourcetrac.submit", "Submit")}
+              {t("sourcetrac.submit", "Submit")}
             </Button>
-          </InlineStack>
-        </BlockStack>
+          </BlockStack>
+        </View>
       ) : null}
     </BlockStack>
   );

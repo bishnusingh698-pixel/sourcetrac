@@ -12,3 +12,13 @@ declare module "react" {
     }
   }
 }
+
+/**
+ * The App Bridge global, narrowed to the one API this app calls. Optional
+ * because it only exists inside the Shopify admin, not in local renders.
+ */
+declare global {
+  interface Window {
+    shopify?: { toast?: { show(message: string, options?: { isError?: boolean }): void } };
+  }
+}

@@ -94,29 +94,42 @@
   gap: 0.5rem;
 }
 
+/* --- Help FAQ ------------------------------------------------------------ */
+
 /*
- * The always-present language switcher.
- *
- * Right-aligned and self-sized so it sits at the end of the content column
- * without stretching, and `border-block-end` rather than a full box so it reads
- * as a quiet toolbar divider instead of a second card competing with the
- * content below it.
+ * Native `<details>` disclosure. The summary is the tap target, so it gets the
+ * 44px minimum for a phone, and the marker inherits the theme's text colour.
  */
-.st-lang-bar {
+.st-faq > summary {
   display: flex;
-  justify-content: flex-end;
   align-items: center;
   gap: 0.5rem;
-  padding-block-end: 0.5rem;
-  border-block-end: 1px solid var(--p-color-border-secondary, currentColor);
+  min-block-size: 2.75rem;
+  cursor: pointer;
+  list-style: none;
 }
 
-@media (max-width: 48rem) {
-  .st-lang-bar {
-    /* Below this width the select's label and the control stop fitting on one
-       line, and a right-aligned control leaves an awkward gap. */
-    justify-content: flex-start;
-  }
+.st-faq > summary::-webkit-details-marker {
+  display: none;
+}
+
+.st-faq > summary::before {
+  content: "";
+  flex: none;
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  border-inline-end: 2px solid currentColor;
+  border-block-end: 2px solid currentColor;
+  transform: rotate(-45deg);
+}
+
+.st-faq[open] > summary::before {
+  transform: rotate(45deg);
+}
+
+.st-faq > summary:focus-visible {
+  outline: 2px solid var(--p-color-border-focus, currentColor);
+  outline-offset: 2px;
 }
 
 /* --- Motion -------------------------------------------------------------- */

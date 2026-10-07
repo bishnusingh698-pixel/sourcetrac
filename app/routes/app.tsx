@@ -1,6 +1,5 @@
 import {
   isRouteErrorResponse,
-  NavLink,
   Outlet,
   useLoaderData,
   useNavigate,
@@ -51,19 +50,35 @@ import { isShopifyAuthResponse } from "~/lib/shopify-boundary";
  */
 
 /**
- * Nav entries. The label is an i18next key, not display text: this array is a
- * module-level constant shared by every request, so a translated string could
- * never be stored here without leaking one merchant's language into the next
- * tenant's page. Keys are resolved per render.
+ * Pages registered in the Shopify admin's own navigation via `<s-app-nav>`.
+ *
+ * The label is an i18next key, not display text: this array is a module-level
+ * constant shared by every request, so a translated string could never be
+ * stored here without leaking one merchant's language into the next tenant's
+ * page. Keys are resolved per render.
+ *
+ * The dashboard is not listed. It is the app's home (`rel="home"` below), so
+ * Shopify opens it when the merchant clicks the app's name. Listing it as well
+ * made it a separate "Dashboard" sub-page under the app.
+ *
+ * There is deliberately no in-frame sidebar any more. Shopify already renders
+ * these links in its admin sidebar on desktop and in the app title menu on
+ * phones; a second copy inside the iframe took a whole column, which on a
+ * phone left the dashboard squeezed into the remaining sliver.
  */
 const NAV = [
-  { to: "/app", key: "nav.dashboard", icon: "home", end: true },
-  { to: "/app/onboarding", key: "nav.onboarding", icon: "check", end: false },
-  { to: "/app/settings", key: "nav.settings", icon: "settings", end: false },
-  { to: "/app/export", key: "nav.export", icon: "download", end: false },
-  { to: "/app/plans", key: "nav.plans", icon: "money", end: false },
-  { to: "/app/help", key: "nav.help", icon: "question", end: false },
+  { to: "/app/settings", key: "nav.settings" },
+  { to: "/app/export", key: "nav.export" },
+  { to: "/app/plans", key: "nav.plans" },
+  { to: "/app/help", key: "nav.help" },
 ] as const;
+
+/**
+ * App Bridge reads `rel="home"` off the first `s-link`, but Polaris's `s-link`
+ * type does not declare `rel`. Spread rather than written inline so the extra
+ * attribute is not rejected by the excess-property check.
+ */
+const HOME_LINK = { rel: "home" } as const;
 
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -88,7 +103,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     language,
     /**
      * Whether the language came from the merchant's own choice. When false the
-     * onboarding screen offers the picker with the detected value preselected.
+     * dashboard's setup guide offers the full picker, detected value preselected.
      */
     hasExplicitLanguage: isSupportedLanguage(shop.language),
   };
@@ -115,6 +130,9 @@ export default function AdminLayout() {
           app shows no pages under its name in the admin navigation, so the
           survey editor is only reachable through the in-page menu below. */}
       <s-app-nav>
+        <s-link href="/app" {...HOME_LINK}>
+          {t("nav.dashboard")}
+        </s-link>
         {NAV.map((item) => (
           <s-link key={item.to} href={item.to}>
             {t(item.key)}
@@ -122,127 +140,75 @@ export default function AdminLayout() {
         ))}
       </s-app-nav>
       <s-page>
-        <s-grid gridTemplateColumns="auto 1fr" gap="base">
-          <s-grid-item>
-            <s-box background="subdued" padding="small" borderRadius="base">
-              <s-stack gap="base">
-                <s-stack gap="small">
-                  <s-text type="strong">SourceTrac</s-text>
-                  <s-text color="subdued" fontSize="small">
-                    {shop.shopDomain}
-                  </s-text>
-                </s-stack>
-
-                <s-divider />
-
-                {/* Nav is a list so screen readers announce position and count. */}
-                <nav aria-label={t("nav.label")}>
-                  <s-unordered-list>
-                    {NAV.map((item) => (
-                      <li key={item.to}>
-                        <NavLink to={item.to} end={item.end}>
-                          {({ isActive }) => (
-                            <s-text type={isActive ? "strong" : "generic"}>
-                              {t(item.key)}
-                            </s-text>
-                          )}
-                        </NavLink>
-                      </li>
-                    ))}
-                  </s-unordered-list>
-                </nav>
-
-                <s-divider />
-
-                <s-stack gap="small">
-                  <s-text color="subdued" fontSize="small">
-                    {t(`plans.${plan.key}`)}
-                  </s-text>
-                  {cap.cap !== null ? (
-                    <s-progress
-                      value={cap.used}
-                      max={cap.cap}
-                      accessibilityLabel={t("plans.usage_aria", {
-                        count: cap.used,
-                        cap: cap.cap,
-                      })}
-                    />
-                  ) : null}
-                  <s-text color="subdued" fontSize="small">
-                    {cap.cap === null
-                      ? t("plans.unlimited")
-                      : t("plans.usage", { count: cap.used, cap: cap.cap })}
-                  </s-text>
-                </s-stack>
+        <s-stack gap="base">
+          {/*
+            Toolbar: plan usage and the language switcher. A query container so
+            the grid can respond to the width the admin actually gives the
+            iframe, not the device viewport: on a phone the two halves stack,
+            on desktop they sit on one line.
+          */}
+          <s-query-container>
+            <s-grid
+              gridTemplateColumns="@container (inline-size > 560px) 1fr minmax(12rem, 16rem), 1fr"
+              gap="small"
+              alignItems="center"
+            >
+              <s-stack direction="inline" gap="small" alignItems="center">
+                <s-badge tone={cap.atCap ? "critical" : cap.atWarning ? "warning" : "neutral"}>
+                  {t(`plans.${plan.key}`)}
+                </s-badge>
+                <s-text color="subdued" fontSize="small" fontVariantNumeric="tabular-nums">
+                  {cap.cap === null
+                    ? t("plans.unlimited")
+                    : t("plans.usage", { count: cap.used, cap: cap.cap })}
+                </s-text>
               </s-stack>
-            </s-box>
-          </s-grid-item>
+              <LanguageForm language={language} detected={!hasExplicitLanguage} inline />
+            </s-grid>
+          </s-query-container>
 
-          <s-grid-item>
-            <s-box padding="base">
-              <s-stack gap="base">
-                {/* Plan-blocked takes precedence: the survey cannot appear at all,
-                  so explaining the cap would be a distraction. */}
-                {shop.checkoutSupported === false ? (
-                  <Banner
-                    tone="warning"
-                    heading={t("shell.plan_blocked_title")}
-                  >
-                    {t("shell.plan_blocked_body")}
-                  </Banner>
-                ) : cap.atWarning && !cap.atCap ? (
-                  <Banner
-                    tone="warning"
-                    heading={t("shell.cap_warning_title", {
-                      used: cap.used,
-                      cap: cap.cap,
-                    })}
-                  >
-                    <s-stack gap="small">
-                      <s-text>
-                        {/* Plural-only key: without `count` i18next skips the `_one` /
-                            `_other` lookup and renders the raw key. */}
-                        {t("shell.cap_warning_body", { count: cap.cap ?? 0, cap: cap.cap })}
-                      </s-text>
-                      <s-button href="/app/plans" variant="primary">
-                        {t("shell.cap_warning_cta")}
-                      </s-button>
-                    </s-stack>
-                  </Banner>
-                ) : cap.atCap ? (
-                  <Banner
-                    tone="critical"
-                    heading={t("shell.cap_reached_title")}
-                  >
-                    <s-stack gap="small">
-                      <s-text>{t("shell.cap_reached_body")}</s-text>
-                      <s-button href="/app/plans" variant="primary">
-                        {t("shell.cap_reached_cta")}
-                      </s-button>
-                    </s-stack>
-                  </Banner>
-                ) : null}
-
-                {/*
-                A compact switcher sits in the main column rather than the
-                sidebar: the sidebar is already three stacked sections, and the
-                picker is a settings concern rather than navigation. It is always
-                present, not only during onboarding, so a merchant who picked
-                their language once can always change it back.
-              */}
-                <div className="st-lang-bar">
-                  <LanguageForm
-                    language={language}
-                    detected={!hasExplicitLanguage}
-                    inline
-                  />
+          {/* Plan-blocked takes precedence: the survey cannot appear at all,
+              so explaining the cap would be a distraction. */}
+          {shop.checkoutSupported === false ? (
+            <Banner tone="warning" heading={t("shell.plan_blocked_title")}>
+              {t("shell.plan_blocked_body")}
+            </Banner>
+          ) : cap.atWarning && !cap.atCap ? (
+            <Banner
+              tone="warning"
+              heading={t("shell.cap_warning_title", {
+                used: cap.used,
+                cap: cap.cap,
+              })}
+            >
+              <s-stack gap="small">
+                <s-text>
+                  {/* Plural-only key: without `count` i18next skips the `_one` /
+                      `_other` lookup and renders the raw key. */}
+                  {t("shell.cap_warning_body", { count: cap.cap ?? 0, cap: cap.cap })}
+                </s-text>
+                <div>
+                  <s-button href="/app/plans" variant="primary">
+                    {t("shell.cap_warning_cta")}
+                  </s-button>
                 </div>
-
-                <Outlet />
               </s-stack>
-            </s-box>
-          </s-grid-item>
-        </s-grid>
+            </Banner>
+          ) : cap.atCap ? (
+            <Banner tone="critical" heading={t("shell.cap_reached_title")}>
+              <s-stack gap="small">
+                <s-text>{t("shell.cap_reached_body")}</s-text>
+                <div>
+                  <s-button href="/app/plans" variant="primary">
+                    {t("shell.cap_reached_cta")}
+                  </s-button>
+                </div>
+              </s-stack>
+            </Banner>
+          ) : null}
+
+          <Outlet />
+        </s-stack>
       </s-page>
     </AppProvider>
   );
