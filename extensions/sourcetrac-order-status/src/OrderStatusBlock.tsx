@@ -1,18 +1,8 @@
-import { useMemo } from "react";
-import { useRemoteSubscription } from "@remote-ui/react";
-import {
-  BlockStack,
-  Button,
-  Heading,
-  InlineStack,
-  Pressable,
-  Text,
-  TextField,
-  useApi,
-  useSessionToken,
-  useTranslate,
-  View,
-} from "@shopify/ui-extensions-react/customer-account";
+/** @jsxImportSource preact */
+import "@shopify/ui-extensions/preact";
+import { render } from "preact";
+import { useMemo } from "preact/hooks";
+import type { Api } from "@shopify/ui-extensions/customer-account.order-status.block.render";
 
 import { SurveyPreview, SurveyView } from "../../shared/src/SurveyView";
 import { createSurveyApi } from "../../shared/src/survey-logic";
@@ -27,51 +17,57 @@ const API_URL = "https://sourcetrac.onrender.com";
 /**
  * customer-account.order-status.block.render
  *
- * A customer who answers here must not be asked again on the thank-you page and
- * vice versa. That is enforced server-side by a unique constraint on
- * (shop_id, order_id): whichever page they answer first wins, and the other page
- * receives `already_answered` and renders nothing.
- *
- * The order id comes from this target's `order` API. Nothing identifying about
- * the customer is read or rendered.
+ * With api_version 2026-07 the CLI's generated entry calls this default export
+ * as `shopify.extend(target, (...args) => extension(...args))`, so it must be a
+ * plain function that renders, not a component. The API is the `shopify`
+ * global.
  */
-export default function OrderStatusBlock() {
-  const api = useApi<"customer-account.order-status.block.render">();
-  // `order` is a remote subscribable in this API version, so `.value` does not
-  // exist on it. Unwrap with the subscription hook; it re-renders on change.
-  const order = useRemoteSubscription(api.order);
-  const orderId = order?.id;
+export default async function extension() {
+  render(<OrderStatusBlock />, document.body);
+}
 
-  const sessionToken = useSessionToken();
-  const translate = useTranslate();
+const api = () => (globalThis as unknown as { shopify: Api }).shopify;
+
+/**
+ * The order id comes from the `order` signal. A customer who answers here is
+ * not asked again on the thank-you page and vice versa: the server's unique
+ * constraint on (shop, order) decides, and the other page receives
+ * `alreadyAnswered` and renders nothing. Nothing identifying is read or
+ * rendered.
+ */
+function OrderStatusBlock() {
+  const shopify = api();
+  // Reading `.value` during render subscribes this component to the signal
+  // (the `@shopify/ui-extensions/preact` import wires up Preact signals), so it
+  // re-renders when the order resolves.
+  const orderId = shopify.order.value?.id;
 
   const surveyApi = useMemo(
     () =>
       createSurveyApi(API_URL, {
         // `sessionToken.get()` re-mints when its cached JWT has expired, so a
-        // retry after a long cold start never sends a stale token. Safe to call
-        // per attempt, so it is wrapped rather than captured once.
-        getSessionToken: () => sessionToken.get(),
-        translate,
+        // retry after a long cold start never sends a stale token.
+        getSessionToken: () => shopify.sessionToken.get(),
+        translate: (key) => shopify.i18n.translate(key),
       }),
-    [sessionToken, translate],
+    [shopify],
   );
 
   // Set only inside the checkout editor, where there is no real order.
-  const inEditor = api.extension.editor !== undefined;
+  const inEditor = shopify.extension.editor !== undefined;
 
   // No id in the editor, so no config fetch and nothing can be submitted
   // against a placeholder order.
   const survey = useSurvey(inEditor ? "" : (orderId ?? ""), "order-status", surveyApi);
 
-  const components = { BlockStack, Heading, InlineStack, Pressable, Text, TextField, View, Button };
-
   if (inEditor) {
     // Rendering nothing here left an empty block in the editor that looked broken.
-    return <SurveyPreview t={survey.t} {...components} />;
+    return <SurveyPreview t={survey.t} />;
   }
 
   if (!orderId) {
+    // Without an order id there is nothing to attribute the answer to. Fail
+    // silently rather than showing an error on a page the buyer just paid on.
     return null;
   }
 
@@ -88,7 +84,6 @@ export default function OrderStatusBlock() {
       onSubmitOther={survey.submitOther}
       busy={survey.busy}
       t={survey.t}
-      {...components}
     />
   );
 }

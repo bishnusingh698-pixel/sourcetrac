@@ -277,7 +277,7 @@ describe("checkout editor preview", () => {
         "utf8",
       );
 
-      expect(source).toMatch(/const inEditor = api\.extension\.editor !== undefined;/);
+      expect(source).toMatch(/const inEditor = shopify\.extension\.editor !== undefined;/);
       expect(source).toMatch(/useSurvey\(inEditor \? "" : /);
 
       const previewIndex = source.indexOf("<SurveyPreview");
