@@ -7,6 +7,7 @@ import { CSV_HEADERS } from "~/lib/csv";
 import { db } from "~/db.server";
 import { loadExportContext } from "~/lib/export.server";
 import { ensureShop } from "~/lib/provision.server";
+import { backfillMissingOrders } from "~/lib/order-backfill.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import { authenticate } from "~/shopify.server";
@@ -27,6 +28,9 @@ export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "export.t
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
+  // Orders the webhooks never delivered (placed before install, for one) are
+  // fetched now, so their answers stop reading "Pending". Bounded and never throws.
+  await backfillMissingOrders({ shopId: shop.id, shopDomain: shop.shopDomain, accessToken: session.accessToken });
 
   const count = await db.surveyResponse.count({ where: { shopId: shop.id } });
 

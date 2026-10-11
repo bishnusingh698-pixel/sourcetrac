@@ -84,6 +84,8 @@ export type Summary = {
   revenueOrdersByCurrency: Array<{ currency: CurrencyCode; count: number }>;
   /** null when there are no orders in the window; rendered as an em dash. */
   responseRate: number | null;
+  /** The response-rate numerator: answers not on a test or cancelled order. */
+  rateResponses: number;
   responseRateChange: number | null;
 };
 
@@ -103,9 +105,16 @@ export function computeStats(params: {
   responses: ReadonlyArray<ResponseRow>;
   decidedAmounts: ReadonlyArray<DecidedAmount>;
   ordersInWindow: number;
+  /**
+   * Answers whose order is not known to be a test or cancelled order. The rate's
+   * denominator excludes those orders, so the numerator must too; counting every
+   * answer let a test-heavy store read over 100%. Defaults to every answer.
+   */
+  rateResponses?: number;
   previousResponsesCount?: number;
 }): { summary: Summary; channels: ChannelStat[] } {
   const { responses, decidedAmounts, ordersInWindow, previousResponsesCount } = params;
+  const rateResponses = params.rateResponses ?? responses.length;
 
   const responseCountByChannel = new Map<string, number>();
   const lockedByChannel = new Map<string, number>();
@@ -176,7 +185,8 @@ export function computeStats(params: {
     revenueOrdersByCurrency: totalOrderCounts,
     // Divide-by-zero guard: zero orders yields null, rendered as "—".
     responseRate:
-      ordersInWindow > 0 && Number.isFinite(ordersInWindow) ? (totalResponses / ordersInWindow) * 100 : null,
+      ordersInWindow > 0 && Number.isFinite(ordersInWindow) ? (rateResponses / ordersInWindow) * 100 : null,
+    rateResponses,
     responseRateChange:
       previousResponsesCount === undefined
         ? null

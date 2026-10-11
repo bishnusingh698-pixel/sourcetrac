@@ -15,6 +15,7 @@ import { buildTrend, computeStats } from "~/lib/analytics";
 import { decideRevenue, fetchDashboardData } from "~/lib/analytics-queries.server";
 import { formatMoney } from "~/lib/money";
 import { ensureShop } from "~/lib/provision.server";
+import { backfillMissingOrders } from "~/lib/order-backfill.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
 
@@ -48,6 +49,9 @@ function parseRange(value: string | null): (typeof RANGES)[number] {
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
+  // Orders the webhooks never delivered (placed before install, for one) are
+  // fetched now, so their answers stop reading "Pending". Bounded and never throws.
+  await backfillMissingOrders({ shopId: shop.id, shopDomain: shop.shopDomain, accessToken: session.accessToken });
 
 
   const url = new URL(request.url);
@@ -77,6 +81,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     responses: data.responses,
     decidedAmounts: data.decidedAmounts,
     ordersInWindow: data.ordersInWindow,
+    rateResponses: data.rateResponses,
     previousResponsesCount: data.previousCount,
   });
   const trend = buildTrend({
@@ -112,6 +117,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
         return !decision.included && decision.reason === "test_order";
       }).length,
       responseRate: summary.responseRate,
+      rateResponses: summary.rateResponses,
       responseRateChange: summary.responseRateChange,
       revenue: summary.revenueByCurrency.map((entry) => ({
         currency: entry.currency,
@@ -500,7 +506,14 @@ export default function Dashboard() {
               gridTemplateColumns="@container (inline-size > 760px) repeat(4, minmax(0, 1fr)), (inline-size > 300px) repeat(2, minmax(0, 1fr)), minmax(0, 1fr)"
               gap="small"
             >
-              <Metric label={t("dashboard.metric_responses")} help={rangeLabel}>
+              {/* The badge is the change in answer COUNT versus the previous
+                  period, so it sits on this tile. On the rate tile it read as
+                  a change in rate: orders and answers both doubling showed +100%. */}
+              <Metric
+                label={t("dashboard.metric_responses")}
+                help={rangeLabel}
+                trend={formatDelta(data.summary.responseRateChange, t, locale)}
+              >
                 {data.summary.totalResponses}
               </Metric>
 
@@ -514,12 +527,11 @@ export default function Dashboard() {
 
               <Metric
                 label={t("dashboard.metric_response_rate")}
-                trend={formatDelta(data.summary.responseRateChange, t, locale)}
                 help={
                   data.summary.responseRate === null
                     ? t("dashboard.response_rate_no_orders")
                     : t("dashboard.response_rate_of_orders", {
-                        count: data.summary.totalResponses,
+                        count: data.summary.rateResponses,
                         total: data.ordersInWindow,
                       })
                 }

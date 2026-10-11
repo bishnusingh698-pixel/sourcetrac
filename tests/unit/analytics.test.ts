@@ -46,6 +46,19 @@ describe("computeStats", () => {
     expect(summary.responseRate).toBeCloseTo(20);
   });
 
+  it("leaves answers on test and cancelled orders out of the rate, as the denominator does", () => {
+    // Four answers, two of them on test orders; 4 real orders in the window.
+    const { summary } = computeStats({
+      responses: [response(), response(), response(), response()],
+      decidedAmounts: [],
+      ordersInWindow: 4,
+      rateResponses: 2,
+    });
+    expect(summary.responseRate).toBeCloseTo(50);
+    expect(summary.rateResponses).toBe(2);
+    expect(summary.totalResponses).toBe(4);
+  });
+
   it("returns a null response rate when there are no orders, never Infinity", () => {
     const { summary } = computeStats({
       responses: [response()],

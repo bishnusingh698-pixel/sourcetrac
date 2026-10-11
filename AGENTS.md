@@ -835,3 +835,28 @@ Each fix has a test that fails on the old code.
   suspends; the first query after idle used to fail outright.
 - **Retention drops every webhook-ledger row past 30 days**, failed ones too.
   The ledger holds no payload, so an old failed row can never be re-run.
+
+## CSV export and missing orders (2026-10-11)
+
+- **CSV columns are** `order, submitted_at, timezone, channel, other_answer,
+  order_total, currency, revenue_status, order_link` (`app/lib/csv.ts`). The bare
+  13-digit order id rendered as `6.12346E+12` in spreadsheets; `order` is the
+  order name (`#1001`) and the id lives in `order_link`.
+- **`submitted_at` is `YYYY-MM-DD HH:mm:ss` in the shop's `ianaTimezone`**,
+  fetched per export (`loadExportContext`), falling back to UTC. The `timezone`
+  column names the zone actually used. Dashboard buckets stay UTC (rule above).
+- **`order_total` is shown whenever the order is known**, test/cancelled/refunded
+  included; `revenue_status` (`counted`, `test order`, ...) carries the
+  dashboard's decision. Blank total = order not received. The old "blank unless
+  counted" rule made every row on a development store blank.
+- The file starts with a UTF-8 BOM, or Excel on Windows garbles non-ASCII labels.
+- **`backfillMissingOrders`** (`app/lib/order-backfill.server.ts`) fetches orders
+  no webhook delivered (placed before install, or during an uninstall gap) via
+  GraphQL `order(id:)` and writes them through the webhook's `upsertOrderCache`.
+  Runs from the dashboard and export loaders, bounded, never throws.
+- `markUnreconcilable` first reconciles answers whose order is already cached
+  (`reconcileOrphanedResponses`); the submit-time reconcile is best-effort.
+- Response rate: the numerator excludes answers on test/cancelled orders, like
+  the denominator. The period badge is the change in answer count, so it sits
+  on the Responses tile.
+- The "Other" field label must not say "optional": a blank answer is not sent.

@@ -4,6 +4,7 @@ import { fetchResponsesInWindow, toExportRows } from "~/lib/analytics-queries.se
 import { csvFilename, resolveExportTimeZone, toCsv } from "~/lib/csv";
 import { loadExportContext } from "~/lib/export.server";
 import { ensureShop } from "~/lib/provision.server";
+import { backfillMissingOrders } from "~/lib/order-backfill.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
 
@@ -24,6 +25,9 @@ import { authenticate } from "~/shopify.server";
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
+  // Orders the webhooks never delivered (placed before install, for one) are
+  // fetched now, so their answers stop reading "Pending". Bounded and never throws.
+  await backfillMissingOrders({ shopId: shop.id, shopDomain: shop.shopDomain, accessToken: session.accessToken });
 
   // The query returns newest first; the file is oldest first.
   const [responses, context] = await Promise.all([

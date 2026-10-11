@@ -323,5 +323,7 @@ export async function fetchDashboardData(params: { shopId: string; days: number;
     previousCount,
     window: { start, end },
     decidedAmounts: toDecidedAmounts(responses),
+    // Same exclusions as `countEligibleOrdersInWindow`, the rate's denominator.
+    rateResponses: responses.filter((row) => !(row.order && (row.order.isTest || row.order.isCancelled))).length,
   };
 }
