@@ -1,5 +1,6 @@
 import { redirect } from "react-router";
 
+import { safeInternalPath } from "~/lib/http.server";
 import { provisionShop } from "~/lib/provision.server";
 import { authenticate } from "~/shopify.server";
 
@@ -22,9 +23,3 @@ export const loader = async ({ request }: { request: Request }) => {
   const target = url.searchParams.get("redirect") ?? "/app";
   return redirect(safeInternalPath(target));
 };
-
-/** Only ever redirect to our own paths (no open redirect via `?redirect=`). */
-function safeInternalPath(value: string): string {
-  if (!value.startsWith("/") || value.startsWith("//")) return "/app";
-  return value;
-}

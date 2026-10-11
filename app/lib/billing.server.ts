@@ -239,3 +239,18 @@ export function paidPlanFromSubscriptions(
 }
 
 export { isPlanKey };
+
+/**
+ * Whether the Plans page must rewrite the stored plan to match Shopify.
+ *
+ * True when the plan differs, and also when Shopify reports the stored paid
+ * plan ACTIVE but our status is not `active` (a `frozen` pending charge, or a
+ * stale status). Without the second case the page showed the paid plan as
+ * current while the survey enforced the Free cap.
+ */
+export function needsPlanSync(
+  stored: { plan: string; planStatus: string },
+  live: PlanKey,
+): boolean {
+  return live !== stored.plan || (live !== "free" && stored.planStatus !== "active");
+}

@@ -346,9 +346,9 @@ Things that changed and will bite if written from memory:
   identity.
 - `Box` no longer exists; `View` is the container.
 - Translation is `useTranslate()`, not an `i18n` object.
-- `network_access = true` is required in `shopify.extension.toml`, plus
-  `allowed_urls` naming the exact backend host. Without it the extension cannot
-  call `fetch` and the survey silently never loads.
+- `network_access = true` is required in `shopify.extension.toml`. Without it
+  the extension cannot call `fetch` and the survey silently never loads.
+  `allowed_urls` is not part of Shopify's schema (see the 2026-10-07 section).
 - The backend must return `Access-Control-Allow-Origin: *`.
 
 ### The React 18/19 types split
@@ -405,26 +405,19 @@ The actual precision loss was downstream, in two places:
 Both the CSV route and the export *preview* use that helper so the preview is
 byte-identical to the downloaded file.
 
-Refunds only reduce revenue once Shopify reports `financialStatus` as
-`partially_refunded`. Before that flip the refund amount is ignored, because the
-refund may still be in dispute.
+Revenue is `current_total_price`, which Shopify already reports net of refunds
+and edits, so nothing subtracts a refund (that would deduct it twice).
+`refunded` and `voided` statuses, test and cancelled orders are excluded in
+`evaluateRevenue`.
 
 ### Never reconcile from an unparsed total
 
-`OrderCache.totalPrice` is `NOT NULL`, so `upsertOrderCache` must write
-*something* when `parseMoneyToMinor` rejects the payload. It writes `"0.00"` —
-and that value is safe **only** because `upsertOrderCache` returns before
-calling `reconcileResponsesForOrder` when `!totalParsed.ok`.
-
-Passing the fallback through would defeat the guard in
-`reconcileResponsesForOrder`, which exists precisely to catch an unparseable
-total: `"0.00"` parses cleanly, so every waiting response would be stamped with
-a zero order total and silently stop counting as revenue. The merchant would see
-a real order reported at $0.00, indistinguishable from a genuine free order.
-Unreconciled ("Pending") is the honest state.
-
-If you make `totalPrice` nullable, delete this guard in the same commit — it
-becomes redundant but the fallback string stays dangerous.
+`OrderCache.totalPrice` is **nullable**. `upsertOrderCache` stores NULL for a
+total `parseMoneyToMinor` rejects (and never overwrites a good stored total with
+NULL), and skips reconciliation. `reconcileFromOrderCache` (answer arriving after
+the order) returns early on a NULL total. The answer stays "Pending" rather than
+reading as a real $0.00 order. An older note here described a `"0.00"` fallback;
+that design is gone.
 
 ## A React Router ErrorBoundary cannot fix CORS
 
@@ -848,3 +841,27 @@ the unit tests, which stub `fetch` with the shape the extension expects.
 - Simulating with Node `fetch` returns **410** (bot filter) unless a browser
   `User-Agent` is set, and the session token's `dest` is the bare
   `store.myshopify.com`.
+
+## Full audit pass (2026-10-11)
+
+Each fix has a test that fails on the old code.
+
+- **A merchant option named "Other" lost every answer** when free text was off.
+  Its slug is `other`, the free-text channel, and `/api/responses` rejected it
+  as a disallowed free-text answer. Only reject `other` when it is not one of
+  the merchant's own options (`tests/db-extension-routes.test.ts`).
+- **Two options could share a channel key.** Kept options retain their stored
+  value, which can differ from their label's slug (the default "Google search"
+  is `google`); a new "Google" slugged to `google` too. Kept values are now
+  reserved first and new ones suffixed (`tests/unit/settings-csv.test.ts`).
+- **Test charges granted paid plans via the webhook** in production;
+  `isIgnoredTestCharge` now matches `paidPlanFromSubscriptions`.
+- **Plans page vs enforcement.** `needsPlanSync` also re-activates a paid plan
+  Shopify reports ACTIVE when our status is `frozen`/stale; before, the page
+  showed Growth while the survey enforced the Free cap.
+- **Open redirect.** `safeInternalPath` (now in `http.server.ts`) rejects
+  backslashes and control characters; `/\evil.com` became `//evil.com`.
+- **`P1017` / `P1002` are retryable.** Neon closes pooled connections when it
+  suspends; the first query after idle used to fail outright.
+- **Retention drops every webhook-ledger row past 30 days**, failed ones too.
+  The ledger holds no payload, so an old failed row can never be re-run.

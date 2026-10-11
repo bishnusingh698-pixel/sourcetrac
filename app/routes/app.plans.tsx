@@ -18,6 +18,7 @@ import { getUsageCount } from "~/lib/responses.server";
 import {
   activeSourceTracSubscription,
   fetchActiveSubscriptions,
+  needsPlanSync,
   paidPlanFromSubscriptions,
 } from "~/lib/billing.server";
 import { getAccessToken, setPlan } from "~/lib/shop.server";
@@ -72,7 +73,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
       const live = activeSourceTracSubscription(subscriptions);
       const reconciled: "free" | "growth" | "scale" = paid ?? "free";
       activePlan = reconciled;
-      if (reconciled !== shop.plan) {
+      if (needsPlanSync(shop, reconciled)) {
         // `planStatus` records whether a charge is actually live, and the
         // `app_subscriptions/*` webhooks own it. This page only sees
         // `activeSubscriptions`, so finding none means the charge is no longer

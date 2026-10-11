@@ -28,6 +28,26 @@ const options = (labels: string[]) => labels.map((label) => ({ label, emoji: "" 
 const six = ["Instagram", "Google", "TikTok", "Friend", "Podcast", "Email"];
 
 describe("validateSurveySettings", () => {
+  it("never gives a new option a channel key an existing option still holds", () => {
+    // The default "Google search" is stored as `google`, not `google-search`.
+    // A new "Google" option slugs to `google` as well, and both options used
+    // to save with that value, merging their answers into one channel.
+    const existing = [
+      { value: "google", label: "Google search", emoji: null },
+      { value: "instagram", label: "Instagram", emoji: null },
+    ];
+    const labels = ["Google", "Google search", "Instagram", "TikTok", "Podcast", "Email"];
+    const result = validateSurveySettings(
+      { questionText: "How did you hear about us?", options: options(labels), allowOther: false },
+      existing,
+    );
+    const values = result.options.map((option) => option.value);
+    expect(new Set(values).size).toBe(values.length);
+    // The existing option keeps its key, so its history still lines up.
+    expect(result.options.find((option) => option.label === "Google search")?.value).toBe("google");
+    expect(result.options.find((option) => option.label === "Google")?.value).toBe("google-2");
+  });
+
   it("accepts exactly the minimum option count", () => {
     const result = validateSurveySettings(
       { questionText: "How did you hear about us?", options: options(six), allowOther: false },

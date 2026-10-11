@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { paidPlanFromSubscriptions } from "../../app/lib/billing.server";
+import { needsPlanSync, paidPlanFromSubscriptions } from "../../app/lib/billing.server";
 import { planStatusIsCollecting } from "../../app/lib/plans";
 
 /**
@@ -85,5 +85,21 @@ describe("plans loader reconciliation", () => {
     expect(effective("growth", "active")).toBe("growth");
     // A cancelled paid plan still stops collecting.
     expect(effective("growth", "cancelled")).toBe("free");
+  });
+});
+describe("needsPlanSync", () => {
+  it("re-activates a paid plan Shopify reports active while ours is not", () => {
+    // Stored growth/frozen showed Growth on the Plans page but enforced Free.
+    expect(needsPlanSync({ plan: "growth", planStatus: "frozen" }, "growth")).toBe(true);
+    expect(needsPlanSync({ plan: "growth", planStatus: "active" }, "growth")).toBe(false);
+  });
+
+  it("leaves a free shop's status alone when nothing changed", () => {
+    expect(needsPlanSync({ plan: "free", planStatus: "cancelled" }, "free")).toBe(false);
+  });
+
+  it("syncs whenever the plan itself differs", () => {
+    expect(needsPlanSync({ plan: "growth", planStatus: "active" }, "free")).toBe(true);
+    expect(needsPlanSync({ plan: "free", planStatus: "active" }, "scale")).toBe(true);
   });
 });

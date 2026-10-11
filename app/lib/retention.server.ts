@@ -54,16 +54,15 @@ export async function runRetentionPurge(now: Date = new Date()): Promise<Retenti
   // Webhook payloads first: they are the rows most likely to hold customer
   // fields, so they are the ones we most want gone.
   //
-  // Only unprocessed rows are eligible. A webhook still awaiting retry holds
-  // operational state we still need, and deleting it would silently lose work
-  // the app is committed to finishing (see the insert-first idempotency design
-  // in webhooks.server.ts). Anything already processed is safe to drop.
+  // Every row past the window goes, processed or not. Shopify stops retrying a
+  // delivery within hours, so a row that failed 30 days ago can never be
+  // redelivered; keeping only processed rows eligible meant failed ones
+  // accumulated forever against the 0.5 GB free tier.
   const webhookEventsDeleted = (
     await retryDb(() =>
       db.webhookEvent.deleteMany({
         where: {
           createdAt: { lt: webhookCutoff },
-          processedAt: { not: null },
         },
       }),
     )
