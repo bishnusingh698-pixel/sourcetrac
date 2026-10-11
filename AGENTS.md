@@ -244,16 +244,52 @@ Shopify POS/Mobile agents are exempted and allowed through.
 
 Source: `node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/helpers/reject-bot-request.mjs`
 
-## Checkout extensions: verified 2026-07 APIs
+## Checkout extensions: Preact on api_version 2026-07 (rewritten 2026-10-11)
 
 Targets: `purchase.thank-you.block.render` and
-`customer-account.order-status.block.render`.
+`customer-account.order-status.block.render`, both `api_version = "2026-07"`.
 
-**The npm package version and the declared `api_version` are independent.** The
-extension TOML declares `api_version = "2026-07"`, and the Admin API calls
-`SHOPIFY_API_VERSION=2026-07`. Neither is affected by which npm package version
-is installed. Pinning the packages to 2025.7.4 does **not** mean targeting an old
-API — it only chooses which binding layer is available.
+**The block rendered nothing, anywhere, until 2026-10-11.** Two independent
+causes, both invisible to every type check and test at the time:
+
+1. **The npm package and `api_version` are NOT independent.** An earlier note
+   here said they were. For `api_version` 2025-10 or later, Shopify CLI 4.8
+   generates the entry `import T from './src/X.tsx'; shopify.extend(target,
+   (...args) => T(...args))`, i.e. it calls the default export as a plain
+   function on the new remote-dom runtime. The code exported a React component
+   for the old `@shopify/ui-extensions-react` 2025.7 (remote-ui) binding, which
+   needs `reactExtension(...)` registration. Read it yourself in
+   `node_modules/@shopify/cli/dist/chunk-*.js` (`getBundleExtensionStdinContent`).
+2. **React 19 crashes the remote-ui renderer.** `@remote-ui/react` 5 uses
+   `react-reconciler` 0.29, which reads React 18's
+   `__SECRET_INTERNALS_...ReactCurrentOwner` at render and throws on React
+   19.3. The extensions bundle the root's only React (the admin's 19).
+   `legacy-peer-deps=true` in `.npmrc` suppressed the `react <19` peer error.
+
+**What the extensions are now:** `@shopify/ui-extensions` 2026.7.4 with
+`preact` 10 and `@preact/signals`, Polaris web components (`s-stack`,
+`s-clickable`, `s-text-field`, ...), no React. Each block:
+
+- `import "@shopify/ui-extensions/preact"` first. It calls
+  `shopify.setSignals(Signal)`, which is what lets Preact re-render when a host
+  signal (`orderConfirmation`, `order`) changes.
+- `export default async function extension() { render(<Block />, document.body) }`.
+- Reads the API from the `shopify` global, typed with
+  `import type { Api } from "@shopify/ui-extensions/<target>"`.
+- `/** @jsxImportSource preact */` at the top of every `.tsx`: the CLI's esbuild
+  uses `jsx: "automatic"`, which otherwise imports `react/jsx-runtime`.
+  `tsconfig.extension.json` (and `extensions/tsconfig.json`) set
+  `jsxImportSource: "preact"`; the root `tsconfig.json` excludes `extensions/`.
+- Component props are fully typed (a bad prop fails `typecheck:extensions`).
+  Events are `onClick` / `onInput` / `onChange`.
+
+**`tests/integration/extension-bundle.test.ts` is the guard.** It builds each
+block with the CLI's exact entry and esbuild options and runs the bundle in
+happy-dom against a fake `shopify` host: the survey must render after the order
+signal resolves, a tap must POST, the editor must show the preview with no
+requests, and the bundle must contain no React. `check:extensions` also rejects
+any import of the old binding. Its fake host's `setSignals` builds signals from
+the class the extension passes; a host that ignores it never re-renders.
 
 ### Build dependency invariant (do not "fix" by moving packages)
 Render omits devDependencies, but the build needs several of them. `.npmrc` sets
@@ -265,36 +301,6 @@ that line or if a build config imports an undeclared package.
 `prisma generate` is what makes `@prisma/client` importable at build time.
 Moving `vite` / `vite-tsconfig-paths` into `dependencies` to chase a build error
 is the wrong fix and bloats the runtime image.
-
-**Both packages must stay on the same exact version.** The React wrapper declares
-an exact-version peer on the core package, so any mismatch fails `npm ci` with
-`ERESOLVE` before the build starts.
-
-The two available engines, verified from the published `dependencies`:
-
-| Core package | Rendering engine | Binding |
-|---|---|---|
-| `2026.x` | `preact` + `@preact/signals` (peer) | `@shopify/ui-extensions/preact` |
-| `2025.7.x` | `@remote-ui/core` | `@shopify/ui-extensions-react/*` |
-
-So the real choice is **Preact/web-components or React/remote-ui** — not "old vs
-new API". `2026.x` has no React binding published, which is why the aligned
-2025.7.4 pair is the only way to keep this React code. Migrating to 2026.x means
-rewriting both blocks onto `@shopify/ui-extensions/preact` plus Polaris web
-components (`s-stack`, `s-clickable`, …), which is the direction Phase 1 research
-already identified as the long-term target.
-
-**Upgrade path when Shopify ships a 2026.x React binding:** bump both packages
-together and re-check the render APIs. In 2025.7.x those APIs are **remote
-subscribables, not plain objects** — `api.orderConfirmation.value` and
-`api.order.value` do not exist. Unwrap them with `useRemoteSubscription` from
-`@remote-ui/react`, which is a transitive dependency (do not add it directly: its
-React peer range excludes React 19 and that breaks `npm ci`).
-
-The two surfaces also have no shared import path: thank-you imports from
-`@shopify/ui-extensions-react/checkout`, order status from
-`.../customer-account`. Shared code lives in `extensions/shared/src/` and takes
-the layout primitives as props.
 
 ### The extension↔backend wire contract (check this before renaming anything)
 
@@ -316,60 +322,31 @@ aligned. Verified fields:
 
 `api.survey-config.tsx` and `api.responses.tsx` are the reference for this.
 
-Things that changed and will bite if written from memory:
+Things that will bite if written from memory:
 
-- `sessionToken()` is gone. It is now the `useSessionToken()` hook, and it
-  returns a `SessionToken` **object** with an async `.get()` that caches and
-  re-mints on expiry. Calling `.get()` per request is the documented pattern,
-  and it is what makes cold-start retries safe: a token captured before a 60s
-  retry would otherwise be stale.
-- The order id on the thank-you page is **not** in `useSettings()`. Use
-  `useApi<"purchase.thank-you.block.render">().orderConfirmation.value.order.id`.
-  Order status uses `api.order.value?.id`.
-- That `id` is a **GID**, not the numeric id (fixed 2026-10-07): thank-you
-  sends `gid://shopify/OrderIdentity/<n>`, order status `gid://shopify/Order/<n>`
-  (per the JSDoc in `node_modules/@shopify/ui-extensions/src/surfaces/*/api/`).
-  An earlier note here claimed it was numeric, and `orderIdSchema` 422'd every
-  GID, so **no buyer ever saw the survey**. `orderIdSchema` now strips both
-  GID forms to the numeric id `orders/create` stores. Do not make it reject
-  GIDs again, and do not store them raw (they would never reconcile).
+- The order id is a **GID**, not the numeric id: thank-you's
+  `shopify.orderConfirmation.value.order.id` is
+  `gid://shopify/OrderIdentity/<n>`, order status's `shopify.order.value.id`
+  is `gid://shopify/Order/<n>`. `orderIdSchema` strips both to the numeric id
+  `orders/create` stores. Do not make it reject GIDs, and do not store them raw.
 - **Inside the checkout editor there is no real order.** Both blocks check
-  `api.extension.editor` and render `SurveyPreview` (sample answers, nothing
-  wired to submit) instead of returning null, which left an empty block that
-  looked broken.
-- Both blocks therefore call `useSurvey(orderId ?? "", ...)`, because the id
-  arrives from an async remote-ui subscription and is undefined on first render.
-  `useSurvey` must early-return on an empty id, or every page load fires
-  `?orderId=`, which 422s as a permanent failure and logs a give-up.
-- `useSettings<T>()` returns `Partial<T>` over `ExtensionSettings`, whose values
-  are `string | number | boolean` — it is for merchant preferences, not order
-  identity.
-- `Box` no longer exists; `View` is the container.
-- Translation is `useTranslate()`, not an `i18n` object.
-- `network_access = true` is required in `shopify.extension.toml`. Without it
-  the extension cannot call `fetch` and the survey silently never loads.
+  `shopify.extension.editor` and render `SurveyPreview` (sample answers, nothing
+  wired to submit) instead of returning null.
+- The id arrives asynchronously, so blocks call `useSurvey(orderId ?? "", ...)`
+  and `useSurvey` early-returns on an empty id; otherwise every load fires
+  `?orderId=`, which the route rejects.
+- `shopify.sessionToken.get()` re-mints an expired token; call it per request,
+  which keeps cold-start retries valid.
+- `network_access = true` is required in `shopify.extension.toml`.
   `allowed_urls` is not part of Shopify's schema (see the 2026-10-07 section).
 - The backend must return `Access-Control-Allow-Origin: *`.
-
-### The React 18/19 types split
-
-`@remote-ui/react` pins `@types/react` to `>=17 <19`; the admin app uses React 19.
-So `BlockStack` and friends resolve to two incompatible `ComponentClass`
-identities and fail on `contextType`. `extensions/shared/src/SurveyView.tsx`
-takes injected components typed as `Primitive = any` to sidestep it. Do not
-"fix" this to `React.ComponentType` — it reintroduces the error.
-
-The two surfaces also have no shared import path: thank-you imports from
-`@shopify/ui-extensions-react/checkout`, order status from
-`.../customer-account`. Shared code lives in `extensions/shared/src/` and takes
-the layout primitives as props.
 
 ### Hand-authored extension configs
 
 Shopify's generator could not run here (device auth expired), so the TOMLs are
 written by hand. `npm run check:extensions` guards against the mistakes that
-actually happened: malformed UUIDs, wrong target, missing `network_access`, and a
-`module` path that does not exist.
+actually happened: malformed UUIDs, wrong target, missing `network_access`, a
+`module` path that does not exist, and the old React binding.
 
 `npm run typecheck:extensions` typechecks extensions separately — they are not
 covered by the root `tsc --noEmit`.
@@ -794,15 +771,8 @@ must return the `app-bridge.js` script tag, not the error text.
   `<s-table-header-row>`. Wrapping the row in `s-table-header` with
   `s-table-cell` headings (the old markup) is wrong and never collapses to the
   list layout on narrow screens.
-- **Checkout extension props were almost all invalid** and nothing caught it,
-  because `Primitive = any`. `Pressable`/`Button` take `onPress` — `onClick`
-  meant **tapping an answer did nothing**. Also `cornerRadius` not
-  `borderRadius`, `background` is `transparent|base|subdued`, `borderWidth` is
-  `base|medium|thick`, no `style`. `SurveyView` now casts each primitive to its
-  real prop type (`Typed<PressableProps>` …), so `typecheck:extensions` checks
-  every prop. Keep it that way.
-- **`TextField.onChange` fires on blur only.** The "Other" field is
-  uncontrolled and tracked with `onInput`; controlled, Submit stayed disabled
+- **The "Other" text field is uncontrolled and tracked with `onInput`**;
+  `onChange` fires on blur only, so a controlled field left Submit disabled
   while the buyer typed with the phone keyboard open.
 - **Rate limits have shop-wide backstops** (`responseShop`, `surveyConfigShop`).
   Per-order keys are caller-chosen, so one lifted checkout token plus made-up

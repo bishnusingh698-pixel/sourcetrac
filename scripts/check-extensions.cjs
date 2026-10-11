@@ -39,6 +39,15 @@ for (const [name, expectedTarget] of Object.entries(EXPECTED)) {
     : "";
   // `process` does not exist in the extension Web Worker; reading it crashes the block.
   if (/process\.env/.test(source)) problems.push("extension source reads process.env, which is undefined at runtime");
+  // From api_version 2025-10 the CLI calls the default export as a plain
+  // function, and the old React/remote-ui binding crashes on React 19. Code
+  // written for it rendered nothing at all, in the editor and on live orders.
+  if (source && /@shopify\/ui-extensions-react|@remote-ui\//.test(source)) {
+    problems.push("extension imports the old React/remote-ui binding, which cannot run on api_version 2026-07");
+  }
+  if (source && !source.includes('"@shopify/ui-extensions/preact"')) {
+    problems.push("extension does not import @shopify/ui-extensions/preact, so host signals never reach Preact");
+  }
   const apiUrl = source.match(/const API_URL = "([^"]+)"/)?.[1];
   if (source && !apiUrl) problems.push("could not find a literal API_URL");
   if (apiUrl && !allowed.includes(apiUrl)) {
