@@ -211,7 +211,11 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
         // The residual overrun when the host is hard-down is bounded: this
         // deadline check runs on every iteration, so the worst case is the final
         // attempt running to its own timeout past the budget, then giving up.
-        const wait = Math.min(backoff, remaining);
+        //
+        // Jittered to 50-100% of the step: every buyer's block hitting the same
+        // cold-starting instance otherwise retried in lockstep, a thundering
+        // herd at each doubling.
+        const wait = Math.min(Math.round(backoff * (0.5 + Math.random() * 0.5)), remaining);
         log(`${label}_retrying`, { surface, attempt: attemptNumber, wait_ms: wait });
         await sleep(wait);
         backoff = Math.min(backoff * 2, MAX_BACKOFF_MS);

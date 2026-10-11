@@ -14,6 +14,7 @@ import { MAX_OPTIONS, MIN_OPTIONS } from "~/lib/settings";
 import { buildTrend, computeStats } from "~/lib/analytics";
 import { decideRevenue, fetchDashboardData } from "~/lib/analytics-queries.server";
 import { formatMoney } from "~/lib/money";
+import { effectivePlan, PLAN_FREE } from "~/lib/plans";
 import { ensureShop } from "~/lib/provision.server";
 import { backfillMissingOrders } from "~/lib/order-backfill.server";
 import { guarded } from "~/lib/admin-errors.server";
@@ -59,7 +60,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
 
   // Money is formatted here, so the loader needs the language itself: the
   // shell's loader runs in parallel and its data is not available yet.
-  const locale = intlLocaleFor(resolveAdminLanguage(request, shop.language));
+  const locale = intlLocaleFor(resolveAdminLanguage(request, shop.language, shop.adminLocale));
   const money = (minor: number, currency: string) => formatMoney(minor, currency, locale);
 
   // Responses store the channel slug (`friend-or-family`). Show the
@@ -107,7 +108,10 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     ordersInWindow: data.ordersInWindow,
     summary: {
       totalResponses: summary.totalResponses,
-      lockedResponses: summary.lockedResponses,
+      // Only a Free shop is shown the over-cap prompt. `isLocked` is never
+      // cleared, so after an upgrade the banner kept telling a paying merchant
+      // to upgrade.
+      lockedResponses: effectivePlan(shop) === PLAN_FREE ? summary.lockedResponses : 0,
       pendingResponses: summary.pendingResponses,
       // Answers on Shopify test orders (every order on a development store).
       // Their revenue is excluded by policy, which left a test store showing
@@ -617,8 +621,13 @@ export default function Dashboard() {
                       <s-table-cell>
                         {channel.revenue.length > 0 ? (
                           <MoneyList amounts={channel.revenue} />
-                        ) : (
+                        ) : channel.pendingResponses > 0 ? (
                           <s-text color="subdued">{t("dashboard.waiting_for_order")}</s-text>
+                        ) : (
+                          // Every order arrived but none counts (test, cancelled
+                          // or refunded). "Waiting for order" promised one that
+                          // already came.
+                          <s-text color="subdued">—</s-text>
                         )}
                       </s-table-cell>
                       <s-table-cell>

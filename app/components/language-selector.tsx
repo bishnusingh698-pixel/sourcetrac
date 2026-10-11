@@ -215,15 +215,17 @@ export function LanguageSelector({
           {LANGUAGES.map((language) => {
             const selected = language.code === pending;
             return (
-              <s-clickable
-                key={language.code}
-                // `s-clickable` is not a form control, so the input below is the
-                // real accessible element and this is only its visual surface.
+              // A plain <label> around the radio: clicking anywhere on the row
+              // selects it natively. The row used to be an `s-clickable`, a
+              // focusable button with the radio nested inside, which added a
+              // tab stop per language and put a radio inside a button for
+              // screen readers, defeating the single-tab-stop radiogroup.
+              <label key={language.code} className="st-lang-option">
+              <s-box
                 background={selected ? "strong" : "base"}
                 border="base"
                 borderRadius="base"
                 padding="small"
-                onClick={() => setPending(language.code)}
               >
                 <s-stack gap="small" direction="inline" alignItems="center">
                   <input
@@ -255,7 +257,8 @@ export function LanguageSelector({
                     {language.englishName}
                   </s-text>
                 </s-stack>
-              </s-clickable>
+              </s-box>
+              </label>
             );
           })}
         </div>

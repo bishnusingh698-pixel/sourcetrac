@@ -76,7 +76,7 @@ Read `docs/01-verification-report.md` before writing any code — it contains th
   `@shopify/shopify-app-react-router/plugin` **does not exist** in v3 — do not use it.
 - `react-router` and `@react-router/*` must be pinned to the **same exact version**
   (7.18.2). Caret ranges produce peer conflicts.
-- `@shopify/shopify-api` v12 has **no** `LATEST_API_VERSION` export and **no**
+- `@shopify/shopify-api` (v15 installed; true since v12) has **no** `LATEST_API_VERSION` export and **no**
   `future.removeRest` / `future.unstable_persistSession` flags. Only
   `unstable_managedPricingSupport` and `customerAddressDefaultFix` exist.
 - `AppSubscriptionLineItemInput`, `appRecurringPricingDetails` and
@@ -131,8 +131,8 @@ DATABASE_URL for tests: `postgresql://sourcetrac:sourcetrac@localhost:5432/sourc
 
 ## Schema field names (do not guess — read prisma/schema.prisma)
 
-- `OrderCache` money is `Decimal @db.Decimal(12,2)` with fields `totalPrice`,
-  `totalRefunded`, `financialStatus`, `isTest`, `isCancelled`, `createdAtShop`,
+- `OrderCache` money is `Decimal? @db.Decimal(18,3)` (`totalPrice`) with fields
+  `orderNumber`, `financialStatus`, `isTest`, `isCancelled`, `createdAtShop`,
   `updatedAtShop` — **not** minor units.
 - `SurveyResponse` has `orderTotal Decimal?`, `currency String?`, `isLocked`,
   `reconciled`, `unreconcilable`.
@@ -649,8 +649,6 @@ not persisted to `.git/config`:
 the PR has to be done by a human, or by a token whose fine-grained permissions
 include that box.
 
-The repo's default branch is **`sourcetrac-v1`**, not `main`.
-`fix/full-bug-audit` fast-forwards cleanly onto it.
 
 ## Production fixes (2026-10-06)
 
@@ -860,3 +858,36 @@ Each fix has a test that fails on the old code.
   the denominator. The period badge is the change in answer count, so it sits
   on the Responses tile.
 - The "Other" field label must not say "optional": a blank answer is not sent.
+
+## Adversarial audit (2026-10-11, second pass)
+
+- **`authenticate.webhook` returns the topic upper-cased** (`ORDERS_CREATE`, via
+  shopify-api's `topicForStorage`). The route passed it straight through, so no
+  handler ever matched: no order was cached, uninstall kept the token, billing
+  notices and GDPR redactions did nothing, and every test stayed green because
+  they called `processWebhook("orders/create")` directly. The route now maps it
+  back with `normaliseWebhookTopic` (a lookup, since `app_subscriptions/update`
+  keeps its underscore). `tests/db-webhook-route.test.ts` signs real requests
+  and drives the route; keep every new topic covered there.
+- **`app_subscriptions/update` nests the subscription** under `app_subscription`.
+  Uninstall resets the shop to Free; notices for an uninstalled shop are ignored.
+- A webhook retry that finds the first delivery still in flight gets **503**, not
+  200, so Shopify keeps retrying if that first attempt fails.
+- The shop-wide rate-limit backstop never refuses an order in `OrderCache`
+  (`consumeShopBackstop`), so made-up order ids cannot lock real buyers out.
+  `consumeToken` re-inserts keys so eviction drops idle keys, not the backstops.
+- Money columns are `Decimal(18,3)`; `parseMoneyToMinor` rejects more than 15
+  integer digits. `expired` is excluded like `voided`. An update never clears
+  `isCancelled`. The cap lock is re-decided from the atomic usage increment.
+- `Session.accessToken` / `refreshToken` are AES-GCM sealed (`enc:v1:` prefix) by
+  the wrapper in `session-storage.server.ts`; plain legacy rows still load.
+- `/readyz` needs `x-retention-secret`; open, it let anyone keep Neon awake.
+- Optional env vars treat `""` as unset (`parseEnv`). `assertStartupInvariants`
+  now runs at boot. Node `>=22.12.0`. `shopify.web.toml` exists so
+  `shopify app dev` starts the backend.
+- `Shop.adminLocale` remembers Shopify's `?locale=` from the first document load.
+- Settings form fields are `label.<i>` / `emoji.<i>` (`readIndexedOptions`).
+- Known and left: `npm audit` still lists dev-only advisories (vitest/tinypool,
+  the Shopify CLI's global-agent, `@shopify/ui-extensions`' build-time ts-morph,
+  prisma CLI's deepmerge-ts). The suggested fixes are downgrades or major bumps
+  of build tooling; none of it ships in the runtime bundle.

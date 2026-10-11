@@ -2,7 +2,7 @@ import { db, isRetryableDbError } from "~/db.server";
 import { serialiseError } from "~/lib/errors";
 import { logger } from "~/lib/logger";
 import { minorToDecimalString, parseMoneyToMinor } from "~/lib/money";
-import { currentUtcPeriod, evaluateCap, isPlanKey, type PlanKey } from "~/lib/plans";
+import { currentUtcPeriod, evaluateCap, type PlanKey } from "~/lib/plans";
 import { withRetry } from "~/lib/retry.server";
 
 /**
@@ -102,8 +102,17 @@ export async function submitResponse(input: SubmitInput): Promise<SubmitResult> 
     // fail the request: the extension would retry, hit the unique constraint and
     // get "duplicate", and a unique violation raised by a concurrent
     // first-of-month usage upsert would be misreported as a duplicate answer.
+    let isLocked = created.isLocked;
     try {
-      await incrementUsage(input.shopId);
+      const usedAfter = await incrementUsage(input.shopId);
+      // The cap was checked BEFORE the insert, without a lock, so two answers
+      // arriving together at cap-1 both passed as unlocked. The increment is an
+      // atomic UPDATE, so its result is this answer's true position: re-decide
+      // from it and flag the row if it landed past the cap.
+      if (!isLocked && evaluateCap(input.plan, usedAfter - 1).shouldFlag) {
+        await retryDb(() => db.surveyResponse.update({ where: { id: created.id }, data: { isLocked: true } }));
+        isLocked = true;
+      }
     } catch (usageError) {
       logger.warn("usage_increment_failed", {
         shop_id: input.shopId,
@@ -130,10 +139,10 @@ export async function submitResponse(input: SubmitInput): Promise<SubmitResult> 
       shop_id: input.shopId,
       response_id: created.id,
       channel: input.channel,
-      is_locked: created.isLocked,
+      is_locked: isLocked,
     });
 
-    return { outcome: "created", id: created.id, isLocked: created.isLocked };
+    return { outcome: "created", id: created.id, isLocked };
   } catch (error) {
     if (isUniqueViolation(error)) {
       // Duplicate. Return the existing row so the buyer still gets a

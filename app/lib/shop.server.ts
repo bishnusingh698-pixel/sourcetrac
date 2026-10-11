@@ -24,6 +24,8 @@ export type ShopRecord = {
   allowOther: boolean;
   /// Merchant's chosen admin UI language, or null if never chosen.
   language: string | null;
+  /// Shopify admin locale last seen on a document load. Fallback only.
+  adminLocale: string | null;
   checkoutSupported: boolean | null;
   installState: "installed" | "uninstalled";
 };
@@ -105,6 +107,7 @@ export async function findShopByDomain(shopDomain: string): Promise<ShopRecord |
         optionsJson: true,
         allowOther: true,
         language: true,
+        adminLocale: true,
         checkoutSupported: true,
         installState: true,
       },
@@ -135,6 +138,7 @@ export async function findShopById(shopId: string): Promise<ShopRecord | null> {
         optionsJson: true,
         allowOther: true,
         language: true,
+        adminLocale: true,
         checkoutSupported: true,
         installState: true,
       },
@@ -180,6 +184,13 @@ export async function clearAccessToken(internalShopId: string): Promise<void> {
         accessTokenTag: null,
         installState: "uninstalled",
         uninstalledAt: new Date(),
+        // Shopify cancels every app subscription on uninstall. Keeping the paid
+        // plan meant a reinstall came back on Growth/Scale with nothing billed,
+        // because no later notice ever corrected it.
+        plan: "free",
+        planStatus: "active",
+        subscriptionGid: null,
+        planDisplayName: null,
       },
     }),
   );
@@ -252,6 +263,31 @@ export async function hasResponseFor(internalShopId: string, orderId: string): P
     db.surveyResponse.count({ where: { shopId: internalShopId, orderId } }),
   );
   return count > 0;
+}
+
+/**
+ * Remember the Shopify admin's locale. Only the first document load carries
+ * `?locale=`; client-side navigations drop it, so without this the language fell
+ * through to the browser's Accept-Language and the app could switch from German
+ * to English on the first click.
+ */
+export async function rememberAdminLocale(internalShopId: string, locale: string): Promise<void> {
+  if (!/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})?$/.test(locale)) return;
+  await retryDb(() => db.shop.update({ where: { id: internalShopId }, data: { adminLocale: locale } }));
+}
+
+/**
+ * Whether Shopify has told us about this order (an `orders/*` webhook or the
+ * backfill wrote it). Used to let real buyers past the shop-wide rate-limit
+ * backstop: an attacker's made-up order ids are never in the cache.
+ */
+export async function isKnownOrder(shopDomain: string, orderId: string): Promise<boolean> {
+  const shop = await findShopByDomain(shopDomain);
+  if (!shop) return false;
+  const row = await retryDb(() =>
+    db.orderCache.findUnique({ where: { shopId_orderId: { shopId: shop.id, orderId } }, select: { id: true } }),
+  );
+  return row !== null;
 }
 
 export async function setCheckoutSupport(internalShopId: string, supported: boolean | null): Promise<void> {

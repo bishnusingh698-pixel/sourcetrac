@@ -60,8 +60,8 @@
  * Screen-reader-only text and controls.
  *
  * The language dialog needs a visually hidden native radio: it must be the real
- * focusable, arrow-key-navigable element for accessibility, but the `s-clickable`
- * around it supplies the visual box.
+ * focusable, arrow-key-navigable element for accessibility, but the `<label>` and
+ * `s-box` around it supply the visual box.
  */
 .st-visually-hidden {
   position: absolute;
@@ -76,13 +76,19 @@
 }
 
 /*
- * The focus ring has to be drawn on the visible `s-clickable`, not on the hidden
+ * The focus ring has to be drawn on the visible row label, not on the hidden
  * input, or keyboard focus would be invisible. `:focus-within` is the only hook
  * available from outside the Polaris element.
  */
 .st-lang-grid > *:focus-within {
   outline: 2px solid var(--p-color-border-focus, currentColor);
   outline-offset: 2px;
+}
+
+.st-lang-option {
+  display: block;
+  cursor: pointer;
+  border-radius: 0.5rem;
 }
 
 .st-lang-grid {

@@ -19,6 +19,7 @@ import {
   MAX_QUESTION_LENGTH,
   MIN_OPTIONS,
   parseSurveySettings,
+  readIndexedOptions,
   validateSurveySettings,
   validationI18n,
   type I18nText,
@@ -97,11 +98,10 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
 
   const form = await request.formData();
 
-  // Options arrive in the order the form rendered them, as parallel `label`
-  // and `emoji` arrays. Lengths are reconciled so a missing emoji field cannot
-  // shift labels onto the wrong options.
-  const labels = form.getAll("label").map(String);
-  const emojis = form.getAll("emoji").map(String);
+  // Options arrive as `label.<i>` / `emoji.<i>`. Indexed names, not parallel
+  // `label` / `emoji` arrays: with arrays, one empty field the browser left out
+  // of the form data shifted every later emoji onto the wrong option.
+  const options = readIndexedOptions(form);
 
   const existing = parseSurveySettings(shop.optionsJson, {
     questionText: shop.questionText,
@@ -113,7 +113,7 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
     const settings = validateSurveySettings(
       {
         questionText: form.get("questionText"),
-        options: labels.map((label, index) => ({ label, emoji: emojis[index] ?? "" })),
+        options,
         allowOther: form.get("allowOther") === "true",
       },
       existing,
@@ -309,7 +309,7 @@ export default function Settings() {
                     <s-grid gridTemplateColumns="minmax(3.5rem, 4.5rem) minmax(0, 1fr)" gap="small" alignItems="end">
                       <s-text-field
                         label={t("settings.field_emoji")}
-                        name="emoji"
+                        name={`emoji.${index}`}
                         value={option.emoji}
                         maxLength={EMOJI_MAX_LENGTH}
                         error={tx(fieldErrors[`options.${index}.emoji`])}
@@ -318,7 +318,7 @@ export default function Settings() {
 
                       <s-text-field
                         label={t("settings.field_option")}
-                        name="label"
+                        name={`label.${index}`}
                         value={option.label}
                         maxLength={MAX_OPTION_LABEL_LENGTH}
                         required

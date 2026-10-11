@@ -19,6 +19,7 @@ import {
 } from "~/lib/analytics-queries.server";
 import { handleShopRedact } from "~/lib/compliance.server";
 import { minorToDecimalString } from "~/lib/money";
+import { currentUtcPeriod, planFor } from "~/lib/plans";
 import { markUnreconcilable, submitResponse } from "~/lib/responses.server";
 import { upsertShop } from "~/lib/shop.server";
 import { claimWebhook, processWebhook } from "~/lib/webhooks.server";
@@ -249,6 +250,40 @@ describe("net revenue through the real webhook path", () => {
     expect(await prisma.orderCache.count({ where: { shopId: shopRowId } })).toBe(0);
   });
 
+  it("a late orders/create with the same timestamp never un-cancels an order", async () => {
+    await answer();
+    await send("orders/cancelled", { cancelled_at: hour(10) });
+    await send("orders/create", { cancelled_at: null });
+    expect(await decided()).toEqual([]);
+    const [row] = await rows();
+    expect(row?.order?.isCancelled).toBe(true);
+  });
+
+  it("excludes an expired authorization, which captured nothing", async () => {
+    await answer();
+    await send("orders/create", { financial_status: "expired" });
+    expect(await decided()).toEqual([]);
+  });
+
+  it("two answers arriving together at cap-1 lock exactly one", async () => {
+    const cap = planFor("free").responseCap ?? 0;
+    const { periodStart, periodEnd } = currentUtcPeriod();
+    await prisma.billingUsage.create({ data: { shopId: shopRowId, periodStart, periodEnd, responsesCount: cap - 1 } });
+
+    const submit = (orderId: string) =>
+      submitResponse({ shopId: shopRowId, orderId, channel: "instagram", otherText: null, locale: null, plan: "free" });
+    const results = await Promise.all([submit("940001"), submit("940002")]);
+
+    expect(results.filter((r) => r.isLocked)).toHaveLength(1);
+    expect(await prisma.surveyResponse.count({ where: { shopId: shopRowId, isLocked: true } })).toBe(1);
+  });
+
+  it("stores a zero-decimal order of a billion or more instead of overflowing", async () => {
+    await answer();
+    await send("orders/create", { currency: "VND", current_total_price: "1500000000" });
+    expect(await decided()).toEqual([expect.objectContaining({ currency: "VND", minor: 1_500_000_000 })]);
+  });
+
   it("an answer submitted AFTER orders/create is reconciled at submit time", async () => {
     await send("orders/create", { current_total_price: "64.00" });
 
@@ -431,6 +466,6 @@ describe("webhook ledger: abandoned deliveries", () => {
 
     expect(
       await claimWebhook({ webhookId: "netrev-fresh", topic: "orders/create", apiVersion: null }),
-    ).toEqual({ claimed: false });
+    ).toEqual({ claimed: false, inFlight: true });
   });
 });

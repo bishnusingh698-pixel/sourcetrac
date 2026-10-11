@@ -1,13 +1,28 @@
 import { db } from "~/db.server";
+import { safeEqual } from "~/lib/crypto.server";
+import { env } from "~/lib/env";
 import { logger } from "~/lib/logger";
 
 /**
- * GET /readyz — readiness probe. Does query the database, so it must NOT be
- * wired to the external uptime pinger. Point Render's own health check here if
- * you want it to gate traffic on the database.
+ * GET /readyz — readiness probe. Queries the database, so it must NOT be wired
+ * to the uptime pinger or to Render's health check, either of which would keep
+ * Neon awake around the clock and exhaust its free compute hours.
+ *
+ * It requires the `x-retention-secret` header. Open, anyone polling it every
+ * four minutes kept Neon from ever suspending (~180 CU-hours a month against
+ * 100 free), after which Neon suspends for the rest of the month and the app
+ * goes down. Unauthenticated callers get a 404 and the database is not touched.
  */
 
-export const loader = async () => {
+export const loader = async ({ request }: { request: Request }) => {
+  const { RETENTION_JOB_SECRET } = env();
+  if (!RETENTION_JOB_SECRET || !safeEqual(request.headers.get("x-retention-secret") ?? "", RETENTION_JOB_SECRET)) {
+    return new Response(JSON.stringify({ error: "not_found" }), {
+      status: 404,
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+    });
+  }
+
   const startedAt = Date.now();
 
   try {

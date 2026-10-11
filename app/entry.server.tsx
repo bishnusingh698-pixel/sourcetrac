@@ -5,8 +5,18 @@ import { createReadableStreamFromReadable } from "@react-router/node";
 import type { EntryContext } from "react-router";
 import { isbot } from "isbot";
 
+import { assertStartupInvariants } from "~/lib/env";
 import { logger } from "~/lib/logger";
 import { addDocumentResponseHeaders } from "~/shopify.server";
+
+// Configuration drift (plain-HTTP APP_URL, extra scopes, the placeholder
+// encryption key) is logged once at boot. This check existed but was never
+// called, so none of those warnings ever reached the logs.
+for (const warning of assertStartupInvariants()) {
+  logger.warn("startup_invariant", {
+    warning,
+  });
+}
 
 /**
  * Streaming SSR entry. Copied from the official React Router template — the

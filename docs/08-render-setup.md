@@ -96,19 +96,16 @@ a separate Neon branch or database whose name contains `_test` and point
 `DATABASE_URL` at that. Never point it at production.
 
 
-### The ui-extensions versions are pinned together on purpose
-`@shopify/ui-extensions` and `@shopify/ui-extensions-react` must be the **same**
-version — the React package declares an exact-version peer on the core package,
-not a range. Mismatched versions fail `npm ci` with `ERESOLVE` before the build
-ever starts. Both are pinned to `2025.7.4`; bump them together or not at all.
+### The extensions are Preact on `@shopify/ui-extensions` 2026.7
+The checkout blocks use `@shopify/ui-extensions` 2026.7.x with `preact` and
+`@preact/signals`; there is no React binding and `@shopify/ui-extensions-react`
+must not be reinstalled. The npm package and `api_version = "2026-07"` are **not**
+independent: for 2025-10 and later the CLI calls the extension's default export
+as a plain function on the remote-dom runtime. `npm run check:extensions` rejects
+the old binding. See AGENTS.md, "Checkout extensions".
 
-**This does not mean the app targets an old Shopify API.** The npm package version
-and the declared `api_version` are separate. The extensions declare
-`api_version = "2026-07"` in `shopify.extension.toml` and the backend calls
-`SHOPIFY_API_VERSION=2026-07`. The 2025.7.4 package only determines *which
-binding* is available: 2026.x ships a Preact binding, 2025.7.x ships the
-React/remote-ui binding this code is written against. See AGENTS.md for the
-migration path if Shopify publishes a 2026.x React binding.
+Node must be **22.12 or later** (`.node-version` pins 22): Vite 7 and the Shopify
+CLI refuse older 22.x releases.
 
 ---
 
@@ -186,9 +183,11 @@ guarantees migrations never drift from the deployed code.
    Expect `{"status":"ok","service":"sourcetrac","booted_at":"..."}`.
 
 2. Confirm the DB is actually reachable (`/readyz` **does** query the database —
-   this is the deliberate counterpart to `/healthz`):
+   this is the deliberate counterpart to `/healthz`). It needs the retention
+   secret, so nobody else can keep Neon awake with it; never point Render's
+   health check or the uptime pinger at it:
    ```bash
-   curl https://<service>.onrender.com/readyz
+   curl -H "x-retention-secret: $RETENTION_JOB_SECRET" https://<service>.onrender.com/readyz
    ```
 
 3. Copy the URL into `shopify.app.toml` (4 places: `client_id`, `application_url`,

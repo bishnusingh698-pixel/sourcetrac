@@ -96,12 +96,18 @@ export function languageSwitchHref(
  * the shell loader. For loaders that format text on the server (money, dates)
  * and so cannot wait for the shell's data, which loads in parallel.
  */
-export function resolveAdminLanguage(request: Request, saved: string | null | undefined): LanguageCode {
+export function resolveAdminLanguage(
+  request: Request,
+  saved: string | null | undefined,
+  rememberedAdminLocale?: string | null,
+): LanguageCode {
   const url = new URL(request.url);
   return resolveRequestLanguage({
     requested: url.searchParams.get("lng"),
     saved,
-    shopifyLocale: url.searchParams.get("locale"),
+    // Only the first document load carries `?locale=`; later requests fall back
+    // to the locale remembered from it (see `rememberAdminLocale`).
+    shopifyLocale: url.searchParams.get("locale") ?? rememberedAdminLocale ?? null,
     acceptLanguage: request.headers.get("accept-language"),
   });
 }

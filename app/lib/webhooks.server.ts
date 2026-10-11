@@ -80,7 +80,42 @@ export async function refreshCheckoutSupport(internalShopId: string): Promise<vo
   await setCheckoutSupport(internalShopId, supported);
 }
 
-export type ClaimResult = { claimed: true } | { claimed: false };
+/** Every topic this app subscribes to (shopify.app.toml), in Shopify's own spelling. */
+export const KNOWN_WEBHOOK_TOPICS = [
+  "orders/create",
+  "orders/updated",
+  "orders/cancelled",
+  "app/uninstalled",
+  "app/scopes_update",
+  "app_subscriptions/update",
+  "customers/data_request",
+  "customers/redact",
+  "shop/redact",
+] as const;
+
+/** shopify-api's `topicForStorage`: upper-case, `/` and `.` become `_`. */
+const storageForm = (topic: string) => topic.toUpperCase().replace(/[/.]/g, "_");
+const CANONICAL_BY_STORAGE = new Map<string, string>(KNOWN_WEBHOOK_TOPICS.map((t) => [storageForm(t), t]));
+
+/**
+ * The topic as the handlers spell it.
+ *
+ * `authenticate.webhook` does NOT return the `X-Shopify-Topic` header as sent:
+ * shopify-api passes it through `topicForStorage`, so `orders/create` arrives as
+ * `ORDERS_CREATE`. Every handler switches on `orders/create`, so for as long as
+ * the route passed the raw value through, every delivery fell to `default` and
+ * was acknowledged without effect: no order was ever cached (revenue stayed
+ * Pending), uninstall kept the token, and the GDPR redactions deleted nothing.
+ *
+ * The mapping cannot be reversed generically (`app_subscriptions/update` and
+ * `app/scopes_update` both contain underscores), so it is a lookup over the
+ * topics we subscribe to. Unknown topics come back unchanged.
+ */
+export function normaliseWebhookTopic(topic: string): string {
+  return CANONICAL_BY_STORAGE.get(storageForm(topic)) ?? topic;
+}
+
+export type ClaimResult = { claimed: true } | { claimed: false; inFlight: boolean };
 
 /** A delivery with no outcome after this long was abandoned by a crashed request. */
 export const INFLIGHT_STALE_MS = 5 * 60 * 1000;
@@ -133,15 +168,15 @@ export async function claimWebhook(params: {
 
     if (!existing || existing.processedAt) {
       logger.info("webhook_duplicate_skipped", { webhook_id: params.webhookId, topic: params.topic });
-      return { claimed: false };
+      return { claimed: false, inFlight: false };
     }
 
     const abandoned = Date.now() - existing.createdAt.getTime() > INFLIGHT_STALE_MS;
     if (!existing.error && !abandoned) {
       // Still being worked on by another request. Re-claiming would run the
       // handler twice in parallel, which is what insert-first exists to prevent.
-      logger.info("webhook_duplicate_skipped", { webhook_id: params.webhookId, topic: params.topic });
-      return { claimed: false };
+      logger.info("webhook_duplicate_in_flight", { webhook_id: params.webhookId, topic: params.topic });
+      return { claimed: false, inFlight: true };
     }
 
     logger.info("webhook_reclaimed", {
@@ -290,6 +325,13 @@ export async function processWebhook(params: {
     case "app_subscriptions/update": {
       const shop = await findShopByDomain(shopDomain);
       if (!shop) return { action: "subscription_updated", shopInternalId: "" };
+      // Uninstall resets the plan to Free and Shopify cancels every charge. A
+      // late or replayed ACTIVE notice for the old charge must not restore a
+      // paid plan that a reinstall would then inherit for free.
+      if (shop.installState !== "installed") {
+        logger.info("subscription_ignored_uninstalled", { shop_id: shop.id });
+        return { action: "subscription_updated", shopInternalId: shop.id };
+      }
       await applySubscription(shop.id, payload);
       return { action: "subscription_updated", shopInternalId: shop.id };
     }
@@ -376,10 +418,18 @@ export async function upsertOrderCache(
     updatedAtShop: updatedAt,
   };
 
+  // Shopify cannot un-cancel an order, so an update never clears cancellation.
+  // `updated_at` has one-second precision and delivery order is not guaranteed:
+  // an order auto-cancelled in the second it was created could have its
+  // orders/cancelled overwritten by a late orders/create (equal timestamp passes
+  // the `lte` guard), and a cancelled order would count as revenue again.
+  const { isCancelled: _isCancelled, cancelledAt: _cancelledAt, ...withoutCancellation } = common;
+  const updateData = cancelledAt === null ? withoutCancellation : common;
+
   const updated = await retryDb(() =>
     db.orderCache.updateMany({
       where: { shopId: shopInternalId, orderId, updatedAtShop: { lte: updatedAt } },
-      data: totalDecimal === null ? common : { ...common, totalPrice: totalDecimal },
+      data: totalDecimal === null ? updateData : { ...updateData, totalPrice: totalDecimal },
     }),
   );
 
@@ -429,7 +479,13 @@ type SubscriptionPayload = {
  * so an unrelated subscription on the same shop cannot grant SourceTrac a
  * paid plan.
  */
-async function applySubscription(shopInternalId: string, payload: SubscriptionPayload): Promise<void> {
+async function applySubscription(shopInternalId: string, raw: Record<string, unknown>): Promise<void> {
+  // Shopify nests the subscription: `{ "app_subscription": { name, status, ... } }`.
+  // Reading the top level matched nothing, so every real notice was logged as
+  // "unmatched" and cancellations, freezes and upgrades were never applied.
+  // The flat shape is still accepted for older fixtures.
+  const nested = raw.app_subscription;
+  const payload = (typeof nested === "object" && nested !== null ? nested : raw) as SubscriptionPayload;
   const status = (payload.status ?? "").toUpperCase();
   const gid = payload.admin_graphql_api_id ?? null;
   const displayName = payload.name ?? null;

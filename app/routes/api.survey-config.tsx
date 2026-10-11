@@ -6,9 +6,9 @@ import { orderIdSchema } from "~/lib/settings";
 import { toResponse } from "~/lib/http.server";
 import { serialiseError, ValidationError } from "~/lib/errors";
 import { logger } from "~/lib/logger";
-import { BUCKETS, consumeToken } from "~/lib/rate-limit.server";
+import { BUCKETS, consumeShopBackstop, consumeToken } from "~/lib/rate-limit.server";
 import { DEFAULT_OPTIONS, parseSurveySettings } from "~/lib/settings";
-import { findShopByDomain, hasResponseFor } from "~/lib/shop.server";
+import { findShopByDomain, hasResponseFor, isKnownOrder } from "~/lib/shop.server";
 import { maybeMarkUnreconcilable } from "~/lib/responses.server";
 import { authenticate } from "~/shopify.server";
 
@@ -49,8 +49,12 @@ export const loader = async ({ request }: { request: Request }) => {
     // Keyed per order, with a much larger shop-wide ceiling behind it. A single
     // per-shop bucket let one client hammering with a valid token exhaust it and
     // hide the survey from every other buyer of that store.
-    consumeToken(`config-shop:${shopDomain}`, BUCKETS.surveyConfigShop);
+    // The backstop never refuses an order Shopify has sent us, so one client
+    // draining it with made-up order ids cannot hide the survey from real buyers.
     consumeToken(`config:${shopDomain}:${parsed.data.orderId}`, BUCKETS.surveyConfig);
+    await consumeShopBackstop(`config-shop:${shopDomain}`, BUCKETS.surveyConfigShop, () =>
+      isKnownOrder(shopDomain, parsed.data.orderId),
+    );
 
     const shop = await findShopByDomain(shopDomain);
 
