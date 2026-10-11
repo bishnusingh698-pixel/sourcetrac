@@ -1,6 +1,12 @@
 import { logger } from "~/lib/logger";
 import { handleCustomerRedact, handleDataRequest, handleShopRedact } from "~/lib/compliance.server";
-import { claimWebhook, markWebhookFailed, markWebhookProcessed, processWebhook } from "~/lib/webhooks.server";
+import {
+  claimWebhook,
+  markWebhookFailed,
+  markWebhookProcessed,
+  normaliseWebhookTopic,
+  processWebhook,
+} from "~/lib/webhooks.server";
 import { maybeRunRetention } from "~/lib/retention.server";
 import { findShopByDomain, getAccessToken } from "~/lib/shop.server";
 import { authenticate } from "~/shopify.server";
@@ -25,7 +31,11 @@ export const action = async ({ request }: { request: Request }) => {
   const requestId = `wh_${Date.now().toString(36)}`;
 
   // Verifies HMAC, then parses. A tampered body never reaches our handler.
-  const { webhookId, topic, shop, payload, session } = await authenticate.webhook(request);
+  const verified = await authenticate.webhook(request);
+  const { webhookId, shop, payload, session } = verified;
+  // The library upper-cases the topic (`ORDERS_CREATE`); handlers use Shopify's
+  // spelling (`orders/create`). See `normaliseWebhookTopic`.
+  const topic = normaliseWebhookTopic(verified.topic);
 
   logger.info("webhook_received", {
     request_id: requestId,
@@ -38,8 +48,21 @@ export const action = async ({ request }: { request: Request }) => {
   const claim = await claimWebhook({
     webhookId,
     topic,
-    apiVersion: null,
+    apiVersion: verified.apiVersion ?? null,
   });
+
+  if (!claim.claimed && claim.inFlight) {
+    // Another request is still working on this delivery (typically Shopify's
+    // timeout retry landing during a cold start). A 200 here would end Shopify's
+    // retries, so if that first attempt then fails the order is lost for good.
+    // 503 keeps Shopify retrying; the next attempt finds it processed (200) or
+    // failed (re-claimed and redone).
+    logger.info("webhook_in_flight_retry_later", { request_id: requestId, topic, webhook_id: webhookId });
+    return new Response(JSON.stringify({ received: false, in_flight: true }), {
+      status: 503,
+      headers: { "Content-Type": "application/json", "Retry-After": "30" },
+    });
+  }
 
   if (!claim.claimed) {
     logger.info("webhook_duplicate_skipped", { request_id: requestId, topic, webhook_id: webhookId });

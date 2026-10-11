@@ -23,6 +23,7 @@ import {
   MIN_OPTIONS,
   OTHER_CHANNEL_VALUE,
   parseSurveySettings,
+  readIndexedOptions,
   slugifyChannel,
   validateSurveySettings,
 } from "~/lib/settings";
@@ -425,5 +426,25 @@ describe("Settings form limits match the server limits", () => {
 
   it("exports the emoji limit so the form can bind to it", () => {
     expect(read("app/lib/settings.ts")).toMatch(/export const EMOJI_MAX_LENGTH = \d+;/);
+  });
+});
+
+describe("readIndexedOptions", () => {
+  it("pairs each emoji with its own option even when an emoji field is missing", () => {
+    const form = new FormData();
+    form.append("label.0", "Instagram");
+    // emoji.0 absent, as a browser may omit an empty field.
+    form.append("label.1", "Google");
+    form.append("emoji.1", "🔍");
+    form.append("label.10", "TikTok");
+    form.append("emoji.10", "🎵");
+    form.append("label.2", "Email");
+
+    expect(readIndexedOptions(form)).toEqual([
+      { label: "Instagram", emoji: "" },
+      { label: "Google", emoji: "🔍" },
+      { label: "Email", emoji: "" },
+      { label: "TikTok", emoji: "🎵" },
+    ]);
   });
 });

@@ -7,10 +7,10 @@ import { readBodyText, toResponse } from "~/lib/http.server";
 import { serialiseError, ValidationError } from "~/lib/errors";
 import { logger } from "~/lib/logger";
 import { effectivePlan } from "~/lib/plans";
-import { BUCKETS, consumeToken } from "~/lib/rate-limit.server";
+import { BUCKETS, consumeShopBackstop, consumeToken } from "~/lib/rate-limit.server";
 import { submitResponse } from "~/lib/responses.server";
 import { DEFAULT_OPTIONS, OTHER_CHANNEL_VALUE, parseSurveySettings } from "~/lib/settings";
-import { findShopByDomain } from "~/lib/shop.server";
+import { findShopByDomain, isKnownOrder } from "~/lib/shop.server";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -84,12 +84,16 @@ export const action = async ({ request }: { request: Request }) => {
     // Rate limit after validation, so a malformed flood cannot exhaust the token
     // bucket that legitimate buyers depend on.
     const usesOther = parsed.data.channel === OTHER_CHANNEL_VALUE;
-    // Shop-wide first: the per-order key below is chosen by the caller, so on
-    // its own it cannot stop a flood of made-up order ids.
-    consumeToken(`response-shop:${shopDomain}`, BUCKETS.responseShop);
+    // Per order first, then the shop-wide backstop: the per-order key is chosen
+    // by the caller, so on its own it cannot stop a flood of made-up order ids.
+    // The backstop never refuses an order Shopify has sent us, so draining it
+    // cannot lock real buyers out.
     consumeToken(
       `response:${shopDomain}:${parsed.data.orderId}`,
       usesOther ? BUCKETS.otherResponse : BUCKETS.response,
+    );
+    await consumeShopBackstop(`response-shop:${shopDomain}`, BUCKETS.responseShop, () =>
+      isKnownOrder(shopDomain, parsed.data.orderId),
     );
 
     // Looked up only after validation and rate limiting, so neither a malformed

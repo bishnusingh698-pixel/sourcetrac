@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { BUCKETS, bucketCount, consumeToken, resetBuckets } from "../../app/lib/rate-limit.server";
+import { RateLimitError } from "../../app/lib/errors";
+import { BUCKETS, bucketCount, consumeShopBackstop, consumeToken, resetBuckets } from "../../app/lib/rate-limit.server";
 
 afterEach(() => resetBuckets());
 
@@ -26,5 +27,38 @@ describe("rate limiting", () => {
     const now = 2_000_000;
     for (let i = 0; i < 25_000; i++) consumeToken(`k:${i}`, BUCKETS.response, now);
     expect(bucketCount()).toBeLessThanOrEqual(20_000);
+  });
+
+  it("a drained shop backstop still lets a real order through, and only a real one", async () => {
+    // One lifted checkout token used to drain this bucket with made-up ids and
+    // 429 every real buyer of the store.
+    for (let i = 0; i < BUCKETS.responseShop.capacity; i++) consumeToken("response-shop:v", BUCKETS.responseShop);
+
+    await expect(consumeShopBackstop("response-shop:v", BUCKETS.responseShop, async () => true)).resolves.toBeUndefined();
+    await expect(consumeShopBackstop("response-shop:v", BUCKETS.responseShop, async () => false)).rejects.toBeInstanceOf(
+      RateLimitError,
+    );
+  });
+
+  it("does not evict a busy shop backstop under a flood of distinct keys", () => {
+    const now = 3_000_000;
+    consumeToken("response-shop:victim", BUCKETS.responseShop, now);
+    for (let i = 0; i < 25_000; i++) {
+      consumeToken(`k:${i}`, BUCKETS.response, now);
+      // The backstop stays in use throughout, as it would under attack.
+      if (i % 1000 === 0) consumeToken("response-shop:victim", BUCKETS.responseShop, now);
+    }
+    // Drain what is left; it must not have been reset to full by eviction.
+    let accepted = 0;
+    for (let i = 0; i < BUCKETS.responseShop.capacity; i++) {
+      try {
+        consumeToken("response-shop:victim", BUCKETS.responseShop, now);
+        accepted++;
+      } catch {
+        // limited
+      }
+    }
+    // 26 tokens were spent on it; a reset would leave far more than 80.
+    expect(accepted).toBeLessThanOrEqual(BUCKETS.responseShop.capacity - 26);
   });
 });

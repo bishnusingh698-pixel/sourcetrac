@@ -1,9 +1,10 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   Form,
   useActionData,
   useLoaderData,
   useNavigation,
+  useRevalidator,
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
   type MetaFunction,
@@ -63,6 +64,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   // Reconcile from Shopify rather than trusting our own column, so a charge
   // approved or cancelled outside the app is reflected here immediately.
   let activePlan = effectivePlan(shop);
+  let synced = false;
   if (session.accessToken) {
     try {
       const subscriptions = await fetchActiveSubscriptions({
@@ -91,6 +93,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
           planStatus: reconciled === "free" ? "expired" : "active",
           subscriptionGid: live?.id ?? shop.subscriptionGid,
         });
+        synced = true;
       }
     } catch (error) {
       // Fall back to the stored plan rather than blocking the page. The webhook
@@ -102,10 +105,14 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     }
   }
 
-  const locale = intlLocaleFor(resolveAdminLanguage(request, shop.language));
+  const locale = intlLocaleFor(resolveAdminLanguage(request, shop.language, shop.adminLocale));
 
   return {
     activePlan,
+    // The shell loader ran in parallel with this one and read the old plan, so
+    // the toolbar showed "Free" above "You're on Growth" after a billing
+    // return. The component revalidates once when this is true.
+    synced,
     used,
     cap: evaluateCap(activePlan, used),
     plans: PLAN_ORDER.map((key) => {
@@ -198,6 +205,14 @@ export default function Plans() {
   const outcome = useActionData<typeof action>();
   const navigation = useNavigation();
   const { t } = useAdminI18n();
+  const { revalidate } = useRevalidator();
+
+  // Refresh the shell (plan badge, usage, cap banner) once this page has
+  // corrected the stored plan. Keyed on `synced` alone, so it fires once.
+  useEffect(() => {
+    if (data.synced) void revalidate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.synced]);
   // Only the card that was submitted shows a spinner; the others stay usable
   // to read. `formData` identifies which form is in flight.
   const pendingPlan = navigation.state !== "idle" ? String(navigation.formData?.get("plan") ?? "cancel") : null;

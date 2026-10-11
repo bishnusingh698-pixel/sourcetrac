@@ -37,7 +37,18 @@ const notice = (gid: string, name: string, status: string) =>
     topic: "app_subscriptions/update",
     shopDomain: DOMAIN,
     accessToken: null,
-    payload: { admin_graphql_api_id: gid, name, status },
+    // Shopify's real shape: the subscription is nested under `app_subscription`.
+    payload: {
+      app_subscription: {
+        admin_graphql_api_id: gid,
+        name,
+        status,
+        admin_graphql_api_shop_id: "gid://shopify/Shop/9200001",
+        created_at: "2026-10-01T00:00:00Z",
+        updated_at: "2026-10-01T00:00:00Z",
+        currency: "USD",
+      },
+    },
   });
 
 describe("app_subscriptions/update ordering", () => {
@@ -81,5 +92,27 @@ describe("test charges in production", () => {
     }
     const shop = await prisma.shop.findUniqueOrThrow({ where: { shopDomain: DOMAIN } });
     expect(shop.plan).toBe("free");
+  });
+});
+
+describe("uninstall ends the paid plan", () => {
+  it("a reinstall starts on Free instead of keeping a subscription Shopify cancelled", async () => {
+    await notice(NEW, "SourceTrac Scale", "ACTIVE");
+    expect((await prisma.shop.findUniqueOrThrow({ where: { shopDomain: DOMAIN } })).plan).toBe("scale");
+
+    await processWebhook({ topic: "app/uninstalled", shopDomain: DOMAIN, accessToken: null, payload: {} });
+    await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9200001", accessToken: "shpat_new" });
+
+    const shop = await prisma.shop.findUniqueOrThrow({ where: { shopDomain: DOMAIN } });
+    expect(shop).toMatchObject({ plan: "free", subscriptionGid: null });
+  });
+
+  it("ignores a late ACTIVE notice for the old charge once the app is uninstalled", async () => {
+    await notice(NEW, "SourceTrac Scale", "ACTIVE");
+    await processWebhook({ topic: "app/uninstalled", shopDomain: DOMAIN, accessToken: null, payload: {} });
+    await notice(NEW, "SourceTrac Scale", "ACTIVE");
+    await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9200001", accessToken: "shpat_new" });
+
+    expect((await prisma.shop.findUniqueOrThrow({ where: { shopDomain: DOMAIN } })).plan).toBe("free");
   });
 });

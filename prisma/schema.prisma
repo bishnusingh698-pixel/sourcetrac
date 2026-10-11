@@ -57,6 +57,10 @@ model Shop {
   /// require a migration, and `resolveLanguage` already rejects anything we do
   /// not ship, so a stale value degrades to English instead of erroring.
   language               String?
+  /// The Shopify admin's own locale (`?locale=` on the first document load),
+  /// remembered because later in-app navigations do not carry it. Only a
+  /// fallback below `language`; never set by the merchant directly.
+  adminLocale            String?
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
@@ -81,7 +85,7 @@ model SurveyResponse {
   /// Stored in MAJOR units, not minor. Three fractional places because KWD, BHD,
   /// OMR and friends are three-decimal currencies; Decimal(12,2) would round a
   /// 1.234 KWD order to 1.23 on insert and silently lose the difference.
-  orderTotal  Decimal? @db.Decimal(12, 3)
+  orderTotal  Decimal? @db.Decimal(18, 3)
   locale      String?
   submittedAt DateTime @default(now())
   isLocked    Boolean  @default(false)
@@ -113,7 +117,7 @@ model OrderCache {
   /// Shopify's current_total_price: ALREADY net of refunds, returns and edits.
   /// This is the only revenue figure; nothing may subtract a refund from it.
   /// Null when the webhook total could not be parsed (never a fake 0.00).
-  totalPrice      Decimal? @db.Decimal(12, 3)
+  totalPrice      Decimal? @db.Decimal(18, 3)
   financialStatus String?
   isTest          Boolean  @default(false)
   isCancelled     Boolean  @default(false)

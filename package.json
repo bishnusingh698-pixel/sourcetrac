@@ -22,18 +22,17 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:db": "vitest run tests/db-invariants.test.ts",
-    "docker-start": "npm run setup && npm run start",
     "shopify": "shopify",
     "prisma": "prisma",
     "check:build-deps": "node scripts/check-build-deps.cjs"
   },
   "dependencies": {
     "@preact/signals": "2.11.3",
-    "@prisma/client": "^6.19.3",
-    "@react-router/dev": "^7.18.2",
-    "@react-router/fs-routes": "^7.18.2",
-    "@react-router/node": "^7.18.2",
-    "@react-router/serve": "^7.18.2",
+    "@prisma/client": "6.19.3",
+    "@react-router/dev": "7.18.2",
+    "@react-router/fs-routes": "7.18.2",
+    "@react-router/node": "7.18.2",
+    "@react-router/serve": "7.18.2",
     "@shopify/polaris-types": "^1.1.0",
     "@shopify/shopify-app-react-router": "^3.0.1",
     "@shopify/shopify-app-session-storage-prisma": "^11.0.0",
@@ -42,11 +41,11 @@
     "i18next": "^25.10.10",
     "isbot": "^5.2.2",
     "preact": "10.29.8",
-    "prisma": "^6.19.3",
+    "prisma": "6.19.3",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-i18next": "^16.6.6",
-    "react-router": "^7.18.2",
+    "react-router": "7.18.2",
     "zod": "^3.25.76"
   },
   "devDependencies": {
@@ -54,17 +53,16 @@
     "@types/node": "^22.20.4",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^5.2.0",
     "embedded-postgres": "^18.4.0-beta.17",
     "esbuild": "^0.28.1",
-    "happy-dom": "^15.11.7",
+    "happy-dom": "^20.14.6",
     "typescript": "^5.9.3",
     "vite": "^7.3.6",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^3.2.7"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.12.0"
   },
   "allowScripts": {
     "embedded-postgres@18.4.0-beta.17": true,

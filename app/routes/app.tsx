@@ -30,6 +30,7 @@ import {
   isSupportedLanguage,
 } from "~/lib/i18n";
 import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
+import { rememberAdminLocale } from "~/lib/shop.server";
 import { effectivePlan, evaluateCap, planFor } from "~/lib/plans";
 import { getUsageCount } from "~/lib/responses.server";
 import { ensureShop } from "~/lib/provision.server";
@@ -88,7 +89,11 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   // subscription must show the Free cap the API is actually applying.
   const enforcedPlan = effectivePlan(shop);
 
-  const language = resolveAdminLanguage(request, shop.language);
+  const shopifyLocale = new URL(request.url).searchParams.get("locale");
+  if (shopifyLocale && shopifyLocale !== shop.adminLocale) {
+    await rememberAdminLocale(shop.id, shopifyLocale);
+  }
+  const language = resolveAdminLanguage(request, shop.language, shopifyLocale ?? shop.adminLocale);
 
   return {
     /**

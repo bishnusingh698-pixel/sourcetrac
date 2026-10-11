@@ -41,7 +41,7 @@ export type RevenueDecision =
  * Policy:
  *   test order             -> excluded
  *   cancelled              -> excluded
- *   financialStatus voided -> excluded
+ *   voided / expired       -> excluded (nothing was captured)
  *   refunded               -> excluded (fully refunded == no revenue)
  *   partially_refunded     -> included at current_total_price (already net)
  *   anything else          -> included at current_total_price
@@ -52,7 +52,8 @@ export function evaluateRevenue(order: OrderFacts): RevenueDecision {
 
   const status = order.financialStatus?.toLowerCase() ?? null;
 
-  if (status === "voided") return { included: false, reason: "voided" };
+  // An authorization that lapsed (`expired`) captured nothing, like `voided`.
+  if (status === "voided" || status === "expired") return { included: false, reason: "voided" };
   if (status === "refunded") return { included: false, reason: "fully_refunded" };
 
   const total = parseMoneyToMinor(order.totalPrice, order.currency);

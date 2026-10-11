@@ -1,0 +1,8 @@
+name = "React Router"
+roles = ["frontend", "backend"]
+
+# `shopify app dev` finds the web process only through this file. Without it
+# the CLI starts the tunnel and extensions but no React Router server.
+[commands]
+predev = "npx prisma generate"
+dev = "npx prisma migrate deploy && npm exec react-router dev"

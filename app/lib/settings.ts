@@ -354,3 +354,18 @@ export const orderIdSchema = z
   .max(64)
   .transform(normaliseOrderId)
   .pipe(z.string().regex(/^\d+$/, "orderId must be numeric"));
+
+/** Options from `label.<i>` / `emoji.<i>` fields, in index order. */
+export function readIndexedOptions(form: FormData): Array<{ label: string; emoji: string }> {
+  const indices = new Set<number>();
+  for (const key of form.keys()) {
+    const match = /^(?:label|emoji)\.(\d{1,3})$/.exec(key);
+    if (match) indices.add(Number(match[1]));
+  }
+  return [...indices]
+    .sort((a, b) => a - b)
+    .map((index) => ({
+      label: String(form.get(`label.${index}`) ?? ""),
+      emoji: String(form.get(`emoji.${index}`) ?? ""),
+    }));
+}

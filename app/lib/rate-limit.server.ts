@@ -105,7 +105,38 @@ export function consumeToken(key: string, config: BucketConfig, now = Date.now()
     throw new RateLimitError(Math.max(1, waitSeconds), { bucket: key });
   }
 
+  // Delete first so the key moves to the end of insertion order. Without it the
+  // long-lived shop-wide backstops were the OLDEST keys and the first to be
+  // dropped by the hard-limit eviction above, so a flood of distinct per-order
+  // keys reset the very bucket meant to stop that flood.
+  store.delete(key);
   store.set(key, { tokens: refilled - 1, lastRefillMs: now });
+}
+
+/**
+ * Consume from a shop-wide backstop, but never let it refuse an order Shopify
+ * actually told us about.
+ *
+ * The backstop is keyed only on the store, and anyone who bought once can
+ * re-mint a valid checkout token forever. Draining it with made-up order ids
+ * used to return 429 to every real buyer of that store, whose answers were then
+ * lost once the extension's retry budget ran out. Made-up ids are never in the
+ * order cache, so they stay throttled; a real order goes through.
+ *
+ * `isKnownOrder` is only consulted once the bucket is empty, so normal traffic
+ * pays no extra query.
+ */
+export async function consumeShopBackstop(
+  key: string,
+  config: BucketConfig,
+  isKnownOrder: () => Promise<boolean>,
+): Promise<void> {
+  try {
+    consumeToken(key, config);
+  } catch (error) {
+    if (error instanceof RateLimitError && (await isKnownOrder())) return;
+    throw error;
+  }
 }
 
 /** Test helper: clear all buckets. */

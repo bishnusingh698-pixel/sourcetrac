@@ -688,7 +688,7 @@ describe("webhook retry after a failed processing", () => {
 
     expect(
       await claimWebhook({ webhookId: "wh-done-1", topic: "orders/create", apiVersion: null }),
-    ).toEqual({ claimed: false });
+    ).toEqual({ claimed: false, inFlight: false });
   });
 
   it("still refuses a delivery that is still in flight", async () => {
@@ -701,6 +701,6 @@ describe("webhook retry after a failed processing", () => {
 
     expect(
       await claimWebhook({ webhookId: "wh-inflight-1", topic: "orders/create", apiVersion: null }),
-    ).toEqual({ claimed: false });
+    ).toEqual({ claimed: false, inFlight: true });
   });
 });

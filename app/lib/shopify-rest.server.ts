@@ -8,10 +8,8 @@
  * Docs: https://shopify.dev/docs/api/admin-rest/2026-07/resources/shop
  */
 
-import { env } from "./env";
 import { logger } from "./logger";
-import { ShopifyGraphQLError, ShopifyThrottledError, shopifyGraphql, SHOP_STATUS_QUERY } from "./shopify-graphql.server";
-import { withRetry } from "./retry.server";
+import { shopifyGraphql, SHOP_STATUS_QUERY } from "./shopify-graphql.server";
 
 export type ShopPlan = {
   displayName: string;
@@ -100,55 +98,6 @@ export function checkoutSurfacesSupported(publicDisplayName: string | null | und
   if (!match) return null;
 
   return !UNSUPPORTED_PLANS.has(match);
-}
-
-type RestShop = {
-  id: number;
-  name: string;
-  myshopify_domain: string;
-  currency: string;
-  plan_name?: string;
-  plan_display_name?: string;
-};
-
-export async function fetchShop(shopDomain: string, accessToken: string): Promise<ShopInfo> {
-  const { SHOPIFY_API_VERSION: apiVersion } = env();
-  const url = `https://${shopDomain}/admin/api/${apiVersion}/shop.json`;
-
-  const payload = await withRetry(
-    async () => {
-      const response = await fetch(url, {
-        headers: { "X-Shopify-Access-Token": accessToken },
-        signal: AbortSignal.timeout(15_000),
-      });
-
-      if (response.status === 429) {
-        throw new ShopifyThrottledError([{ message: "429 fetching shop" }]);
-      }
-      if (response.status >= 500) {
-        throw new ShopifyThrottledError([{ message: `Upstream ${response.status} fetching shop` }]);
-      }
-      if (!response.ok) {
-        throw new ShopifyGraphQLError([{ message: `Shop endpoint returned ${response.status}` }]);
-      }
-
-      const body = (await response.json()) as { shop?: RestShop };
-      if (!body.shop) throw new ShopifyGraphQLError([{ message: "Shop payload missing" }]);
-      return body.shop;
-    },
-    {
-      attempts: 3,
-      baseDelayMs: 500,
-      shouldRetry: (error) => error instanceof ShopifyThrottledError,
-      isAbort: (error) => error instanceof ShopifyGraphQLError && !(error instanceof ShopifyThrottledError),
-    },
-  );
-
-  return {
-    id: `gid://shopify/Shop/${payload.id}`,
-    myshopifyDomain: payload.myshopify_domain,
-    currencyCode: payload.currency,
-  };
 }
 
 /**

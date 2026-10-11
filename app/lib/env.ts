@@ -9,6 +9,15 @@ const HEX_32 = z
   .string()
   .regex(/^[0-9a-fA-F]{64}$/, "Must be a 32-byte hex string. Generate with: openssl rand -hex 32");
 
+/**
+ * An optional variable set to "" counts as unset. The Shopify CLI and Render
+ * both pass `NAME=` through as an empty string, and `.env.example` ships
+ * `RETENTION_JOB_SECRET=`: copied as-is, `min(16)` rejected "" and the app
+ * refused to boot.
+ */
+const optional = <T extends z.ZodTypeAny>(inner: T) =>
+  z.preprocess((value) => (value === "" ? undefined : value), inner.optional());
+
 const schema = z.object({
   DATABASE_URL: z.string().min(1, "Required."),
   SHOPIFY_API_KEY: z.string().min(1, "Required."),
@@ -18,14 +27,14 @@ const schema = z.object({
   APP_URL: z.string().url("Must be an absolute URL."),
   TOKEN_ENCRYPTION_KEY: HEX_32,
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).optional(),
-  SUPPORT_EMAIL: z.string().email().optional(),
+  LOG_LEVEL: optional(z.enum(["debug", "info", "warn", "error"])),
+  SUPPORT_EMAIL: optional(z.string().email()),
   /**
    * Shared secret for POST /jobs/retention. Optional at boot so a developer can
    * run the app without it, but the route fails closed without it -- it never
    * runs an unauthenticated delete.
    */
-  RETENTION_JOB_SECRET: z.string().min(16, "Must be at least 16 characters.").optional(),
+  RETENTION_JOB_SECRET: optional(z.string().min(16, "Must be at least 16 characters.")),
 });
 
 export type Env = z.infer<typeof schema>;
@@ -34,13 +43,18 @@ let cached: Env | undefined;
 
 export function env(): Env {
   if (cached) return cached;
+  cached = parseEnv(process.env);
+  return cached;
+}
 
+/** Validate an environment. Exported so the rules can be tested without `process.env`. */
+export function parseEnv(source: Record<string, string | undefined>): Env {
   // `shopify app dev` exports its tunnel URL as SHOPIFY_APP_URL, not APP_URL,
   // and the tunnel changes per run, so a hand-copied APP_URL goes stale and
   // breaks auth. Fall back to the CLI's value when APP_URL is unset.
   const parsed = schema.safeParse({
-    ...process.env,
-    APP_URL: process.env.APP_URL || process.env.SHOPIFY_APP_URL,
+    ...source,
+    APP_URL: source.APP_URL || source.SHOPIFY_APP_URL,
   });
   if (!parsed.success) {
     const detail = parsed.error.issues
@@ -49,8 +63,7 @@ export function env(): Env {
     throw new Error(`Invalid environment configuration — ${detail}`);
   }
 
-  cached = parsed.data;
-  return cached;
+  return parsed.data;
 }
 
 /**

@@ -63,6 +63,13 @@ export function parseMoneyToMinor(value: string | number | null | undefined, cur
   const unsigned = negative ? raw.slice(1) : raw;
   const [whole = "0", fraction = ""] = unsigned.split(".");
 
+  // The money columns are Decimal(18,3): 15 integer digits. A larger value
+  // would raise numeric overflow on insert and fail its webhook on every retry,
+  // so it is rejected here and stored as an unparseable (NULL) total instead.
+  if (whole.replace(/^0+/, "").length > 15) {
+    return { ok: false, reason: "out_of_range" };
+  }
+
   // Trailing zeros are not extra precision. Postgres renders a numeric at its
   // declared column scale, so a USD total stored in a `Decimal(12,3)` column
   // comes back as "42.500" — rejecting that would drop every two-decimal order's
