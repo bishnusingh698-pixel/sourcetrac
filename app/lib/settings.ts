@@ -222,17 +222,13 @@ export function validateSurveySettings(
   }
 
   const taken = new Set<string>();
-  const options: SurveyOption[] = [];
+  const drafts: Array<{ label: string; emoji: string | null; slug: string; kept: string | undefined }> = [];
 
   input.options.forEach((rawOption, index) => {
     const raw = (rawOption ?? {}) as { label?: unknown; emoji?: unknown };
     const label = validateOptionLabel(raw.label, index);
     const emoji = validateEmoji(raw.emoji, index);
-
-    // Prefer the existing value when the slug is unchanged, so historical
-    // responses keep pointing at the right channel after a rename.
     const slug = slugifyChannel(label, new Set());
-    const value = previousBySlug.get(slug) ?? slug;
 
     // Compare the raw slug, not the de-duplicated value. Checking `taken` after
     // slugifyChannel had already salted the collision would never match, which
@@ -246,7 +242,22 @@ export function validateSurveySettings(
       );
     }
     taken.add(slug);
-    options.push({ value, label, emoji });
+    // Prefer the existing value when the slug is unchanged, so historical
+    // responses keep pointing at the right channel after a rename.
+    drafts.push({ label, emoji, slug, kept: previousBySlug.get(slug) });
+  });
+
+  // Kept values are reserved first. A new option's slug can equal a value an
+  // existing option still holds: the default "Google search" is stored as
+  // `google`, so adding "Google" alongside it produced two options with the
+  // value `google`, and their answers merged into one channel.
+  const used = new Set(drafts.flatMap((draft) => (draft.kept ? [draft.kept] : [])));
+  const options: SurveyOption[] = drafts.map(({ label, emoji, slug, kept }) => {
+    if (kept) return { value: kept, label, emoji };
+    let value = slug;
+    for (let n = 2; used.has(value); n += 1) value = `${slug}-${n}`;
+    used.add(value);
+    return { value, label, emoji };
   });
 
   return { questionText, options, allowOther };

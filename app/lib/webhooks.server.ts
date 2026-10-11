@@ -437,8 +437,16 @@ async function applySubscription(shopInternalId: string, payload: SubscriptionPa
   const matched = matchPlanByDisplayName(displayName);
 
   if (!matched) {
-    // Not a SourceTrac subscription, or a test charge. Leave the plan alone.
+    // Not a SourceTrac subscription. Leave the plan alone.
     logger.info("subscription_unmatched", { shop_id: shopInternalId, name: displayName, status });
+    return;
+  }
+
+  // A test charge costs the merchant nothing, so in production it must not
+  // grant a paid plan, matching `paidPlanFromSubscriptions` on the Plans page.
+  // Before this, the webhook path applied it anyway.
+  if (isIgnoredTestCharge(payload)) {
+    logger.info("subscription_test_charge_ignored", { shop_id: shopInternalId, name: displayName, status });
     return;
   }
 
@@ -464,6 +472,14 @@ async function applySubscription(shopInternalId: string, payload: SubscriptionPa
   });
 
   logger.info("subscription_applied", { shop_id: shopInternalId, plan: matched.key, status: planStatus });
+}
+
+/** True for a test charge where test charges do not count (production). */
+export function isIgnoredTestCharge(
+  payload: { test?: boolean },
+  { allowTest = process.env.NODE_ENV !== "production" }: { allowTest?: boolean } = {},
+): boolean {
+  return payload.test === true && !allowTest;
 }
 
 export function matchPlanByDisplayName(name: string | null): { key: PlanKey } | null {

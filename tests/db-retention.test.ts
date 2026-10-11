@@ -96,15 +96,26 @@ describe("retention purge deletes only expired rows", () => {
     expect(await prisma.webhookEvent.count({ where: { webhookId: "ret-recent" } })).toBe(1);
   });
 
-  it("keeps an UNPROCESSED webhook payload however old it is", async () => {
-    // An unprocessed row still holds operational state we are committed to
-    // finishing. Deleting it would silently lose a webhook the app still owes.
+  it("removes an unprocessed webhook row past the window too", async () => {
+    // The ledger stores no payload, so nothing can re-run a row; only a
+    // Shopify redelivery can, and Shopify stops retrying within hours. A row
+    // that failed long ago is dead weight, and keeping such rows meant they
+    // accumulated forever.
     await seedWebhook("unprocessed-old", daysBefore(WEBHOOK_RETENTION_DAYS * 10), null);
 
     const report = await runRetentionPurge();
 
-    expect(report.webhookEventsDeleted).toBe(0);
-    expect(await prisma.webhookEvent.count({ where: { webhookId: "ret-unprocessed-old" } })).toBe(1);
+    expect(report.webhookEventsDeleted).toBe(1);
+    expect(await prisma.webhookEvent.count({ where: { webhookId: "ret-unprocessed-old" } })).toBe(0);
+  });
+
+  it("keeps an unprocessed webhook row inside the window", async () => {
+    // A recent failure can still be redelivered and re-claimed.
+    await seedWebhook("unprocessed-recent", daysBefore(1), null);
+
+    await runRetentionPurge();
+
+    expect(await prisma.webhookEvent.count({ where: { webhookId: "ret-unprocessed-recent" } })).toBe(1);
   });
 
   it("removes a response past the 24-month window", async () => {

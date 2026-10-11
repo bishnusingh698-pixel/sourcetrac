@@ -58,3 +58,28 @@ describe("app_subscriptions/update ordering", () => {
     expect(shop.planStatus).toBe("cancelled");
   });
 });
+
+describe("test charges in production", () => {
+  it("never grant a paid plan through the webhook", async () => {
+    // The Plans page already ignored test charges in production; the webhook
+    // path applied them, handing out a paid plan for nothing.
+    await prisma.shop.update({
+      where: { shopDomain: DOMAIN },
+      data: { plan: "free", planStatus: "active", subscriptionGid: null },
+    });
+    const previous = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    try {
+      await processWebhook({
+        topic: "app_subscriptions/update",
+        shopDomain: DOMAIN,
+        accessToken: null,
+        payload: { admin_graphql_api_id: "gid://shopify/AppSubscription/3", name: "SourceTrac Growth", status: "ACTIVE", test: true },
+      });
+    } finally {
+      process.env.NODE_ENV = previous;
+    }
+    const shop = await prisma.shop.findUniqueOrThrow({ where: { shopDomain: DOMAIN } });
+    expect(shop.plan).toBe("free");
+  });
+});

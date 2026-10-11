@@ -40,7 +40,8 @@ if (env().NODE_ENV !== "production") {
 /**
  * Classify a Prisma error as retryable.
  *
- * Retryable: cannot reach server, pool timeout, deadlock, write conflict.
+ * Retryable: cannot reach server, connection closed or timed out, pool
+ * timeout, deadlock, write conflict.
  * Not retryable: unique violation (that is our idempotency success path) and
  * foreign-key violation (a bug, not a transient fault).
  */
@@ -49,7 +50,11 @@ export function isRetryableDbError(error: unknown): boolean {
   const code = (error as { code?: unknown }).code;
   if (typeof code !== "string") return false;
 
-  return ["P1001", "P1008", "P2024", "P2034", "P2028"].includes(code);
+  // P1017 ("server has closed the connection") is what a pooled connection
+  // throws after Neon suspends an idle compute and drops it, and P1002 is a
+  // timeout while it wakes. Both succeed on the next attempt; leaving them out
+  // failed the first request after every idle period.
+  return ["P1001", "P1002", "P1008", "P1017", "P2024", "P2034", "P2028"].includes(code);
 }
 
 export function dbErrorCode(error: unknown): string | undefined {

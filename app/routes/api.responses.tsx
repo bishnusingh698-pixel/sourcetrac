@@ -113,7 +113,10 @@ export const action = async ({ request }: { request: Request }) => {
     const isKnownOption = settings.options.some((option) => option.value === parsed.data.channel);
     const isOther = parsed.data.channel === OTHER_CHANNEL_VALUE;
 
-    if (isOther && !settings.allowOther) {
+    // Only the free-text "Other" is gated by allowOther. A merchant who named
+    // one of their own options "Other" gets the slug `other` too; rejecting
+    // that dropped the answer of every buyer who tapped it.
+    if (isOther && !settings.allowOther && !isKnownOption) {
       throw new ValidationError("This store does not accept an “Other” answer.", "Please choose one of the listed options.", {
         field: "channel",
       });
@@ -130,7 +133,7 @@ export const action = async ({ request }: { request: Request }) => {
       });
     }
 
-    const otherText = isOther ? parsed.data.otherText?.trim() || null : null;
+    const otherText = isOther && settings.allowOther ? parsed.data.otherText?.trim() || null : null;
     // A cancelled, declined or expired subscription must not keep unlimited paid
     // behaviour. `planStatusIsCollecting` is the single place that decides whether
     // a recorded plan status still grants paid access.

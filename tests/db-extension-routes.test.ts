@@ -154,6 +154,37 @@ describe("extension routes, as the checkout extension calls them", () => {
     }
   });
 
+  it("accepts a merchant's own option named Other when free text is off", async () => {
+    // Its slug is `other`, the same as the free-text channel. The route
+    // rejected it as a free-text answer, so every buyer who tapped it lost
+    // their answer.
+    const options = ["Google", "Instagram", "TikTok", "Podcast", "Email", "Other"].map((label) => ({
+      value: label.toLowerCase(),
+      label,
+      emoji: null,
+    }));
+    await prisma.shop.update({
+      where: { shopDomain: DOMAIN },
+      data: { optionsJson: JSON.stringify(options), allowOther: false },
+    });
+    try {
+      const res = await call(
+        submitAction,
+        request("/api/responses", {
+          method: "POST",
+          body: JSON.stringify({ orderId: "7310000000003", channel: "other", otherText: "ignored" }),
+        }),
+      );
+      expect(res.status).toBe(200);
+      const row = await prisma.surveyResponse.findFirst({ where: { orderId: "7310000000003" } });
+      expect(row?.channel).toBe("other");
+      // Free text is off, so nothing typed is kept.
+      expect(row?.otherText).toBeNull();
+    } finally {
+      await prisma.shop.update({ where: { shopDomain: DOMAIN }, data: { optionsJson: "[]" } });
+    }
+  });
+
   it("keeps a rejected order id CORS-readable", async () => {
     const res = await call(configLoader, request(`/api/survey-config?orderId=abc`));
     expect(res.status).toBe(400);

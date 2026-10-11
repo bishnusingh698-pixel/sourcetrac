@@ -85,3 +85,17 @@ export async function readBodyText(request: Request, maxBytes: number): Promise<
   }
   return new TextDecoder().decode(bytes);
 }
+
+/**
+ * Only ever redirect to our own paths (no open redirect via `?redirect=`).
+ *
+ * Browsers treat `\` as `/` in a URL, so `/\evil.com` is the protocol-relative
+ * `//evil.com` and leaves the app; the old `//` check alone let it through.
+ * Control characters are rejected because browsers strip tabs and newlines,
+ * which turns `/\t/evil.com` into `//evil.com` as well.
+ */
+export function safeInternalPath(value: string): string {
+  if (!value.startsWith("/") || /[\\\u0000-\u001f]/.test(value)) return "/app";
+  if (value.startsWith("//")) return "/app";
+  return value;
+}
