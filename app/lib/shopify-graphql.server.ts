@@ -155,3 +155,35 @@ export const SHOP_STATUS_QUERY = `#graphql
     }
   }
 `;
+
+export const SHOP_TIMEZONE_QUERY = `#graphql
+  query SourceTracShopTimezone {
+    shop {
+      ianaTimezone
+    }
+  }
+`;
+
+/**
+ * The shop's IANA time zone (e.g. "Asia/Kolkata"), or null when Shopify could
+ * not be asked. The export then falls back to UTC and says so in its
+ * `timezone` column, so a failed lookup degrades the file rather than failing
+ * the download.
+ */
+export async function fetchShopTimeZone(shopDomain: string, accessToken: string | null | undefined): Promise<string | null> {
+  if (!accessToken) return null;
+  try {
+    const result = await shopifyGraphql<{ shop: { ianaTimezone: string | null } | null }>(
+      shopDomain,
+      accessToken,
+      SHOP_TIMEZONE_QUERY,
+    );
+    return result.data.shop?.ianaTimezone ?? null;
+  } catch (error) {
+    logger.warn("shop_timezone_lookup_failed", {
+      shop_domain: shopDomain,
+      error_message: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}

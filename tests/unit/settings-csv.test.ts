@@ -3,7 +3,17 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { escapeCsvValue, toCsv, CSV_HEADERS, csvFilename } from "~/lib/csv";
+import {
+  CSV_HEADERS,
+  UTF8_BOM,
+  csvFilename,
+  escapeCsvValue,
+  formatTimestamp,
+  orderAdminLink,
+  resolveExportTimeZone,
+  toCsv,
+  type CsvRow,
+} from "~/lib/csv";
 import { ValidationError } from "~/lib/errors";
 import { formatDecimalForCurrency } from "~/lib/money";
 import {
@@ -286,20 +296,62 @@ describe("escapeCsvValue", () => {
 });
 
 describe("toCsv", () => {
+  const row = (overrides: Partial<CsvRow> = {}): CsvRow => ({
+    orderName: "#1001",
+    orderId: "6123456789012",
+    submittedAt: "2026-10-01 05:30:00",
+    timeZone: "Asia/Kolkata",
+    channel: "Instagram",
+    otherAnswer: null,
+    orderTotal: "42.50",
+    currency: "USD",
+    revenueStatus: "counted",
+    orderLink: "https://admin.shopify.com/store/demo/orders/6123456789012",
+    ...overrides,
+  });
+
+  it("starts with a UTF-8 BOM so Excel does not garble non-ASCII labels", () => {
+    expect(toCsv([]).startsWith(UTF8_BOM)).toBe(true);
+  });
+
   it("emits the agreed header order", () => {
     const csv = toCsv([]);
-    expect(csv.split("\r\n")[0]).toBe(CSV_HEADERS.join(","));
+    expect(csv.slice(UTF8_BOM.length).split("\r\n")[0]).toBe(CSV_HEADERS.join(","));
   });
 
-  it("writes exactly the requested columns and nothing else", () => {
-    expect(CSV_HEADERS).toEqual(["order_id", "submitted_at", "channel", "order_total", "currency"]);
-  });
-
-  it("renders an unknown order total as a blank cell", () => {
-    const csv = toCsv([
-      { orderId: "1", submittedAt: new Date("2026-10-01T00:00:00.000Z"), channel: "web", orderTotal: null, currency: null },
+  it("writes exactly the documented columns and nothing else", () => {
+    expect(CSV_HEADERS).toEqual([
+      "order",
+      "submitted_at",
+      "timezone",
+      "channel",
+      "other_answer",
+      "order_total",
+      "currency",
+      "revenue_status",
+      "order_link",
     ]);
-    expect(csv).toContain("1,2026-10-01T00:00:00.000Z,web,,");
+  });
+
+  it("writes the order name, not the 13-digit id spreadsheets show as 6.12346E+12", () => {
+    const line = toCsv([row()]).split("\r\n")[1];
+    expect(line).toBe(
+      "#1001,2026-10-01 05:30:00,Asia/Kolkata,Instagram,,42.50,USD,counted,https://admin.shopify.com/store/demo/orders/6123456789012",
+    );
+  });
+
+  it("renders an unknown order as blank cells, never 0.00", () => {
+    const line = toCsv([row({ orderName: null, orderTotal: null, currency: null, revenueStatus: "awaiting order" })]).split(
+      "\r\n",
+    )[1];
+    expect(line).toBe(
+      ",2026-10-01 05:30:00,Asia/Kolkata,Instagram,,,,awaiting order,https://admin.shopify.com/store/demo/orders/6123456789012",
+    );
+  });
+
+  it("guards a buyer's free-text answer against formula injection", () => {
+    const line = toCsv([row({ channel: "Other", otherAnswer: "=HYPERLINK(\"x\")" })]).split("\r\n")[1];
+    expect(line).toContain(`,"'=HYPERLINK(""x"")",`);
   });
 
   it("ends with a newline so the last row is not dropped", () => {
@@ -307,9 +359,41 @@ describe("toCsv", () => {
   });
 });
 
+describe("formatTimestamp", () => {
+  const instant = new Date("2026-10-11T20:15:07.311Z");
+
+  it("renders in the shop's zone as a spreadsheet-readable date-time", () => {
+    expect(formatTimestamp(instant, "Asia/Kolkata")).toBe("2026-10-12 01:45:07");
+    expect(formatTimestamp(instant, "America/New_York")).toBe("2026-10-11 16:15:07");
+    expect(formatTimestamp(instant, "UTC")).toBe("2026-10-11 20:15:07");
+  });
+
+  it("renders midnight as 00, not 24", () => {
+    expect(formatTimestamp(new Date("2026-10-11T00:00:00.000Z"), "UTC")).toBe("2026-10-11 00:00:00");
+  });
+
+  it("falls back to UTC for a missing or unknown zone", () => {
+    expect(resolveExportTimeZone(null)).toBe("UTC");
+    expect(resolveExportTimeZone("Mars/Olympus_Mons")).toBe("UTC");
+    expect(formatTimestamp(instant, "Mars/Olympus_Mons")).toBe("2026-10-11 20:15:07");
+  });
+});
+
+describe("orderAdminLink", () => {
+  it("links to the order in the Shopify admin", () => {
+    expect(orderAdminLink("demo-store.myshopify.com", "6123456789012")).toBe(
+      "https://admin.shopify.com/store/demo-store/orders/6123456789012",
+    );
+  });
+});
+
 describe("csvFilename", () => {
   it("includes the date", () => {
     expect(csvFilename(new Date("2026-10-01T00:00:00.000Z"))).toBe("sourcetrac-responses-2026-10-01.csv");
+  });
+
+  it("dates the file in the shop's zone", () => {
+    expect(csvFilename(new Date("2026-10-01T20:00:00.000Z"), "Asia/Tokyo")).toBe("sourcetrac-responses-2026-10-02.csv");
   });
 });
 

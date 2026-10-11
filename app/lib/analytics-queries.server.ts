@@ -2,9 +2,10 @@ import { Prisma } from "@prisma/client";
 
 import { db, isRetryableDbError } from "~/db.server";
 import { previousWindowBounds, windowBounds } from "~/lib/analytics";
-import type { CsvRow } from "~/lib/csv";
-import { minorToDecimalString } from "~/lib/money";
+import { formatTimestamp, orderAdminLink, resolveExportTimeZone, type CsvRow, type RevenueStatus } from "~/lib/csv";
+import { minorToDecimalString, parseMoneyToMinor } from "~/lib/money";
 import { evaluateResponseRevenue, type RevenueDecision } from "~/lib/revenue";
+import { OTHER_CHANNEL_VALUE } from "~/lib/settings";
 import { withRetry } from "~/lib/retry.server";
 
 /**
@@ -27,6 +28,8 @@ export type ResponseWithOrder = {
   reconciled: boolean;
   unreconcilable: boolean;
   order: {
+    /** Shopify order name, e.g. "#1001". */
+    orderNumber: string | null;
     currency: string;
     /** `current_total_price`, already net of refunds. Null = unparseable. */
     totalPrice: string | null;
@@ -73,6 +76,7 @@ export async function fetchResponsesInWindow(params: {
         r."isLocked",
         r.reconciled,
         r."unreconcilable",
+        o."orderNumber",
         o.currency,
         o."totalPrice"::text AS "totalPrice",
         o."financialStatus",
@@ -102,6 +106,7 @@ type ResponseWithOrderRow = {
   isLocked: boolean;
   reconciled: boolean;
   unreconcilable: boolean;
+  orderNumber: string | null;
   currency: string | null;
   totalPrice: string | null;
   financialStatus: string | null;
@@ -120,13 +125,13 @@ type ResponseWithOrderRow = {
  * could not be parsed. Treating either null as "no order" would drop a real order.
  */
 function toResponseWithOrder(row: ResponseWithOrderRow): ResponseWithOrder {
-  const { currency, totalPrice, financialStatus, isTest, isCancelled, ...response } = row;
+  const { orderNumber, currency, totalPrice, financialStatus, isTest, isCancelled, ...response } = row;
 
   const hasOrder = currency !== null && isTest !== null && isCancelled !== null;
 
   return {
     ...response,
-    order: hasOrder ? { currency, totalPrice, financialStatus, isTest, isCancelled } : null,
+    order: hasOrder ? { orderNumber, currency, totalPrice, financialStatus, isTest, isCancelled } : null,
   };
 }
 
@@ -220,26 +225,83 @@ export function toDecidedAmounts(rows: ReadonlyArray<ResponseWithOrder>): Array<
 }
 
 /**
- * CSV rows built from the same decision as the dashboard.
- *
- * `order_total` is the decided net amount in the order's currency, written from
- * integer minor units so it carries the currency's true precision. It is blank,
- * with a blank currency, whenever the dashboard would not count the answer's
- * revenue: pending, cancelled, test, voided, fully refunded or unparseable. A
- * blank cell therefore always means "not counted", never "free".
+ * Why an answer does or does not count, as written in the CSV. Derived from the
+ * same `decideRevenue` call as the dashboard, so the file and the dashboard can
+ * never disagree about which orders are revenue.
  */
-export function toExportRows(rows: ReadonlyArray<ResponseWithOrder>): CsvRow[] {
+export function exportRevenueStatus(row: ResponseWithOrder, decision = decideRevenue(row)): RevenueStatus {
+  if (decision.included) return "counted";
+
+  switch (decision.reason) {
+    case "test_order":
+      return "test order";
+    case "cancelled":
+      return "cancelled";
+    case "voided":
+      return "voided";
+    case "fully_refunded":
+      return "refunded";
+    case "unparseable_total":
+      return "total unreadable";
+    case "unreconciled":
+      // The order is cached but its total could not be read, so it never
+      // reconciled. Calling that "awaiting order" would send the merchant
+      // looking for an order that already arrived.
+      if (row.order && row.order.totalPrice === null) return "total unreadable";
+      return row.unreconcilable ? "order not received" : "awaiting order";
+  }
+}
+
+/**
+ * The order's net total, at its currency's precision, whenever the order is
+ * known. Test, cancelled and refunded orders keep their real total: a test
+ * store has only test orders, and a file of blank totals reads as broken.
+ * `revenue_status` says whether the dashboard counts it.
+ */
+function exportOrderTotal(row: ResponseWithOrder): string | null {
+  if (!row.order) return null;
+  const parsed = parseMoneyToMinor(row.order.totalPrice, row.order.currency);
+  if (!parsed.ok || parsed.minor < 0) return null;
+  return minorToDecimalString(parsed.minor, row.order.currency);
+}
+
+export type ExportContext = {
+  shopDomain: string;
+  /** IANA zone from Shopify. Falls back to UTC when missing or unknown. */
+  timeZone: string | null;
+  /** Channel key -> the merchant's label, from the current survey settings. */
+  labels: ReadonlyMap<string, string>;
+};
+
+/**
+ * The merchant's own label for a channel key. A key no longer in the survey
+ * (the option was deleted) has no label left, so the key itself is the best name.
+ */
+export function channelLabel(channel: string, labels: ReadonlyMap<string, string>): string {
+  const label = labels.get(channel);
+  if (label) return label;
+  return channel === OTHER_CHANNEL_VALUE ? "Other" : channel;
+}
+
+/** CSV rows, one per answer, in the order given. */
+export function toExportRows(rows: ReadonlyArray<ResponseWithOrder>, context: ExportContext): CsvRow[] {
+  const timeZone = resolveExportTimeZone(context.timeZone);
+
   return rows.map((row) => {
     const decision = decideRevenue(row);
-    const counted = decision.included && row.order !== null;
+    const orderTotal = exportOrderTotal(row);
 
     return {
+      orderName: row.order?.orderNumber ?? null,
       orderId: row.orderId,
-      submittedAt: row.submittedAt,
-      channel: row.channel,
-      orderTotal:
-        decision.included && row.order ? minorToDecimalString(decision.minor, row.order.currency) : null,
-      currency: counted && row.order ? row.order.currency : null,
+      submittedAt: formatTimestamp(row.submittedAt, timeZone),
+      timeZone,
+      channel: channelLabel(row.channel, context.labels),
+      otherAnswer: row.otherText,
+      orderTotal,
+      currency: orderTotal === null ? null : (row.order?.currency ?? null),
+      revenueStatus: exportRevenueStatus(row, decision),
+      orderLink: orderAdminLink(context.shopDomain, row.orderId),
     };
   });
 }

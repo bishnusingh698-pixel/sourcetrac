@@ -5,6 +5,7 @@ import { Panel } from "~/components/admin-ui";
 import { fetchResponsesInWindow, toExportRows } from "~/lib/analytics-queries.server";
 import { CSV_HEADERS } from "~/lib/csv";
 import { db } from "~/db.server";
+import { loadExportContext } from "~/lib/export.server";
 import { ensureShop } from "~/lib/provision.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
@@ -13,8 +14,8 @@ import { authenticate } from "~/shopify.server";
 /**
  * Export page.
  *
- * One primary action: "Download CSV". It links straight to the resource route,
- * so the download works without JavaScript.
+ * One primary action: "Download CSV", fetched with the session token (see
+ * `download` below).
  *
  * The page shows the exact column list before the merchant commits, because a
  * CSV that does not match expectations is only discovered after it is already
@@ -30,20 +31,25 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const count = await db.surveyResponse.count({ where: { shopId: shop.id } });
 
   // A preview of the newest rows, so merchants can confirm the file looks right
-  // before downloading. Values are shown exactly as they will be written.
-  const recent = toExportRows(await fetchResponsesInWindow({ shopId: shop.id, limit: 10 }));
+  // before downloading. Same builder and same context as the CSV route, so the
+  // values are exactly what the file will contain.
+  const [responses, context] = await Promise.all([
+    fetchResponsesInWindow({ shopId: shop.id, limit: 10 }),
+    loadExportContext(shop, session),
+  ]);
+  const recent = toExportRows(responses, context);
 
   return {
     count,
     headers: [...CSV_HEADERS],
     recent: recent.map((row) => ({
       orderId: row.orderId,
-      submittedAt: row.submittedAt.toISOString(),
-      channel: row.channel,
-      // Same builder the CSV route uses, so the preview is byte-identical to
-      // the file and to the dashboard's revenue decision.
-      orderTotal: row.orderTotal ?? "",
-      currency: row.currency ?? "",
+      orderName: row.orderName ?? "",
+      submittedAt: row.submittedAt,
+      timeZone: row.timeZone,
+      channel: row.otherAnswer ? `${row.channel}: ${row.otherAnswer}` : row.channel,
+      orderTotal: row.orderTotal === null ? "" : `${row.orderTotal} ${row.currency ?? ""}`.trim(),
+      revenueStatus: row.revenueStatus,
     })),
   };
 });
@@ -121,19 +127,19 @@ export default function Export() {
           <s-table variant="auto">
             <s-table-header-row>
               <s-table-header listSlot="primary">{data.headers[0]}</s-table-header>
-              <s-table-header listSlot="secondary">{data.headers[2]}</s-table-header>
+              <s-table-header listSlot="secondary">{data.headers[3]}</s-table-header>
               <s-table-header listSlot="labeled">{data.headers[1]}</s-table-header>
-              <s-table-header listSlot="labeled" format="currency">{data.headers[3]}</s-table-header>
-              <s-table-header listSlot="labeled">{data.headers[4]}</s-table-header>
+              <s-table-header listSlot="labeled" format="currency">{data.headers[5]}</s-table-header>
+              <s-table-header listSlot="labeled">{data.headers[7]}</s-table-header>
             </s-table-header-row>
             <s-table-body>
               {data.recent.map((row) => (
                 <s-table-row key={row.orderId}>
-                  <s-table-cell>{row.orderId}</s-table-cell>
+                  <s-table-cell>{row.orderName || "—"}</s-table-cell>
                   <s-table-cell>{row.channel}</s-table-cell>
-                  <s-table-cell>{row.submittedAt}</s-table-cell>
+                  <s-table-cell>{`${row.submittedAt} (${row.timeZone})`}</s-table-cell>
                   <s-table-cell>{row.orderTotal || "—"}</s-table-cell>
-                  <s-table-cell>{row.currency || "—"}</s-table-cell>
+                  <s-table-cell>{row.revenueStatus}</s-table-cell>
                 </s-table-row>
               ))}
             </s-table-body>

@@ -12,7 +12,7 @@ import { db } from "~/db.server";
 import { isSupportedLanguage, type LanguageCode } from "~/lib/i18n";
 import { MAX_OPTIONS, MIN_OPTIONS } from "~/lib/settings";
 import { buildTrend, computeStats } from "~/lib/analytics";
-import { fetchDashboardData } from "~/lib/analytics-queries.server";
+import { decideRevenue, fetchDashboardData } from "~/lib/analytics-queries.server";
 import { formatMoney } from "~/lib/money";
 import { ensureShop } from "~/lib/provision.server";
 import { guarded } from "~/lib/admin-errors.server";
@@ -104,6 +104,13 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
       totalResponses: summary.totalResponses,
       lockedResponses: summary.lockedResponses,
       pendingResponses: summary.pendingResponses,
+      // Answers on Shopify test orders (every order on a development store).
+      // Their revenue is excluded by policy, which left a test store showing
+      // answers with no revenue and no explanation.
+      testOrderResponses: data.responses.filter((row) => {
+        const decision = decideRevenue(row);
+        return !decision.included && decision.reason === "test_order";
+      }).length,
       responseRate: summary.responseRate,
       responseRateChange: summary.responseRateChange,
       revenue: summary.revenueByCurrency.map((entry) => ({
@@ -447,6 +454,7 @@ export default function Dashboard() {
   const rangeLabel = t(data.range.labelKey);
   const pending = data.summary.pendingResponses;
   const locked = data.summary.lockedResponses;
+  const testOrders = data.summary.testOrderResponses;
 
   // Denominator for the per-channel share bars. Derived on the client from data
   // already in the payload, so it costs no extra query.
@@ -526,6 +534,12 @@ export default function Dashboard() {
           {pending > 0 ? (
             <Banner tone="info" heading={t("dashboard.pending_banner_title", { count: pending })}>
               {t("dashboard.pending_banner_body")}
+            </Banner>
+          ) : null}
+
+          {testOrders > 0 ? (
+            <Banner tone="info" heading={t("dashboard.test_orders_banner_title", { count: testOrders })}>
+              {t("dashboard.test_orders_banner_body")}
             </Banner>
           ) : null}
 
