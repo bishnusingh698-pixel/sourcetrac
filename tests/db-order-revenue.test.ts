@@ -19,7 +19,7 @@ import {
 } from "~/lib/analytics-queries.server";
 import { handleShopRedact } from "~/lib/compliance.server";
 import { minorToDecimalString } from "~/lib/money";
-import { submitResponse } from "~/lib/responses.server";
+import { markUnreconcilable, submitResponse } from "~/lib/responses.server";
 import { upsertShop } from "~/lib/shop.server";
 import { claimWebhook, processWebhook } from "~/lib/webhooks.server";
 
@@ -269,45 +269,77 @@ describe("net revenue through the real webhook path", () => {
   it("CSV rows carry exactly the dashboard's decision, row by row", async () => {
     // Counted, partially refunded (net 75.00).
     await answer("910001");
-    await send("orders/create");
+    await send("orders/create", { name: "#1001" });
     await send("orders/updated", {
+      name: "#1001",
       financial_status: "partially_refunded",
       current_total_price: "75.00",
       updated_at: hour(11),
     });
     // Cancelled, test, and pending (order never arrives).
     await answer("910004");
-    await send("orders/create", { id: 910004, cancelled_at: hour(10) });
+    await send("orders/create", { id: 910004, name: "#1004", cancelled_at: hour(10) });
     await answer("910005");
-    await send("orders/create", { id: 910005, test: true });
+    await send("orders/create", { id: 910005, name: "#1005", test: true, current_total_price: "19.99" });
     await answer("910006");
     // Zero-decimal currency.
     await answer("910007");
-    await send("orders/create", { id: 910007, currency: "JPY", current_total_price: "5000" });
+    await send("orders/create", { id: 910007, name: "#1007", currency: "JPY", current_total_price: "5000" });
 
     const all = await rows();
-    const exported = toExportRows(all);
+    const exported = toExportRows(all, {
+      shopDomain: REV_DOMAIN,
+      timeZone: "Asia/Kolkata",
+      labels: new Map([["instagram", "Instagram"]]),
+    });
     expect(exported).toHaveLength(all.length);
 
+    // `counted` is set on exactly the rows the dashboard sums, at the same amount.
     for (const row of all) {
       const csv = exported.find((e) => e.orderId === row.orderId);
       const decision = decideRevenue(row);
-
+      expect(csv?.revenueStatus === "counted").toBe(decision.included);
       if (decision.included && row.order) {
         expect(csv?.orderTotal).toBe(minorToDecimalString(decision.minor, row.order.currency));
-        expect(csv?.currency).toBe(row.order.currency);
-      } else {
-        // Not counted on the dashboard, so blank in the file. Never "0.00".
-        expect(csv?.orderTotal).toBeNull();
-        expect(csv?.currency).toBeNull();
       }
     }
 
-    expect(exported.find((e) => e.orderId === "910001")?.orderTotal).toBe("75.00");
-    expect(exported.find((e) => e.orderId === "910007")?.orderTotal).toBe("5000");
-    expect(exported.find((e) => e.orderId === "910004")?.orderTotal).toBeNull();
-    expect(exported.find((e) => e.orderId === "910005")?.orderTotal).toBeNull();
-    expect(exported.find((e) => e.orderId === "910006")?.orderTotal).toBeNull();
+    const byId = (id: string) => exported.find((e) => e.orderId === id);
+    expect(byId("910001")).toMatchObject({
+      orderName: "#1001",
+      orderTotal: "75.00",
+      currency: "USD",
+      revenueStatus: "counted",
+      channel: "Instagram",
+      // 10:30 UTC is 16:00 in India.
+      submittedAt: "2026-10-01 16:00:00",
+      timeZone: "Asia/Kolkata",
+      orderLink: "https://admin.shopify.com/store/netrev-revenue/orders/910001",
+    });
+    expect(byId("910007")).toMatchObject({ orderTotal: "5000", currency: "JPY", revenueStatus: "counted" });
+    // Known orders keep their real total, with a status saying why it is not counted.
+    expect(byId("910004")).toMatchObject({ orderName: "#1004", orderTotal: "100.00", revenueStatus: "cancelled" });
+    expect(byId("910005")).toMatchObject({ orderTotal: "19.99", currency: "USD", revenueStatus: "test order" });
+    // No order yet: blank, never "0.00".
+    expect(byId("910006")).toMatchObject({
+      orderName: null,
+      orderTotal: null,
+      currency: null,
+      revenueStatus: "awaiting order",
+    });
+  });
+
+  it("the hourly sweep reconciles an answer whose order is cached, instead of writing it off", async () => {
+    await send("orders/create", { current_total_price: "64.00" });
+    // An answer that missed its submit-time reconcile (that step is best-effort).
+    await answer("910001");
+    expect((await rows())[0]?.reconciled).toBe(false);
+
+    await markUnreconcilable(24, new Date("2026-10-05T00:00:00Z"));
+
+    const [row] = await rows();
+    expect(row).toMatchObject({ reconciled: true, unreconcilable: false });
+    expect(toDecidedAmounts(await rows())).toEqual([expect.objectContaining({ minor: 6400 })]);
   });
 });
 

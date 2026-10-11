@@ -95,7 +95,7 @@ export function SurveyView(props: SurveyViewProps) {
               never written back as `value`, so typing with the phone
               keyboard open is never interrupted by a re-render. */}
           <s-text-field
-            label={t("sourcetrac.otherLabel", "Tell us more (optional)")}
+            label={t("sourcetrac.otherLabel", "Tell us more")}
             onInput={(event) => onOtherTextChange(fieldValue(event))}
             onChange={(event) => onOtherTextChange(fieldValue(event))}
             maxLength={140}

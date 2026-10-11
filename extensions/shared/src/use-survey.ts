@@ -41,8 +41,9 @@ export interface SurveyApi {
 /**
  * Decide whether a free-text "Other" answer is worth submitting.
  *
- * The field is labelled optional, so a blank box means "nothing to add" rather
- * than a distinct response. Submitting it anyway would store the `other` channel
+ * A blank box means "nothing to add" rather than a distinct response, which is
+ * why Submit stays disabled until the buyer types and the label never says
+ * "optional". Submitting it anyway would store the `other` channel
  * with no text: the merchant then sees a channel in the breakdown that carries
  * no information, and it counts against the free-tier response cap.
  *

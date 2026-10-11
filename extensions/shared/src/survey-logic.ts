@@ -112,6 +112,8 @@ export interface ApiBinding {
    */
   getSessionToken: () => Promise<string>;
   translate: (key: string) => unknown;
+  /** The buyer's language (e.g. "de"), stored with the answer. Optional. */
+  getLocale?: () => string | null | undefined;
 }
 
 /**
@@ -237,9 +239,19 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
         // Field names must match app/routes/api.responses.tsx exactly. The route
         // allowlists `channel` against the merchant's configured options, so
         // renaming this silently breaks every submission with a 422.
-        body: JSON.stringify({ orderId, channel, otherText }),
+        body: JSON.stringify({ orderId, channel, otherText, locale: buyerLocale() }),
       }),
     );
+  }
+
+  /** Never throws: a missing localization API must not block the answer. */
+  function buyerLocale(): string | null {
+    try {
+      const locale = binding.getLocale?.();
+      return typeof locale === "string" && locale.length > 0 ? locale.slice(0, 32) : null;
+    } catch {
+      return null;
+    }
   }
 
   /** Translation with a literal fallback, so a missing key never blanks the UI. */

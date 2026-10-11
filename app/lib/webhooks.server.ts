@@ -187,7 +187,7 @@ export async function markWebhookFailed(webhookId: string, message: string): Pro
 /// deliberately no refund field: `total_refunded` is not a documented order
 /// property, and subtracting any refund from `current_total_price` would deduct it
 /// twice.
-type ShopifyOrder = {
+export type ShopifyOrder = {
   id: number | string;
   name?: string | null;
   order_number?: number;
@@ -343,7 +343,7 @@ type OrderOutcome = { orderId: string; applied: boolean; reconciled: number };
  * stored total on an existing one; revenue then reads it as "unparseable" and the
  * answer stays Pending, rather than reporting a fabricated $0.00.
  */
-async function upsertOrderCache(
+export async function upsertOrderCache(
   shopInternalId: string,
   order: ShopifyOrder,
   forceCancelled: boolean,

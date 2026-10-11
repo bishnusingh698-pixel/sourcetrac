@@ -1,0 +1,118 @@
+/**
+ * Orders the webhooks never delivered are fetched from the Admin API and run
+ * through the same `upsertOrderCache` as a webhook. Real Postgres; only the
+ * network call to Shopify is stubbed, at `fetch`.
+ */
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { PrismaClient } from "@prisma/client";
+
+import { fetchResponsesInWindow, toDecidedAmounts } from "~/lib/analytics-queries.server";
+import { backfillMissingOrders, orderNodeToPayload, resetBackfillAttempts } from "~/lib/order-backfill.server";
+
+const prisma = new PrismaClient();
+const DOMAIN = "backfill-test.myshopify.com";
+const NOW = new Date("2026-10-11T12:00:00Z");
+
+let shopId = "";
+
+const orderNode = (overrides: Record<string, unknown> = {}) => ({
+  legacyResourceId: "920001",
+  name: "#1042",
+  test: true,
+  cancelledAt: null,
+  createdAt: "2026-10-01T09:00:00Z",
+  updatedAt: "2026-10-01T09:00:00Z",
+  displayFinancialStatus: "PAID",
+  currentTotalPriceSet: { shopMoney: { amount: "48.5", currencyCode: "USD" } },
+  ...overrides,
+});
+
+function stubShopify(order: unknown) {
+  const calls: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (_url: string, init: { body: string }) => {
+      calls.push(JSON.parse(init.body).variables.id);
+      return new Response(JSON.stringify({ data: { order } }), { status: 200 });
+    }),
+  );
+  return calls;
+}
+
+async function cleanup() {
+  await prisma.shop.deleteMany({ where: { shopDomain: DOMAIN } });
+}
+
+beforeAll(async () => {
+  if (!(process.env.DATABASE_URL ?? "").includes("_test")) {
+    throw new Error("Refusing to run: DATABASE_URL must name a *_test database.");
+  }
+});
+
+beforeEach(async () => {
+  await cleanup();
+  resetBackfillAttempts();
+  const shop = await prisma.shop.create({
+    data: { shopId: "gid://shopify/Shop/920000", shopDomain: DOMAIN, installState: "installed" },
+  });
+  shopId = shop.id;
+  await prisma.surveyResponse.create({
+    data: { shopId, orderId: "920001", channel: "instagram", submittedAt: new Date("2026-10-11T11:00:00Z") },
+  });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+afterAll(async () => {
+  await cleanup();
+  await prisma.$disconnect();
+});
+
+describe("order backfill", () => {
+  it("maps the GraphQL order onto the webhook payload shape", () => {
+    expect(orderNodeToPayload(orderNode({ displayFinancialStatus: "PARTIALLY_REFUNDED" }))).toMatchObject({
+      id: "920001",
+      name: "#1042",
+      currency: "USD",
+      current_total_price: "48.5",
+      financial_status: "partially_refunded",
+      test: true,
+    });
+  });
+
+  it("fetches an order no webhook delivered and reconciles its answer", async () => {
+    const calls = stubShopify(orderNode({ test: false }));
+
+    const written = await backfillMissingOrders({ shopId, shopDomain: DOMAIN, accessToken: "shpat_x", now: NOW });
+
+    expect(written).toBe(1);
+    expect(calls).toEqual(["gid://shopify/Order/920001"]);
+    const rows = await fetchResponsesInWindow({ shopId });
+    expect(rows[0]).toMatchObject({ reconciled: true, order: expect.objectContaining({ orderNumber: "#1042" }) });
+    expect(toDecidedAmounts(rows)).toEqual([expect.objectContaining({ minor: 4850, currency: "USD" })]);
+  });
+
+  it("does not ask again within the hour for an order Shopify could not return", async () => {
+    const calls = stubShopify(null);
+    await backfillMissingOrders({ shopId, shopDomain: DOMAIN, accessToken: "shpat_x", now: NOW });
+    await backfillMissingOrders({ shopId, shopDomain: DOMAIN, accessToken: "shpat_x", now: NOW });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("leaves a just-submitted answer to the webhook", async () => {
+    const calls = stubShopify(orderNode());
+    const soon = new Date("2026-10-11T11:01:00Z");
+    expect(await backfillMissingOrders({ shopId, shopDomain: DOMAIN, accessToken: "shpat_x", now: soon })).toBe(0);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("never throws when Shopify fails", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("nope", { status: 403 })));
+    await expect(
+      backfillMissingOrders({ shopId, shopDomain: DOMAIN, accessToken: "shpat_x", now: NOW }),
+    ).resolves.toBe(0);
+  });
+});

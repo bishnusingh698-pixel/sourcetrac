@@ -239,12 +239,45 @@ export async function reconcileResponsesForOrder(params: {
 }
 
 /**
+ * Reconcile every unreconciled answer whose order is already cached with a
+ * readable total. Idempotent, and a no-op in the normal case. The stored value
+ * is copied as-is: it was already validated and rounded to the currency's
+ * precision when the order webhook wrote it.
+ */
+export async function reconcileOrphanedResponses(): Promise<number> {
+  const count = await retryDb(() =>
+    db.$executeRaw`
+      UPDATE "SurveyResponse" r
+      SET reconciled = true,
+          unreconcilable = false,
+          currency = o.currency,
+          "orderTotal" = o."totalPrice"
+      FROM "OrderCache" o
+      WHERE o."shopId" = r."shopId"
+        AND o."orderId" = r."orderId"
+        AND o."totalPrice" IS NOT NULL
+        AND r.reconciled = false
+    `,
+  );
+
+  if (count > 0) logger.info("responses_reconciled_late", { count });
+  return count;
+}
+
+/**
  * Mark responses that never received an order after 24 hours. They stay in the
  * dashboard as "Pending" with an explanation rather than being deleted —
  * the answer is real even if the order total is missing.
  */
 export async function markUnreconcilable(olderThanHours = 24, now = new Date()): Promise<number> {
   const cutoff = new Date(now.getTime() - olderThanHours * 60 * 60 * 1000);
+
+  // First recover answers whose order IS cached. Reconciliation runs once at
+  // submit and once per order webhook; if the submit-time attempt failed (it is
+  // logged and skipped so the buyer still gets a confirmation) and no later
+  // orders/updated arrives, the answer would otherwise read "Pending" and then
+  // be written off as "order never arrived" for an order we hold.
+  await reconcileOrphanedResponses();
 
   const result = await retryDb(() =>
     db.surveyResponse.updateMany({

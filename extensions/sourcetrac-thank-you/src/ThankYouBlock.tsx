@@ -47,6 +47,7 @@ function ThankYouBlock() {
         // retry after a long cold start never sends a stale token.
         getSessionToken: () => shopify.sessionToken.get(),
         translate: (key) => shopify.i18n.translate(key),
+        getLocale: () => shopify.localization?.language?.value?.isoCode,
       }),
     [shopify],
   );
