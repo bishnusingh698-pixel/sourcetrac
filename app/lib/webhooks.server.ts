@@ -4,6 +4,7 @@ import { db, isRetryableDbError } from "~/db.server";
 import { logger } from "~/lib/logger";
 import { minorToDecimalString, parseMoneyToMinor } from "~/lib/money";
 import { withRetry } from "~/lib/retry.server";
+import { reconcileOrderForResponses } from "~/lib/answers.server";
 import { reconcileResponsesForOrder } from "~/lib/responses.server";
 import {
   clearAccessToken,
@@ -462,7 +463,28 @@ export async function upsertOrderCache(
     totalPrice: totalDecimal,
   });
 
-  return { orderId, applied: true, reconciled };
+  // The v2 model too: an answer stored before the order landed has a null total
+  // and must be filled in here, or it stays Pending forever. Idempotent (only
+  // null-total rows change), and never throws out of the webhook for a bookkeeping
+  // miss.
+  let reconciledV2 = 0;
+  try {
+    const v2 = await reconcileOrderForResponses({
+      shopId: shopInternalId,
+      orderId,
+      currency: order.currency,
+      totalPrice: totalDecimal,
+    });
+    reconciledV2 = v2.reconciled;
+  } catch (error) {
+    logger.warn("reconcile_v2_failed", {
+      shop_id: shopInternalId,
+      order_id: orderId,
+      error_message: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  return { orderId, applied: true, reconciled: reconciled + reconciledV2 };
 }
 
 type SubscriptionPayload = {

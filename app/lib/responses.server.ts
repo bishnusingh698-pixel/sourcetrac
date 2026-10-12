@@ -2,6 +2,7 @@ import { db, isRetryableDbError } from "~/db.server";
 import { serialiseError } from "~/lib/errors";
 import { logger } from "~/lib/logger";
 import { minorToDecimalString, parseMoneyToMinor } from "~/lib/money";
+import { markUnverifiedFailedResponses } from "~/lib/answers.server";
 import { currentUtcPeriod, evaluateCap, type PlanKey } from "~/lib/plans";
 import { withRetry } from "~/lib/retry.server";
 
@@ -328,6 +329,10 @@ export async function maybeMarkUnreconcilable(olderThanHours = 24): Promise<void
 
   try {
     await markUnreconcilable(olderThanHours);
+    // The v2 model uses `unverifiedFailed` in place of the legacy
+    // `unreconcilable`, and has no reconcile flag. Marked in the same sweep so a
+    // single dashboard visit ages out both shapes.
+    await markUnverifiedFailedResponses(olderThanHours);
   } catch (error) {
     // Must not fail the caller's request: this is housekeeping, and the
     // retry inside markUnreconcilable has already been exhausted.
