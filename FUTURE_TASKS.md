@@ -48,11 +48,12 @@ The audit left the code as-is (code wins; the constant is interpolated into help
 and the plans page). If the product wants the brief's numbers, raise the constant
 and add per-plan survey/question gating in `createSurvey` / `updateSurvey`.
 
-## Advanced options disclosure (audit F-011)
+## Advanced options disclosure (audit F-011) — DONE
 
-Sample %, dates, response limit and min/max selections render inline. Move them
-under a collapsed "Advanced" disclosure inside each section when the editor next
-changes.
+Sample %, dates, response limit, countries and languages now sit under a
+collapsed `AdvancedDisclosure` in the survey editor's "Who sees it" section.
+Multi-choice min/max selections remain inline (they only appear for that one
+question type). Nothing further to do here.
 
 ## Logic map "Try a path" simulator polish (Phase G)
 

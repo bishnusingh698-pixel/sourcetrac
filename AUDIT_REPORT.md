@@ -10,6 +10,22 @@ Every fix below has a regression test that fails on the old code (or, for the
 
 Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low.
 
+## Final verification (Phase I)
+
+- **`npm run check`** — typecheck, lint, `check:extensions`, `check:build-deps`
+  and **624 tests across 50 files**, all green (2026-10-12).
+- **`npx shopify app build`** — success. Extension bundle sizes:
+  thank-you / order-status **33.5 KB original, ~11.5 KB compressed** (budget
+  64 KB); order-admin / customer-admin 22.5 KB, ~8.1 KB.
+- **Every finding is Fixed, Checked: safe, or Accepted with a written reason.**
+  No open 🔴 Critical or 🟠 High.
+- **`COMPLIANCE_MATRIX.md`** — no ❌; the remaining 🟡/🔁 rows each carry a
+  reason (product decision or "code wins").
+- **`LOGIC_MAP.md`** — updated to the final code, including the Logic-map flow;
+  all `⚠ differs` markers replaced with the as-shipped behaviour.
+- **`AUDIT_REPORT.md`** — this file. **`CHANGES_SUMMARY.md`** — audit section
+  added. **`FUTURE_TASKS.md`** — deferred items listed.
+
 ---
 
 ## Fixed findings

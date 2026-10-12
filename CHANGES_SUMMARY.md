@@ -37,7 +37,16 @@ recorded in `COMPLIANCE_MATRIX.md` and `AUDIT_REPORT.md`.
 - `tests/unit/tag-sanitize.test.ts` — tag sanitisation + payload truncation.
 - `tests/db-verification-cap.test.ts` — atomic cap + verified/unverified revenue
   (real Postgres).
-- `tests/unit/logic-tree.test.ts` — `buildLogicTree` (Phase G).
+- `tests/unit/logic-tree.test.ts` — `buildLogicTree` + the no-duplicate-rule
+  guard (Phase G).
+- `tests/unit/survey-rules.test.ts` — added show-if chain and range-edge cases.
+
+### Verification (2026-10-12)
+
+- `npm run check` — 624 tests across 50 files, all green; typecheck and lint clean.
+- `npm run check:extensions` / `typecheck:extensions` — clean.
+- `npx shopify app build` — thank-you and order-status blocks 33.5 KB original /
+  ~11.5 KB compressed each (budget 64 KB); admin blocks 22.5 KB / ~8.1 KB.
 
 ### New / changed database columns
 
