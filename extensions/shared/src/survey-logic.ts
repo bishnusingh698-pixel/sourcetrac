@@ -10,6 +10,67 @@
 
 export type SurveySurface = "thank-you" | "order-status";
 
+/** Where a survey can appear. Mirrors PLACEMENTS in shared/survey-config.ts. */
+export type Placement = "thank_you" | "order_status" | "onsite" | "link";
+
+/** One answer the buyer gave, in the wire shape the backend expects. */
+export type AnswerInput = {
+  questionId: string;
+  optionIds?: string[];
+  numberValue?: number | null;
+  textValue?: string | null;
+  otherText?: string | null;
+};
+
+export type CompiledOption = {
+  id: string;
+  label: string;
+  isOther: boolean;
+  translations?: Record<string, string | undefined>;
+};
+
+export type CompiledQuestion = {
+  id: string;
+  type: string;
+  text: string;
+  helpText?: string | null;
+  placeholder?: string | null;
+  textMultiline: boolean;
+  required: boolean;
+  randomizeOptions: boolean;
+  allowOther: boolean;
+  minSelections?: number | null;
+  maxSelections?: number | null;
+  showIf?: { questionId: string; optionIds?: string[]; min?: number; max?: number } | null;
+  options: CompiledOption[];
+  translations?: Record<string, { text?: string; helpText?: string; placeholder?: string } | undefined>;
+};
+
+export type CompiledSurvey = {
+  id: string;
+  version: number;
+  priority: number;
+  placements: Placement[];
+  layout: "all" | "one_by_one";
+  title: string;
+  intro: string | null;
+  buttonLabel: string;
+  thankYouText: string;
+  channelReportQuestionId: string | null;
+  targeting: Record<string, unknown>;
+  questions: CompiledQuestion[];
+  translations?: Record<string, unknown>;
+};
+
+/** Shape returned by GET /api/survey. */
+export type SurveyConfigV2 = {
+  enabled: boolean;
+  orderId: string | null;
+  placement: Placement;
+  alreadyAnswered: boolean;
+  survey: CompiledSurvey | null;
+};
+
 /**
  * Sentinel channel for the free-text answer. Must match
  * `OTHER_CHANNEL_VALUE` in app/lib/settings.ts, which the submit route
@@ -231,6 +292,19 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
     );
   }
 
+  /**
+   * The v2 multi-question config. One active survey for this order and
+   * placement, already compiled server-side.
+   */
+  function fetchSurvey(orderId: string, placement: Placement, locale: string | null) {
+    const query = new URLSearchParams({ placement });
+    if (orderId) query.set("orderId", orderId);
+    if (locale) query.set("locale", locale);
+    return withRetries("survey_fetch", "thank-you", () =>
+      attempt<SurveyConfigV2>(`/api/survey?${query.toString()}`, { method: "GET" }),
+    );
+  }
+
   function submitResponse(
     orderId: string,
     channel: string,
@@ -244,6 +318,28 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
         // allowlists `channel` against the merchant's configured options, so
         // renaming this silently breaks every submission with a 422.
         body: JSON.stringify({ orderId, channel, otherText, locale: buyerLocale() }),
+      }),
+    );
+  }
+
+  /** Submit a full multi-question answer set. */
+  function submitAnswers(params: {
+    surveyId: string;
+    orderId: string | null;
+    placement: Placement;
+    answers: AnswerInput[];
+  }) {
+    return withRetries("survey_answers", "thank-you", () =>
+      attempt<SubmitResult>("/api/survey-responses", {
+        method: "POST",
+        // Field names must match app/routes/api.survey-responses.tsx exactly.
+        body: JSON.stringify({
+          surveyId: params.surveyId,
+          orderId: params.orderId,
+          placement: params.placement,
+          locale: buyerLocale(),
+          answers: params.answers,
+        }),
       }),
     );
   }
@@ -268,5 +364,5 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
     }
   }
 
-  return { fetchSurveyConfig, submitResponse, t };
+  return { fetchSurveyConfig, fetchSurvey, submitResponse, submitAnswers, t };
 }

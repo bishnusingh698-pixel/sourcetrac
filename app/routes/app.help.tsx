@@ -23,12 +23,15 @@ const SUPPORT_EMAIL = "support@sourcetrac.app";
  */
 const FAQ = [
   "create",
+  "multiple",
+  "question_types",
   "not_showing",
   "both_pages",
   "missing_revenue",
   "refunds",
   "limit",
   "privacy",
+  "sync",
   "change",
   "cancel",
 ] as const;

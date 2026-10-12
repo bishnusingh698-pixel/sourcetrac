@@ -9,6 +9,17 @@
     "previewQuestion": "How did you hear about us?",
     "previewGoogle": "Google search",
     "previewFriend": "Friend or family",
-    "previewNote": "Preview. Buyers see the question and answers you set in the SourceTrac app."
+    "previewNote": "Preview. Buyers see the question and answers you set in the SourceTrac app.",
+    "progress": "{{current}} of {{total}}",
+    "back": "Back",
+    "next": "Next",
+    "yes": "Yes",
+    "no": "No",
+    "satisfaction_very_dissatisfied": "Very dissatisfied",
+    "satisfaction_dissatisfied": "Dissatisfied",
+    "satisfaction_neutral": "Neutral",
+    "satisfaction_satisfied": "Satisfied",
+    "satisfaction_very_satisfied": "Very satisfied",
+    "previewTitle": "Quick question"
   }
 }

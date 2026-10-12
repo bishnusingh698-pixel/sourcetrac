@@ -68,7 +68,9 @@ import { isShopifyAuthResponse } from "~/lib/shopify-boundary";
  * phone left the dashboard squeezed into the remaining sliver.
  */
 const NAV = [
-  { to: "/app/settings", key: "nav.settings" },
+  { to: "/app/surveys", key: "nav.surveys" },
+  { to: "/app/results", key: "nav.results" },
+  { to: "/app/responses", key: "nav.responses" },
   { to: "/app/export", key: "nav.export" },
   { to: "/app/plans", key: "nav.plans" },
   { to: "/app/help", key: "nav.help" },

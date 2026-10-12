@@ -7,12 +7,16 @@ handle = "sourcetrac"
 application_url = "https://sourcetrac.onrender.com"
 embedded = true
 
-# Single scope. We cache order totals via webhook and never mutate an order.
-# See docs/02-architecture-and-costs.md §4 for the justification of each exclusion.
+# read_orders is the only scope the survey itself needs: order totals arrive by
+# webhook and we never mutate an order for Core.
+# Phase 7 adds write scopes for optional sync (tag orders/customers, target by
+# collection). Every such feature is gated at runtime on the *granted* scopes
+# (app/lib/scopes.server.ts), so a merchant who has not re-approved keeps a
+# working app with sync simply skipped.
 # Declared only under [access_scopes]: the top-level `scopes` key is the legacy
 # format and Shopify CLI 4.8.3 rejects the whole file as invalid if it is present.
 [access_scopes]
-scopes = "read_orders"
+scopes = "read_orders,write_orders,write_customers,read_products"
 
 # Version 2026-07 is the latest stable as of 2026-10-01.
 # Keep this in sync with SHOPIFY_API_VERSION and each extension's api_version.

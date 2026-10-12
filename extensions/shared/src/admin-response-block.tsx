@@ -1,0 +1,98 @@
+/** @jsxImportSource preact */
+import { useEffect, useState } from "preact/hooks";
+
+/**
+ * Shared body for the two admin block extensions (Phase 7).
+ *
+ * Both the order-details and customer-details blocks answer the same question
+ * for the merchant: "what did this buyer say?" They differ only in which id
+ * they pass. Rendering them from one component keeps the fetch, the error
+ * handling and the "no answer" copy identical.
+ *
+ * Auth: the request goes to our own app domain, so the host adds an
+ * `Authorization: Bearer <idToken>` header automatically; passing the token
+ * explicitly via `auth.idToken()` keeps it working on any host. The backend
+ * verifies it (app/lib/id-token.server.ts) — the id sent in the body is only a
+ * lookup key, never what grants access.
+ */
+
+export type AdminContext = {
+  orderId: string | null;
+  customerId: string | null;
+};
+
+type AdminAnswer = {
+  found: boolean;
+  channelLabel: string | null;
+  surveyName: string | null;
+  submittedAt: string | null;
+};
+
+/** Strip the numeric tail from a GID; leave a bare number untouched. */
+export function numericId(gid: string | undefined | null): string | null {
+  if (!gid) return null;
+  const match = gid.match(/(\d+)$/);
+  return match?.[1] ?? null;
+}
+
+export function AdminResponseBlock({
+  apiUrl,
+  getToken,
+  context,
+  heading,
+  missing,
+  loading: loadingLabel,
+  foundPrefix,
+}: {
+  apiUrl: string;
+  getToken: () => Promise<string | null>;
+  context: AdminContext;
+  heading: string;
+  missing: string;
+  loading: string;
+  foundPrefix: string;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [answer, setAnswer] = useState<AdminAnswer | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const token = await getToken();
+      if (!token) {
+        if (!cancelled) setLoading(false);
+        return;
+      }
+      try {
+        const res = await fetch(`${apiUrl}/api/admin-survey-context`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(context),
+        });
+        const result = res.ok ? ((await res.json()) as AdminAnswer) : null;
+        if (!cancelled) setAnswer(result);
+      } catch {
+        if (!cancelled) setAnswer(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [apiUrl, context.orderId, context.customerId]);
+
+  return (
+    <s-admin-block heading={heading}>
+      {loading ? (
+        <s-text>{loadingLabel}</s-text>
+      ) : answer && answer.found && answer.channelLabel ? (
+        <s-text>
+          {foundPrefix} <s-text type="strong">{answer.channelLabel}</s-text>
+        </s-text>
+      ) : (
+        <s-text>{missing}</s-text>
+      )}
+    </s-admin-block>
+  );
+}

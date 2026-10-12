@@ -80,11 +80,15 @@ export function assertStartupInvariants(): string[] {
   }
 
   const scopes = e.SCOPES.split(",").map((s) => s.trim()).filter(Boolean);
-  const allowed = new Set(["read_orders"]);
+  // The deliberate allowlist. Phase 7 adds write scopes for order/customer tags
+  // and product collection targeting; each such feature is gated at runtime on
+  // the *granted* scopes (see app/lib/scopes.server.ts), so a store that has not
+  // re-approved keeps working. Anything outside this set is a mistake.
+  const allowed = new Set(["read_orders", "write_orders", "write_customers", "read_products"]);
   const extra = scopes.filter((s) => !allowed.has(s));
   if (extra.length > 0) {
     warnings.push(
-      `SCOPES contains ${extra.join(", ")} but SourceTrac only needs read_orders. ` +
+      `SCOPES contains ${extra.join(", ")} which SourceTrac does not use. ` +
         `Requesting extra scopes risks App Store rejection under requirement 3.2.`,
     );
   }

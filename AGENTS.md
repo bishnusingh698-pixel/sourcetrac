@@ -882,6 +882,7 @@ Each fix has a test that fails on the old code.
 - `Session.accessToken` / `refreshToken` are AES-GCM sealed (`enc:v1:` prefix) by
   the wrapper in `session-storage.server.ts`; plain legacy rows still load.
 - `/readyz` needs `x-retention-secret`; open, it let anyone keep Neon awake.
+
 - Optional env vars treat `""` as unset (`parseEnv`). `assertStartupInvariants`
   now runs at boot. Node `>=22.12.0`. `shopify.web.toml` exists so
   `shopify app dev` starts the backend.
@@ -891,3 +892,102 @@ Each fix has a test that fails on the old code.
   the Shopify CLI's global-agent, `@shopify/ui-extensions`' build-time ts-morph,
   prisma CLI's deepmerge-ts). The suggested fixes are downgrades or major bumps
   of build tooling; none of it ships in the runtime bundle.
+
+## Multi-question survey (Phase 2/3, 2026-10-12)
+
+The plan lives in `AUDIT_AND_PLAN.md` (the "survey-app-upgrade-plan.md" the user
+names). Phases 1–3 are done: shared rules, the new tables + lossless backfill,
+and the survey list/editor. Phases 4+ are still pending, so nothing here should
+be treated as shipped.
+
+### The migration is additive on purpose
+`20261012095226_multi_question_survey` creates `Survey` / `Question` / `Option`
+/ `Response` / `Answer` / `SurveyDailyStats` / `PendingSync` / `PendingDeletion`
+/ `DataRequest` and **drops nothing** — `SurveyResponse` and the old `Shop`
+survey columns stay for this release. The backfill is a PL/pgSQL `DO $backfill$`
+block at the end of the migration (not a separate step): one Survey + one
+`single_choice` Question per Shop, option `value`s kept verbatim, every old
+`SurveyResponse` turned into a `Response` + one `Answer`. It re-derives the
+revenue decision with the same rule as `evaluateResponseRevenue`, so a
+reconciled answer on a countable order contributes and everything else counts
+responses only. `tests/db-migration-backfill.test.ts` extracts and runs that
+exact block — never a copy — so the test tracks the shipped SQL.
+
+### Show-if must accept the fixed option ids
+`resolveOptions` returns only the **merchant's** options, so a show-if condition
+on a `yes_no` or `satisfaction_5` question — whose ids are the stable `yes`/`no`
+and `very_dissatisfied`…`very_satisfied` — had nothing to match against and
+every such condition failed as `show_if_option_unknown`. Two of the twelve
+shipped templates (`did-you-compare`, `first-time-vs-returning`) could not be
+saved. `showIfOptionIds(question)` in `shared/survey-rules.ts` is now the single
+source: merchant options (archived included) for merchant types, `fixedOptions`
+otherwise. The editor's `showIfOptions` mirrors it, and the question picker only
+offers earlier choice/score questions — a text question can never form a valid
+condition. `tests/unit/survey-rules.test.ts` pins all three cases (Yes/No
+accepted, satisfaction accepted, an unknown id still rejected).
+
+### The suite must run serially — the DB tests share one Postgres
+Twelve `tests/db-*.test.ts` files truncate the same database in `beforeEach`, so
+with file-level parallelism one file wipes another's rows mid-test. The symptom
+is a **flaky** `23503` foreign-key or a phantom retention/backfill failure that
+passes when the file is run alone. `npm test` is therefore
+`vitest run --no-file-parallelism` (12s, 588 green, deterministic). Vitest's
+per-project `fileParallelism: false` did **not** reliably serialize the DB
+files here, so do not switch back to a projects config for this. If a DB test
+fails while the file passes in isolation, suspect the shared database first, not
+the code.
+
+## Phase 7 — Shopify sync: scope gating and the Flow wire contract
+
+`shopify.app.toml` now requests `read_orders,write_orders,write_customers,
+read_products`. The danger is not a crash: a sync code path that *assumes* a
+scope and fires a GraphQL write anyway, so Shopify rejects it on a store whose
+merchant has not re-approved the new scopes.
+
+- Every Phase 7 write checks `canSync(session.scope, "<scope>", shopId)`
+  (`app/lib/scopes.server.ts`) and **skips, without throwing**, when the scope is
+  absent. The survey keeps collecting and reporting; only the tag/metafield sync
+  is dropped.
+- `hasScope` splits on commas. It must **not** be a plain `includes`: `read_orders`
+  contains the substring `orders`, and a naive match would grant the wrong scope.
+  `tests/unit/scopes.test.ts` pins `read_orders` does not satisfy `write_orders`.
+- `assertStartupInvariants` (`app/lib/env.ts`) has a deliberate allowlist of the
+  four scopes; a fifth fails the check on purpose (App Store requirement 3.2).
+- The admin block extensions call our own backend. Auth is an App Bridge
+  **ID token** (`Authorization: Bearer`), verified in `app/lib/id-token.server.ts`;
+  the shop is the token's `dest` claim, never a body field. `tests/db-admin-
+  survey-context.test.ts` drives a signed token and asserts the body's shop is
+  ignored (a wrong-secret token gets 401, still with CORS).
+- The customer block resolves the answer by reading the customer's **orders**
+  (`orders(query: "customer_id:…")`) rather than the `customer` query, so it
+  needs only `read_orders` and never `read_customers`.
+- `tests/integration/extension-bundle.test.ts` now also builds both admin blocks
+  with the CLI's exact entry and runs them against a fake admin host: the POST
+  must carry the ID token, the numeric id, and no React in the bundle.
+
+### The Flow trigger payload is a silent contract
+
+`flowTriggerReceive` **ignores** a payload whose keys do not match the trigger's
+declared fields: no error, no workflow run. The fields live in
+`extensions/sourcetrac-flow-trigger/shopify.extension.toml`; the payload is built
+in `app/lib/sync.server.ts`. `tests/unit/flow-trigger-contract.test.ts` reads the
+TOML and asserts every declared key (including the spaced `"Channel label"`) and
+the handle appear verbatim in the sync source. Rename either side and that test,
+not a merchant's flow, is what breaks.
+
+## Phase 8 — Privacy covers the new tables
+
+- `customers/redact` deletes the v2 `Response` rows too. Answers cascade with
+  their Response, but `PendingSync` holds only a plain `responseId`, so it is
+  removed explicitly or it would be orphaned.
+- A redact naming more orders than `REDACT_BATCH_SIZE` (200) is **deferred**: the
+  first batch runs inline so the webhook stays under Shopify's 5-second budget,
+  and the **remainder only** is stored in `PendingDeletion` (storing the whole
+  set makes the lazy drain re-delete the first batch). `processPendingDeletions`
+  drains a few batches at a time when the merchant opens the dashboard
+  (`maybeRunPendingDeletions` in the home loader).
+- `customers/data_request` now persists a `DataRequest` row (the summary the
+  Settings page shows for 30 days), never the buyer's email.
+- Retention ages out the new tables: `DataRequest` on the 30-day webhook clock,
+  `PendingDeletion` on the 24-month record clock. The `RetentionReport` grew
+  `dataRequestsDeleted` and `pendingDeletionsDeleted`.

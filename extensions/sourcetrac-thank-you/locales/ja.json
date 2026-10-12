@@ -9,6 +9,17 @@
     "previewQuestion": "当店をどこで知りましたか？",
     "previewGoogle": "Google 検索",
     "previewFriend": "友人・家族",
-    "previewNote": "プレビューです。購入者には SourceTrac アプリで設定した質問と回答が表示されます。"
+    "previewNote": "プレビューです。購入者には SourceTrac アプリで設定した質問と回答が表示されます。",
+    "progress": "{{total}} 中 {{current}}",
+    "back": "戻る",
+    "next": "次へ",
+    "yes": "はい",
+    "no": "いいえ",
+    "satisfaction_very_dissatisfied": "とても不満",
+    "satisfaction_dissatisfied": "不満",
+    "satisfaction_neutral": "ふつう",
+    "satisfaction_satisfied": "満足",
+    "satisfaction_very_satisfied": "とても満足",
+    "previewTitle": "簡単な質問"
   }
 }

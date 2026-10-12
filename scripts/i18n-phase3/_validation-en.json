@@ -1,0 +1,32 @@
+{
+  "surveys": {
+    "save_failed_title": "Some fields need attention",
+    "save_failed_body": "Fix {{count}} problem(s) below, then save again.",
+    "validation_question_text_required": "Type a question to ask your buyers.",
+    "validation_question_text_too_long": "This question is too long. Shorten it.",
+    "validation_help_text_too_long": "The help text is too long. Shorten it.",
+    "validation_placeholder_too_long": "The placeholder is too long. Shorten it.",
+    "validation_unknown_type": "That question type is not supported.",
+    "validation_options_too_few": "Add at least two answer options.",
+    "validation_options_too_many": "Use at most ten answer options.",
+    "validation_label_required": "Give every option a name, or delete it.",
+    "validation_label_too_long": "This option name is too long. Shorten it.",
+    "validation_duplicate_option": "Two answer options are the same.",
+    "validation_min_invalid": "The minimum must be 1 or more.",
+    "validation_max_invalid": "The maximum must be 1 or more.",
+    "validation_max_exceeds_options": "The maximum cannot be more than the number of options.",
+    "validation_min_above_max": "The minimum cannot be more than the maximum.",
+    "validation_show_if_unknown": "Show-if must refer to an earlier question.",
+    "validation_show_if_option_unknown": "A show-if answer option no longer exists.",
+    "validation_show_if_not_numeric": "A score range can only refer to a rating or NPS question.",
+    "validation_show_if_empty": "Choose what this question should depend on.",
+    "validation_no_questions": "Add at least one question.",
+    "validation_too_many_questions": "Use at most five questions.",
+    "validation_name_too_long": "This survey name is too long. Shorten it.",
+    "validation_title_too_long": "This title is too long. Shorten it.",
+    "validation_intro_too_long": "This intro is too long. Shorten it.",
+    "validation_button_label_too_long": "This button label is too long. Shorten it.",
+    "validation_thank_you_too_long": "This thank-you message is too long. Shorten it.",
+    "validation_invalid": "Something in the survey is not valid. Check it and save again."
+  }
+}

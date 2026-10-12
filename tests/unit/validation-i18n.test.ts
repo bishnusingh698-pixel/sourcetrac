@@ -35,7 +35,7 @@ const CASES: Array<{ name: string; input: Parameters<typeof validateSurveySettin
     field: "questionText",
   },
   { name: "options not a list", input: { questionText: "Q", options: null, allowOther: false }, field: "options" },
-  { name: "too few options", input: { questionText: "Q", options: options.slice(0, 2), allowOther: false }, field: "options" },
+  { name: "too few options", input: { questionText: "Q", options: options.slice(0, 1), allowOther: false }, field: "options" },
   {
     name: "too many options",
     input: {
@@ -124,9 +124,13 @@ describe("translated survey defaults", () => {
 
   it("matches the question the database seeds", () => {
     // If these drift, no shop is ever recognised as untouched and the offer
-    // silently never appears.
+    // silently never appears. Matched with a regex rather than a literal so
+    // `prisma format` realigning the schema columns cannot break this test.
     const schema = readFileSync(join(process.cwd(), "prisma/schema.prisma"), "utf8");
-    expect(schema).toContain(`questionText           String   @default("${DEFAULT_QUESTION_TEXT}")`);
+    const pattern = new RegExp(
+      `questionText\\s+String\\s+@default\\("${DEFAULT_QUESTION_TEXT.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"\\)`,
+    );
+    expect(schema).toMatch(pattern);
   });
 
   it("has a translated label for every default option in every language", () => {

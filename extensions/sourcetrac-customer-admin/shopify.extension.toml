@@ -1,0 +1,19 @@
+api_version = "2026-07"
+
+[[extensions]]
+name = "SourceTrac customer attribution"
+handle = "sourcetrac-customer-admin"
+description = "Shows the survey answer recorded for the customer being viewed."
+uid = "22121908-a424-42e6-a2ea-94dba976c17e"
+type = "ui_extension"
+
+[extensions.capabilities]
+# The block calls our own backend to read the recorded answer.
+network_access = true
+# Not part of Shopify's schema; documents the host the block calls, asserted
+# by check:extensions against API_URL in src/.
+allowed_urls = [ "https://sourcetrac.onrender.com/*" ]
+
+[[extensions.targeting]]
+module = "./src/CustomerAdminBlock.tsx"
+target = "admin.customer-details.block.render"

@@ -4,9 +4,9 @@ import { render } from "preact";
 import { useMemo } from "preact/hooks";
 import type { Api } from "@shopify/ui-extensions/customer-account.order-status.block.render";
 
-import { SurveyPreview, SurveyView } from "../../shared/src/SurveyView";
+import { MultiSurveyPreview, MultiSurveyView } from "../../shared/src/MultiSurveyView";
 import { createSurveyApi } from "../../shared/src/survey-logic";
-import { useSurvey } from "../../shared/src/use-survey";
+import { useMultiSurvey } from "../../shared/src/use-multi-survey";
 
 /** Must match the APP_URL the backend is reached on, and the host
  *  allowed by the Partner Dashboard network-access opt-in for this app. */
@@ -59,11 +59,11 @@ function OrderStatusBlock() {
 
   // No id in the editor, so no config fetch and nothing can be submitted
   // against a placeholder order.
-  const survey = useSurvey(inEditor ? "" : (orderId ?? ""), "order-status", surveyApi);
+  const survey = useMultiSurvey(inEditor ? "" : (orderId ?? ""), "order_status", surveyApi);
 
   if (inEditor) {
     // Rendering nothing here left an empty block in the editor that looked broken.
-    return <SurveyPreview t={survey.t} />;
+    return <MultiSurveyPreview t={survey.t} />;
   }
 
   if (!orderId) {
@@ -73,16 +73,22 @@ function OrderStatusBlock() {
   }
 
   return (
-    <SurveyView
+    <MultiSurveyView
       phase={survey.phase}
-      questionText={survey.questionText}
-      options={survey.options}
-      allowOther={survey.allowOther}
-      selected={survey.selected}
-      otherText={survey.otherText}
-      onSelect={survey.select}
-      onOtherTextChange={survey.setOtherText}
-      onSubmitOther={survey.submitOther}
+      title={survey.survey?.title ?? ""}
+      intro={survey.survey?.intro ?? null}
+      buttonLabel={survey.survey?.buttonLabel ?? ""}
+      thankYouText={survey.survey?.thankYouText ?? ""}
+      questions={survey.shown}
+      answers={survey.answers}
+      oneByOne={survey.oneByOne}
+      step={survey.step}
+      total={survey.total}
+      complete={survey.complete}
+      onAnswer={survey.setAnswer}
+      onNext={survey.next}
+      onBack={survey.back}
+      onSubmit={survey.submit}
       busy={survey.busy}
       t={survey.t}
     />

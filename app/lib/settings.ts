@@ -8,10 +8,21 @@
 
 import { z } from "zod";
 
+import { LIMITS } from "@shared/survey-rules";
+
 import { ValidationError } from "./errors";
 
-export const MIN_OPTIONS = 6;
-export const MAX_OPTIONS = 10;
+/**
+ * The option-count and label limits now live in `shared/survey-rules.ts`, which
+ * the admin, the server and both checkout extensions all import. Re-exported
+ * here so existing importers keep working and there is still exactly one source
+ * of truth: changing the numbers in one place changes them everywhere.
+ *
+ * The minimum dropped from 6 to 2 (Phase 1): a merchant can now save a question
+ * with two answer options. Surveys that already have 6–10 options are unaffected.
+ */
+export const MIN_OPTIONS = LIMITS.MIN_OPTIONS;
+export const MAX_OPTIONS = LIMITS.MAX_OPTIONS;
 export const MAX_QUESTION_LENGTH = 120;
 export const MAX_OPTION_LABEL_LENGTH = 60;
 

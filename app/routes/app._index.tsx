@@ -17,6 +17,8 @@ import { formatMoney } from "~/lib/money";
 import { effectivePlan, PLAN_FREE } from "~/lib/plans";
 import { ensureShop } from "~/lib/provision.server";
 import { backfillMissingOrders } from "~/lib/order-backfill.server";
+import { maybeRunPendingSync } from "~/lib/sync.server";
+import { maybeRunPendingDeletions } from "~/lib/compliance.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
 
@@ -53,6 +55,12 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   // Orders the webhooks never delivered (placed before install, for one) are
   // fetched now, so their answers stop reading "Pending". Bounded and never throws.
   await backfillMissingOrders({ shopId: shop.id, shopDomain: shop.shopDomain, accessToken: session.accessToken });
+
+  // Retry any deferred Shopify write-back (Phase 7) and drain any redact that
+  // was too large for the webhook budget (Phase 8). Throttled to once per few
+  // minutes per process, and never throws, so neither can break the page.
+  void maybeRunPendingSync(shop.id);
+  void maybeRunPendingDeletions(shop.id);
 
 
   const url = new URL(request.url);
@@ -394,11 +402,16 @@ function SetupGuide({ setup, t, language }: { setup: Setup; t: TFunction; langua
       body: setup.hasOther
         ? t("onboarding.step2_body_other")
         : t("onboarding.step2_body", { min: MIN_OPTIONS, max: MAX_OPTIONS }),
-      action: { label: t("onboarding.step2_action"), href: "/app/settings" },
+      action: { label: t("onboarding.step2_action"), href: "/app/surveys" },
     },
     {
       title: t("onboarding.step3_title"),
       body: t("onboarding.step3_body"),
+    },
+    {
+      title: t("onboarding.step4_title"),
+      body: t("onboarding.step4_body"),
+      action: { label: t("onboarding.step4_action"), href: "/app/results" },
     },
   ];
 
@@ -653,7 +666,7 @@ export default function Dashboard() {
           </Panel>
 
           <div>
-            <s-button href="/app/settings" variant="secondary" icon="edit">
+            <s-button href="/app/surveys" variant="secondary" icon="edit">
               {t("dashboard.edit_survey")}
             </s-button>
           </div>
@@ -664,7 +677,7 @@ export default function Dashboard() {
             <s-heading>{t("dashboard.empty_title")}</s-heading>
             <s-text>{t("dashboard.empty_body")}</s-text>
             <div>
-              <s-button href="/app/settings" variant="secondary">
+              <s-button href="/app/surveys" variant="secondary">
                 {t("dashboard.edit_survey")}
               </s-button>
             </div>

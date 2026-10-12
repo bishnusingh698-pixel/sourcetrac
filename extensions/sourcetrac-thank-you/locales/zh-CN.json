@@ -9,6 +9,17 @@
     "previewQuestion": "您是如何了解到我们的？",
     "previewGoogle": "Google 搜索",
     "previewFriend": "朋友或家人",
-    "previewNote": "预览。买家看到的是您在 SourceTrac 应用中设置的问题和答案。"
+    "previewNote": "预览。买家看到的是您在 SourceTrac 应用中设置的问题和答案。",
+    "progress": "第 {{current}} / {{total}} 题",
+    "back": "返回",
+    "next": "下一步",
+    "yes": "是",
+    "no": "否",
+    "satisfaction_very_dissatisfied": "非常不满意",
+    "satisfaction_dissatisfied": "不满意",
+    "satisfaction_neutral": "一般",
+    "satisfaction_satisfied": "满意",
+    "satisfaction_very_satisfied": "非常满意",
+    "previewTitle": "简短问题"
   }
 }
