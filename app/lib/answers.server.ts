@@ -18,6 +18,7 @@ import { minorToDecimalString, parseMoneyToMinor } from "~/lib/money";
 import { currentUtcPeriod, evaluateCap, planFor, type PlanKey } from "~/lib/plans";
 import { withRetry } from "~/lib/retry.server";
 import { enqueueSync, hasSyncWork, parseSyncOptions, processPendingSync } from "~/lib/sync.server";
+import { shouldLearnAndStop } from "@shared/templates/confidence";
 import {
   isQuestionVisible,
   OTHER_CHANNEL_VALUE,
@@ -35,10 +36,16 @@ export type AnswerSubmitInput = {
   placement: Placement;
   locale: string | null;
   answers: AnswerInput[];
+  /** T8: product ids on the order's lines, for results by product. */
+  productIds?: string[];
   plan: PlanKey;
   definition: SurveyDefinition;
   /** The survey's raw `syncOptions` JSON string, for the optional Phase 7 sync. */
   syncOptions?: string | null;
+  /** T10: pause once results are reliable. */
+  learnAndStop?: boolean;
+  /** T10: the main (first choice/score) question to measure, or null. */
+  mainQuestionId?: string | null;
 };
 
 export type AnswerSubmitResult =
@@ -207,6 +214,7 @@ export async function submitAnswers(input: AnswerSubmitInput): Promise<AnswerSub
           currency: orderTotal?.currency ?? null,
           placement: input.placement,
           locale: input.locale,
+          productIds: JSON.stringify((input.productIds ?? []).slice(0, 10)),
           flagged: shouldLock,
           verified,
           // The legacy channel column lives on SurveyResponse, not Response;
@@ -246,6 +254,22 @@ export async function submitAnswers(input: AnswerSubmitInput): Promise<AnswerSub
     }
 
     await bumpSurveyResponseCount(input.surveyId);
+
+    // T10: Learn & stop. Once this response makes the main question reliable,
+    // pause the survey. The pause lives in the same path as a manual pause, and
+    // recompiling the config is what makes shoppers stop seeing it. Best-effort:
+    // a failure here must never fail the buyer's submission.
+    if (input.learnAndStop && input.mainQuestionId) {
+      try {
+        await maybeLearnAndStop(input.shopId, input.surveyId, input.mainQuestionId);
+      } catch (learnError) {
+        logger.warn("answer_learn_stop_failed", {
+          shop_id: input.shopId,
+          survey_id: input.surveyId,
+          error_message: learnError instanceof Error ? learnError.message : String(learnError),
+        });
+      }
+    }
 
     // Optional Shopify write-back (Phase 7). Off unless the survey configured
     // it. Recorded, then attempted inline; anything that cannot run yet
@@ -312,6 +336,63 @@ export async function submitAnswers(input: AnswerSubmitInput): Promise<AnswerSub
 /** Keep the denormalised per-survey count in step with the response rows. */
 async function bumpSurveyResponseCount(surveyId: string): Promise<void> {
   await retryDb(() => db.survey.update({ where: { id: surveyId }, data: { responseCount: { increment: 1 } } }));
+}
+
+/**
+ * T10: pause a survey once its main question is reliable.
+ *
+ * Reads the survey's own answers for that question (choice options or numeric
+ * values), computes the confidence label, and pauses when the threshold is met.
+ * Pausing is an `updateMany` guarded on `status: "active"`, so it fires at most
+ * once even under concurrent submissions.
+ */
+async function maybeLearnAndStop(shopId: string, surveyId: string, questionId: string): Promise<void> {
+  const question = await db.question.findFirst({
+    where: { id: questionId, surveyId },
+    select: { type: true },
+  });
+  if (!question) return;
+
+  const isNumeric = question.type === "rating_5" || question.type === "nps" || question.type === "satisfaction_5";
+
+  const answers = await db.answer.findMany({
+    where: {
+      questionId,
+      response: { surveyId, shopId, flagged: false },
+    },
+    select: { optionIds: true, numberValue: true },
+  });
+  const n = answers.length;
+
+  let topShare = 0;
+  if (!isNumeric) {
+    const counts = new Map<string, number>();
+    for (const answer of answers) {
+      const ids = parseJson<string[]>(answer.optionIds, []);
+      for (const id of ids) counts.set(id, (counts.get(id) ?? 0) + 1);
+    }
+    const top = Math.max(0, ...counts.values());
+    topShare = n > 0 ? top / n : 0;
+  }
+
+  if (!shouldLearnAndStop({ enabled: true, isNumeric, n, topShare })) return;
+
+  const paused = await db.survey.updateMany({
+    where: { id: surveyId, shopId, status: "active" },
+    data: { status: "paused" },
+  });
+  if (paused.count > 0) {
+    logger.info("survey_learn_stop_paused", { shop_id: shopId, survey_id: surveyId, answers: n });
+  }
+}
+
+function parseJson<T>(value: string | null | undefined, fallback: T): T {
+  if (value == null) return fallback;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
 }
 
 /**

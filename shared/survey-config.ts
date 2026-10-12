@@ -40,12 +40,19 @@ export type Targeting = {
   endsAt?: string | null;
   /** Pause automatically once this many responses are collected. */
   maxResponses?: number | null;
+  /**
+   * T7: show only on Thank-you for orders paid with a manual payment method
+   * (e.g. Cash on Delivery). Compiled into the config's `paymentManualOnly`.
+   */
+  paymentManualOnly?: boolean;
 };
 
 export type CompiledOption = {
   id: string;
   label: string;
   isOther: boolean;
+  /** T6: selecting it clears other selections in multiple choice. */
+  exclusive?: boolean;
   /** locale -> translated label. */
   translations?: Record<string, string | undefined>;
 };
@@ -92,6 +99,26 @@ export type CompiledSurvey = {
   questions: CompiledQuestion[];
   /** locale -> translated text. */
   translations?: Record<string, CompiledText | undefined>;
+  /** S11/S12 design settings; compiled so the extension needs no source. */
+  design?: CompiledDesign;
+  /** T11: this survey shares its placements with other rotation members. */
+  rotation?: boolean;
+  /** T11: 1 (low) / 2 (normal) / 3 (high). */
+  rotationWeight?: number;
+  /** T7: show only on orders paid with a manual payment method. */
+  paymentManualOnly?: boolean;
+};
+
+/** Design settings as the extension reads them. Mirrors DesignSettings. */
+export type CompiledDesign = {
+  layout: "all" | "one_by_one";
+  showProgress: boolean;
+  showTitle: boolean;
+  ratingStyle: "numbers" | "stars";
+  scaleLowLabel: string;
+  scaleHighLabel: string;
+  cardBorder: "border" | "no_border";
+  spacing: "compact" | "comfortable";
 };
 
 export type CompiledConfig = {
@@ -187,3 +214,71 @@ export function matchesTargeting(
 }
 
 export type { SurveyOptionDef };
+
+// ---------------------------------------------------------------------------
+// Selection: rotation (T11) and payment-method targeting (T7)
+// ---------------------------------------------------------------------------
+
+/**
+ * The rotation group within `surveys` that share a placement: every active,
+ * rotation-enabled survey whose targeting matches. The server picks one member.
+ */
+export function rotationGroup(
+  surveys: readonly CompiledSurvey[],
+  placement: Placement,
+  matches: (survey: CompiledSurvey) => boolean,
+): CompiledSurvey[] {
+  return surveys.filter((s) => s.rotation === true && s.placements.includes(placement) && matches(s));
+}
+
+/** A deterministic 0..1 value from an order id, for weighted rotation picks. */
+function seededUnit(orderId: string): number {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < orderId.length; i += 1) {
+    h ^= orderId.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0) / 4294967296;
+}
+
+/**
+ * Pick one survey from a rotation group, weighted and deterministic by order id.
+ *
+ * The same order id always yields the same member, so the Thank-you and
+ * Order-status pages agree. An order id is required: rotating for an id-less
+ * surface would be unstable, so the first member is returned instead.
+ */
+export function pickFromRotation(group: readonly CompiledSurvey[], orderId: string | null): CompiledSurvey | null {
+  if (group.length === 0) return null;
+  if (group.length === 1) return group[0]!;
+  if (!orderId) return group[0]!;
+
+  const weights = group.map((s) => (typeof s.rotationWeight === "number" && s.rotationWeight > 0 ? s.rotationWeight : 2));
+  const total = weights.reduce((sum, w) => sum + w, 0);
+  let target = seededUnit(orderId) * total;
+
+  for (let i = 0; i < group.length; i += 1) {
+    target -= weights[i]!;
+    if (target <= 0) return group[i]!;
+  }
+  return group[group.length - 1]!;
+}
+
+/**
+ * Whether the survey should be shown, given the shopper's payment methods (T7).
+ *
+ * Only applies when `paymentManualOnly` is set. The checkout extension reads
+ * `shopify.selectedPaymentOptions` and passes the option type strings. An empty
+ * list is treated as NOT matched, because the field has been observed empty on
+ * Thank-you for some offsite methods, and hiding is the safe failure.
+ */
+export function matchesPaymentRule(
+  survey: CompiledSurvey,
+  paymentTypes: readonly string[],
+  placement: Placement,
+): boolean {
+  if (!survey.paymentManualOnly) return true;
+  // Payment targeting is a Thank-you-page concept only (T7).
+  if (placement !== "thank_you") return false;
+  return paymentTypes.some((type) => type === "manualPayment" || type === "manual");
+}

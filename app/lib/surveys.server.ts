@@ -24,8 +24,11 @@ import {
   type Targeting,
 } from "@shared/survey-config";
 import {
+  DEFAULT_DESIGN,
   LIMITS,
+  resolveDesign,
   validateSurveyDefinition,
+  type DesignSettings,
   type ShowIf,
   type SurveyDefinition,
   type SurveyOptionDef,
@@ -65,6 +68,20 @@ export type EditorSurvey = {
   translations: Record<string, unknown>;
   version: number;
   responseCount: number;
+  /** Template provenance, for display only. */
+  templateId: string | null;
+  templateVersion: number | null;
+  /** T11. */
+  rotation: boolean;
+  rotationWeight: number;
+  /** T10. */
+  learnAndStop: boolean;
+  /** S11/S12. */
+  design: DesignSettings;
+  /** ISO instant of the last draft save, or null when there is no draft. */
+  draftUpdatedAt: string | null;
+  /** True when an unpublished draft exists (live/paused surveys only). */
+  hasDraft: boolean;
   questions: EditorQuestion[];
   updatedAt: string;
 };
@@ -100,6 +117,12 @@ export type SurveyInput = {
   targeting?: Targeting;
   syncOptions?: Record<string, unknown>;
   translations?: Record<string, unknown>;
+  templateId?: string | null;
+  templateVersion?: number | null;
+  rotation?: boolean;
+  rotationWeight?: number;
+  learnAndStop?: boolean;
+  design?: Partial<DesignSettings>;
   questions: SurveyInputQuestion[];
 };
 
@@ -126,7 +149,7 @@ function parseJson<T>(raw: string | null | undefined, fallback: T): T {
 }
 
 export function rowToEditor(row: SurveyWithQuestions): EditorSurvey {
-  return {
+  const published: EditorSurvey = {
     id: row.id,
     name: row.name,
     status: row.status,
@@ -143,29 +166,95 @@ export function rowToEditor(row: SurveyWithQuestions): EditorSurvey {
     translations: parseJson<Record<string, unknown>>(row.translations, {}),
     version: row.version,
     responseCount: row.responseCount,
+    templateId: row.templateId,
+    templateVersion: row.templateVersion,
+    rotation: row.rotation,
+    rotationWeight: row.rotationWeight,
+    learnAndStop: row.learnAndStop,
+    design: resolveDesign(parseJson<Partial<DesignSettings>>(row.designJson, {})),
+    draftUpdatedAt: row.draftUpdatedAt ? row.draftUpdatedAt.toISOString() : null,
+    hasDraft: row.draft !== null,
     updatedAt: row.updatedAt.toISOString(),
-    questions: row.questions.map((question) => ({
-      id: question.id,
-      type: question.type,
-      text: question.text,
-      helpText: question.helpText,
-      placeholder: question.placeholder,
-      textMultiline: question.textMultiline,
-      required: question.required,
-      randomizeOptions: question.randomizeOptions,
-      allowOther: question.allowOther,
-      minSelections: question.minSelections,
-      maxSelections: question.maxSelections,
-      showIf: parseJson<ShowIf | null>(question.showIf, null),
-      translations: parseJson(question.translations, {}),
-      archived: question.archived,
-      options: question.options.map((option) => ({
-        id: option.id,
-        label: option.label,
-        isOther: option.isOther,
-        archived: option.archived,
-        translations: parseJson(option.translations, {}),
-      })),
+    questions: row.questions.map(toEditorQuestion),
+  };
+
+  // A live/paused survey with unpublished changes shows the DRAFT in the
+  // editor, so the merchant keeps editing their latest work. Overview and
+  // Results read the published structure instead (section 6.6); this is only
+  // the Studio's view.
+  if (row.draft) {
+    const draft = parseJson<SurveyInput | null>(row.draft, null);
+    if (draft) {
+      return {
+        ...published,
+        name: draft.name ?? published.name,
+        placements: draft.placements ?? published.placements,
+        layout: draft.layout ?? published.layout,
+        title: draft.title ?? published.title,
+        intro: draft.intro ?? published.intro,
+        buttonLabel: draft.buttonLabel ?? published.buttonLabel,
+        thankYouText: draft.thankYouText ?? published.thankYouText,
+        channelReportQuestionId: draft.channelReportQuestionId ?? published.channelReportQuestionId,
+        targeting: draft.targeting ?? published.targeting,
+        syncOptions: draft.syncOptions ?? published.syncOptions,
+        translations: draft.translations ?? published.translations,
+        rotation: draft.rotation ?? published.rotation,
+        rotationWeight: draft.rotationWeight ?? published.rotationWeight,
+        learnAndStop: draft.learnAndStop ?? published.learnAndStop,
+        design: draft.design ? resolveDesign(draft.design) : published.design,
+        // Draft questions/options carry no database ids, so a new item shows as
+        // new until publish. Kept ids survive and stay matched on publish.
+        questions: (draft.questions ?? []).map((question, index) => ({
+          ...question,
+          id: question.id ?? `draft-q${index}`,
+          textMultiline: question.textMultiline ?? false,
+          required: question.required ?? false,
+          randomizeOptions: question.randomizeOptions ?? false,
+          allowOther: question.allowOther ?? false,
+          minSelections: question.minSelections ?? null,
+          maxSelections: question.maxSelections ?? null,
+          showIf: question.showIf ?? null,
+          translations: question.translations ?? {},
+          archived: false,
+          options: (question.options ?? []).map((option) => ({
+            ...option,
+            id: option.id ?? "",
+            isOther: option.isOther ?? false,
+            exclusive: option.exclusive ?? false,
+            archived: false,
+            translations: option.translations ?? {},
+          })),
+        })),
+      };
+    }
+  }
+
+  return published;
+}
+
+function toEditorQuestion(question: SurveyWithQuestions["questions"][number]): EditorQuestion {
+  return {
+    id: question.id,
+    type: question.type,
+    text: question.text,
+    helpText: question.helpText,
+    placeholder: question.placeholder,
+    textMultiline: question.textMultiline,
+    required: question.required,
+    randomizeOptions: question.randomizeOptions,
+    allowOther: question.allowOther,
+    minSelections: question.minSelections,
+    maxSelections: question.maxSelections,
+    showIf: parseJson<ShowIf | null>(question.showIf, null),
+    translations: parseJson(question.translations, {}),
+    archived: question.archived,
+    options: question.options.map((option) => ({
+      id: option.id,
+      label: option.label,
+      isOther: option.isOther,
+      exclusive: option.exclusive,
+      archived: option.archived,
+      translations: parseJson(option.translations, {}),
     })),
   };
 }
@@ -332,6 +421,7 @@ async function persistQuestions(
         position: j,
         label: option.label,
         isOther: option.isOther ?? false,
+        exclusive: option.exclusive ?? false,
         archived: false,
         translations: JSON.stringify(option.translations ?? {}),
       };
@@ -406,6 +496,12 @@ export async function createSurvey(shopId: string, input: SurveyInput): Promise<
         targeting: JSON.stringify(input.targeting ?? {}),
         syncOptions: JSON.stringify(input.syncOptions ?? {}),
         translations: JSON.stringify(input.translations ?? {}),
+        templateId: input.templateId ?? null,
+        templateVersion: input.templateVersion ?? null,
+        rotation: input.rotation ?? false,
+        rotationWeight: input.rotationWeight ?? 2,
+        learnAndStop: input.learnAndStop ?? false,
+        designJson: JSON.stringify(input.design ?? DEFAULT_DESIGN),
       },
       select: { id: true },
     });
@@ -432,15 +528,36 @@ export async function createSurvey(shopId: string, input: SurveyInput): Promise<
   return getEditorSurvey(shopId, created);
 }
 
+/**
+ * Save edits to a survey.
+ *
+ * Draft surveys (never published) write straight to the definition tables, as
+ * they always have. Live and paused surveys instead store a DRAFT: shoppers keep
+ * seeing the published version until the merchant publishes (S7). The draft is
+ * the full editable definition (questions, design, targeting, placements), so
+ * publishing can apply it in one transaction.
+ */
 export async function updateSurvey(shopId: string, surveyId: string, input: SurveyInput): Promise<EditorSurvey> {
   const existing = await getSurveyRow(shopId, surveyId);
   if (!existing) throw new NotFoundError("That survey does not exist.", { surveyId });
 
   assertValid(inputToDefinition(input, surveyId));
 
-  const hasResponses = existing.responseCount > 0;
   const wasActive = existing.status === "active";
-  const becomesActive = (input.status ?? existing.status) === "active";
+  const isLiveOrPaused = existing.status === "active" || existing.status === "paused";
+
+  if (isLiveOrPaused) {
+    // Hold the change back as a draft. One row update; no polling (section 6.6).
+    await db.survey.update({
+      where: { id: surveyId },
+      data: { draft: JSON.stringify(input), draftUpdatedAt: new Date() },
+    });
+    await invalidateConfig(shopId);
+    logger.info("survey_draft_saved", { shop_id: shopId, survey_id: surveyId });
+    return getEditorSurvey(shopId, surveyId);
+  }
+
+  const hasResponses = existing.responseCount > 0;
 
   await db.$transaction(async (tx) => {
     await tx.survey.update({
@@ -459,6 +576,12 @@ export async function updateSurvey(shopId: string, surveyId: string, input: Surv
         targeting: JSON.stringify(input.targeting ?? {}),
         syncOptions: JSON.stringify(input.syncOptions ?? {}),
         translations: JSON.stringify(input.translations ?? {}),
+        templateId: input.templateId ?? existing.templateId,
+        templateVersion: input.templateVersion ?? existing.templateVersion,
+        rotation: input.rotation ?? existing.rotation,
+        rotationWeight: input.rotationWeight ?? existing.rotationWeight,
+        learnAndStop: input.learnAndStop ?? existing.learnAndStop,
+        designJson: JSON.stringify(input.design ?? existing.designJson),
         // Bump the version on every save of an active survey, so responses
         // record which revision they answered.
         version: wasActive ? { increment: 1 } : existing.version,
@@ -469,8 +592,66 @@ export async function updateSurvey(shopId: string, surveyId: string, input: Surv
   });
 
   await invalidateConfig(shopId);
-  logger.info("survey_saved", { shop_id: shopId, survey_id: surveyId, active: becomesActive });
+  logger.info("survey_saved", { shop_id: shopId, survey_id: surveyId });
   return getEditorSurvey(shopId, surveyId);
+}
+
+/**
+ * Publish a live/paused survey's draft (S7).
+ *
+ * In one transaction: validate, apply the draft to the normal tables with the
+ * existing rules (stable ids, archive when answers exist, version + 1), clear
+ * the draft, then recompile. Any failure leaves everything untouched.
+ */
+export async function publishSurveyDraft(shopId: string, surveyId: string): Promise<EditorSurvey> {
+  const existing = await getSurveyRow(shopId, surveyId);
+  if (!existing) throw new NotFoundError("That survey does not exist.", { surveyId });
+  if (existing.draft === null) throw new ValidationError("There is nothing to publish.", "Edit the survey first.", { field: "draft", code: "no_draft" });
+
+  const draftInput = parseJson<SurveyInput>(existing.draft, null as unknown as SurveyInput);
+  assertValid(inputToDefinition(draftInput, surveyId));
+
+  const hasResponses = existing.responseCount > 0;
+
+  await db.$transaction(async (tx) => {
+    await tx.survey.update({
+      where: { id: surveyId },
+      data: {
+        name: draftInput.name,
+        placements: JSON.stringify(draftInput.placements),
+        layout: draftInput.layout,
+        title: draftInput.title,
+        intro: draftInput.intro,
+        buttonLabel: draftInput.buttonLabel,
+        thankYouText: draftInput.thankYouText,
+        channelReportQuestionId: draftInput.channelReportQuestionId ?? existing.channelReportQuestionId,
+        targeting: JSON.stringify(draftInput.targeting ?? {}),
+        syncOptions: JSON.stringify(draftInput.syncOptions ?? {}),
+        translations: JSON.stringify(draftInput.translations ?? {}),
+        rotation: draftInput.rotation ?? existing.rotation,
+        rotationWeight: draftInput.rotationWeight ?? existing.rotationWeight,
+        learnAndStop: draftInput.learnAndStop ?? existing.learnAndStop,
+        designJson: JSON.stringify(draftInput.design ?? parseJson(existing.designJson, DEFAULT_DESIGN)),
+        version: { increment: 1 },
+        draft: null,
+        draftUpdatedAt: null,
+      },
+    });
+
+    await persistQuestions(tx, surveyId, draftInput.questions, { hasResponses });
+  });
+
+  await invalidateConfig(shopId);
+  logger.info("survey_draft_published", { shop_id: shopId, survey_id: surveyId });
+  return getEditorSurvey(shopId, surveyId);
+}
+
+/** Discard a draft (S7). The published survey is untouched. */
+export async function discardSurveyDraft(shopId: string, surveyId: string): Promise<void> {
+  const existing = await getSurveyRow(shopId, surveyId);
+  if (!existing) throw new NotFoundError("That survey does not exist.", { surveyId });
+  await db.survey.update({ where: { id: surveyId }, data: { draft: null, draftUpdatedAt: null } });
+  await invalidateConfig(shopId);
 }
 
 export async function setSurveyStatus(shopId: string, surveyId: string, status: SurveyStatus): Promise<void> {
@@ -566,6 +747,7 @@ function toCompiledQuestion(question: SurveyWithQuestions["questions"][number]):
         id: option.id,
         label: option.label,
         isOther: option.isOther,
+        exclusive: option.exclusive,
         translations: parseJson(option.translations, {}),
       })),
     translations: parseJson(question.translations, {}),
@@ -573,6 +755,7 @@ function toCompiledQuestion(question: SurveyWithQuestions["questions"][number]):
 }
 
 export function compileSurvey(row: SurveyWithQuestions): CompiledSurvey {
+  const targeting = parseJson<Targeting>(row.targeting, {});
   return {
     id: row.id,
     version: row.version,
@@ -584,9 +767,28 @@ export function compileSurvey(row: SurveyWithQuestions): CompiledSurvey {
     buttonLabel: row.buttonLabel ?? DEFAULT_SURVEY_TEXT.buttonLabel,
     thankYouText: row.thankYouText ?? DEFAULT_SURVEY_TEXT.thankYouText,
     channelReportQuestionId: row.channelReportQuestionId,
-    targeting: parseJson<Targeting>(row.targeting, {}),
+    targeting,
     questions: row.questions.filter((q) => !q.archived).map(toCompiledQuestion),
     translations: parseJson(row.translations, {}),
+    design: compileDesign(parseJson<Partial<DesignSettings>>(row.designJson, {})),
+    rotation: row.rotation,
+    rotationWeight: row.rotationWeight,
+    paymentManualOnly: targeting.paymentManualOnly === true,
+  };
+}
+
+/** Compile the design settings for the extension bundle. */
+function compileDesign(design: Partial<DesignSettings>) {
+  const resolved = resolveDesign(design);
+  return {
+    layout: resolved.layout,
+    showProgress: resolved.showProgress,
+    showTitle: resolved.showTitle,
+    ratingStyle: resolved.ratingStyle,
+    scaleLowLabel: resolved.scaleLowLabel,
+    scaleHighLabel: resolved.scaleHighLabel,
+    cardBorder: resolved.cardBorder,
+    spacing: resolved.spacing,
   };
 }
 

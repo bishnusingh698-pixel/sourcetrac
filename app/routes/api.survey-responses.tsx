@@ -17,7 +17,19 @@ import { findShopByDomain, isKnownOrder } from "~/lib/shop.server";
 import { getSurveyRow, rowToEditor } from "~/lib/surveys.server";
 import { authenticate } from "~/shopify.server";
 import { PLACEMENTS, type Placement } from "@shared/survey-config";
-import type { AnswerInput } from "@shared/survey-rules";
+import type { AnswerInput, SurveyDefinition } from "@shared/survey-rules";
+
+/**
+ * The survey's main question for the confidence meter: the first question whose
+ * answer forms a distribution (a choice, rating or score question). Neutral
+ * questions like free text have nothing to measure.
+ */
+function mainQuestionId(definition: SurveyDefinition): string | null {
+  const question = definition.questions.find((q) =>
+    ["single_choice", "multi_choice", "dropdown", "rating_5", "nps", "satisfaction_5"].includes(q.type),
+  );
+  return question?.id ?? null;
+}
 
 /**
  * POST /api/survey-responses
@@ -47,6 +59,8 @@ const bodySchema = z.object({
   orderId: orderIdSchema.optional().nullable(),
   placement: z.enum(PLACEMENTS).optional(),
   locale: z.string().max(32).optional().nullable(),
+  /** T8: numeric product ids on the order's lines. */
+  productIds: z.array(z.string().min(1).max(64)).max(10).optional(),
   answers: z.array(answerSchema).min(1).max(MAX_ANSWERS),
 });
 
@@ -129,10 +143,13 @@ export const action = async ({ request }: { request: Request }) => {
       orderId,
       placement,
       locale: parsed.data.locale ?? null,
+      productIds: parsed.data.productIds,
       answers: parsed.data.answers as AnswerInput[],
       plan: effectivePlan(shop),
       definition,
       syncOptions: row.syncOptions,
+      learnAndStop: row.learnAndStop,
+      mainQuestionId: mainQuestionId(definition),
     });
 
     if (result.outcome === "invalid") {

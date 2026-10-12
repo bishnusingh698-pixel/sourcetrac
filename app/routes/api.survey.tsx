@@ -11,7 +11,7 @@ import { hasAnyAnswerForOrder } from "~/lib/answers.server";
 import { findShopByDomain, isKnownOrder } from "~/lib/shop.server";
 import { getCompiledConfig } from "~/lib/surveys.server";
 import { authenticate } from "~/shopify.server";
-import { matchesTargeting, PLACEMENTS, type Placement } from "@shared/survey-config";
+import { matchesTargeting, matchesPaymentRule, pickFromRotation, rotationGroup, PLACEMENTS, type Placement } from "@shared/survey-config";
 import { db } from "~/db.server";
 
 /**
@@ -35,6 +35,8 @@ const querySchema = z.object({
   orderId: orderIdSchema.optional(),
   placement: z.enum(PLACEMENTS).optional(),
   locale: z.string().max(32).optional(),
+  /** Comma-separated payment option types, e.g. "manualPayment". */
+  paymentTypes: z.string().max(200).optional(),
 });
 
 export const loader = async ({ request }: { request: Request }) => {
@@ -50,6 +52,7 @@ export const loader = async ({ request }: { request: Request }) => {
       orderId: url.searchParams.get("orderId") ?? undefined,
       placement: url.searchParams.get("placement") ?? undefined,
       locale: url.searchParams.get("locale") ?? undefined,
+      paymentTypes: url.searchParams.get("paymentTypes") ?? undefined,
     });
 
     if (!parsed.success) {
@@ -87,21 +90,35 @@ export const loader = async ({ request }: { request: Request }) => {
     const parsedTotal = order?.totalPrice ? parseMoneyToMinor(order.totalPrice.toString(), order.currency) : null;
     const orderTotalMinor = parsedTotal?.ok ? parsedTotal.minor : null;
 
-    const survey = config.surveys.find(
-      (candidate) =>
-        candidate.placements.includes(placement) &&
-        matchesTargeting(candidate.targeting, {
-          orderId,
-          orderTotalMinor,
-          currency: order?.currency ?? null,
-          currencyDigits: order ? minorUnitDigits(order.currency) : 2,
-          isFirstOrder: null,
-          country: null,
-          language: parsed.data.locale ?? null,
-          now,
-          responseCount: 0,
-        }),
-    );
+    const paymentTypes = parsed.data.paymentTypes
+      ? parsed.data.paymentTypes.split(",").map((s) => s.trim()).filter(Boolean)
+      : [];
+
+    const matches = (candidate: (typeof config.surveys)[number]) =>
+      candidate.placements.includes(placement) &&
+      matchesPaymentRule(candidate, paymentTypes, placement) &&
+      matchesTargeting(candidate.targeting, {
+        orderId,
+        orderTotalMinor,
+        currency: order?.currency ?? null,
+        currencyDigits: order ? minorUnitDigits(order.currency) : 2,
+        isFirstOrder: null,
+        country: null,
+        language: parsed.data.locale ?? null,
+        now,
+        responseCount: 0,
+      });
+
+    // T11: the highest-priority match wins, unless it is in the rotation group,
+    // in which case one member is chosen by a deterministic, weighted pick so
+    // the same order sees the same survey on both surfaces.
+    const ranked = config.surveys.filter(matches);
+    const top = ranked[0] ?? null;
+    let survey = top;
+    if (top && top.rotation) {
+      const group = rotationGroup(config.surveys, placement, matches).sort((a, b) => b.priority - a.priority);
+      survey = pickFromRotation(group, orderId) ?? top;
+    }
 
     logger.info("survey_config_served_v2", {
       request_id: requestId,
