@@ -61,22 +61,23 @@ describe("validateSurveySettings", () => {
 
   it("accepts exactly the minimum option count", () => {
     const result = validateSurveySettings(
-      { questionText: "How did you hear about us?", options: options(six), allowOther: false },
+      { questionText: "How did you hear about us?", options: options(six.slice(0, MIN_OPTIONS)), allowOther: false },
       [],
     );
     expect(result.options).toHaveLength(MIN_OPTIONS);
+    expect(MIN_OPTIONS).toBe(2);
   });
 
   it("rejects fewer than the minimum and says how many to add", () => {
     try {
       validateSurveySettings(
-        { questionText: "How?", options: options(six.slice(0, 3)), allowOther: false },
+        { questionText: "How?", options: options(six.slice(0, 1)), allowOther: false },
         [],
       );
       throw new Error("expected a ValidationError");
     } catch (error) {
       expect(error).toBeInstanceOf(ValidationError);
-      expect((error as ValidationError).hint).toContain(`Add ${MIN_OPTIONS - 3} more`);
+      expect((error as ValidationError).hint).toContain(`Add ${MIN_OPTIONS - 1} more`);
       expect((error as ValidationError).fields.field).toBe("options");
     }
   });

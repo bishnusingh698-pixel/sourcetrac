@@ -41,6 +41,9 @@
     "paths": {
       "~/*": [
         "./app/*"
+      ],
+      "@shared/*": [
+        "./shared/*"
       ]
     },
     "noEmit": true

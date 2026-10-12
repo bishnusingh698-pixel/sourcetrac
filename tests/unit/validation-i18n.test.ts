@@ -35,7 +35,7 @@ const CASES: Array<{ name: string; input: Parameters<typeof validateSurveySettin
     field: "questionText",
   },
   { name: "options not a list", input: { questionText: "Q", options: null, allowOther: false }, field: "options" },
-  { name: "too few options", input: { questionText: "Q", options: options.slice(0, 2), allowOther: false }, field: "options" },
+  { name: "too few options", input: { questionText: "Q", options: options.slice(0, 1), allowOther: false }, field: "options" },
   {
     name: "too many options",
     input: {

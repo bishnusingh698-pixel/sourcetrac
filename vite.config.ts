@@ -37,7 +37,7 @@ export default defineConfig({
     cors: { preflightContinue: true },
     port: Number.parseInt(process.env.PORT || "3000", 10),
     hmr: hmrConfig,
-    fs: { allow: ["app", "node_modules"] },
+    fs: { allow: ["app", "shared", "node_modules"] },
   },
   plugins: [reactRouter(), tsconfigPaths()],
   build: { assetsInlineLimit: 0 },
