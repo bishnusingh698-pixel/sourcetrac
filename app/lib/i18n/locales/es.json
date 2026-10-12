@@ -515,7 +515,8 @@
     "sync_customer_tags_help": "Separadas por comas. Usa {channel} para la respuesta. Hasta cuatro etiquetas.",
     "sync_metafield": "Guardar la respuesta en un metafield del pedido (sourcetrac.channel)",
     "sync_flow": "Iniciar un flujo de Shopify Flow cuando alguien responde",
-    "sync_flow_help": "Usa el disparador de encuesta de SourceTrac. Crea el flujo en la app Flow."
+    "sync_flow_help": "Usa el disparador de encuesta de SourceTrac. Crea el flujo en la app Flow.",
+    "section_advanced": "Avanzado"
   },
   "templates": {
     "how_did_you_hear": {

@@ -515,7 +515,8 @@
     "sync_customer_tags_help": "Komma-gescheiden. Gebruik {channel} voor het antwoord. Maximaal vier tags.",
     "sync_metafield": "Sla het antwoord op in een metafield van de bestelling (sourcetrac.channel)",
     "sync_flow": "Start een Shopify Flow-workflow wanneer iemand antwoordt",
-    "sync_flow_help": "Gebruikt de SourceTrac-enquêtriger. Bouw de workflow in de Flow-app."
+    "sync_flow_help": "Gebruikt de SourceTrac-enquêtriger. Bouw de workflow in de Flow-app.",
+    "section_advanced": "Geavanceerd"
   },
   "templates": {
     "how_did_you_hear": {

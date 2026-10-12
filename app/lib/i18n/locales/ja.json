@@ -515,7 +515,8 @@
     "sync_customer_tags_help": "カンマ区切り。回答には {channel} を使用します。最大4つまで。",
     "sync_metafield": "回答を注文メタフィールドに保存 (sourcetrac.channel)",
     "sync_flow": "回答時に Shopify Flow ワークフローを開始する",
-    "sync_flow_help": "SourceTrac のアンケートトリガーを使用します。ワークフローは Flow アプリで作成してください。"
+    "sync_flow_help": "SourceTrac のアンケートトリガーを使用します。ワークフローは Flow アプリで作成してください。",
+    "section_advanced": "詳細設定"
   },
   "templates": {
     "how_did_you_hear": {

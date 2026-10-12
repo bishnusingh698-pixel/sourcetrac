@@ -515,7 +515,8 @@
     "sync_customer_tags_help": "Kommaseparerade. Använd {channel} för svaret. Upp till fyra taggar.",
     "sync_metafield": "Spara svaret i ett metafält på beställningen (sourcetrac.channel)",
     "sync_flow": "Starta ett Shopify Flow-arbetsflöde när någon svarar",
-    "sync_flow_help": "Använder SourceTrac-utlösaren för undersökningar. Bygg arbetsflödet i Flow-appen."
+    "sync_flow_help": "Använder SourceTrac-utlösaren för undersökningar. Bygg arbetsflödet i Flow-appen.",
+    "section_advanced": "Avancerat"
   },
   "templates": {
     "how_did_you_hear": {

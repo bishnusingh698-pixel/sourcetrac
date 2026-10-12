@@ -113,6 +113,37 @@ export function Panel({
   );
 }
 
+/**
+ * Collapsible section for advanced options, closed by default.
+ *
+ * Uses the native `<details>`/`<summary>` disclosure so it needs no component
+ * library and stays keyboard accessible. The clickable target is the only
+ * interactive element; its visible label is passed in already translated.
+ */
+export function AdvancedDisclosure({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <details style={{ marginBlockStart: "0.75rem" }}>
+      <summary
+        style={{
+          cursor: "pointer",
+          fontSize: "0.8125rem",
+          fontWeight: 500,
+          paddingBlock: "0.25rem",
+        }}
+      >
+        {label}
+      </summary>
+      <div style={{ paddingBlockStart: "0.75rem" }}>{children}</div>
+    </details>
+  );
+}
+
 export function Banner({
   tone,
   heading,

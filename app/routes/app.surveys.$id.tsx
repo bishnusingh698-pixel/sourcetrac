@@ -10,7 +10,7 @@ import {
   type MetaFunction,
 } from "react-router";
 
-import { Banner, Panel } from "~/components/admin-ui";
+import { AdvancedDisclosure, Banner, Panel } from "~/components/admin-ui";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import { ensureShop } from "~/lib/provision.server";
 import { guarded } from "~/lib/admin-errors.server";
@@ -890,37 +890,39 @@ function Targeting({
         {t("surveys.target_value_help", { currency: shopCurrency })}
       </s-text>
 
-      <s-number-field
-        label={t("surveys.target_sample")}
-        min={1}
-        max={100}
-        value={targeting.samplePercent != null ? String(targeting.samplePercent) : "100"}
-        onInput={(e: Event) => set({ samplePercent: numberOrNull(fieldValue(e)) ?? 100 })}
-      />
-      <s-text-field
-        label={t("surveys.target_countries")}
-        value={(targeting.countries ?? []).join(", ")}
-        onInput={(e: Event) =>
-          set({
-            countries: fieldValue(e)
-              .split(",")
-              .map((c) => c.trim().toUpperCase())
-              .filter(Boolean),
-          })
-        }
-      />
-      <s-text-field
-        label={t("surveys.target_languages")}
-        value={(targeting.languages ?? []).join(", ")}
-        onInput={(e: Event) =>
-          set({
-            languages: fieldValue(e)
-              .split(",")
-              .map((l) => l.trim())
-              .filter(Boolean),
-          })
-        }
-      />
+      <AdvancedDisclosure label={t("surveys.section_advanced")}>
+        <s-stack gap="base">
+          <s-number-field
+            label={t("surveys.target_sample")}
+            min={1}
+            max={100}
+            value={targeting.samplePercent != null ? String(targeting.samplePercent) : "100"}
+            onInput={(e: Event) => set({ samplePercent: numberOrNull(fieldValue(e)) ?? 100 })}
+          />
+          <s-text-field
+            label={t("surveys.target_countries")}
+            value={(targeting.countries ?? []).join(", ")}
+            onInput={(e: Event) =>
+              set({
+                countries: fieldValue(e)
+                  .split(",")
+                  .map((c) => c.trim().toUpperCase())
+                  .filter(Boolean),
+              })
+            }
+          />
+          <s-text-field
+            label={t("surveys.target_languages")}
+            value={(targeting.languages ?? []).join(", ")}
+            onInput={(e: Event) =>
+              set({
+                languages: fieldValue(e)
+                  .split(",")
+                  .map((l) => l.trim())
+                  .filter(Boolean),
+              })
+            }
+          />
       <s-stack direction="inline" gap="small">
         <s-text-field
           label={t("surveys.target_starts")}
@@ -943,6 +945,8 @@ function Targeting({
       <s-text color="subdued" fontSize="small">
         {t("surveys.target_products_note", { max: limits.MAX_TARGET_PRODUCTS })}
       </s-text>
+        </s-stack>
+      </AdvancedDisclosure>
     </s-stack>
   );
 }

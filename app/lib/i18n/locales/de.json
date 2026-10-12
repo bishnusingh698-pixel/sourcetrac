@@ -515,7 +515,8 @@
     "sync_customer_tags_help": "Durch Kommas getrennt. Verwenden Sie {channel} für die Antwort. Bis zu vier Tags.",
     "sync_metafield": "Die Antwort in einem Bestell-Metafeld speichern (sourcetrac.channel)",
     "sync_flow": "Einen Shopify-Flow-Workflow starten, wenn jemand antwortet",
-    "sync_flow_help": "Verwendet den SourceTrac-Umfrage-Trigger. Erstellen Sie den Workflow in der Flow-App."
+    "sync_flow_help": "Verwendet den SourceTrac-Umfrage-Trigger. Erstellen Sie den Workflow in der Flow-App.",
+    "section_advanced": "Erweitert"
   },
   "templates": {
     "how_did_you_hear": {

@@ -515,7 +515,8 @@
     "sync_customer_tags_help": "以逗号分隔。使用 {channel} 表示回答内容。最多四个标签。",
     "sync_metafield": "将回答保存到订单元字段 (sourcetrac.channel)",
     "sync_flow": "有人回答时启动 Shopify Flow 工作流",
-    "sync_flow_help": "使用 SourceTrac 调查触发器。请在 Flow 应用中构建工作流。"
+    "sync_flow_help": "使用 SourceTrac 调查触发器。请在 Flow 应用中构建工作流。",
+    "section_advanced": "高级"
   },
   "templates": {
     "how_did_you_hear": {

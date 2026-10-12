@@ -461,7 +461,8 @@
     "sync_customer_tags_help": "Comma separated. Use {channel} for the shopper's answer. Up to four tags.",
     "sync_metafield": "Save the answer to an order metafield (sourcetrac.channel)",
     "sync_flow": "Start a Shopify Flow workflow when someone answers",
-    "sync_flow_help": "Uses the SourceTrac survey trigger. Build the workflow in the Flow app."
+    "sync_flow_help": "Uses the SourceTrac survey trigger. Build the workflow in the Flow app.",
+    "section_advanced": "Advanced"
   },
   "templates": {
     "how_did_you_hear": {

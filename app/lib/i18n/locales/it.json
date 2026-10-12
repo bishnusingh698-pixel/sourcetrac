@@ -515,7 +515,8 @@
     "sync_customer_tags_help": "Separate da virgole. Usa {channel} per la risposta. Fino a quattro etichette.",
     "sync_metafield": "Salva la risposta in un metafield dell'ordine (sourcetrac.channel)",
     "sync_flow": "Avvia un workflow Shopify Flow quando qualcuno risponde",
-    "sync_flow_help": "Usa il trigger del sondaggio SourceTrac. Crea il workflow nell'app Flow."
+    "sync_flow_help": "Usa il trigger del sondaggio SourceTrac. Crea il workflow nell'app Flow.",
+    "section_advanced": "Avanzate"
   },
   "templates": {
     "how_did_you_hear": {

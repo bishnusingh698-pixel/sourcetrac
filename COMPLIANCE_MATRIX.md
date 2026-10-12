@@ -110,7 +110,7 @@ pins structure. Show-if rules were fixed for `did-you-compare` and
 | Admin | Contextual save bar | ✅ | `app.surveys.$id.tsx` |
 | Admin | Inline field errors | ✅ | `extractIssues`/`errorId` |
 | Admin | Empty states | ✅ | surveys list, responses |
-| Admin | Advanced sections collapsed | 🟡 | targeting/sample not yet under an "Advanced" disclosure — F-011 |
+| Admin | Advanced sections collapsed | ✅ | `AdvancedDisclosure` in `app/components/admin-ui.tsx`; targeting advanced block in `app.surveys.$id.tsx` | Sample %, countries, languages, dates and response limit sit under a collapsed "Advanced" |
 | Shopper | Native look, mobile tap targets | ✅ | Polaris web components; preview |
 | Shopper | After-submit confirmation | ✅ | thank-you text |
 

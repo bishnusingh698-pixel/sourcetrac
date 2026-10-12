@@ -515,7 +515,8 @@
     "sync_customer_tags_help": "Separadas por vírgulas. Use {channel} para a resposta. Até quatro tags.",
     "sync_metafield": "Salvar a resposta em um metafield do pedido (sourcetrac.channel)",
     "sync_flow": "Iniciar um fluxo do Shopify Flow quando alguém responder",
-    "sync_flow_help": "Usa o gatilho de pesquisa do SourceTrac. Monte o fluxo no app Flow."
+    "sync_flow_help": "Usa o gatilho de pesquisa do SourceTrac. Monte o fluxo no app Flow.",
+    "section_advanced": "Avançado"
   },
   "templates": {
     "how_did_you_hear": {
