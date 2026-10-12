@@ -8,6 +8,9 @@ import { backfillMissingOrders } from "~/lib/order-backfill.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
 
+/** Cap the CSV at a size that renders in under a second on Render free. */
+const MAX_CSV_ROWS = 50_000;
+
 /**
  * CSV download (`/app/export/csv`).
  *
@@ -31,7 +34,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
 
   // The query returns newest first; the file is oldest first.
   const [responses, context] = await Promise.all([
-    fetchResponsesInWindow({ shopId: shop.id }),
+    fetchResponsesInWindow({ shopId: shop.id, limit: MAX_CSV_ROWS }),
     loadExportContext(shop, session),
   ]);
   const csv = toCsv(toExportRows([...responses].reverse(), context));
@@ -40,6 +43,9 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="${csvFilename(new Date(), resolveExportTimeZone(context.timeZone))}"`,
+      // Signal a truncated file so the client can warn the merchant instead of
+      // silently presenting a partial export as complete.
+      "X-SourceTrac-Truncated": String(responses.length >= MAX_CSV_ROWS),
       // The file is generated per request from live data, so it must never be
       // cached by a proxy sitting in front of Render.
       "Cache-Control": "no-store",

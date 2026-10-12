@@ -139,9 +139,71 @@ export async function consumeShopBackstop(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Per-session-token submission limiter
+// ---------------------------------------------------------------------------
+
+/**
+ * How many responses one checkout session token may submit.
+ *
+ * The per-order bucket is keyed on a value the caller chooses, so one valid
+ * token (anyone who has bought from the store) plus a made-up order id each time
+ * got a fresh bucket and could write unlimited forged answers, poisoning the
+ * merchant's channel and revenue report and burning their free-tier cap. A real
+ * buyer answers at most two surfaces (Thank-you and Order-status) for one order,
+ * so a ceiling of a few is generous.
+ */
+export const MAX_SUBMISSIONS_PER_TOKEN = 2;
+
+type TokenEntry = { count: number; expiresAt: number };
+
+declare global {
+  var __sourcetracTokenSubs: Map<string, TokenEntry> | undefined;
+}
+
+const tokenSubs: Map<string, TokenEntry> = globalThis.__sourcetracTokenSubs ?? new Map();
+
+/** Drop expired token entries. Cheap: bounded by the session-token TTL. */
+function evictExpiredTokenSubs(nowMs: number): void {
+  if (tokenSubs.size === 0) return;
+  for (const [key, entry] of tokenSubs) {
+    if (entry.expiresAt <= nowMs) tokenSubs.delete(key);
+  }
+}
+
+/**
+ * Count a submission against a session token, refusing past the ceiling.
+ *
+ * Keyed on the token's `jti` (a per-token UUID, present on every Shopify session
+ * token) and expiring at the token's own `exp`, so the map cannot grow without
+ * bound and a re-minted token gets a fresh allowance. In-memory like the rest of
+ * this module: correct for the single Render instance, and a deliberate,
+ * documented trade for any future scale-out.
+ */
+export function consumeTokenSubmission(
+  tokenKey: string,
+  expiresAtMs: number,
+  now = Date.now(),
+): void {
+  evictExpiredTokenSubs(now);
+
+  const existing = tokenSubs.get(tokenKey);
+  if (!existing || existing.expiresAt <= now) {
+    if (tokenSubs.size > MAX_BUCKETS * 2) evictExpiredTokenSubs(now);
+    tokenSubs.set(tokenKey, { count: 1, expiresAt: expiresAtMs });
+    return;
+  }
+
+  if (existing.count >= MAX_SUBMISSIONS_PER_TOKEN) {
+    throw new RateLimitError(60, { bucket: "token" });
+  }
+  existing.count += 1;
+}
+
 /** Test helper: clear all buckets. */
 export function resetBuckets(): void {
   store.clear();
+  tokenSubs.clear();
   lastSweepMs = Number.NEGATIVE_INFINITY;
 }
 

@@ -260,6 +260,71 @@ describe("isQuestionVisible", () => {
     expect(isQuestionVisible(rating, [{ questionId: "q1", numberValue: 2 }])).toBe(true);
     expect(isQuestionVisible(rating, [{ questionId: "q1", numberValue: 4 }])).toBe(false);
   });
+
+  it("treats range edges as inclusive (Plan Phase E)", () => {
+    const low = { ...choiceQuestion({ id: "q2" }), showIf: { questionId: "q1", max: 6 } };
+    const high = { ...choiceQuestion({ id: "q2" }), showIf: { questionId: "q1", min: 9 } };
+    expect(isQuestionVisible(low, [{ questionId: "q1", numberValue: 6 }])).toBe(true);
+    expect(isQuestionVisible(low, [{ questionId: "q1", numberValue: 7 }])).toBe(false);
+    expect(isQuestionVisible(high, [{ questionId: "q1", numberValue: 9 }])).toBe(true);
+    expect(isQuestionVisible(high, [{ questionId: "q1", numberValue: 8 }])).toBe(false);
+  });
+
+  it("matches when any one of several condition options was selected", () => {
+    const multi = {
+      ...choiceQuestion({ id: "q2" }),
+      showIf: { questionId: "q1", optionIds: ["instagram", "youtube"] },
+    };
+    expect(isQuestionVisible(multi, [{ questionId: "q1", optionIds: ["youtube"] }])).toBe(true);
+    expect(isQuestionVisible(multi, [{ questionId: "q1", optionIds: ["email"] }])).toBe(false);
+  });
+
+  it("returns false for a condition with neither options nor a range", () => {
+    const empty = { ...choiceQuestion({ id: "q2" }), showIf: { questionId: "q1" } };
+    expect(isQuestionVisible(empty, [{ questionId: "q1", optionIds: ["instagram"] }])).toBe(false);
+  });
+});
+
+describe("validateResponse — hidden chains (Plan Phase E)", () => {
+  // q1 (always) → q2 (if q1 = instagram) → q3 (required, if q2 = youtube).
+  const chain = (q3Required: boolean) =>
+    survey([
+      choiceQuestion({ id: "q1" }),
+      {
+        ...choiceQuestion({ id: "q2", options: [{ id: "youtube", label: "YouTube" }] }),
+        showIf: { questionId: "q1", optionIds: ["instagram"] },
+      },
+      {
+        ...choiceQuestion({ id: "q3", options: [{ id: "x", label: "X" }] }),
+        required: q3Required,
+        showIf: { questionId: "q2", optionIds: ["youtube"] },
+      },
+    ]);
+
+  it("does not require a required question hidden behind a hidden parent", () => {
+    // q1 = google → q2 hidden → q3 hidden, and a hidden required question is skipped.
+    const issues = validateResponse(chain(true), [{ questionId: "q1", optionIds: ["google"] }]);
+    expect(issues).toEqual([]);
+  });
+
+  it("requires the grandchild only when the whole chain is visible", () => {
+    // q1 = instagram (q2 visible) but q2 unanswered → q3 not required yet.
+    expect(validateResponse(chain(true), [{ questionId: "q1", optionIds: ["instagram"] }])).toEqual([]);
+    // now q2 = youtube → q3 visible and required → missing ⇒ error.
+    const issues = validateResponse(chain(true), [
+      { questionId: "q1", optionIds: ["instagram"] },
+      { questionId: "q2", optionIds: ["youtube"] },
+    ]);
+    expect(issues.map((i) => i.code)).toContain("required");
+  });
+
+  it("rejects an answer to a grandchild whose parent is hidden", () => {
+    const issues = validateResponse(chain(false), [
+      { questionId: "q1", optionIds: ["google"] },
+      { questionId: "q3", optionIds: ["x"] },
+    ]);
+    expect(issues.map((i) => i.code)).toContain("hidden_answered");
+  });
 });
 
 describe("validateResponse", () => {

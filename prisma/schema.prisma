@@ -381,6 +381,14 @@ model Response {
   locale    String?
   country   String?
   flagged   Boolean         @default(false)
+  /// Order verification snapshot. `null` = the row predates verification (the
+  /// migration backfills existing rows to null); `true` = a known, countable
+  /// order (not test, not cancelled) whose real total is stored; `false` = the
+  /// order is unknown or not countable, so revenue is excluded.
+  verified  Boolean?
+  /// Set when the order never arrived within 24h and no total could be attached,
+  /// so the row is no longer Pending but deliberately excluded from revenue.
+  unverifiedFailed Boolean @default(false)
   createdAt DateTime        @default(now())
 
   shop    Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)

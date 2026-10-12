@@ -6,7 +6,12 @@ import { readBodyText, toResponse } from "~/lib/http.server";
 import { serialiseError, ValidationError } from "~/lib/errors";
 import { logger } from "~/lib/logger";
 import { effectivePlan } from "~/lib/plans";
-import { BUCKETS, consumeShopBackstop, consumeToken } from "~/lib/rate-limit.server";
+import {
+  BUCKETS,
+  consumeShopBackstop,
+  consumeToken,
+  consumeTokenSubmission,
+} from "~/lib/rate-limit.server";
 import { submitAnswers } from "~/lib/answers.server";
 import { findShopByDomain, isKnownOrder } from "~/lib/shop.server";
 import { getSurveyRow, rowToEditor } from "~/lib/surveys.server";
@@ -82,6 +87,12 @@ export const action = async ({ request }: { request: Request }) => {
     const orderId = parsed.data.orderId ?? null;
     const placement: Placement = parsed.data.placement ?? "thank_you";
 
+    // Per session token, before anything else that costs a database read: one
+    // lifted checkout token cannot be reused to write many forged orders.
+    consumeTokenSubmission(
+      `token:${shopDomain}:${sessionToken.jti ?? sessionToken.sub ?? "anon"}`,
+      (sessionToken.exp ?? 0) * 1000,
+    );
     consumeToken(`answer:${shopDomain}:${orderId ?? "none"}`, BUCKETS.response);
     if (orderId) {
       await consumeShopBackstop(`answer-shop:${shopDomain}`, BUCKETS.responseShop, () =>

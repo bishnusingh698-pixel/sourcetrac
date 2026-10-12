@@ -14,7 +14,8 @@ import { Prisma } from "@prisma/client";
 
 import { db, isRetryableDbError } from "~/db.server";
 import { logger } from "~/lib/logger";
-import { currentUtcPeriod, evaluateCap, type PlanKey } from "~/lib/plans";
+import { minorToDecimalString, parseMoneyToMinor } from "~/lib/money";
+import { currentUtcPeriod, evaluateCap, planFor, type PlanKey } from "~/lib/plans";
 import { withRetry } from "~/lib/retry.server";
 import { enqueueSync, hasSyncWork, parseSyncOptions, processPendingSync } from "~/lib/sync.server";
 import {
@@ -57,24 +58,83 @@ function isUniqueViolation(error: unknown): boolean {
   );
 }
 
-async function incrementUsage(shopId: string): Promise<number> {
+/** The plan's monthly cap, or null when unlimited. */
+export function capOf(plan: PlanKey): number | null {
+  return planFor(plan).responseCap;
+}
+
+/**
+ * Whether this order is known and countable, used to snapshot `Response.verified`.
+ * A known order with a parseable total is verified; an order that has not landed
+ * (or whose total is unreadable) is not, and its revenue is excluded until it is.
+ */
+async function isCountableOrder(shopId: string, orderId: string | null): Promise<boolean> {
+  if (!orderId) return false;
+  const order = await retryDb(() =>
+    db.orderCache.findUnique({
+      where: { shopId_orderId: { shopId, orderId } },
+      select: { totalPrice: true, isTest: true, isCancelled: true },
+    }),
+  );
+  if (!order || order.totalPrice === null) return false;
+  // A test or cancelled order is a real order but never verified revenue, so it
+  // reads as unverified here; the read-time decision agrees.
+  return !order.isTest && !order.isCancelled;
+}
+
+/**
+ * Atomically claim one slot against the plan's monthly cap.
+ *
+ * The cap must be enforced on the server, not only by the pre-insert read: two
+ * answers arriving together at cap-1 both pass an unlocked read and both write.
+ * The increment is a single conditional UPDATE, so Postgres serialises it and
+ * exactly one request can take the last slot. Returns `{ count, withinCap }`
+ * where `count` is this answer's true position and `withinCap` is false when it
+ * landed at or past the cap (the answer is still stored, just flagged).
+ */
+export async function claimUsageSlot(shopId: string, cap: number | null): Promise<{ count: number; withinCap: boolean }> {
   const { periodStart, periodEnd } = currentUtcPeriod();
 
   return retryDb(async () => {
-    await db.billingUsage.upsert({
-      where: { shopId_periodStart: { shopId, periodStart } },
-      create: { shopId, periodStart, periodEnd, responsesCount: 0 },
-      update: {},
-    });
+    // Insert-or-ignore rather than `upsert`: Prisma's `upsert` is a
+    // select-then-insert under the hood, so twenty simultaneous first-of-month
+    // claims raced and one lost with a P2002. A single `ON CONFLICT DO NOTHING`
+    // lets the database arbitrate. The id is generated here because the column
+    // has no database-side default (Prisma supplies cuids client-side).
+    const id = `usage_${randomId()}`;
+    await db.$executeRaw`
+      INSERT INTO "BillingUsage" ("id", "shopId", "periodStart", "periodEnd", "responsesCount", "cap", "updatedAt")
+      VALUES (${id}, ${shopId}, ${periodStart}, ${periodEnd}, 0, ${cap}, now())
+      ON CONFLICT ("shopId", "periodStart") DO NOTHING
+    `;
 
-    const updated = await db.billingUsage.update({
+    const rows = await db.$queryRaw<Array<{ responsesCount: number }>>`
+      UPDATE "BillingUsage"
+      SET "responsesCount" = "responsesCount" + 1,
+          "cap" = ${cap},
+          "updatedAt" = now()
+      WHERE "shopId" = ${shopId}
+        AND "periodStart" = ${periodStart}
+        AND (${cap}::int IS NULL OR "responsesCount" < ${cap})
+      RETURNING "responsesCount"
+    `;
+
+    if (rows.length > 0) {
+      return { count: rows[0]!.responsesCount, withinCap: true };
+    }
+
+    // The conditional UPDATE matched nothing: the cap is reached. Read the true
+    // count so the caller can still report volume honestly.
+    const current = await db.billingUsage.findUnique({
       where: { shopId_periodStart: { shopId, periodStart } },
-      data: { responsesCount: { increment: 1 } },
       select: { responsesCount: true },
     });
-
-    return updated.responsesCount;
+    return { count: (current?.responsesCount ?? 0) + 1, withinCap: false };
   });
+}
+
+function randomId(): string {
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
 }
 
 export async function getUsageCount(shopId: string): Promise<number> {
@@ -129,6 +189,12 @@ export async function submitAnswers(input: AnswerSubmitInput): Promise<AnswerSub
   const { channel, otherText } = channelAnswer(input.definition, input.answers);
   const orderTotal = await orderTotalFor(input.shopId, input.orderId);
 
+  // Order verification: a known, countable order is "verified"; anything else is
+  // unverified and its revenue only counts once the order webhook (or the
+  // backfill) lands and stores the real total. `verified` is a snapshot; the
+  // authoritative revenue decision is still `decideSurveyRevenue` at read time.
+  const verified = await isCountableOrder(input.shopId, input.orderId);
+
   try {
     const created = await retryDb(() =>
       db.response.create({
@@ -142,6 +208,7 @@ export async function submitAnswers(input: AnswerSubmitInput): Promise<AnswerSub
           placement: input.placement,
           locale: input.locale,
           flagged: shouldLock,
+          verified,
           // The legacy channel column lives on SurveyResponse, not Response;
           // the new model keeps the channel in the Answer row. `channel`/`
           // otherText` are stored here only to keep the compiled channel report
@@ -163,8 +230,10 @@ export async function submitAnswers(input: AnswerSubmitInput): Promise<AnswerSub
 
     let isLocked = created.flagged;
     try {
-      const usedAfter = await incrementUsage(input.shopId);
-      if (!isLocked && evaluateCap(input.plan, usedAfter - 1).shouldFlag) {
+      // Atomic claim so 20 simultaneous submissions cannot exceed the cap: the
+      // conditional UPDATE lets exactly one take the last slot.
+      const claimed = await claimUsageSlot(input.shopId, capOf(input.plan));
+      if (!isLocked && !claimed.withinCap) {
         await retryDb(() => db.response.update({ where: { id: created.id }, data: { flagged: true } }));
         isLocked = true;
       }
@@ -273,4 +342,62 @@ async function orderTotalFor(
 export async function hasAnyAnswerForOrder(shopId: string, orderId: string): Promise<boolean> {
   const count = await retryDb(() => db.response.count({ where: { shopId, orderId } }));
   return count > 0;
+}
+
+/**
+ * Attach cached order facts to any v2 `Response` for this order that is still
+ * waiting for them, and mark them verified.
+ *
+ * v2 responses are stored with a null total when the order has not landed. Unlike
+ * the legacy `SurveyResponse` (which has `reconciled`/`unreconcilable` columns),
+ * the v2 model carries no reconciliation flag — the total itself is the signal —
+ * so this is a plain conditional UPDATE. Called from the same place the legacy
+ * reconcile runs (`upsertOrderCache`, after the order webhook or backfill writes
+ * the row) so a late order is never left Pending forever.
+ */
+export async function reconcileOrderForResponses(params: {
+  shopId: string;
+  orderId: string;
+  currency: string;
+  totalPrice: string;
+}): Promise<{ reconciled: number; verified: boolean }> {
+  const parsed = parseMoneyToMinor(params.totalPrice, params.currency);
+  if (!parsed.ok) return { reconciled: 0, verified: false };
+  const decimal = minorToDecimalString(parsed.minor, params.currency);
+
+  const orders = await retryDb(() =>
+    db.orderCache.findUnique({
+      where: { shopId_orderId: { shopId: params.shopId, orderId: params.orderId } },
+      select: { isTest: true, isCancelled: true },
+    }),
+  );
+  const verified = Boolean(orders) && !orders!.isTest && !orders!.isCancelled;
+
+  const result = await retryDb(() =>
+    db.response.updateMany({
+      where: { shopId: params.shopId, orderId: params.orderId, orderTotal: null },
+      data: { orderTotal: decimal, currency: params.currency, verified },
+    }),
+  );
+
+  return { reconciled: result.count, verified };
+}
+
+/**
+ * Mark v2 responses whose order never arrived as `unverifiedFailed`, so they leave
+ * the "Pending" set and their (absent) revenue is excluded deliberately rather
+ * than by omission. Runs alongside the legacy `markUnreconcilable` sweep.
+ */
+export async function markUnverifiedFailedResponses(olderThanHours = 24, now = new Date()): Promise<number> {
+  const cutoff = new Date(now.getTime() - olderThanHours * 60 * 60 * 1000);
+  const result = await retryDb(() =>
+    db.response.updateMany({
+      where: { orderTotal: null, verified: { not: true }, unverifiedFailed: false, createdAt: { lt: cutoff } },
+      data: { unverifiedFailed: true },
+    }),
+  );
+  if (result.count > 0) {
+    logger.info("responses_marked_unverified_failed", { count: result.count, older_than_hours: olderThanHours });
+  }
+  return result.count;
 }

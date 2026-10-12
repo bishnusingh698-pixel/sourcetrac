@@ -39,6 +39,28 @@ the resolver, gated on the granted `read_products` scope via `canSync`.
 The theme app extension (B1) and the App Proxy survey-link page (B2) are behind
 `shared/feature-flags.ts`, both **off**. Turn them on only once Core is stable.
 
+## Free plan caps — reconcile with product intent (audit F-010)
+
+The code enforces a Free response cap of `FREE_RESPONSE_CAP = 50` and applies
+global limits (`MAX_ACTIVE_SURVEYS = 10`, `MAX_QUESTIONS = 5`) to every plan; the
+audit brief described Free as 100 responses/month, 1 active survey, 2 questions.
+The audit left the code as-is (code wins; the constant is interpolated into help
+and the plans page). If the product wants the brief's numbers, raise the constant
+and add per-plan survey/question gating in `createSurvey` / `updateSurvey`.
+
+## Advanced options disclosure (audit F-011) — DONE
+
+Sample %, dates, response limit, countries and languages now sit under a
+collapsed `AdvancedDisclosure` in the survey editor's "Who sees it" section.
+Multi-choice min/max selections remain inline (they only appear for that one
+question type). Nothing further to do here.
+
+## Logic map "Try a path" simulator polish (Phase G)
+
+The simulator and tree ship now. A follow-up polish pass could persist the last
+simulated path and animate node transitions, but the current static highlight is
+sufficient and has no correctness impact.
+
 ## Plan reconciliation on a transient Shopify read failure
 
 `app/routes/app.plans.tsx` maps `paidPlanFromSubscriptions(...) ?? "free"` into

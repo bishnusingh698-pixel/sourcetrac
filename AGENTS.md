@@ -991,3 +991,70 @@ not a merchant's flow, is what breaks.
 - Retention ages out the new tables: `DataRequest` on the 30-day webhook clock,
   `PendingDeletion` on the 24-month record clock. The `RetentionReport` grew
   `dataRequestsDeleted` and `pendingDeletionsDeleted`.
+
+## Audit pass (2026-10-12) — logic, security, completeness
+
+Four artifacts are the map of this pass: `LOGIC_MAP.md` (Mermaid flows),
+`COMPLIANCE_MATRIX.md` (every plan/billing requirement with evidence),
+`AUDIT_REPORT.md` (findings) and `CHANGES_SUMMARY.md` (audit section). Where the
+referenced `survey-app-upgrade-plan.md` and the code disagree, **the code wins**
+and the disagreement is recorded; `AUDIT_AND_PLAN.md` is the closest thing to
+that plan in this repo, and the brief's own template files were never committed.
+
+### Order verification (the response/revenue invariant)
+
+`Response` gained `verified BOOLEAN NULL` and `unverifiedFailed BOOLEAN NOT NULL
+DEFAULT false` (migration `20261012140000_response_verification`, additive).
+
+- At insert, a **known, countable** order (`isCountableOrder`) sets `verified =
+  true` and stores the **real** total; an unknown/absent order leaves `verified =
+  false` with a null total (Pending, excluded from revenue — never faked $0.00).
+- `upsertOrderCache` calls `reconcileOrderForResponses` for the v2 rows too, so a
+  late `orders/create` fills the total in (idempotent: only null-total rows).
+- `markUnverifiedFailedResponses` (from `maybeMarkUnreconcilable` on a dashboard
+  visit) flips rows still order-less after 24 h to `unverifiedFailed = true`.
+- `decideSurveyRevenue` excludes `unverifiedFailed`; `verified === null` predates
+  the column and keeps the legacy "total present decides" behaviour, so historic
+  revenue is unchanged. Do not make the null case mean "unverified".
+
+### Per-token submission cap
+
+`consumeTokenSubmission(token)` (in `app/lib/rate-limit.server.ts`) caps one
+checkout session token at `MAX_SUBMISSIONS_PER_TOKEN` (2), keyed on the token's
+`jti` and expiring at its `exp`, checked **before** any DB read. Without it the
+caller-chosen per-order bucket let one token write unlimited forged answers with
+made-up order ids. It is a separate limiter from the per-order `consumeToken`
+bucket — both are needed.
+
+### Tags and payload sizes
+
+- `sanitizeTag` strips commas (a comma splits one tag into several), control
+  characters and quotes, lower-cases, keeps letters of any script, caps at 40
+  chars. The `prefix:channel` colon is **allowed** on purpose. Tag text comes
+  from option labels / the merchant prefix; a buyer's free-text "Other" answer
+  fills `{channel}` and, before sanitisation, could inject commas.
+- `truncateForPayload(value, maxBytes)` is byte-aware (the 3-byte ellipsis is
+  inside the budget). `MAX_FLOW_PAYLOAD_BYTES = 45_000` guards
+  `flowTriggerReceive`, which ignores — silently, with no run — any payload
+  whose keys do not match the trigger's declared fields, and any payload that is
+  over-size.
+
+### The Logic map (Phase G)
+
+`shared/logic-tree.ts` `buildLogicTree(survey)` is pure and unit-tested; the UI
+(`app/components/logic-map.tsx`) only renders its nodes/warnings. The
+"Try it as a shopper" simulator **must** call the shared `isQuestionVisible`;
+`tests/unit/logic-tree.test.ts` reads the component source and fails if the
+import is dropped or the predicate is inlined. The editor shows it as a
+Questions/Logic tab switch over one shared unsaved state.
+
+### The suite must stay serial and the DB guard is not a regression
+
+`npm run check` needs `DATABASE_URL` pointing at `*_test`, or
+`tests/db-invariants.test.ts` refuses to run (by design). With the local `.env`
+pointing at `sourcetrac`, use the explicit override:
+
+    DATABASE_URL="postgresql://sourcetrac:sourcetrac@127.0.0.1:5432/sourcetrac_test?schema=public" npm run check
+
+Verified 2026-10-12: 624 tests / 50 files green; bundles <= ~11.5 KB compressed.
+

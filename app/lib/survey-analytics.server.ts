@@ -43,6 +43,10 @@ export type SurveyResponseRow = {
   currency: string | null;
   placement: string;
   flagged: boolean;
+  /** null predates verification; true/false is the snapshot at insert/reconcile. */
+  verified: boolean | null;
+  /** The order never arrived in time, so the row is excluded from revenue. */
+  unverifiedFailed: boolean;
   createdAt: Date;
   answers: SurveyAnswerRow[];
   order: OrderFacts | null;
@@ -104,6 +108,8 @@ export async function fetchSurveyResponses(params: {
       currency: row.currency,
       placement: row.placement,
       flagged: row.flagged,
+      verified: row.verified,
+      unverifiedFailed: row.unverifiedFailed,
       createdAt: row.createdAt,
       answers: row.answers.map((answer) => ({
         questionId: answer.questionId,
@@ -137,8 +143,17 @@ function safeParseArray(raw: string): string[] {
 /**
  * THE revenue decision for a multi-question response. Reconciled means the
  * order total is known; an unreconciled response is pending, never $0.00.
+ *
+ * Verification: a row marked `unverifiedFailed` (the order never arrived and the
+ * reconcile sweep gave up) is excluded from revenue, and `verified === false`
+ * (a known test/cancelled order, or an order confirmed absent) also excludes it.
+ * `verified === null` predates the column and keeps the legacy behaviour — the
+ * order total's presence alone decides — so historic revenue is unchanged.
  */
 export function decideSurveyRevenue(row: SurveyResponseRow): RevenueDecision {
+  if (row.unverifiedFailed) {
+    return { included: false, reason: "unreconciled" };
+  }
   return evaluateResponseRevenue(
     { reconciled: row.orderTotal !== null, unreconcilable: false },
     row.order
