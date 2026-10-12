@@ -508,8 +508,8 @@ function QuestionList({
           required: false,
           allowOther: false,
           options: [
-            { id: "", label: "Answer 1", isOther: false, archived: false, translations: {} },
-            { id: "", label: "Answer 2", isOther: false, archived: false, translations: {} },
+            { id: "", label: "Answer 1", isOther: false, exclusive: false, archived: false, translations: {} },
+            { id: "", label: "Answer 2", isOther: false, exclusive: false, archived: false, translations: {} },
           ],
         },
       ],
@@ -740,7 +740,7 @@ function OptionEditor({
           onClick={() =>
             setOptions([
               ...options,
-              { id: "", label: t("surveys.new_option_label", { n: count + 1 }), isOther: false, archived: false, translations: {} },
+              { id: "", label: t("surveys.new_option_label", { n: count + 1 }), isOther: false, exclusive: false, archived: false, translations: {} },
               ...question.options.filter((o) => o.isOther),
             ])
           }

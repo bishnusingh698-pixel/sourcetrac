@@ -43,6 +43,8 @@ export type EditorOption = {
   id: string;
   label: string;
   isOther: boolean;
+  /** T6: clears other selections in multiple choice. */
+  exclusive: boolean;
   archived: boolean;
   translations: Record<string, string | undefined>;
 };

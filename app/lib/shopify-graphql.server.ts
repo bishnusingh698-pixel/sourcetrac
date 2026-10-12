@@ -160,15 +160,49 @@ export const SHOP_TIMEZONE_QUERY = `#graphql
   query SourceTracShopTimezone {
     shop {
       ianaTimezone
+      shopAddress {
+        countryCodeV2
+      }
     }
   }
 `;
 
 /**
- * The shop's IANA time zone (e.g. "Asia/Kolkata"), or null when Shopify could
- * not be asked. The export then falls back to UTC and says so in its
- * `timezone` column, so a failed lookup degrades the file rather than failing
- * the download.
+ * The shop's IANA time zone (e.g. "Asia/Kolkata") and store country (ISO-3166
+ * alpha-2, e.g. "US"), or null when Shopify could not be asked.
+ *
+ * The country picks the answer-pack region for the template library; a failed
+ * lookup degrades to the US/default region rather than hiding the library. Both
+ * fields arrive from the same cheap query, so neither costs an extra round trip.
+ * `shopAddress.countryCodeV2` is verified against the Admin GraphQL schema
+ * (`billingAddress` on Shop is the deprecated spelling of the same thing).
+ */
+export async function fetchShopLocaleInfo(
+  shopDomain: string,
+  accessToken: string | null | undefined,
+): Promise<{ timeZone: string | null; countryCode: string | null }> {
+  if (!accessToken) return { timeZone: null, countryCode: null };
+  try {
+    const result = await shopifyGraphql<{
+      shop: { ianaTimezone: string | null; shopAddress: { countryCodeV2: string | null } | null } | null;
+    }>(shopDomain, accessToken, SHOP_TIMEZONE_QUERY);
+    return {
+      timeZone: result.data.shop?.ianaTimezone ?? null,
+      countryCode: result.data.shop?.shopAddress?.countryCodeV2 ?? null,
+    };
+  } catch (error) {
+    logger.warn("shop_locale_info_lookup_failed", {
+      shop_domain: shopDomain,
+      error_message: error instanceof Error ? error.message : String(error),
+    });
+    return { timeZone: null, countryCode: null };
+  }
+}
+
+/**
+ * The shop's IANA time zone, or null when Shopify could not be asked. The export
+ * then falls back to UTC and says so in its `timezone` column, so a failed lookup
+ * degrades the file rather than failing the download.
  */
 export async function fetchShopTimeZone(shopDomain: string, accessToken: string | null | undefined): Promise<string | null> {
   if (!accessToken) return null;
@@ -176,7 +210,9 @@ export async function fetchShopTimeZone(shopDomain: string, accessToken: string 
     const result = await shopifyGraphql<{ shop: { ianaTimezone: string | null } | null }>(
       shopDomain,
       accessToken,
-      SHOP_TIMEZONE_QUERY,
+      `#graphql
+        query SourceTracShopTimezoneOnly { shop { ianaTimezone } }
+      `,
     );
     return result.data.shop?.ianaTimezone ?? null;
   } catch (error) {

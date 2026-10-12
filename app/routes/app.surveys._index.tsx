@@ -15,7 +15,7 @@ import {
   setSurveyStatus,
   type SurveyListItem,
 } from "~/lib/surveys.server";
-import { findTemplate, SURVEY_TEMPLATES } from "@shared/survey-templates";
+import { findTemplate } from "@shared/survey-templates";
 import { ValidationError } from "~/lib/errors";
 
 /**
@@ -42,12 +42,6 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
 
   return {
     surveys,
-    templates: SURVEY_TEMPLATES.map((t) => ({
-      id: t.id,
-      nameKey: t.nameKey,
-      descriptionKey: t.descriptionKey,
-      questionCount: t.survey.questions.length,
-    })),
   };
 });
 
@@ -144,7 +138,7 @@ function StatusBadge({ status }: { status: SurveyListItem["status"] }) {
 }
 
 export default function Surveys() {
-  const { surveys, templates } = useLoaderData<typeof loader>();
+  const { surveys } = useLoaderData<typeof loader>();
   const { t } = useAdminI18n();
 
   return (
@@ -155,57 +149,22 @@ export default function Surveys() {
         <Panel title={t("surveys.empty_title")} description={t("surveys.empty_body")}>
           <s-stack gap="base">
             <s-stack direction="inline" gap="small">
-              <Form method="post">
-                <input type="hidden" name="intent" value="create-from-template" />
-                <input type="hidden" name="templateId" value="how-did-you-hear" />
-                <s-button variant="primary" type="submit">
-                  {t("surveys.use_template")}
-                </s-button>
-              </Form>
+              <s-link href="/app/surveys/library">
+                <s-button variant="primary">{t("surveys.use_template")}</s-button>
+              </s-link>
               <Form method="post">
                 <input type="hidden" name="intent" value="create-blank" />
                 <s-button type="submit">{t("surveys.start_scratch")}</s-button>
               </Form>
-            </s-stack>
-
-            <s-stack gap="small">
-              <s-text type="strong">{t("surveys.templates_title")}</s-text>
-              <s-grid
-                gridTemplateColumns="@container (inline-size > 760px) repeat(3, minmax(0, 1fr)), 1fr"
-                gap="small"
-              >
-                {templates.map((template) => (
-                  <s-box key={template.id} padding="small" border="base" borderRadius="base">
-                    <s-stack gap="small">
-                      <s-text type="strong">{t(template.nameKey)}</s-text>
-                      <s-text color="subdued" fontSize="small">
-                        {t(template.descriptionKey)}
-                      </s-text>
-                      <s-text color="subdued" fontSize="small">
-                        {t("surveys.template_question_count", { count: template.questionCount })}
-                      </s-text>
-                      <Form method="post">
-                        <input type="hidden" name="intent" value="create-from-template" />
-                        <input type="hidden" name="templateId" value={template.id} />
-                        <s-button type="submit">{t("surveys.use_this_template")}</s-button>
-                      </Form>
-                    </s-stack>
-                  </s-box>
-                ))}
-              </s-grid>
             </s-stack>
           </s-stack>
         </Panel>
       ) : (
         <s-stack gap="base">
           <s-stack direction="inline" gap="small">
-            <Form method="post">
-              <input type="hidden" name="intent" value="create-from-template" />
-              <input type="hidden" name="templateId" value="how-did-you-hear" />
-              <s-button variant="primary" type="submit">
-                {t("surveys.use_template")}
-              </s-button>
-            </Form>
+            <s-link href="/app/surveys/library">
+              <s-button variant="primary">{t("surveys.use_template")}</s-button>
+            </s-link>
             <Form method="post">
               <input type="hidden" name="intent" value="create-blank" />
               <s-button type="submit">{t("surveys.start_scratch")}</s-button>
