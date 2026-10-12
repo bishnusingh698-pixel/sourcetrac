@@ -31,6 +31,7 @@ import {
 } from "@shared/survey-rules";
 
 import { SurveyPreview } from "~/components/survey-preview";
+import { LogicMap } from "~/components/logic-map";
 
 /**
  * Survey editor.
@@ -150,6 +151,7 @@ export default function SurveyEditorRoute() {
 
   const [draft, setDraft] = useState<EditorSurvey>(survey);
   const [saved, setSaved] = useState(false);
+  const [view, setView] = useState<"questions" | "logic">("questions");
   const initial = useRef(JSON.stringify(survey));
   const actionData = useActionData<typeof action>();
 
@@ -191,6 +193,12 @@ export default function SurveyEditorRoute() {
 
   const update = (patch: Partial<EditorSurvey>) => setDraft((d) => ({ ...d, ...patch }));
 
+  // Show-if logic is available on every plan in the shipped code (the Free plan
+  // gates question COUNT, not conditional logic), so the Logic map is fully
+  // editable everywhere. Recorded as an adaptation from the upgrade plan, which
+  // scoped show-if to paid plans; the code is the source of truth here.
+  const logicAllowed = true;
+
   return (
     <s-stack gap="base">
       <s-stack direction="inline" gap="small" alignItems="center">
@@ -217,9 +225,44 @@ export default function SurveyEditorRoute() {
         <s-query-container>
           <s-grid gridTemplateColumns="@container (inline-size > 900px) minmax(0, 2fr) minmax(0, 1fr), 1fr" gap="base">
             <s-stack gap="base">
-              <Panel title={t("surveys.section_questions")}>
-                <QuestionList draft={draft} update={update} t={t} limits={limits} errors={errors} />
-              </Panel>
+              <s-stack direction="inline" gap="small" alignItems="center">
+                <s-button
+                  variant={view === "questions" ? "primary" : "secondary"}
+                  onClick={() => setView("questions")}
+                >
+                  {t("surveys.section_questions")}
+                </s-button>
+                <s-button
+                  variant={view === "logic" ? "primary" : "secondary"}
+                  onClick={() => setView("logic")}
+                >
+                  {t("logic.tab")}
+                </s-button>
+              </s-stack>
+
+              {view === "questions" ? (
+                <Panel title={t("surveys.section_questions")}>
+                  <QuestionList draft={draft} update={update} t={t} limits={limits} errors={errors} />
+                </Panel>
+              ) : (
+                <Panel title={t("logic.tab")} description={t("logic.section_help")}>
+                  <LogicMap
+                    draft={draft}
+                    update={update}
+                    t={t}
+                    maxQuestions={limits.MAX_QUESTIONS}
+                    canUseLogic={logicAllowed}
+                    onEditQuestion={(questionId) => {
+                      setView("questions");
+                      // Scroll to the question once the Questions view has
+                      // rendered. Deferred a frame so the DOM exists.
+                      requestAnimationFrame(() => {
+                        document.getElementById(`q-${questionId}`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+                      });
+                    }}
+                  />
+                </Panel>
+              )}
 
               <Panel title={t("surveys.section_text")}>
                 <s-stack gap="base">
@@ -496,7 +539,13 @@ function QuestionList({
       ) : null}
 
       {questions.map((question, index) => (
-        <s-box key={question.id || `new-${index}`} padding="small" border="base" borderRadius="base">
+        <s-box
+          key={question.id || `new-${index}`}
+          id={`q-${question.id || `new-${index}`}`}
+          padding="small"
+          border="base"
+          borderRadius="base"
+        >
           <s-stack gap="base">
             <s-stack direction="inline" gap="small" justifyContent="space-between" alignItems="center">
               <s-text type="strong">
