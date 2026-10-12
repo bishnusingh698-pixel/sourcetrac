@@ -153,10 +153,13 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low.
 ### F-011 — Advanced options not grouped under a collapsed "Advanced"
 - **Severity:** 🔵 Low
 - **Area:** UI (Phase H)
-- **Status:** Accepted (polish, deferred)
-- **Detail:** Sample %, dates, response limit and min/max selections render
-  inline in their sections rather than under an "Advanced" disclosure.
-- **Follow-up:** `FUTURE_TASKS.md`.
+- **Status:** Fixed
+- **Where:** `app/components/admin-ui.tsx` → `AdvancedDisclosure`;
+  `app/routes/app.surveys.$id.tsx` → `Targeting`
+- **Fix:** Sample %, countries, languages, start/end dates and the response
+  limit now sit under a collapsed `AdvancedDisclosure` (native
+  `<details>`/`<summary>`, no new dependency, keyboard accessible) inside the
+  "Who sees it" section. `surveys.section_advanced` added to all 10 locales.
 
 ### F-012 — Page descriptions use the product's own wording
 - **Severity:** 🔵 Low
