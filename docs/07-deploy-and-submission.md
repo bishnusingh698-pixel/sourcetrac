@@ -84,7 +84,8 @@ Billing is handled by Shopify — no separate account.
 - [ ] Survey renders on both Thank you and Order status in a real order.
 - [ ] Privacy policy URL is live and lists the fields collected: order ID, channel, timestamp.
 - [ ] GDPR webhooks registered: `customers/data_request`, `customers/redact`, `shop/redact`.
-- [ ] `read_orders` is the only scope, with a justification in the listing review notes.
+- [ ] Scopes are `read_orders,write_orders,write_customers,read_products`, with a justification for each write scope in the listing review notes (protected-customer-data Level 1; no names/emails/phones/addresses read or stored).
+- [ ] Existing merchants re-approve the new scopes; a store that has not, still works with sync skipped (test on a store with only `read_orders`).
 - [ ] App uninstalled and reinstalled cleanly (no stale tokens, no crash).
 - [ ] Screenshots captured on a real dev store.
 - [ ] No placeholder text, no TODOs, no console noise in the submitted build.

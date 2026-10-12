@@ -9,6 +9,17 @@
     "previewQuestion": "Hur hörde du talas om oss?",
     "previewGoogle": "Google-sökning",
     "previewFriend": "Vänner eller familj",
-    "previewNote": "Förhandsvisning. Köpare ser frågan och svaren som du ställer in i SourceTrac-appen."
+    "previewNote": "Förhandsvisning. Köpare ser frågan och svaren som du ställer in i SourceTrac-appen.",
+    "progress": "{{current}} av {{total}}",
+    "back": "Tillbaka",
+    "next": "Nästa",
+    "yes": "Ja",
+    "no": "Nej",
+    "satisfaction_very_dissatisfied": "Mycket missnöjd",
+    "satisfaction_dissatisfied": "Missnöjd",
+    "satisfaction_neutral": "Neutral",
+    "satisfaction_satisfied": "Nöjd",
+    "satisfaction_very_satisfied": "Mycket nöjd",
+    "previewTitle": "Snabb fråga"
   }
 }

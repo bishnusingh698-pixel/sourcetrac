@@ -415,17 +415,20 @@ describe("Settings form limits match the server limits", () => {
     readFileSync(fileURLToPath(new URL(`../../${relative}`, import.meta.url)), "utf8");
 
   it("binds every maxLength to a shared constant", () => {
-    const form = read("app/routes/app.settings.tsx");
+    // The survey editor is the form that now edits question and option text.
+    // It must bind each maxLength to a `LIMITS` member, never a literal, or the
+    // form accepts text the server then refuses.
+    const form = read("app/routes/app.surveys.$id.tsx");
 
-    for (const constant of ["MAX_QUESTION_LENGTH", "EMOJI_MAX_LENGTH", "MAX_OPTION_LABEL_LENGTH"]) {
-      expect(form).toContain(`maxLength={${constant}}`);
+    for (const constant of ["MAX_QUESTION_TEXT", "MAX_OPTION_LABEL", "MAX_SURVEY_TITLE"]) {
+      expect(form).toContain(`maxLength={limits.${constant}}`);
     }
 
     // A bare numeric literal is the drift itself.
     expect(form).not.toMatch(/maxLength=\{\d+\}/);
   });
 
-  it("exports the emoji limit so the form can bind to it", () => {
+  it("exports the emoji limit so the legacy form can bind to it", () => {
     expect(read("app/lib/settings.ts")).toMatch(/export const EMOJI_MAX_LENGTH = \d+;/);
   });
 });

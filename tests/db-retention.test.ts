@@ -34,6 +34,8 @@ async function reset() {
   await prisma.webhookEvent.deleteMany({ where: { webhookId: { startsWith: "ret-" } } });
   await prisma.surveyResponse.deleteMany({ where: { shopId: SHOP } });
   await prisma.orderCache.deleteMany({ where: { shopId: SHOP } });
+  await prisma.dataRequest.deleteMany({ where: { shopId: { in: ["ret-shop", "ret-other"] } } });
+  await prisma.pendingDeletion.deleteMany({ where: { shopId: { in: ["ret-shop", "ret-other"] } } });
   await prisma.shop.deleteMany({ where: { shopId: SHOP } });
   await prisma.shop.create({
     data: { id: "ret-shop", shopId: SHOP, shopDomain: "retention.myshopify.com", installState: "installed" },
@@ -230,5 +232,59 @@ describe("retention purge is safe to run repeatedly", () => {
   it("reports a timestamp on every run", async () => {
     const report = await runRetentionPurge();
     expect(Number.isNaN(Date.parse(report.ranAt))).toBe(false);
+  });
+});
+
+describe("retention purge covers the Phase 8 tables", () => {
+  /**
+   * DataRequest and PendingDeletion are new in the multi-question model. Both
+   * could otherwise accumulate forever: a data-request notice is a transient
+   * inbox row, and a deferred redact that was never drained is dead weight.
+   */
+  it("removes a data-request row past the 30-day window", async () => {
+    await prisma.dataRequest.create({
+      data: { shopId: "ret-shop", payload: "{}", createdAt: daysBefore(WEBHOOK_RETENTION_DAYS + 5) },
+    });
+
+    const report = await runRetentionPurge();
+
+    expect(report.dataRequestsDeleted).toBe(1);
+    expect(await prisma.dataRequest.count({ where: { shopId: "ret-shop" } })).toBe(0);
+  });
+
+  it("keeps a data-request row inside the window", async () => {
+    await prisma.dataRequest.create({
+      data: { shopId: "ret-shop", payload: "{}", createdAt: daysBefore(1) },
+    });
+
+    await runRetentionPurge();
+
+    expect(await prisma.dataRequest.count({ where: { shopId: "ret-shop" } })).toBe(1);
+  });
+
+  it("removes a deferred redact past the record window", async () => {
+    await prisma.pendingDeletion.create({
+      data: {
+        shopId: "ret-shop",
+        scope: "customer",
+        payload: JSON.stringify({ orderIds: ["1", "2"] }),
+        createdAt: daysBefore(RECORD_RETENTION_DAYS + 5),
+      },
+    });
+
+    const report = await runRetentionPurge();
+
+    expect(report.pendingDeletionsDeleted).toBe(1);
+    expect(await prisma.pendingDeletion.count({ where: { shopId: "ret-shop" } })).toBe(0);
+  });
+
+  it("keeps a deferred redact inside the record window", async () => {
+    await prisma.pendingDeletion.create({
+      data: { shopId: "ret-shop", scope: "customer", payload: "{}", createdAt: daysBefore(1) },
+    });
+
+    await runRetentionPurge();
+
+    expect(await prisma.pendingDeletion.count({ where: { shopId: "ret-shop" } })).toBe(1);
   });
 });

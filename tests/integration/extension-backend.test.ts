@@ -278,10 +278,10 @@ describe("checkout editor preview", () => {
       );
 
       expect(source).toMatch(/const inEditor = shopify\.extension\.editor !== undefined;/);
-      expect(source).toMatch(/useSurvey\(inEditor \? "" : /);
+      expect(source).toMatch(/useMultiSurvey\(inEditor \? "" : /);
 
-      const previewIndex = source.indexOf("<SurveyPreview");
-      const liveIndex = source.indexOf("<SurveyView");
+      const previewIndex = source.indexOf("<MultiSurveyPreview");
+      const liveIndex = source.indexOf("<MultiSurveyView");
       const nullIndex = source.indexOf("return null;");
       expect(previewIndex, "the editor must get the preview").toBeGreaterThan(-1);
       // The missing-order `return null` would otherwise blank the editor again.

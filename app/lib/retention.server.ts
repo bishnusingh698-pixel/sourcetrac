@@ -23,11 +23,19 @@ import { withRetry } from "~/lib/retry.server";
 
 export const WEBHOOK_RETENTION_DAYS = 30;
 export const RECORD_RETENTION_DAYS = 730; // 24 months
+/** Data-request records and deferred-redact rows are transient, not records. */
+export const DATA_REQUEST_RETENTION_DAYS = 30;
 
 export type RetentionReport = {
   webhookEventsDeleted: number;
   orderCacheDeleted: number;
   surveyResponsesDeleted: number;
+  responsesDeleted: number;
+  answersDeleted: number;
+  dailyStatsDeleted: number;
+  pendingSyncDeleted: number;
+  dataRequestsDeleted: number;
+  pendingDeletionsDeleted: number;
   ranAt: string;
 };
 
@@ -78,6 +86,47 @@ export async function runRetentionPurge(now: Date = new Date()): Promise<Retenti
     await retryDb(() => db.surveyResponse.deleteMany({ where: { submittedAt: { lt: recordCutoff } } }))
   ).count;
 
+  // The v2 model. `Answer` and `SurveyDailyStats` cascade from `Response` in
+  // the schema, but answers are still deleted explicitly first so the report is
+  // honest about what was removed. Ordering matters: answers reference
+  // responses, so responses go last.
+  const answersDeleted = (
+    await retryDb(() => db.answer.deleteMany({ where: { response: { createdAt: { lt: recordCutoff } } } }))
+  ).count;
+
+  const responsesDeleted = (
+    await retryDb(() => db.response.deleteMany({ where: { createdAt: { lt: recordCutoff } } }))
+  ).count;
+
+  // Deferred Shopify writes never applied. They hold no payload, only ids, but
+  // a row for a response that no longer exists can never succeed, so clear
+  // anything older than the record window.
+  const pendingSyncDeleted = (
+    await retryDb(() => db.pendingSync.deleteMany({ where: { createdAt: { lt: recordCutoff } } }))
+  ).count;
+
+  // Daily stats are keyed by a UTC day string, not a timestamp, so the cutoff
+  // is compared as the same "YYYY-MM-DD" form. These are aggregates with no
+  // order link, but the published policy says two years, so they age out too.
+  const statsCutoffDay = recordCutoff.toISOString().slice(0, 10);
+  const dailyStatsDeleted = (
+    await retryDb(() => db.surveyDailyStats.deleteMany({ where: { day: { lt: statsCutoffDay } } }))
+  ).count;
+
+  // Data-request records are a notification inbox, not buyer records, so they
+  // age out on the same 30-day clock as webhook payloads.
+  const dataRequestCutoff = daysAgo(DATA_REQUEST_RETENTION_DAYS, now);
+  const dataRequestsDeleted = (
+    await retryDb(() => db.dataRequest.deleteMany({ where: { createdAt: { lt: dataRequestCutoff } } }))
+  ).count;
+
+  // Deferred redacts are drained lazily when a shop visits the dashboard. A row
+  // still here after the *record* window means the shop never returned, so the
+  // obligation it encodes is moot and the row would otherwise live forever.
+  const pendingDeletionsDeleted = (
+    await retryDb(() => db.pendingDeletion.deleteMany({ where: { createdAt: { lt: recordCutoff } } }))
+  ).count;
+
   const orderCacheDeleted = await retryDb(
     () => db.$executeRaw`
       DELETE FROM "OrderCache" o
@@ -86,6 +135,10 @@ export async function runRetentionPurge(now: Date = new Date()): Promise<Retenti
           SELECT 1 FROM "SurveyResponse" r
           WHERE r."shopId" = o."shopId" AND r."orderId" = o."orderId"
         )
+        AND NOT EXISTS (
+          SELECT 1 FROM "Response" r2
+          WHERE r2."shopId" = o."shopId" AND r2."orderId" = o."orderId"
+        )
     `,
   );
 
@@ -93,6 +146,12 @@ export async function runRetentionPurge(now: Date = new Date()): Promise<Retenti
     webhookEventsDeleted,
     orderCacheDeleted,
     surveyResponsesDeleted,
+    responsesDeleted,
+    answersDeleted,
+    dailyStatsDeleted,
+    pendingSyncDeleted,
+    dataRequestsDeleted,
+    pendingDeletionsDeleted,
     ranAt: now.toISOString(),
   };
 
@@ -100,6 +159,7 @@ export async function runRetentionPurge(now: Date = new Date()): Promise<Retenti
     ...report,
     webhook_cutoff: webhookCutoff.toISOString(),
     record_cutoff: recordCutoff.toISOString(),
+    data_request_cutoff: dataRequestCutoff.toISOString(),
   });
 
   return report;

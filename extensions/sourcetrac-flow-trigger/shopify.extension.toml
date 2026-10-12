@@ -1,0 +1,22 @@
+api_version = "2026-07"
+
+[[extensions]]
+name = "SourceTrac survey answered"
+handle = "sourcetrac-survey-answered"
+description = "Starts a workflow when a buyer answers the SourceTrac survey."
+uid = "2ef5b1ce-e927-4562-baa5-6d5e2e66ea2f"
+type = "flow_trigger"
+
+# The payload sent by flowTriggerReceive must use exactly these keys.
+[settings]
+
+  [[settings.fields]]
+  type = "order_reference"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Channel"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Channel label"

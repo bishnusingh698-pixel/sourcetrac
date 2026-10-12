@@ -10,7 +10,7 @@ import { describe, expect, it, beforeAll, beforeEach, afterAll } from "vitest";
 
 import { PrismaClient } from "@prisma/client";
 
-import { handleCustomerRedact, handleShopRedact } from "~/lib/compliance.server";
+import { handleCustomerRedact, handleDataRequest, handleShopRedact, processPendingDeletions, REDACT_BATCH_SIZE } from "~/lib/compliance.server";
 
 const prisma = new PrismaClient();
 
@@ -28,6 +28,9 @@ async function seedShop(shopId: string, shopDomain: string) {
 }
 
 async function reset() {
+  await prisma.pendingDeletion.deleteMany({ where: { shopId: { in: [SHOP_A, SHOP_B] } } });
+  await prisma.dataRequest.deleteMany({ where: { shopId: { in: [SHOP_A, SHOP_B] } } });
+  await prisma.pendingSync.deleteMany({ where: { shopId: { in: [SHOP_A, SHOP_B] } } });
   await prisma.surveyResponse.deleteMany({ where: { shopId: { in: [SHOP_A, SHOP_B] } } });
   await prisma.orderCache.deleteMany({ where: { shopId: { in: [SHOP_A, SHOP_B] } } });
   await prisma.shop.deleteMany({ where: { shopId: { in: [SHOP_A, SHOP_B] } } });
@@ -150,6 +153,63 @@ describe("customers/redact deletes the orders Shopify names", () => {
 
     expect(result.deletedResponses).toBe(1);
   });
+
+  it("removes the v2 Response, its Answers and any PendingSync rows", async () => {
+    const shop = await seedShop(SHOP_A, DOMAIN_A);
+    const survey = await prisma.survey.create({
+      data: { shopId: shop.id, name: "S", status: "active", placements: "[]", layout: "all" },
+    });
+    const question = await prisma.question.create({
+      data: { surveyId: survey.id, type: "single_choice", text: "Q", position: 0 },
+    });
+    const response = await prisma.response.create({
+      data: {
+        shopId: shop.id, surveyId: survey.id, surveyVersion: 1, orderId: "7601", placement: "thank_you",
+        answers: { create: [{ shopId: shop.id, questionId: question.id, optionIds: "[]" }] },
+      },
+    });
+    await prisma.pendingSync.create({
+      data: { shopId: shop.id, responseId: response.id, kind: "tags" },
+    });
+
+    const result = await handleCustomerRedact({ shopDomain: DOMAIN_A, orderIds: ["7601"] });
+
+    expect(result.deletedV2Responses).toBe(1);
+    expect(await prisma.response.count({ where: { shopId: shop.id } })).toBe(0);
+    // Answers cascade with their Response; PendingSync is removed explicitly
+    // because it holds only a plain responseId, not a foreign key.
+    expect(await prisma.answer.count({ where: { shopId: shop.id } })).toBe(0);
+    expect(await prisma.pendingSync.count({ where: { shopId: shop.id } })).toBe(0);
+  });
+
+  it("defers beyond the batch size and drains the rest lazily", async () => {
+    const shop = await seedShop(SHOP_A, DOMAIN_A);
+    const survey = await prisma.survey.create({
+      data: { shopId: shop.id, name: "S", status: "active", placements: "[]", layout: "all" },
+    });
+    // REDACT_BATCH_SIZE is 200; 205 orders forces one deferred row.
+    const ids = Array.from({ length: 205 }, (_, i) => String(7700 + i));
+    await prisma.response.createMany({
+      data: ids.map((orderId) => ({
+        shopId: shop.id, surveyId: survey.id, surveyVersion: 1, orderId, placement: "thank_you" as const,
+      })),
+    });
+
+    const first = await handleCustomerRedact({ shopDomain: DOMAIN_A, orderIds: ids });
+
+    expect(first.deferred).toBe(true);
+    expect(first.deletedV2Responses).toBe(REDACT_BATCH_SIZE);
+    expect(await prisma.pendingDeletion.count({ where: { shopId: shop.id } })).toBe(1);
+    // The remaining 5 are still present until drained.
+    expect(await prisma.response.count({ where: { shopId: shop.id } })).toBe(5);
+
+    const drained = await processPendingDeletions(shop.id);
+
+    expect(drained.processed).toBe(5);
+    expect(drained.remaining).toBe(0);
+    expect(await prisma.response.count({ where: { shopId: shop.id } })).toBe(0);
+    expect(await prisma.pendingDeletion.count({ where: { shopId: shop.id } })).toBe(0);
+  });
 });
 
 describe("shop/redact removes the whole shop", () => {
@@ -175,5 +235,35 @@ describe("shop/redact removes the whole shop", () => {
     const result = await handleShopRedact({ shopDomain: "nobody.myshopify.com" });
     expect(result.shopFound).toBe(false);
     expect(result.deleted).toBe(false);
+  });
+});
+
+describe("customers/data_request records a notice for the merchant", () => {
+  it("persists a DataRequest row and counts both response models", async () => {
+    const shop = await seedShop(SHOP_A, DOMAIN_A);
+    await prisma.surveyResponse.create({ data: { shopId: shop.id, orderId: "8101", channel: "google" } });
+    const survey = await prisma.survey.create({
+      data: { shopId: shop.id, name: "S", status: "active", placements: "[]", layout: "all" },
+    });
+    await prisma.response.create({
+      data: { shopId: shop.id, surveyId: survey.id, surveyVersion: 1, orderId: "8102", placement: "thank_you" },
+    });
+
+    const result = await handleDataRequest({ shopDomain: DOMAIN_A, customerEmail: "buyer@example.com" });
+
+    expect(result.shopFound).toBe(true);
+    // The note counts both the legacy and the v2 rows.
+    expect(result.note).toContain("2 survey response(s)");
+
+    const rows = await prisma.dataRequest.findMany({ where: { shopId: shop.id } });
+    expect(rows).toHaveLength(1);
+    // We store the export summary, never the buyer's email.
+    expect(rows[0]?.payload).not.toContain("buyer@example.com");
+    expect(rows[0]?.customerId).toBeNull();
+  });
+
+  it("records nothing for a shop we do not know", async () => {
+    const result = await handleDataRequest({ shopDomain: "never-installed.myshopify.com" });
+    expect(result.shopFound).toBe(false);
   });
 });

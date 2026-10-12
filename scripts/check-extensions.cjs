@@ -10,6 +10,16 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const EXPECTED = {
   "sourcetrac-thank-you": "purchase.thank-you.block.render",
   "sourcetrac-order-status": "customer-account.order-status.block.render",
+  "sourcetrac-order-admin": "admin.order-details.block.render",
+  "sourcetrac-customer-admin": "admin.customer-details.block.render",
+};
+
+/**
+ * Flow triggers are not UI extensions: no target, no bundled module. They are
+ * checked against their own rules below.
+ */
+const FLOW_TRIGGERS = {
+  "sourcetrac-flow-trigger": "sourcetrac-survey-answered",
 };
 
 let failed = false;
@@ -64,6 +74,34 @@ for (const [name, expectedTarget] of Object.entries(EXPECTED)) {
     for (const problem of problems) console.error(`  - ${problem}`);
   } else {
     console.log(`ok   ${name} -> ${target}`);
+  }
+}
+
+for (const [name, expectedHandle] of Object.entries(FLOW_TRIGGERS)) {
+  const file = `extensions/${name}/shopify.extension.toml`;
+  const contents = fs.readFileSync(file, "utf8");
+  const problems = [];
+
+  const uid = contents.match(/^uid = "(.+)"$/m)?.[1];
+  const handle = contents.match(/^handle = "(.+)"$/m)?.[1];
+  const type = contents.match(/^type = "(.+)"$/m)?.[1];
+  const apiVersion = contents.match(/^api_version = "(.+)"$/m)?.[1];
+
+  if (!uid || !UUID.test(uid)) problems.push(`uid is not a uuid: ${uid}`);
+  if (type !== "flow_trigger") problems.push(`type is ${type}, expected flow_trigger`);
+  // The handle is what flowTriggerReceive targets, so it must match the constant
+  // in app/lib/sync.server.ts (FLOW_TRIGGER_HANDLE).
+  if (handle !== expectedHandle) problems.push(`handle is ${handle}, expected ${expectedHandle}`);
+  if (apiVersion !== "2026-07") problems.push(`api_version is ${apiVersion}, expected 2026-07`);
+  // A trigger with no fields sends no data and Flow cannot render the payload.
+  if (!contents.includes("[[settings.fields]]")) problems.push("no settings.fields declared");
+
+  if (problems.length) {
+    failed = true;
+    console.error(`FAIL ${name}`);
+    for (const problem of problems) console.error(`  - ${problem}`);
+  } else {
+    console.log(`ok   ${name} -> flow_trigger ${handle}`);
   }
 }
 

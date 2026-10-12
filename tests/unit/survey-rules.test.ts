@@ -123,6 +123,52 @@ describe("validateSurveyDefinition — option counts", () => {
   });
 });
 
+describe("validateSurveyDefinition — show-if on fixed-option questions", () => {
+  // Regression: show-if on a Yes / No or satisfaction question referenced the
+  // fixed option ids, but the validator only checked the merchant's own options,
+  // so every such condition was rejected as `show_if_option_unknown` and the
+  // two shipped templates could not be saved.
+  it("accepts show-if referencing a Yes / No answer", () => {
+    const errors = validateSurveyDefinition(
+      survey([
+        { id: "q1", type: "yes_no", text: "Did you compare?", required: true },
+        {
+          id: "q2",
+          type: "text",
+          text: "Which store?",
+          showIf: { questionId: "q1", optionIds: ["yes"] },
+        },
+      ]),
+    );
+    expect(errors).toEqual([]);
+  });
+
+  it("accepts show-if referencing a satisfaction answer", () => {
+    const errors = validateSurveyDefinition(
+      survey([
+        { id: "q1", type: "satisfaction_5", text: "How happy?", required: true },
+        {
+          id: "q2",
+          type: "text",
+          text: "What went wrong?",
+          showIf: { questionId: "q1", optionIds: ["dissatisfied", "very_dissatisfied"] },
+        },
+      ]),
+    );
+    expect(errors).toEqual([]);
+  });
+
+  it("still rejects an unknown fixed option id", () => {
+    const errors = validateSurveyDefinition(
+      survey([
+        { id: "q1", type: "yes_no", text: "Yes or no?", required: true },
+        { id: "q2", type: "text", text: "Why?", showIf: { questionId: "q1", optionIds: ["maybe"] } },
+      ]),
+    );
+    expect(errors.some((e) => e.code === "show_if_option_unknown")).toBe(true);
+  });
+});
+
 describe("resolveOptions", () => {
   it("appends a synthetic Other when free text is on", () => {
     const options = resolveOptions({ ...choiceQuestion(), allowOther: true });

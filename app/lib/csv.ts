@@ -182,3 +182,75 @@ export function csvFilename(now = new Date(), timeZone = "UTC"): string {
   const stamp = formatTimestamp(now, timeZone).slice(0, 10);
   return `sourcetrac-responses-${stamp}.csv`;
 }
+
+/**
+ * A row for the multi-question export. Each answer is already flattened to the
+ * text a merchant reads (option labels joined, plus any free text or number), so
+ * the file needs no interpretation.
+ */
+export type SurveyCsvRow = {
+  orderName: string | null;
+  orderId: string | null;
+  submittedAt: string;
+  timeZone: string;
+  placement: string;
+  orderTotal: string | null;
+  currency: string | null;
+  revenueStatus: RevenueStatus;
+  orderLink: string;
+  /** Answer text per question id. Missing questions render blank. */
+  answers: Record<string, string>;
+};
+
+/**
+ * Wide export: fixed columns followed by one column per question, in the order
+ * the questions appear in the survey. A question's column header is its short
+ * id-less text, which the caller supplies so no column name collides.
+ */
+export function toSurveyCsv(
+  rows: ReadonlyArray<SurveyCsvRow>,
+  questionColumns: ReadonlyArray<{ id: string; header: string }>,
+): string {
+  const headers = [
+    "order",
+    "submitted_at",
+    "timezone",
+    "where",
+    "order_total",
+    "currency",
+    "revenue_status",
+    "order_link",
+    ...questionColumns.map((q) => q.header),
+  ];
+  const lines: string[] = [headers.map(escapeCsvValue).join(",")];
+
+  for (const row of rows) {
+    lines.push(
+      [
+        row.orderName,
+        row.submittedAt,
+        row.timeZone,
+        row.placement,
+        row.orderTotal,
+        row.currency,
+        row.revenueStatus,
+        row.orderLink,
+        ...questionColumns.map((q) => row.answers[q.id] ?? ""),
+      ]
+        .map(escapeCsvValue)
+        .join(","),
+    );
+  }
+
+  return `${UTF8_BOM}${lines.join("\r\n")}\r\n`;
+}
+
+/** A filesystem-safe header from a question's text. */
+export function questionColumnHeader(text: string, index: number, taken: Set<string>): string {
+  const base = text.trim().replace(/[\r\n]+/g, " ").slice(0, 60) || `question_${index + 1}`;
+  let candidate = base;
+  let n = 2;
+  while (taken.has(candidate)) candidate = `${base} (${n++})`;
+  taken.add(candidate);
+  return candidate;
+}

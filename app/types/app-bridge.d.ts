@@ -19,6 +19,16 @@ declare module "react" {
  */
 declare global {
   interface Window {
-    shopify?: { toast?: { show(message: string, options?: { isError?: boolean }): void } };
+    shopify?: {
+      toast?: { show(message: string, options?: { isError?: boolean }): void };
+      /**
+       * App Bridge contextual save bar. The editor shows it while there are
+       * unsaved changes; `data-save-bar` must never be used on the same page.
+       */
+      saveBar?: {
+        show(id: string): void;
+        hide(id: string): void;
+      };
+    };
   }
 }

@@ -10,5 +10,10 @@
     "noEmit": true,
     "lib": ["es2022", "dom"]
   },
-  "include": ["extensions/**/src/**/*"]
+  "include": ["extensions/**/src/**/*"],
+  "exclude": [
+    "extensions/sourcetrac-order-admin/src/**/*",
+    "extensions/sourcetrac-customer-admin/src/**/*",
+    "extensions/shared/src/admin-response-block.tsx"
+  ]
 }

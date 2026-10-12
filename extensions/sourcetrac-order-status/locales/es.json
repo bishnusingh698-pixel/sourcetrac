@@ -9,6 +9,17 @@
     "previewQuestion": "¿Cómo nos conociste?",
     "previewGoogle": "Búsqueda en Google",
     "previewFriend": "Amigos o familia",
-    "previewNote": "Vista previa. Los compradores ven la pregunta y las respuestas que configures en la app SourceTrac."
+    "previewNote": "Vista previa. Los compradores ven la pregunta y las respuestas que configures en la app SourceTrac.",
+    "progress": "{{current}} de {{total}}",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "yes": "Sí",
+    "no": "No",
+    "satisfaction_very_dissatisfied": "Muy insatisfecho",
+    "satisfaction_dissatisfied": "Insatisfecho",
+    "satisfaction_neutral": "Neutral",
+    "satisfaction_satisfied": "Satisfecho",
+    "satisfaction_very_satisfied": "Muy satisfecho",
+    "previewTitle": "Pregunta rápida"
   }
 }

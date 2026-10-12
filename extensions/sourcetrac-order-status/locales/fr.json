@@ -9,6 +9,17 @@
     "previewQuestion": "Comment avez-vous entendu parler de nous ?",
     "previewGoogle": "Recherche Google",
     "previewFriend": "Ami ou famille",
-    "previewNote": "Aperçu. Les acheteurs voient la question et les réponses que vous définissez dans l’app SourceTrac."
+    "previewNote": "Aperçu. Les acheteurs voient la question et les réponses que vous définissez dans l’app SourceTrac.",
+    "progress": "{{current}} sur {{total}}",
+    "back": "Retour",
+    "next": "Suivant",
+    "yes": "Oui",
+    "no": "Non",
+    "satisfaction_very_dissatisfied": "Très insatisfait",
+    "satisfaction_dissatisfied": "Insatisfait",
+    "satisfaction_neutral": "Neutre",
+    "satisfaction_satisfied": "Satisfait",
+    "satisfaction_very_satisfied": "Très satisfait",
+    "previewTitle": "Question rapide"
   }
 }

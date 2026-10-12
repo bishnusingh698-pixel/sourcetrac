@@ -98,6 +98,39 @@ export function satisfactionValue(id: string): number | undefined {
   return SATISFACTION_OPTIONS.find((o) => o.id === id)?.value;
 }
 
+/**
+ * The fixed answer options for a question type that has them (Yes / No and the
+ * five satisfaction levels). Merchant-authored types return `[]`.
+ *
+ * `resolveOptions` covers only the merchant's own options, so a show-if rule on
+ * a Yes / No or satisfaction question — whose ids are the stable `yes`/`no` and
+ * `very_dissatisfied`…`very_satisfied` values — needs this to be recognised.
+ */
+export function fixedOptions(question: SurveyQuestionDef): SurveyOptionDef[] {
+  if (question.type === "yes_no") {
+    return [
+      { id: YES_NO_IDS.yes, label: "Yes" },
+      { id: YES_NO_IDS.no, label: "No" },
+    ];
+  }
+  if (question.type === "satisfaction_5") {
+    return SATISFACTION_OPTIONS.map((option) => ({ id: option.id, label: option.id }));
+  }
+  return [];
+}
+
+/**
+ * Every option id a show-if condition may reference for `question`: the
+ * merchant's options (archived included) for merchant types, the fixed options
+ * otherwise. This is the set `validateSurveyDefinition` checks against.
+ */
+export function showIfOptionIds(question: SurveyQuestionDef): Set<string> {
+  if (questionHasMerchantOptions(question.type)) {
+    return new Set(resolveOptions(question, { includeArchived: true }).map((o) => o.id));
+  }
+  return new Set(fixedOptions(question).map((o) => o.id));
+}
+
 // ---------------------------------------------------------------------------
 // Shapes
 // ---------------------------------------------------------------------------
@@ -494,7 +527,7 @@ export function validateSurveyDefinition(survey: SurveyDefinition): ValidationIs
           issue(`${base}.showIf`, "show_if_unknown", "Show-if must refer to a question that comes before this one."),
         );
       } else if (cond.optionIds && cond.optionIds.length > 0) {
-        const allowed = new Set(resolveOptions(earlier, { includeArchived: true }).map((o) => o.id));
+        const allowed = showIfOptionIds(earlier);
         for (const id of cond.optionIds) {
           if (!allowed.has(id)) {
             errors.push(issue(`${base}.showIf`, "show_if_option_unknown", "A show-if answer option no longer exists."));
