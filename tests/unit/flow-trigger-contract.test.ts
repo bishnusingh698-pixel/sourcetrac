@@ -35,7 +35,9 @@ describe("Flow trigger payload matches its declared fields", () => {
   it("declares the fields the backend sends", () => {
     const { reference, custom } = tomlFieldKeys("sourcetrac-flow-trigger");
     const syncSource = readFileSync(join(ROOT, "app/lib/sync.server.ts"), "utf8");
-    const payload = syncSource.match(/payload:\s*\{([\s\S]*?)\n\s*\},/)?.[1] ?? "";
+    // The payload object is assigned to `flowPayload`, then passed to the
+    // GraphQL call, so the TOML keys must appear in that object literal.
+    const payload = syncSource.match(/const flowPayload = \{([\s\S]*?)\n\s*\};/)?.[1] ?? "";
 
     // A reference field is sent under a fixed payload key, not its `type`.
     expect(reference).toContain("order_reference");

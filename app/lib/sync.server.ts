@@ -281,6 +281,42 @@ async function fetchOrderCustomerId(ctx: SyncContext): Promise<string | null> {
 // Executing one kind
 // ---------------------------------------------------------------------------
 
+/**
+ * Sanitise an order/customer tag before sending it to Shopify.
+ *
+ * A tag is built from the merchant's prefix plus the channel label, and the
+ * channel label can be the buyer's free-text "Other" answer. A comma splits one
+ * tag into several, so a shopper typing "a,b,c" would create arbitrary tags on
+ * the order; control characters and length are clamped for the same reason.
+ * Lower-cased and reduced to a safe character set, max 40 characters.
+ */
+export function sanitizeTag(raw: string): string {
+  const cleaned = raw
+    .toLowerCase()
+    // Drop control characters and anything that could break a tag (comma,
+    // quotes, backslash). Space, letters, digits, dash, underscore, dot, colon
+    // (the `prefix:channel` separator) and non-Latin letters survive.
+    .replace(/[\u0000-\u001f\u007f,"'\\]/g, "")
+    .replace(/[^\p{L}\p{N}\-_.: ]/gu, "")
+    .trim()
+    .slice(0, 40);
+  return cleaned;
+}
+
+/** Hard ceiling for a Flow payload, below Shopify's 50,000-byte limit. */
+export const MAX_FLOW_PAYLOAD_BYTES = 45_000;
+
+/** Truncate a string so the JSON payload stays under `maxBytes`. */
+export function truncateForPayload(value: string, maxBytes: number): string {
+  if (Buffer.byteLength(value, "utf8") <= maxBytes) return value;
+  const ellipsis = "…";
+  const ellipsisBytes = Buffer.byteLength(ellipsis, "utf8");
+  const budget = Math.max(0, maxBytes - ellipsisBytes);
+  let end = value.length;
+  while (end > 0 && Buffer.byteLength(value.slice(0, end), "utf8") > budget) end -= 1;
+  return `${value.slice(0, end)}${ellipsis}`;
+}
+
 /** Runs one PendingSync kind against Shopify. Throws so the caller can retry. */
 export async function runSyncKind(
   kind: "tags" | "customer" | "metafield" | "flow",
@@ -296,7 +332,10 @@ export async function runSyncKind(
 
   if (kind === "tags") {
     if (!canSync(grantedScopes, "write_orders", ctx.shopId)) return;
-    const tags = (options.orderTags ?? []).map((tag) => tag.replace("{channel}", ctx.channelLabel || ctx.channel));
+    const tags = (options.orderTags ?? [])
+      .map((tag) => sanitizeTag(tag.replace("{channel}", ctx.channelLabel || ctx.channel)))
+      .filter((tag) => tag.length > 0);
+    if (tags.length === 0) return;
     const result = await shopifyGraphql<{ tagsAdd: { userErrors: UserErrors } }>(
       ctx.shopDomain,
       ctx.accessToken,
@@ -311,9 +350,10 @@ export async function runSyncKind(
     if (!canSync(grantedScopes, "write_customers", ctx.shopId)) return;
     const customerId = await fetchOrderCustomerId(ctx);
     if (!customerId) return;
-    const tags = (options.customerTags ?? []).map((tag) =>
-      tag.replace("{channel}", ctx.channelLabel || ctx.channel),
-    );
+    const tags = (options.customerTags ?? [])
+      .map((tag) => sanitizeTag(tag.replace("{channel}", ctx.channelLabel || ctx.channel)))
+      .filter((tag) => tag.length > 0);
+    if (tags.length === 0) return;
     const result = await shopifyGraphql<{ tagsAdd: { userErrors: UserErrors } }>(
       ctx.shopDomain,
       ctx.accessToken,
@@ -330,7 +370,10 @@ export async function runSyncKind(
       ownerId: orderGid(ctx.orderId!),
       namespace: m.namespace,
       key: m.key,
-      value: ctx.channelLabel || ctx.channel,
+      // A single_line_text_field has a Shopify-imposed length cap, and the
+      // channel label can be a buyer's free-text answer. Truncate rather than
+      // let the write be rejected.
+      value: truncateForPayload(ctx.channelLabel || ctx.channel, 500),
       type: m.type ?? "single_line_text_field",
     }));
     if (metafields.length === 0) return;
@@ -345,6 +388,17 @@ export async function runSyncKind(
   }
 
   // Flow triggers are the app's own extension; no extra scope is required.
+  // The payload must stay under Shopify's 50,000-byte limit or Flow rejects it
+  // silently, so the free-text channel label (a possible "Other" answer) is
+  // truncated to leave headroom.
+  const flowPayload = {
+    order_id: Number(ctx.orderId),
+    Channel: ctx.channel,
+    "Channel label": truncateForPayload(ctx.channelLabel, 10_000),
+  };
+  if (Buffer.byteLength(JSON.stringify(flowPayload), "utf8") > MAX_FLOW_PAYLOAD_BYTES) {
+    throw new Error("Flow payload exceeds the size limit.");
+  }
   const result = await shopifyGraphql<{ flowTriggerReceive: { userErrors: UserErrors } }>(
     ctx.shopDomain,
     ctx.accessToken,
@@ -355,11 +409,7 @@ export async function runSyncKind(
       // extensions/sourcetrac-flow-trigger/shopify.extension.toml verbatim:
       // the order_reference field is `order_id`, the custom fields keep their
       // spaced keys. A mismatch makes Flow reject the payload silently.
-      payload: {
-        order_id: Number(ctx.orderId),
-        Channel: ctx.channel,
-        "Channel label": ctx.channelLabel,
-      },
+      payload: flowPayload,
     },
   );
   assertNoUserErrors(result.data.flowTriggerReceive.userErrors, "flowTriggerReceive");
