@@ -30,44 +30,99 @@ enum InstallState {
   uninstalled
 }
 
+/// Survey status. Draft and Paused are invisible to shoppers; only Active shows.
+enum SurveyStatus {
+  draft
+  active
+  paused
+}
+
+/// Buyer-facing layout for a survey.
+enum SurveyLayout {
+  all
+  one_by_one
+}
+
+/// Question type. Mirrors QUESTION_TYPES in shared/survey-rules.ts.
+enum QuestionType {
+  single_choice
+  multi_choice
+  dropdown
+  yes_no
+  rating_5
+  satisfaction_5
+  nps
+  text
+}
+
+/// What a pending Shopify write is for. See PendingSync.
+enum PendingSyncKind {
+  metafield
+  tags
+  customer
+  flow
+}
+
+/// What a deferred deletion covers. See PendingDeletion.
+enum PendingDeletionScope {
+  shop
+  customer
+}
+
+/// Where a response was collected.
+enum SurveyPlacement {
+  thank_you
+  order_status
+  onsite
+  link
+}
+
 /// One row per merchant store. Access tokens are AES-256-GCM encrypted at rest.
 model Shop {
-  id                     String   @id @default(cuid())
-  shopDomain             String   @unique
-  shopId                 String   @unique
-  accessTokenEncrypted   String?
-  accessTokenIv          String?
-  accessTokenTag         String?
-  installState           InstallState @default(installed)
-  uninstalledAt          DateTime?
-  plan                   Plan     @default(free)
-  planStatus             PlanStatus @default(active)
-  subscriptionGid        String?
-  planDisplayName        String?
-  checkoutSupported      Boolean?
-  checkoutCheckedAt      DateTime?
-  questionText           String   @default("How did you hear about us?")
+  id                   String       @id @default(cuid())
+  shopDomain           String       @unique
+  shopId               String       @unique
+  accessTokenEncrypted String?
+  accessTokenIv        String?
+  accessTokenTag       String?
+  installState         InstallState @default(installed)
+  uninstalledAt        DateTime?
+  plan                 Plan         @default(free)
+  planStatus           PlanStatus   @default(active)
+  subscriptionGid      String?
+  planDisplayName      String?
+  checkoutSupported    Boolean?
+  checkoutCheckedAt    DateTime?
+  questionText         String       @default("How did you hear about us?")
   /// Defaulted so a shop row is always valid: a freshly installed store must be
   /// able to render a working survey before the merchant visits Settings.
-  optionsJson            String   @default("[]")
-  allowOther             Boolean  @default(false)
+  optionsJson          String       @default("[]")
+  allowOther           Boolean      @default(false)
   /// Merchant's chosen admin UI language, e.g. "de" or "pt-BR". Null means they
   /// have never chosen one, so we fall back to detecting Shopify's admin locale.
   /// Deliberately a free String rather than an enum: adding a language must not
   /// require a migration, and `resolveLanguage` already rejects anything we do
   /// not ship, so a stale value degrades to English instead of erroring.
-  language               String?
+  language             String?
   /// The Shopify admin's own locale (`?locale=` on the first document load),
   /// remembered because later in-app navigations do not carry it. Only a
   /// fallback below `language`; never set by the merchant directly.
-  adminLocale            String?
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  adminLocale          String?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
 
   responses   SurveyResponse[]
   orders      OrderCache[]
   usage       BillingUsage[]
   webhookLogs WebhookEvent[]
+
+  surveys          Survey[]
+  surveyResponses  Response[]
+  answers          Answer[]
+  dailyStats       SurveyDailyStats[]
+  pendingSyncs     PendingSync[]
+  pendingDeletions PendingDeletion[]
+  dataRequests     DataRequest[]
 
   @@index([installState])
 }
@@ -75,25 +130,30 @@ model Shop {
 /// One row per buyer answer. `orderTotal` is denormalised from OrderCache so the
 /// dashboard reads a single indexed table instead of joining. Null means the
 /// orders/create webhook has not landed yet — render as "Pending", never $0.00.
+///
+/// DEPRECATED (Phase 2). Superseded by the multi-question `Response` + `Answer`
+/// models below. Kept, and still written for the single-question survey, so the
+/// already-deployed checkout extension keeps working and no data is lost. A
+/// cleanup migration to drop this model is tracked in FUTURE_TASKS.md.
 model SurveyResponse {
-  id          String   @id @default(cuid())
-  shopId      String
-  orderId     String
-  channel     String
-  otherText   String?
-  currency    String?
+  id             String   @id @default(cuid())
+  shopId         String
+  orderId        String
+  channel        String
+  otherText      String?
+  currency       String?
   /// Stored in MAJOR units, not minor. Three fractional places because KWD, BHD,
   /// OMR and friends are three-decimal currencies; Decimal(12,2) would round a
   /// 1.234 KWD order to 1.23 on insert and silently lose the difference.
-  orderTotal  Decimal? @db.Decimal(18, 3)
-  locale      String?
-  submittedAt DateTime @default(now())
-  isLocked    Boolean  @default(false)
-  reconciled  Boolean  @default(false)
+  orderTotal     Decimal? @db.Decimal(18, 3)
+  locale         String?
+  submittedAt    DateTime @default(now())
+  isLocked       Boolean  @default(false)
+  reconciled     Boolean  @default(false)
   /// Set when the order webhook never arrived within 24h. Excluded from
   /// revenue, never deleted.
-  unreconcilable Boolean @default(false)
-  createdAt   DateTime @default(now())
+  unreconcilable Boolean  @default(false)
+  createdAt      DateTime @default(now())
 
   shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
@@ -107,7 +167,7 @@ model SurveyResponse {
 
 /// Cached order facts from webhooks. Never holds customer PII.
 model OrderCache {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   shopId          String
   orderId         String
   orderNumber     String?
@@ -117,15 +177,15 @@ model OrderCache {
   /// Shopify's current_total_price: ALREADY net of refunds, returns and edits.
   /// This is the only revenue figure; nothing may subtract a refund from it.
   /// Null when the webhook total could not be parsed (never a fake 0.00).
-  totalPrice      Decimal? @db.Decimal(18, 3)
+  totalPrice      Decimal?  @db.Decimal(18, 3)
   financialStatus String?
-  isTest          Boolean  @default(false)
-  isCancelled     Boolean  @default(false)
+  isTest          Boolean   @default(false)
+  isCancelled     Boolean   @default(false)
   cancelledAt     DateTime?
   createdAtShop   DateTime
   updatedAtShop   DateTime
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
@@ -143,16 +203,16 @@ model OrderCache {
 /// for, and no code path reads the column back. Keeping it nullable means the
 /// historic rows still age out through the 30-day retention purge.
 model WebhookEvent {
-  id           String    @id @default(cuid())
-  shopId       String?
-  webhookId    String    @unique
-  topic        String
-  apiVersion   String?
-  triggerRef   String?
-  payloadJson  String?
-  processedAt  DateTime?
-  error        String?
-  createdAt    DateTime  @default(now())
+  id          String    @id @default(cuid())
+  shopId      String?
+  webhookId   String    @unique
+  topic       String
+  apiVersion  String?
+  triggerRef  String?
+  payloadJson String?
+  processedAt DateTime?
+  error       String?
+  createdAt   DateTime  @default(now())
 
   shop Shop? @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
@@ -181,25 +241,245 @@ model BillingUsage {
 /// Session storage for the embedded admin. Managed by
 /// @shopify/shopify-app-session-storage-prisma; do not hand-edit.
 model Session {
-  id            String    @id
-  shop          String
-  state         String
-  isOnline      Boolean   @default(false)
-  scope         String?
-  expires       DateTime?
-  accessToken   String?
-  userId        BigInt?
-  firstName     String?
-  lastName      String?
-  email         String?
-  accountOwner  Boolean   @default(false)
-  locale        String?
-  collaborator  Boolean?  @default(false)
-  emailVerified Boolean?  @default(false)
+  id                  String    @id
+  shop                String
+  state               String
+  isOnline            Boolean   @default(false)
+  scope               String?
+  expires             DateTime?
+  accessToken         String?
+  userId              BigInt?
+  firstName           String?
+  lastName            String?
+  email               String?
+  accountOwner        Boolean   @default(false)
+  locale              String?
+  collaborator        Boolean?  @default(false)
+  emailVerified       Boolean?  @default(false)
   // Written on every store by @shopify/shopify-app-session-storage-prisma v11
   // (expiring offline tokens). Without them every login fails validation.
   refreshToken        String?
   refreshTokenExpires DateTime?
 
   @@index([shop])
+}
+
+// ---------------------------------------------------------------------------
+// Multi-question survey model (Phase 2).
+//
+// Added alongside the deprecated single-question columns on Shop and the
+// SurveyResponse model, which are retained so nothing that works today breaks.
+// Every existing shop/response is backfilled into these tables by the migration.
+// ---------------------------------------------------------------------------
+
+/// A survey: one or more questions shown to shoppers on chosen placements.
+model Survey {
+  id         String       @id @default(cuid())
+  shopId     String
+  name       String
+  status     SurveyStatus @default(draft)
+  /// Higher wins when several surveys match an order.
+  priority   Int          @default(0)
+  /// Placement keys: "thank_you", "order_status", "onsite", "link".
+  placements String       @default("[]")
+  layout     SurveyLayout @default(all)
+
+  title        String?
+  intro        String?
+  buttonLabel  String?
+  thankYouText String?
+  /// locale -> { title, intro, buttonLabel, thankYouText, questions: {...} }
+  translations String  @default("{}")
+
+  /// JSON: customerType, minValue, maxValue, valueCurrency, productIds,
+  /// collectionIds, resolvedProductIds, countries, languages, samplePercent,
+  /// startsAt, endsAt, maxResponses.
+  targeting               String  @default("{}")
+  /// The question whose answer feeds the "how did you hear about us" report.
+  channelReportQuestionId String?
+  /// JSON: per-survey sync overrides (tags, metafields, flow).
+  syncOptions             String  @default("{}")
+
+  /// Incremented on every save of an active survey. Responses store the version
+  /// they answered.
+  version       Int      @default(1)
+  responseCount Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  shop       Shop               @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  questions  Question[]
+  responses  Response[]
+  dailyStats SurveyDailyStats[]
+
+  @@index([shopId, status, priority])
+}
+
+/// One question in a survey.
+model Question {
+  id               String       @id @default(cuid())
+  surveyId         String
+  position         Int
+  type             QuestionType
+  text             String
+  helpText         String?
+  placeholder      String?
+  /// For `text`: multi-line when true.
+  textMultiline    Boolean      @default(false)
+  required         Boolean      @default(false)
+  randomizeOptions Boolean      @default(false)
+  allowOther       Boolean      @default(false)
+  minSelections    Int?
+  maxSelections    Int?
+  /// JSON: { questionId, optionIds[] } or { questionId, min, max }.
+  showIf           String?
+  tagPrefix        String?
+  /// locale -> { text, helpText, placeholder }
+  translations     String       @default("{}")
+  /// Archived questions are hidden from shoppers but keep their results.
+  archived         Boolean      @default(false)
+
+  survey  Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  options Option[]
+  answers Answer[]
+
+  @@index([surveyId, position])
+}
+
+/// One answer option. `id` is stable: labels can change, ids never do.
+model Option {
+  id           String  @id @default(cuid())
+  questionId   String
+  position     Int
+  label        String
+  isOther      Boolean @default(false)
+  /// Hidden from shoppers; still shown in results as "(removed) Label".
+  archived     Boolean @default(false)
+  /// locale -> translated label.
+  translations String  @default("{}")
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId, position])
+}
+
+/// One shopper's full set of answers to one survey (one order, or one on-site visit).
+model Response {
+  id            String @id @default(cuid())
+  shopId        String
+  surveyId      String
+  surveyVersion Int
+
+  /// Numeric order id, or null for on-site / link responses with no order.
+  orderId      String?
+  customerId   String?
+  orderTotal   Decimal? @db.Decimal(18, 3)
+  currency     String?
+  isFirstOrder Boolean?
+
+  placement SurveyPlacement
+  locale    String?
+  country   String?
+  flagged   Boolean         @default(false)
+  createdAt DateTime        @default(now())
+
+  shop    Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  survey  Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  answers Answer[]
+
+  /// Duplicate protection. Null orderId rows are on-site/link and are not
+  /// deduplicated by this constraint (Postgres treats NULLs as distinct).
+  @@unique([shopId, surveyId, orderId])
+  @@index([shopId, createdAt])
+  @@index([shopId, surveyId, createdAt])
+}
+
+/// One answer to one question within a Response.
+model Answer {
+  id         String @id @default(cuid())
+  shopId     String
+  responseId String
+  questionId String
+
+  /// Choice answers: option ids (one for single, several for multi).
+  optionIds   String  @default("[]")
+  /// Numeric answers: rating 1–5, NPS 0–10, yes = 1 / no = 0.
+  numberValue Int?
+  /// Free-text answers, capped at 500 characters.
+  textValue   String?
+  /// The typed text when the "Other" option was chosen.
+  otherText   String?
+
+  shop     Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  response Response @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([responseId])
+  @@index([questionId])
+}
+
+/// Pre-counted totals, updated in the same transaction as each response insert.
+/// Default (unfiltered) results read this table instead of raw answers.
+model SurveyDailyStats {
+  shopId     String
+  surveyId   String
+  questionId String
+  /// UTC day key "YYYY-MM-DD" (a plain string, not a timestamp, so no zone drift).
+  day        String
+  /// Option id, numeric value as text, or "_responses" for the response count.
+  bucket     String
+  count      Int     @default(0)
+  revenue    Decimal @default(0) @db.Decimal(18, 3)
+  currency   String  @default("")
+
+  shop   Shop   @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  survey Survey @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+
+  @@id([surveyId, questionId, day, bucket, currency])
+  @@index([shopId, surveyId, day])
+}
+
+/// A Shopify write that could not run at submit time (order not created yet, or
+/// the API was throttled). Retried lazily; deleted after success or 5 attempts.
+model PendingSync {
+  id            String          @id @default(cuid())
+  shopId        String
+  responseId    String
+  kind          PendingSyncKind
+  attempts      Int             @default(0)
+  nextAttemptAt DateTime        @default(now())
+  lastError     String?
+  createdAt     DateTime        @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, nextAttemptAt])
+}
+
+/// A deletion too large to finish inside a webhook's 5-second budget. Recorded
+/// synchronously, then executed in batches lazily.
+model PendingDeletion {
+  id        String               @id @default(cuid())
+  shopId    String
+  scope     PendingDeletionScope
+  /// JSON payload, e.g. { orderIds: [...] } for a customer redact.
+  payload   String               @default("{}")
+  createdAt DateTime             @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, createdAt])
+}
+
+/// A stored customers/data_request export, shown on Settings for 30 days.
+model DataRequest {
+  id         String   @id @default(cuid())
+  shopId     String
+  customerId String?
+  payload    String
+  createdAt  DateTime @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, createdAt])
 }
