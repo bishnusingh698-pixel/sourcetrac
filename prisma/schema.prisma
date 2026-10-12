@@ -304,6 +304,22 @@ model Survey {
   /// they answered.
   version       Int      @default(1)
   responseCount Int      @default(0)
+  /// Template provenance, for display and analytics only. A survey is an
+  /// independent copy: template updates never touch it.
+  templateId      String?
+  templateVersion Int?
+  /// T11: join this survey into the rotation group for its placements.
+  rotation       Boolean @default(false)
+  /// 1 (low) / 2 (normal) / 3 (high). Weighted, deterministic per order.
+  rotationWeight Int     @default(2)
+  /// T10: pause automatically once results are reliable.
+  learnAndStop   Boolean @default(false)
+  /// S11/S12 design settings (JSON). Empty means the defaults.
+  designJson     String  @default("{}")
+  /// S7: the full editable definition held back while a live survey keeps
+  /// running the published version. Null when there are no unpublished changes.
+  draft          String?
+  draftUpdatedAt DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -353,6 +369,8 @@ model Option {
   position     Int
   label        String
   isOther      Boolean @default(false)
+  /// T6: selecting it clears other selections in multiple choice.
+  exclusive    Boolean @default(false)
   /// Hidden from shoppers; still shown in results as "(removed) Label".
   archived     Boolean @default(false)
   /// locale -> translated label.
@@ -376,6 +394,9 @@ model Response {
   orderTotal   Decimal? @db.Decimal(18, 3)
   currency     String?
   isFirstOrder Boolean?
+  /// T8: product ids on this order, from the checkout lines. Max 10. Null on
+  /// rows that predate the column.
+  productIds   String?  @default("[]")
 
   placement SurveyPlacement
   locale    String?

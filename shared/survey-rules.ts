@@ -44,7 +44,54 @@ export const LIMITS = {
   MAX_TARGET_PRODUCTS: 50,
   MAX_TARGET_COLLECTIONS: 10,
   MAX_COMPILED_CONFIG_BYTES: 16_000, // the compiled config written to the store
+  /** S12: a scale label's character limit. */
+  MAX_SCALE_LABEL: 30,
 } as const;
+
+/**
+ * Design settings the checkout components can really support (S11, S12).
+ *
+ * Fonts and colours always come from the merchant's Shopify checkout settings,
+ * so there is deliberately no colour here for the checkout placements. The
+ * bonus placements (on-site, link page) use our own scoped styles and carry
+ * their own accent colour separately.
+ */
+export type DesignSettings = {
+  /** all = every question at once; one_by_one = one question per step. */
+  layout: "all" | "one_by_one";
+  /** Show "1 of 3" (one-at-a-time only). */
+  showProgress: boolean;
+  /** Show the survey title. */
+  showTitle: boolean;
+  /** rating_5 rendering. */
+  ratingStyle: "numbers" | "stars";
+  /** S12 low/high labels under rating and NPS scales. */
+  scaleLowLabel: string;
+  scaleHighLabel: string;
+  /** Card presentation. */
+  cardBorder: "border" | "no_border";
+  spacing: "compact" | "comfortable";
+};
+
+export const DEFAULT_DESIGN: DesignSettings = {
+  layout: "all",
+  showProgress: true,
+  showTitle: true,
+  ratingStyle: "numbers",
+  // S12 defaults, from Appendix B of the upgrade plan.
+  scaleLowLabel: "Very poor",
+  scaleHighLabel: "Excellent",
+  cardBorder: "border",
+  spacing: "comfortable",
+};
+
+/** Default scale labels for an NPS question (unlike rating_5's poor/excellent). */
+export const DEFAULT_NPS_SCALE = { low: "Not likely", high: "Very likely" } as const;
+
+/** Fill a partial design with every default, so a stored design is always complete. */
+export function resolveDesign(partial?: Partial<DesignSettings> | null): DesignSettings {
+  return { ...DEFAULT_DESIGN, ...(partial ?? {}) };
+}
 
 /** The free-text channel. Must match `OTHER_CHANNEL_VALUE` in app/lib/settings.ts. */
 export const OTHER_CHANNEL_VALUE = "other";
@@ -141,6 +188,8 @@ export type SurveyOptionDef = {
   label: string;
   /** True for the synthetic "Other (please specify)" option. Always last. */
   isOther?: boolean;
+  /** T6: selecting it clears the others, and selecting any other clears it. */
+  exclusive?: boolean;
   /** Hidden from shoppers, still shown in results as "(removed) Label". */
   archived?: boolean;
   /** locale -> translated label. */
@@ -189,6 +238,7 @@ export type SurveyDefinition = {
   buttonLabel?: string | null;
   thankYouText?: string | null;
   layout?: "all" | "one_by_one";
+  design?: Partial<DesignSettings> | null;
   questions: SurveyQuestionDef[];
 };
 
@@ -649,6 +699,13 @@ export function validateResponse(
             errors.push(issue(base, "unknown_option", "That answer is not one of the available options."));
             break;
           }
+        }
+        // T6: an exclusive option must not be combined with any other.
+        const exclusiveChosen = unique.filter((id) => optionById.get(id)?.exclusive);
+        if (exclusiveChosen.length > 0 && unique.length > 1) {
+          errors.push(
+            issue(base, "exclusive_with_others", "That answer clears the others. Choose it on its own."),
+          );
         }
         const min = question.minSelections ?? null;
         const max = question.maxSelections ?? null;
