@@ -1058,3 +1058,31 @@ pointing at `sourcetrac`, use the explicit override:
 
 Verified 2026-10-12: 624 tests / 50 files green; bundles <= ~11.5 KB compressed.
 
+## Phase 6 — Overview, Results, Home (2026-10-13)
+
+Home (T16) and the dashboard are two different screens now. `/app` is the minimal
+landing page (three cards); the full channel report moved to `/app/dashboard`.
+Both are in `s-app-nav`. Do not merge them back — the split is the T16 spec.
+
+`buildSurveyInsights` (`app/lib/insights.server.ts`) joins a stored survey to the
+pure aggregation in `shared/templates/stats.ts`. Two silent traps there:
+
+- **Cross-question keys must be resolved.** `resultsHints.crossQuestion` names the
+  template's `q_*` keys; the stored survey uses the stable id
+  `buildSurveyDefinition` derives. Passing the raw key makes the T14 view never
+  appear, with no error. `stableQuestionId(templateId, key)` is the bridge, and
+  `tests/unit/insights-build.test.ts` fails on revert.
+- **Home resolves template names from the template bundle, not i18n.** Template
+  names live in `shared/templates/locales`, so `app._index.tsx` resolves the
+  seasonal spotlight and the Channel Compass default server-side with
+  `templateText` and passes strings as props. Calling `t()` for them renders a raw
+  key.
+
+The admin i18n bundle now carries the `library.*`, `templates.*`, `results.*`,
+`studio.*`, `confidence.*`, `ideas.*`, `home.*`, `setup.*`, `ready.*` and
+`smart_actions.*` namespaces (279 keys); template *content* is the separate flat
+`shared/templates/locales/<code>.json` set (405 keys). `TRANSLATION_REVIEW.md` is
+generated from both by `scripts/gen-translation-review.py` for a native pass.
+
+Verified 2026-10-13: `npm run check` = 794 tests / 57 files green.
+

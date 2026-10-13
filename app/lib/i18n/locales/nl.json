@@ -581,7 +581,16 @@
     "answered_other": "{{count}} beantwoord",
     "removed": "(verwijderd)",
     "no_text_answers": "Nog geen tekstantwoorden.",
-    "download": "CSV downloaden"
+    "download": "CSV downloaden",
+    "by_product_title": "Per product",
+    "by_product_empty": "Nog niet genoeg antwoorden per product.",
+    "by_product_row": "{{count}} antwoorden · {{label}} {{percent}}%",
+    "cross_title": "Twee vragen vergelijken",
+    "cross_needs_more": "Vereist minstens 30 antwoorden op beide vragen.",
+    "cross_caption": "{{row}} naar {{col}}",
+    "cross_percent": "{{percent}}%",
+    "ideas_title": "Ideeën om te proberen",
+    "filter_product": "Product"
   },
   "responses": {
     "title": "Antwoorden",
@@ -820,5 +829,34 @@
     "fulfillment_sample": "Besteld · In voorbereiding · Verzonden · Bezorgd",
     "template_info": "{{count}} vragen",
     "tab_studio": "Studio"
+  },
+  "confidence": {
+    "too_early": "Te vroeg",
+    "too_early_help": "Minder dan 30 antwoorden. De resultaten kunnen nog flink veranderen.",
+    "early_signal": "Eerste signaal",
+    "early_signal_help": "De resultaten beginnen een patroon te tonen.",
+    "getting_clear": "Wordt duidelijker",
+    "getting_clear_help": "De resultaten zijn redelijk stabiel.",
+    "reliable": "Betrouwbaar",
+    "reliable_help": "Meer antwoorden zullen het beeld waarschijnlijk niet veel veranderen.",
+    "answers_one": "{{count}} antwoord",
+    "answers_other": "{{count}} antwoorden"
+  },
+  "ideas": {
+    "dismiss": "Sluiten",
+    "based_on_one": "Op basis van {{count}} antwoord",
+    "based_on_other": "Op basis van {{count}} antwoorden",
+    "empty": "Nog geen suggesties. Ze verschijnen zodra de resultaten duidelijk genoeg zijn."
+  },
+  "home": {
+    "status_live": "Je enquête staat live op de bedankpagina.",
+    "status_add_block": "Voeg de enquête toe aan je afrekenpagina",
+    "your_surveys": "Je enquêtes",
+    "view_all": "Alle enquêtes bekijken",
+    "next_step": "Volgende stap",
+    "start_with": "Begin met {{name}}",
+    "view": "Bekijken",
+    "reliable_ideas": "Je resultaten voor {{name}} zijn betrouwbaar. Bekijk ideeën om te proberen.",
+    "unpublished": "{{name}} heeft niet-gepubliceerde wijzigingen. Bekijk en publiceer."
   }
 }

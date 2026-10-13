@@ -13,6 +13,7 @@ import {
 } from "react-router";
 
 import { Banner, Panel } from "~/components/admin-ui";
+import { ConfidenceBadge, ConfidenceHelp, CrossTabView, IdeasList, ProductTable } from "~/components/insights";
 import { SurveyEditor, errorId, type TFn } from "~/components/survey-editor";
 import { SurveyPreview } from "~/components/survey-preview";
 import { CheckoutMock, type PreviewPlacement } from "~/components/checkout-mock";
@@ -34,6 +35,7 @@ import {
   type SurveyInput,
 } from "~/lib/surveys.server";
 import { getShopDisplay } from "~/lib/studio.server";
+import { getProductTitles } from "~/lib/studio.server";
 import { grantedSyncScopes } from "~/lib/scopes.server";
 import { formatMoney } from "~/lib/money";
 import { DEFAULT_SURVEY_TEXT } from "@shared/survey-config";
@@ -41,6 +43,10 @@ import { LANGUAGES } from "~/lib/i18n";
 import { isEnabled } from "@shared/feature-flags";
 import { LIMITS } from "@shared/survey-rules";
 import { getReadiness, readinessBlocksGoLive } from "@shared/templates/readiness";
+import { templateById } from "@shared/templates/index";
+import { buildSurveyInsights, type SurveyInsights } from "~/lib/insights.server";
+import { fetchSurveyResponses } from "~/lib/survey-analytics.server";
+import { crossTabRowShares, type CrossTab } from "@shared/templates/stats";
 import type { Placement } from "@shared/survey-config";
 
 /**
@@ -72,6 +78,26 @@ export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) =>
   // order: the mock always shows "#1001" and "Alex".
   const sampleTotal = formatMoney(4250, currency, locale);
 
+  // Results/Overview insights (T8/T9/T12/T14). Loaded here so the Overview and
+  // Results tabs share one computation; the pure maths lives in
+  // `shared/templates/stats.ts`. Product titles are only fetched when the
+  // template asks for a product breakdown.
+  const template = survey.templateId ? templateById(survey.templateId) : undefined;
+  const responses = await fetchSurveyResponses({ shopId: shop.id, surveyId: survey.id, limit: 5000 });
+  const productIds = template?.resultsHints?.byProduct
+    ? [...new Set(responses.flatMap((r) => r.productIds))]
+    : [];
+  const productTitles = productIds.length
+    ? await getProductTitles(shop.id, shop.shopDomain, session.accessToken, productIds)
+    : {};
+  const insights = buildSurveyInsights({
+    responses,
+    questions: survey.questions,
+    templateId: survey.templateId,
+    locale,
+    productTitles,
+  });
+
   return {
     survey,
     shopName: display.name ?? shop.shopDomain.replace(".myshopify.com", ""),
@@ -84,6 +110,8 @@ export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) =>
     grantedScopes: grantedSyncScopes(session.scope),
     onsiteEnabled: isEnabled("ONSITE_SURVEYS"),
     surveyLinkEnabled: isEnabled("SURVEY_LINK_PAGE"),
+    insights,
+    insightsLocale: locale,
   };
 });
 
@@ -193,7 +221,7 @@ function resolveTab(raw: string | null, survey: EditorSurvey): StudioTab {
 
 export default function SurveyStudio() {
   const data = useLoaderData<typeof loader>();
-  const { survey, limits, grantedScopes } = data;
+  const { survey, limits, grantedScopes, insights } = data;
   const { t } = useAdminI18n();
   const navigation = useNavigation();
   const [params, setParams] = useSearchParams();
@@ -319,9 +347,9 @@ export default function SurveyStudio() {
         ))}
       </s-stack>
 
-      {tab === "overview" ? <OverviewTab draft={draft} t={t} /> : null}
+      {tab === "overview" ? <OverviewTab draft={draft} insights={insights} t={t} /> : null}
 
-      {tab === "results" ? <ResultsHint t={t} /> : null}
+      {tab === "results" ? <ResultsTab draft={draft} insights={insights} t={t} /> : null}
 
       {tab === "settings" ? (
         <SettingsTab
@@ -531,7 +559,7 @@ function audienceLabel(draft: EditorSurvey, t: TFn): string {
   return t(`surveys.customer_${type === "first_order" ? "first" : type === "returning" ? "returning" : "everyone"}`);
 }
 
-function OverviewTab({ draft, t }: { draft: EditorSurvey; t: TFn }) {
+function OverviewTab({ draft, insights, t }: { draft: EditorSurvey; insights: SurveyInsights; t: TFn }) {
   const statusLine =
     draft.status === "active"
       ? draft.hasDraft
@@ -540,6 +568,17 @@ function OverviewTab({ draft, t }: { draft: EditorSurvey; t: TFn }) {
       : draft.status === "paused"
         ? t("studio.status_paused")
         : t("studio.status_draft");
+
+  // The main question's top answer, or the numeric mean. This is the one key
+  // number the Overview leads with.
+  const main = insights.main;
+  const keyNumber = main
+    ? main.average !== null
+      ? String(main.average)
+      : main.topOptionKey
+        ? `${labelFor(insights, main.topOptionKey)} · ${Math.round(main.topShare * 100)}%`
+        : "—"
+    : null;
 
   return (
     <s-stack gap="base">
@@ -559,6 +598,23 @@ function OverviewTab({ draft, t }: { draft: EditorSurvey; t: TFn }) {
           </s-stack>
         </s-stack>
       </Panel>
+
+      {main ? (
+        <Panel title={insights.mainQuestionText ?? t("results.summary_title")}>
+          <s-stack gap="small">
+            <s-heading>{keyNumber}</s-heading>
+            <ConfidenceBadge level={main.confidence} n={main.n} t={t} />
+            <ConfidenceHelp level={main.confidence} t={t} />
+          </s-stack>
+        </Panel>
+      ) : null}
+
+      {insights.ideas.length > 0 ? (
+        <Panel title={t("results.ideas_title")} description={t("studio.right_purpose")}>
+          <IdeasList ideas={insights.ideas.slice(0, 2)} t={t} />
+        </Panel>
+      ) : null}
+
       <Panel title={t("studio.ready_title")} description={t("studio.right_purpose")}>
         <s-link href={`/app/surveys/${draft.id}?tab=studio`}>{t("studio.tab_golive")}</s-link>
       </Panel>
@@ -566,11 +622,60 @@ function OverviewTab({ draft, t }: { draft: EditorSurvey; t: TFn }) {
   );
 }
 
-function ResultsHint({ t }: { t: TFn }) {
+/** The label for one option id, from the insights' option map. */
+function labelFor(insights: SurveyInsights, optionId: string | null): string {
+  if (!optionId) return "—";
+  return insights.optionLabels[optionId] ?? optionId;
+}
+
+/**
+ * Results tab (T8 by product, T14 cross-question, T12 ideas).
+ *
+ * The full breakdown lives on the main Results page; this is the survey-scoped
+ * view, so it reuses the same shapes the Overview reads.
+ */
+function ResultsTab({ draft, insights, t }: { draft: EditorSurvey; insights: SurveyInsights; t: TFn }) {
+  const main = insights.main;
+
   return (
-    <Panel title={t("results.title")} description={t("results.subtitle")}>
+    <s-stack gap="base">
+      <Panel title={t("results.summary_title")} description={t("results.subtitle")}>
+        {main ? (
+          <s-stack gap="small">
+            <s-heading>{main.average !== null ? String(main.average) : `${labelFor(insights, main.topOptionKey)} · ${Math.round(main.topShare * 100)}%`}</s-heading>
+            <ConfidenceBadge level={main.confidence} n={main.n} t={t} />
+            <ConfidenceHelp level={main.confidence} t={t} />
+          </s-stack>
+        ) : (
+          <s-text color="subdued">{t("results.empty_body")}</s-text>
+        )}
+      </Panel>
+
+      {insights.byProduct.length > 0 ? (
+        <Panel title={t("results.by_product_title")} description={t("studio.right_purpose")}>
+          <ProductTable rows={insights.byProduct} t={t} topOptionLabel={(key) => labelFor(insights, key)} />
+        </Panel>
+      ) : null}
+
+      {insights.crossTab ? (
+        <Panel title={t("results.cross_title")} description={t("studio.right_purpose")}>
+          <CrossTabView
+            tab={insights.crossTab}
+            t={t}
+            label={(id) => labelFor(insights, id)}
+            rowLabel={draft.questions.find((q) => q.id === insights.crossRowQuestionId)?.text ?? ""}
+            colLabel={draft.questions.find((q) => q.id === insights.crossColQuestionId)?.text ?? ""}
+            shares={(rowKey) => crossTabRowShares(insights.crossTab as CrossTab, rowKey)}
+          />
+        </Panel>
+      ) : null}
+
+      <Panel title={t("results.ideas_title")} description={t("studio.right_purpose")}>
+        <IdeasList ideas={insights.ideas} t={t} emptyText={t("ideas.empty")} />
+      </Panel>
+
       <s-link href="/app/results">{t("results.title")}</s-link>
-    </Panel>
+    </s-stack>
   );
 }
 

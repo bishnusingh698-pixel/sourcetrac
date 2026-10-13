@@ -54,3 +54,17 @@ export function templateText(locale: string, key: string): string {
 export function templateTranslator(locale: string): (key: string) => string {
   return (key: string) => templateText(locale, key);
 }
+
+/**
+ * Fill a template string's `{placeholder}`s from a params map.
+ *
+ * Template content uses single-brace placeholders (`{channel}`, `{percent}`),
+ * unlike the admin bundle's `{{...}}`, because it is read by shared modules and
+ * tests rather than i18next. An unknown placeholder is left as-is so a missing
+ * param is visible rather than silently blank.
+ */
+export function interpolateTemplateText(text: string, params: Record<string, string | number>): string {
+  return text.replace(/\{(\w+)\}/g, (match, name: string) =>
+    Object.prototype.hasOwnProperty.call(params, name) ? String(params[name]) : match,
+  );
+}

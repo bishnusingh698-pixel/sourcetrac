@@ -225,6 +225,52 @@ export async function fetchShopDisplay(
 }
 
 /**
+ * Product titles for a set of numeric product ids (T8).
+ *
+ * One batched `nodes` query, so the Results tab never issues a request per
+ * product. Ids that no longer resolve are simply absent from the map; the caller
+ * falls back to the raw id. Never throws — a failed lookup degrades the labels,
+ * not the table.
+ */
+export async function fetchProductTitles(
+  shopDomain: string,
+  accessToken: string | null | undefined,
+  productIds: ReadonlyArray<string>,
+): Promise<Record<string, string>> {
+  const ids = [...new Set(productIds.filter((id) => /^\d+$/.test(id)))].slice(0, 100);
+  if (!accessToken || ids.length === 0) return {};
+  try {
+    const result = await shopifyGraphql<{
+      nodes: Array<{ id?: string; title?: string } | null>;
+    }>(
+      shopDomain,
+      accessToken,
+      `#graphql
+        query SourceTracProductTitles($ids: [ID!]!) {
+          nodes(ids: $ids) {
+            ... on Product { id title }
+          }
+        }
+      `,
+      { ids: ids.map((id) => `gid://shopify/Product/${id}`) },
+    );
+    const titles: Record<string, string> = {};
+    for (const node of result.data.nodes ?? []) {
+      if (!node?.id || !node.title) continue;
+      const numeric = node.id.split("/").pop();
+      if (numeric) titles[numeric] = node.title;
+    }
+    return titles;
+  } catch (error) {
+    logger.warn("product_titles_lookup_failed", {
+      shop_domain: shopDomain,
+      error_message: error instanceof Error ? error.message : String(error),
+    });
+    return {};
+  }
+}
+
+/**
  * The shop's IANA time zone (e.g. "Asia/Kolkata") and store country (ISO-3166
  * alpha-2, e.g. "US"), or null when Shopify could not be asked.
  *

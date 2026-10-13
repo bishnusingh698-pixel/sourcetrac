@@ -581,7 +581,16 @@
     "answered_other": "{{count}} besvarade",
     "removed": "(borttagen)",
     "no_text_answers": "Inga textsvar ännu.",
-    "download": "Ladda ner CSV"
+    "download": "Ladda ner CSV",
+    "by_product_title": "Per produkt",
+    "by_product_empty": "Inte tillräckligt många svar per produkt ännu.",
+    "by_product_row": "{{count}} svar · {{label}} {{percent}} %",
+    "cross_title": "Jämför två frågor",
+    "cross_needs_more": "Kräver minst 30 svar på båda frågorna.",
+    "cross_caption": "{{row}} per {{col}}",
+    "cross_percent": "{{percent}} %",
+    "ideas_title": "Idéer att prova",
+    "filter_product": "Produkt"
   },
   "responses": {
     "title": "Svar",
@@ -820,5 +829,34 @@
     "fulfillment_sample": "Beställd · Förbereds · Skickad · Levererad",
     "template_info": "{{count}} frågor",
     "tab_studio": "Studio"
+  },
+  "confidence": {
+    "too_early": "För tidigt",
+    "too_early_help": "Färre än 30 svar. Resultaten kan fortfarande ändras mycket.",
+    "early_signal": "Tidig signal",
+    "early_signal_help": "Resultaten börjar visa ett mönster.",
+    "getting_clear": "Blir tydligare",
+    "getting_clear_help": "Resultaten är ganska stabila.",
+    "reliable": "Tillförlitligt",
+    "reliable_help": "Fler svar kommer troligen inte att ändra bilden mycket.",
+    "answers_one": "{{count}} svar",
+    "answers_other": "{{count}} svar"
+  },
+  "ideas": {
+    "dismiss": "Stäng",
+    "based_on_one": "Baserat på {{count}} svar",
+    "based_on_other": "Baserat på {{count}} svar",
+    "empty": "Inga förslag ännu. De visas när resultaten är tillräckligt tydliga."
+  },
+  "home": {
+    "status_live": "Din enkät är live på tacksidan.",
+    "status_add_block": "Lägg till enkäten i din kassa",
+    "your_surveys": "Dina enkäter",
+    "view_all": "Visa alla enkäter",
+    "next_step": "Nästa steg",
+    "start_with": "Börja med {{name}}",
+    "view": "Visa",
+    "reliable_ideas": "Dina resultat för {{name}} är tillförlitliga. Se idéer att prova.",
+    "unpublished": "{{name}} har opublicerade ändringar. Granska och publicera."
   }
 }

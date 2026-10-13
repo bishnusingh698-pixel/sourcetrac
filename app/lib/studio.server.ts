@@ -7,7 +7,7 @@
  * cache keeps the Admin API cost off the critical path of every Studio load.
  */
 
-import { fetchShopDisplay } from "~/lib/shopify-graphql.server";
+import { fetchProductTitles, fetchShopDisplay } from "~/lib/shopify-graphql.server";
 
 export type ShopDisplay = {
   name: string | null;
@@ -33,7 +33,32 @@ export async function getShopDisplay(
   return value;
 }
 
+/**
+ * Product titles for the Results tab's "By product" table (T8), cached in memory
+ * per shop for ten minutes so filtering never re-hits the Admin API. The cache
+ * key includes the requested ids, so a filter that names new products still
+ * resolves them.
+ */
+const titleCache = new Map<string, { value: Record<string, string>; expiresAt: number }>();
+
+export async function getProductTitles(
+  shopId: string,
+  shopDomain: string,
+  accessToken: string | null | undefined,
+  productIds: ReadonlyArray<string>,
+): Promise<Record<string, string>> {
+  const key = `${shopId}:${[...new Set(productIds)].sort().join(",")}`;
+  const now = Date.now();
+  const cached = titleCache.get(key);
+  if (cached && cached.expiresAt > now) return cached.value;
+
+  const value = await fetchProductTitles(shopDomain, accessToken, productIds);
+  titleCache.set(key, { value, expiresAt: now + TTL_MS });
+  return value;
+}
+
 /** Test seam: drop the cache between cases. */
 export function clearShopDisplayCache(): void {
   cache.clear();
+  titleCache.clear();
 }

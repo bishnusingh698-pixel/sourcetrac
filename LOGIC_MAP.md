@@ -28,7 +28,10 @@ flowchart TD
   H --> I["getCompiledConfig(shopId)\nin-memory cache, 60s TTL"]
   I --> J["priority loop: first active survey\nwhose placements include this one\nand matchesTargeting(targeting, facts)"]
   J -- none match --> DISABLED2["enabled:false\nsurvey:null"]
-  J -- match --> K{"alreadyAnswered?"}
+  J -- match --> ROT{"top match is in the\nrotation group?"}
+  ROT -- yes --> ROTPICK["pickFromRotation(group, orderId)\nweighted, deterministic"]
+  ROT -- no --> K
+  ROTPICK --> K{"alreadyAnswered?"}
   K -- yes --> HIDE["enabled:true, survey set\nblock hides (mutually exclusive pages)"]
   K -- no --> RENDER["render questions\nclient-side show-if decides visibility"]
 ```
@@ -42,10 +45,24 @@ flowchart TD
 | Already answered | `app/lib/answers.server.ts` → `hasAnyAnswerForOrder` |
 | Compiled config + cache | `app/lib/surveys.server.ts` → `getCompiledConfig`, `buildConfig` |
 | Priority + targeting | `app/routes/api.survey.tsx` (`config.surveys.find`) + `shared/survey-config.ts` → `matchesTargeting` |
+| Rotation (T11) | `shared/survey-config.ts` → `rotationGroup`, `pickFromRotation`; used in `api.survey.tsx` |
+| Payment rule (T7) | `shared/survey-config.ts` → `matchesPaymentRule` (`manualPayment`); extension sends `paymentTypes` |
 | Client-side show-if | `extensions/shared/src/use-multi-survey.ts` → `questionVisible` (mirrors `isQuestionVisible`) |
 
 Status, placement, dates, first/returning, order value + currency, country,
 language, sample are all evaluated inside `matchesTargeting`.
+
+- **Rotation (T11):** when the highest-priority matching survey has
+  `rotation = true`, one member of the rotation group (same placement, targeting
+  matches) is chosen by `pickFromRotation`, weighted by `rotationWeight` and
+  seeded by the order id. The same order therefore gets the same survey on the
+  Thank you and Order status pages. Non-rotating surveys keep normal priority.
+- **Payment targeting (T7):** applied only when the compiled survey has
+  `paymentManualOnly`. The extension reads `shopify.selectedPaymentOptions` and
+  sends the option types; `matchesPaymentRule` requires one whose type is
+  `manualPayment`. An empty list matches **nothing**. ⚠ the exact type string
+  could not be verified on shopify.dev from this container; see
+  `TEMPLATES_NOTES.md`.
 
 - **⚠ differs** — plan Phase 4 preferred delivery of the compiled config through
   an app-owned shop **metafield** read directly by the extension. That metafield
@@ -137,6 +154,61 @@ flowchart TD
   as a soft warning on purpose so a merchant is never locked out of saving.
 - **⚠ differs** — plan Phase 4 wanted a metafield write on save. Not done (same
   reason as flow 1).
+
+---
+
+## 3b. Drafts and publish (S7/S8)
+
+```mermaid
+flowchart TD
+  A["Studio save on a Live/Paused survey"] --> B["write Survey.draft (JSON)\n+ draftUpdatedAt\nshoppers still see the published row"]
+  A2["Studio save on a Draft survey"] --> B2["write the normal tables, as today"]
+  P["Publish changes"] --> V["validateSurveyDefinition + plan + config size"]
+  V -- fail --> ERR["inline errors; nothing changes"]
+  V -- ok --> T["one transaction:\napply draft to normal tables\n(stable option ids, archive not delete,\nversion + 1), clear draft"]
+  T --> C["recompile config, invalidate cache"]
+  D["Discard draft"] --> E["clear draft after confirm"]
+```
+
+| Decision | File / function |
+|---|---|
+| Draft column | `prisma/schema.prisma` → `Survey.draft`, `draftUpdatedAt` (migration `20261012160000`) |
+| Diff for the summary | `shared/templates/diff.ts` → `diffSurvey` (pure, tested) |
+| Publish / discard | `app/lib/surveys.server.ts` → publish transaction |
+| Concurrency | compares `draftUpdatedAt` / `updatedAt`; conflict shows the reload message |
+
+- The compiled checkout config is built **only** from the published definition,
+  never a draft. Neon cost is one row update per save, one transaction per
+  publish; no polling.
+
+## 3c. Learn & stop (T10)
+
+```mermaid
+flowchart TD
+  A["A response is stored, then usage bumped"] --> B{"survey.learnAndStop AND mainQuestionId?"}
+  B -- no --> Z["normal path"]
+  B -- yes --> C["maybeLearnAndStop:\nload the main question's answers"]
+  C --> D{"shouldLearnAndStop\n(choice: reliable AND n>=100\nnps/rating: n>=150)"}
+  D -- no --> Z
+  D -- yes --> E["updateMany: status active -> paused\n+ log survey_learn_stop_paused"]
+```
+
+| Decision | File / function |
+|---|---|
+| Trigger | `app/lib/answers.server.ts` → `maybeLearnAndStop`, called after the usage increment |
+| Decision | `shared/templates/confidence.ts` → `shouldLearnAndStop` |
+| Toggle labels | `setup.learn_stop` / `setup.learn_stop_help` |
+
+- **⚠ differs** — the plan wanted the pause "in the same transaction" as the
+  response. The shipped code pauses **best-effort after** the response is stored,
+  wrapped so a failure never fails the buyer's submission (the same posture as
+  the Phase 7 sync). The pause is idempotent (`updateMany where status=active`),
+  so a retry cannot double-pause. This keeps a buyer's answer safe even if the
+  pause write fails. Recorded here, not changing.
+- The pause recompiles on the next `getCompiledConfig` TTL expiry (60 s); no
+  explicit cache invalidation is issued from the webhook process. Acceptable: the
+  buyer whose answer triggered it has already been served.
+
 
 ---
 

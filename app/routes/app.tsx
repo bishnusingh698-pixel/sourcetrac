@@ -58,9 +58,9 @@ import { isShopifyAuthResponse } from "~/lib/shopify-boundary";
  * stored here without leaking one merchant's language into the next tenant's
  * page. Keys are resolved per render.
  *
- * The dashboard is not listed. It is the app's home (`rel="home"` below), so
- * Shopify opens it when the merchant clicks the app's name. Listing it as well
- * made it a separate "Dashboard" sub-page under the app.
+ * The dashboard is listed again now that Home (T16) is the minimal landing
+ * page: the full channel report moved to `/app/dashboard`, so it needs its own
+ * nav entry. Home itself is still the app's `rel="home"` page below.
  *
  * There is deliberately no in-frame sidebar any more. Shopify already renders
  * these links in its admin sidebar on desktop and in the app title menu on
@@ -68,6 +68,7 @@ import { isShopifyAuthResponse } from "~/lib/shopify-boundary";
  * phone left the dashboard squeezed into the remaining sliver.
  */
 const NAV = [
+  { to: "/app/dashboard", key: "nav.dashboard" },
   { to: "/app/surveys", key: "nav.surveys" },
   { to: "/app/results", key: "nav.results" },
   { to: "/app/responses", key: "nav.responses" },

@@ -4,50 +4,39 @@ import type { TFunction } from "~/lib/i18n";
 import { intlLocaleFor } from "~/lib/i18n";
 import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
-import { OTHER_CHANNEL_VALUE, parseSurveySettings } from "~/lib/settings";
 
-import { Banner, Metric, MoneyList, Panel, type BadgeTone } from "~/components/admin-ui";
+import { Banner, Panel } from "~/components/admin-ui";
+import { ConfidenceBadge } from "~/components/insights";
 import { LanguageForm } from "~/components/language-selector";
 import { db } from "~/db.server";
 import { isSupportedLanguage, type LanguageCode } from "~/lib/i18n";
 import { MAX_OPTIONS, MIN_OPTIONS } from "~/lib/settings";
-import { buildTrend, computeStats } from "~/lib/analytics";
-import { decideRevenue, fetchDashboardData } from "~/lib/analytics-queries.server";
-import { formatMoney } from "~/lib/money";
-import { effectivePlan, PLAN_FREE } from "~/lib/plans";
+import { loadHomeSurveys, type HomeSurvey } from "~/lib/home.server";
 import { ensureShop } from "~/lib/provision.server";
 import { backfillMissingOrders } from "~/lib/order-backfill.server";
 import { maybeRunPendingSync } from "~/lib/sync.server";
 import { maybeRunPendingDeletions } from "~/lib/compliance.server";
 import { guarded } from "~/lib/admin-errors.server";
+import { templateById } from "@shared/templates/index";
+import { templateText } from "@shared/templates/locales";
+import { regionPackFor } from "@shared/templates/packs";
+import { currentSpotlight } from "@shared/templates/catalog";
+import { fetchShopLocaleInfo } from "~/lib/shopify-graphql.server";
 import { authenticate } from "~/shopify.server";
 
 /**
- * Dashboard — the app's home page.
+ * Home (T16) — the minimal landing page.
  *
- * Until the first answer arrives this page is the setup guide (it used to be a
- * separate "Get started" page, which meant a new merchant landed on an empty
- * dashboard and had to find the checklist themselves). Once answers exist it
- * is read-only reporting with one action, "Edit survey".
+ * Exactly three cards: status, up to three active surveys with one key number
+ * each, and one rule-based next step. Everything else (the full channel report,
+ * the trend, the range switcher) moved to `/app/dashboard`, which is linked from
+ * the status card. Until the first answer arrives this page is the setup guide.
  *
- * All money is formatted here on the server and shipped as strings. The browser
- * never receives minor-unit integers, so it cannot sum across currencies by
- * accident.
+ * All money is formatted here on the server and shipped as strings, so the
+ * browser never sees minor-unit integers.
  */
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "dashboard.title");
-
-/** `labelKey` is resolved per render; see the NAV comment in `app.tsx`. */
-const RANGES = [
-  { days: 7, labelKey: "dashboard.last_7" },
-  { days: 30, labelKey: "dashboard.last_30" },
-  { days: 90, labelKey: "dashboard.last_90" },
-] as const;
-
-function parseRange(value: string | null): (typeof RANGES)[number] {
-  const match = RANGES.find((r) => String(r.days) === value);
-  return match ?? RANGES[1];
-}
 
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -62,46 +51,36 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   void maybeRunPendingSync(shop.id);
   void maybeRunPendingDeletions(shop.id);
 
-
-  const url = new URL(request.url);
-  const range = parseRange(url.searchParams.get("range"));
-
-  // Money is formatted here, so the loader needs the language itself: the
-  // shell's loader runs in parallel and its data is not available yet.
   const locale = intlLocaleFor(resolveAdminLanguage(request, shop.language, shop.adminLocale));
-  const money = (minor: number, currency: string) => formatMoney(minor, currency, locale);
 
-  // Responses store the channel slug (`friend-or-family`). Show the
-  // merchant's own label for it. A slug no longer in the survey (the option
-  // was deleted) has no label left, so the slug itself is the best name.
-  const labels = new Map(
-    parseSurveySettings(shop.optionsJson, { questionText: shop.questionText, options: [], allowOther: false })
-      .options.map((option) => [option.value, option.label] as const),
-  );
-
-  const [data, firstResponse, firstOrder] = await Promise.all([
-    fetchDashboardData({ shopId: shop.id, days: range.days }),
-    // Ever, not in the window: a quiet week must not send an established
+  const [firstResponse, firstOrder] = await Promise.all([
+    // Ever, not in a window: a quiet week must not send an established
     // merchant back to the setup guide.
     db.surveyResponse.findFirst({ where: { shopId: shop.id }, select: { id: true } }),
     db.orderCache.findFirst({ where: { shopId: shop.id }, select: { id: true } }),
   ]);
-  const { summary, channels } = computeStats({
-    responses: data.responses,
-    decidedAmounts: data.decidedAmounts,
-    ordersInWindow: data.ordersInWindow,
-    rateResponses: data.rateResponses,
-    previousResponsesCount: data.previousCount,
-  });
-  const trend = buildTrend({
-    responses: data.responses,
-    decidedAmounts: data.decidedAmounts,
-    days: range.days,
-  });
+
+  const homeSurveys = firstResponse === null ? [] : await loadHomeSurveys(shop.id, locale);
+
+  // The seasonal spotlight (T15) is the fallback next step when nothing more
+  // urgent applies. Evaluated in the admin from the date and the shop's region:
+  // no database, no network.
+  const templateLocale = shop.language ?? "en";
+  let spotlightTemplateName: string | null = null;
+  if (homeSurveys.length > 0) {
+    const { countryCode, timeZone } = await fetchShopLocaleInfo(shop.shopDomain, session.accessToken);
+    const spotlight = currentSpotlight({
+      locale: templateLocale,
+      region: regionPackFor(countryCode),
+      now: new Date(),
+      timeZone: timeZone ?? "UTC",
+    });
+    spotlightTemplateName = spotlight
+      ? templateText(templateLocale, templateById(spotlight.templateId)?.nameKey ?? "")
+      : null;
+  }
 
   return {
-    range,
-    hasAnyResponse: summary.totalResponses > 0,
     setup:
       firstResponse === null
         ? {
@@ -113,263 +92,13 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
             hasExplicitLanguage: isSupportedLanguage(shop.language),
           }
         : null,
-    ordersInWindow: data.ordersInWindow,
-    summary: {
-      totalResponses: summary.totalResponses,
-      // Only a Free shop is shown the over-cap prompt. `isLocked` is never
-      // cleared, so after an upgrade the banner kept telling a paying merchant
-      // to upgrade.
-      lockedResponses: effectivePlan(shop) === PLAN_FREE ? summary.lockedResponses : 0,
-      pendingResponses: summary.pendingResponses,
-      // Answers on Shopify test orders (every order on a development store).
-      // Their revenue is excluded by policy, which left a test store showing
-      // answers with no revenue and no explanation.
-      testOrderResponses: data.responses.filter((row) => {
-        const decision = decideRevenue(row);
-        return !decision.included && decision.reason === "test_order";
-      }).length,
-      responseRate: summary.responseRate,
-      rateResponses: summary.rateResponses,
-      responseRateChange: summary.responseRateChange,
-      revenue: summary.revenueByCurrency.map((entry) => ({
-        currency: entry.currency,
-        text: money(entry.minor, entry.currency),
-      })),
-      aov: summary.aovByCurrency.map((entry) => ({
-        currency: entry.currency,
-        text: money(entry.minor, entry.currency),
-      })),
-    },
-    channels: channels.map((channel) => ({
-      channel: channel.channel,
-      // null for "other": translated in the component, not here.
-      label: channel.channel === OTHER_CHANNEL_VALUE ? null : (labels.get(channel.channel) ?? channel.channel),
-      responses: channel.responses,
-      lockedResponses: channel.lockedResponses,
-      pendingResponses: channel.pendingResponses,
-      revenue: channel.revenueByCurrency.map((entry) => ({
-        currency: entry.currency,
-        text: money(entry.minor, entry.currency),
-      })),
-      aov: channel.aovByCurrency.map((entry) => ({
-        currency: entry.currency,
-        text: money(entry.minor, entry.currency),
-      })),
-    })),
-    trend: trend.map((point) => ({
-      date: point.date,
-      responses: point.responses,
-    })),
+    homeSurveys,
+    spotlightTemplateName,
+    // Template names live in the shared template bundle, not the admin i18n
+    // bundle, so the fallback "Start with Channel Compass" name is resolved here.
+    channelCompassName: templateText(templateLocale, "templates.channel-compass.name"),
   };
 });
-
-/**
- * `YYYY-MM-DD` -> `4 Oct`.
- *
- * Built from the string parts rather than `new Date("2026-10-04")`, which parses
- * as UTC midnight and then renders as the *previous* day for any negative UTC
- * offset. Splitting the string keeps the label on the intended calendar day
- * regardless of where the merchant or the browser is.
- */
-function formatDayLabel(dateKey: string, locale: string): string {
-  const [year, month, day] = dateKey.split("-").map(Number);
-  if (!year || !month || !day) return dateKey;
-
-  // Formatted at UTC from a UTC date, so the calendar day cannot shift. The
-  // locale decides the order and spelling ("4 Oct", "Oct 4", "10月4日").
-  return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", timeZone: "UTC" }).format(
-    new Date(Date.UTC(year, month - 1, day)),
-  );
-}
-
-/** `12.5%` in the merchant's locale (`12,5 %` in French). */
-function formatPercent(value: number, locale: string): string {
-  return new Intl.NumberFormat(locale, {
-    style: "percent",
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  }).format(value / 100);
-}
-
-/** `+12.4%` / `-3.0%`, plus the tone that matches the direction. */
-function formatDelta(change: number | null, t: TFunction, locale: string): { text: string; tone: BadgeTone } | null {
-  // A null change means the previous period had no orders, not "no change".
-  // Showing `0%` there would be a fabricated measurement.
-  if (change === null) return null;
-
-  // The keys append their own `%`, so the number is passed without one.
-  const value = new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(
-    Math.abs(change),
-  );
-  return {
-    text:
-      change > 0
-        ? t("dashboard.delta_up", { value })
-        : change < 0
-          ? t("dashboard.delta_down", { value })
-          : t("dashboard.delta_flat"),
-    tone: change > 0 ? "success" : change < 0 ? "critical" : "neutral",
-  };
-}
-
-/**
- * Responses-per-day sparkline.
- *
- * Hand-rolled inline SVG rather than a charting dependency: the shape is a
- * polyline and this keeps the admin bundle small.
- *
- * Everything is drawn with `currentColor` and `currentColor` at low opacity, so
- * the chart inherits whatever text colour the merchant's admin theme sets. No
- * hex, no `s-*` token, nothing that can drift from the surrounding page.
- */
-function Sparkline({
-  points,
-  t,
-  locale,
-}: {
-  points: Array<{ date: string; responses: number }>;
-  t: TFunction;
-  locale: string;
-}) {
-  const max = Math.max(1, ...points.map((p) => p.responses));
-  const total = points.reduce((sum, p) => sum + p.responses, 0);
-  const activeDays = points.filter((p) => p.responses > 0).length;
-  // Reduce with an explicit `undefined` seed: `points[0]` is possibly-undefined
-  // under noUncheckedIndexedAccess, and an empty array has no peak at all.
-  const peak = points.reduce<{ date: string; responses: number } | undefined>(
-    (best, p) => (!best || p.responses > best.responses ? p : best),
-    undefined,
-  );
-
-  // A polyline needs two points to have a direction; a single point would
-  // otherwise render as an invisible dot.
-  if (points.length < 2 || !peak) {
-    return (
-      <s-box padding="large-400" background="subdued" borderRadius="base">
-        <s-stack gap="small">
-          <s-text type="strong">{t("dashboard.trend_empty_title")}</s-text>
-          <s-text color="subdued" fontSize="small">
-            {t("dashboard.trend_empty_body")}
-          </s-text>
-        </s-stack>
-      </s-box>
-    );
-  }
-
-  // The plot area stops short of the bottom so the filled area has somewhere to
-  // go, and the top is inset so the peak never touches the edge.
-  const TOP = 4;
-  const BOTTOM = 32;
-  const HEIGHT = BOTTOM - TOP;
-
-  const xAt = (i: number) => (i / (points.length - 1)) * 100;
-  const yAt = (value: number) => BOTTOM - (value / max) * HEIGHT;
-
-  const linePoints = points.map((p, i) => `${xAt(i)},${yAt(p.responses)}`).join(" ");
-  // Close the line down to the baseline to make a fillable area. Without the
-  // two baseline corners the browser fills nothing.
-  const areaPoints = `0,${BOTTOM} ${linePoints} 100,${BOTTOM}`;
-
-  return (
-    <s-stack gap="base">
-      {/* Stretched to the panel's width (preserveAspectRatio="none"): the
-          default letterboxed the chart into a narrow strip on wide screens and
-          a tiny one on phones. Strokes are non-scaling, so the line weight
-          never distorts. */}
-      <s-box padding="none">
-        <svg
-          viewBox="0 0 100 40"
-          width="100%"
-          height="140"
-          preserveAspectRatio="none"
-          role="img"
-          aria-label={t("dashboard.trend_aria", {
-            total,
-            days: activeDays,
-            peak: peak.responses,
-            date: formatDayLabel(peak.date, locale),
-          })}
-        >
-          {/* Gridlines first so the line draws over them. */}
-          {[0, 0.5, 1].map((fraction) => (
-            <line
-              key={fraction}
-              x1="0"
-              x2="100"
-              y1={BOTTOM - fraction * HEIGHT}
-              y2={BOTTOM - fraction * HEIGHT}
-              stroke="currentColor"
-              strokeOpacity="0.1"
-              strokeWidth="0.25"
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
-
-          <polygon points={areaPoints} fill="currentColor" fillOpacity="0.08" />
-
-          <polyline
-            points={linePoints}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            vectorEffect="non-scaling-stroke"
-          />
-
-          {/* A dot on the latest day anchors the eye to "now". Drawn as a
-              zero-length round-capped line rather than a <circle>: with a
-              non-uniform aspect ratio a circle would stretch into an oval,
-              while a non-scaling stroke stays round at any width. */}
-          <line
-            x1={xAt(points.length - 1)}
-            x2={xAt(points.length - 1)}
-            y1={yAt(points.at(-1)?.responses ?? 0)}
-            y2={yAt(points.at(-1)?.responses ?? 0)}
-            stroke="currentColor"
-            strokeWidth="7"
-            strokeLinecap="round"
-            vectorEffect="non-scaling-stroke"
-          />
-        </svg>
-      </s-box>
-
-      <s-stack direction="block" gap="small">
-        <s-divider />
-        <s-grid gridTemplateColumns="repeat(auto-fit, minmax(min(100%, 7rem), 1fr))" gap="small">
-          <s-stack gap="small-200">
-            <s-text color="subdued" fontSize="small">
-              {t("dashboard.trend_stat_total")}
-            </s-text>
-            <s-text type="strong" fontVariantNumeric="tabular-nums">
-              {total}
-            </s-text>
-          </s-stack>
-          <s-stack gap="small-200">
-            <s-text color="subdued" fontSize="small">
-              {t("dashboard.trend_stat_peak")}
-            </s-text>
-            <s-text type="strong" fontVariantNumeric="tabular-nums">
-              {peak.responses}
-              <s-text color="subdued" fontSize="small">
-                {" "}
-                {t("dashboard.trend_stat_peak_on", { date: formatDayLabel(peak.date, locale) })}
-              </s-text>
-            </s-text>
-          </s-stack>
-          <s-stack gap="small-200">
-            <s-text color="subdued" fontSize="small">
-              {t("dashboard.trend_stat_active_days")}
-            </s-text>
-            <s-text type="strong" fontVariantNumeric="tabular-nums">
-              {t("dashboard.trend_stat_active_days_value", { active: activeDays, total: points.length })}
-            </s-text>
-          </s-stack>
-        </s-grid>
-      </s-stack>
-    </s-stack>
-  );
-}
 
 type Setup = {
   shopHandle: string;
@@ -379,7 +108,7 @@ type Setup = {
 };
 
 /**
- * First-run checklist, shown on the dashboard until the first answer arrives.
+ * First-run checklist, shown on Home until the first answer arrives.
  *
  * A step is only reported as done when we can prove it from our own data. Step
  * 1 is never ticked: the Admin API exposes no "block enabled" state and Shopify
@@ -471,219 +200,105 @@ function SetupGuide({ setup, t, language }: { setup: Setup; t: TFunction; langua
   );
 }
 
-export default function Dashboard() {
+export default function Home() {
   const data = useLoaderData<typeof loader>();
-  const { t, locale, language } = useAdminI18n();
-  const rangeLabel = t(data.range.labelKey);
-  const pending = data.summary.pendingResponses;
-  const locked = data.summary.lockedResponses;
-  const testOrders = data.summary.testOrderResponses;
-
-  // Denominator for the per-channel share bars. Derived on the client from data
-  // already in the payload, so it costs no extra query.
-  const maxChannelResponses = Math.max(0, ...data.channels.map((c) => c.responses));
+  const { t, language } = useAdminI18n();
 
   if (data.setup) return <SetupGuide setup={data.setup} t={t} language={language} />;
 
+  const surveys = data.homeSurveys;
+
   return (
     <s-stack gap="base">
-      {/* Title and range switcher share a row on desktop and stack on a phone.
-          The range is a link rather than a select so the choice is in the URL
-          and survives a refresh or a shared link. */}
-      <s-query-container>
-        <s-grid
-          gridTemplateColumns="@container (inline-size > 640px) 1fr auto, 1fr"
-          gap="small"
-          alignItems="center"
-        >
-          <s-stack gap="small-200">
-            <s-heading>{t("dashboard.title")}</s-heading>
-            <s-text color="subdued">{t("dashboard.subtitle")}</s-text>
-          </s-stack>
-          <s-button-group accessibilityLabel={t("dashboard.range_label")}>
-            {RANGES.map((range) => (
-              <s-button
-                key={range.days}
-                href={`/app?range=${range.days}`}
-                variant={range.days === data.range.days ? "primary" : "secondary"}
-              >
-                {t(range.labelKey)}
-              </s-button>
-            ))}
-          </s-button-group>
-        </s-grid>
-      </s-query-container>
+      {/* Card 1: status. One sentence, or one action. */}
+      <Panel title={t("dashboard.title")} description={t("home.status_live")}>
+        <s-link href="/app/dashboard">{t("dashboard.channels_title")}</s-link>
+      </Panel>
 
-      {data.hasAnyResponse ? (
-        <>
-          {/* Two tiles per row on a phone, four on desktop. A single column
-              made the four headline numbers a long scroll on a phone. */}
-          <s-query-container>
-            <s-grid
-              gridTemplateColumns="@container (inline-size > 760px) repeat(4, minmax(0, 1fr)), (inline-size > 300px) repeat(2, minmax(0, 1fr)), minmax(0, 1fr)"
-              gap="small"
-            >
-              {/* The badge is the change in answer COUNT versus the previous
-                  period, so it sits on this tile. On the rate tile it read as
-                  a change in rate: orders and answers both doubling showed +100%. */}
-              <Metric
-                label={t("dashboard.metric_responses")}
-                help={rangeLabel}
-                trend={formatDelta(data.summary.responseRateChange, t, locale)}
-              >
-                {data.summary.totalResponses}
-              </Metric>
-
-              <Metric label={t("dashboard.metric_revenue")} help={t("dashboard.metric_revenue_help")}>
-                <MoneyList amounts={data.summary.revenue} />
-              </Metric>
-
-              <Metric label={t("dashboard.metric_aov")} help={t("dashboard.metric_aov_help")}>
-                <MoneyList amounts={data.summary.aov} />
-              </Metric>
-
-              <Metric
-                label={t("dashboard.metric_response_rate")}
-                help={
-                  data.summary.responseRate === null
-                    ? t("dashboard.response_rate_no_orders")
-                    : t("dashboard.response_rate_of_orders", {
-                        count: data.summary.rateResponses,
-                        total: data.ordersInWindow,
-                      })
-                }
-              >
-                {/* null is rendered as an em dash, never 0% or NaN — a divide by
-                    zero orders is "unknown", not "nobody answered". */}
-                {data.summary.responseRate === null ? "—" : formatPercent(data.summary.responseRate, locale)}
-              </Metric>
-            </s-grid>
-          </s-query-container>
-
-          {pending > 0 ? (
-            <Banner tone="info" heading={t("dashboard.pending_banner_title", { count: pending })}>
-              {t("dashboard.pending_banner_body")}
-            </Banner>
-          ) : null}
-
-          {testOrders > 0 ? (
-            <Banner tone="info" heading={t("dashboard.test_orders_banner_title", { count: testOrders })}>
-              {t("dashboard.test_orders_banner_body")}
-            </Banner>
-          ) : null}
-
-          {locked > 0 ? (
-            <Banner tone="warning" heading={t("dashboard.locked_banner_title", { count: locked })}>
-              {t("dashboard.locked_banner_body")}
-            </Banner>
-          ) : null}
-
-          <Panel title={t("dashboard.channels_title")} description={t("dashboard.channels_subtitle")}>
-            {/* Real column headers (`s-table-header`) with list slots, so on a
-                narrow screen Polaris re-lays each row as a card — channel name
-                on top, the numbers as labelled pairs — instead of a five-column
-                table scrolling sideways on a phone. */}
-            <s-table variant="auto">
-              <s-table-header-row>
-                <s-table-header listSlot="primary">{t("dashboard.col_channel")}</s-table-header>
-                <s-table-header listSlot="secondary" format="numeric">
-                  {t("dashboard.col_responses")}
-                </s-table-header>
-                <s-table-header listSlot="labeled">{t("dashboard.col_share")}</s-table-header>
-                <s-table-header listSlot="labeled" format="currency">
-                  {t("dashboard.col_revenue")}
-                </s-table-header>
-                <s-table-header listSlot="labeled" format="currency">
-                  {t("dashboard.col_aov")}
-                </s-table-header>
-              </s-table-header-row>
-              <s-table-body>
-                {data.channels.map((channel) => {
-                  // Share of responses relative to the busiest channel, so a
-                  // flat distribution reads as comparable bars rather than
-                  // unrelated slivers of 100%.
-                  const share =
-                    maxChannelResponses > 0 ? (channel.responses / maxChannelResponses) * 100 : 0;
-                  const name = channel.label ?? t("dashboard.channel_other");
-
-                  return (
-                    <s-table-row key={channel.channel}>
-                      <s-table-cell>
-                        <s-stack direction="inline" gap="small-200" alignItems="center">
-                          <s-text type="strong">{name}</s-text>
-                          {channel.pendingResponses > 0 ? (
-                            <s-badge tone="info">
-                              {t("dashboard.pending_badge", { count: channel.pendingResponses })}
-                            </s-badge>
-                          ) : null}
-                        </s-stack>
-                      </s-table-cell>
-                      <s-table-cell>
-                        <s-text fontVariantNumeric="tabular-nums">{channel.responses}</s-text>
-                      </s-table-cell>
-                      <s-table-cell>
-                        {/* `s-progress` is styled by the theme, so this bar tracks
-                            the merchant's admin colours rather than a fixed hue. */}
-                        <s-progress
-                          value={Math.round(share)}
-                          max={100}
-                          tone="info"
-                          accessibilityLabel={t("dashboard.share_aria", { channel: name, share: Math.round(share) })}
-                        />
-                      </s-table-cell>
-                      <s-table-cell>
-                        {channel.revenue.length > 0 ? (
-                          <MoneyList amounts={channel.revenue} />
-                        ) : channel.pendingResponses > 0 ? (
-                          <s-text color="subdued">{t("dashboard.waiting_for_order")}</s-text>
-                        ) : (
-                          // Every order arrived but none counts (test, cancelled
-                          // or refunded). "Waiting for order" promised one that
-                          // already came.
-                          <s-text color="subdued">—</s-text>
-                        )}
-                      </s-table-cell>
-                      <s-table-cell>
-                        {channel.aov.length > 0 ? (
-                          <MoneyList amounts={channel.aov} />
-                        ) : (
-                          <s-text color="subdued">—</s-text>
-                        )}
-                      </s-table-cell>
-                    </s-table-row>
-                  );
-                })}
-              </s-table-body>
-            </s-table>
-          </Panel>
-
-          <Panel title={t("dashboard.trend_title")} description={t("dashboard.trend_subtitle", { range: rangeLabel })}>
-            <Sparkline
-              points={data.trend.map((p) => ({ date: p.date, responses: p.responses }))}
-              t={t}
-              locale={locale}
-            />
-          </Panel>
-
-          <div>
-            <s-button href="/app/surveys" variant="secondary" icon="edit">
-              {t("dashboard.edit_survey")}
-            </s-button>
-          </div>
-        </>
-      ) : (
-        <s-section>
+      {/* Card 2: up to three active surveys, one key number each. */}
+      <Panel title={t("home.your_surveys")}>
+        {surveys.length === 0 ? (
+          <s-text color="subdued">{t("surveys.empty_body")}</s-text>
+        ) : (
           <s-stack gap="base">
-            <s-heading>{t("dashboard.empty_title")}</s-heading>
-            <s-text>{t("dashboard.empty_body")}</s-text>
-            <div>
-              <s-button href="/app/surveys" variant="secondary">
-                {t("dashboard.edit_survey")}
-              </s-button>
-            </div>
+            {surveys.map((survey) => (
+              <HomeSurveyRow key={survey.id} survey={survey} t={t} />
+            ))}
+            <s-link href="/app/surveys">{t("home.view_all")}</s-link>
           </s-stack>
-        </s-section>
-      )}
+        )}
+      </Panel>
+
+      {/* Card 3: exactly one rule-based next step. */}
+      <NextStep
+        surveys={surveys}
+        spotlightTemplateName={data.spotlightTemplateName}
+        channelCompassName={data.channelCompassName}
+        t={t}
+      />
     </s-stack>
+  );
+}
+
+function HomeSurveyRow({ survey, t }: { survey: HomeSurvey; t: TFunction }) {
+  return (
+    <s-box padding="base" border="base" borderRadius="base">
+      <s-stack gap="small">
+        <s-stack direction="inline" justifyContent="space-between" gap="small" alignItems="center">
+          <s-text type="strong">{survey.name}</s-text>
+          <s-heading>{survey.keyNumber}</s-heading>
+        </s-stack>
+        <s-stack direction="inline" justifyContent="space-between" gap="small" alignItems="center">
+          <ConfidenceBadge level={survey.confidence} n={survey.responseCount} t={t} />
+          <s-link href={`/app/surveys/${survey.id}`}>{t("home.view")}</s-link>
+        </s-stack>
+      </s-stack>
+    </s-box>
+  );
+}
+
+/**
+ * The single next-step suggestion.
+ *
+ * Priority: unpublished changes first (they need a decision), then a reliable
+ * survey's ideas, then a seasonal spotlight, then starting from a template.
+ */
+function NextStep({
+  surveys,
+  spotlightTemplateName,
+  channelCompassName,
+  t,
+}: {
+  surveys: HomeSurvey[];
+  spotlightTemplateName: string | null;
+  channelCompassName: string;
+  t: TFunction;
+}) {
+  const draft = surveys.find((s) => s.hasDraft);
+  const reliable = surveys.find((s) => s.confidence === "reliable");
+
+  let body: string;
+  let href = "/app/surveys";
+  if (draft) {
+    body = t("home.unpublished", { name: draft.name });
+    href = `/app/surveys/${draft.id}?tab=studio`;
+  } else if (reliable) {
+    body = t("home.reliable_ideas", { name: reliable.name });
+    href = `/app/surveys/${reliable.id}?tab=results`;
+  } else if (spotlightTemplateName) {
+    body = t("home.start_with", { name: spotlightTemplateName });
+    href = "/app/surveys/library";
+  } else if (surveys.length === 0) {
+    body = t("home.start_with", { name: channelCompassName });
+    href = "/app/surveys/library";
+  } else {
+    body = t("home.reliable_ideas", { name: surveys[0]?.name ?? "" });
+    href = `/app/surveys/${surveys[0]?.id ?? ""}?tab=results`;
+  }
+
+  return (
+    <Panel title={t("home.next_step")} description={body}>
+      <s-link href={href}>{t("home.view")}</s-link>
+    </Panel>
   );
 }

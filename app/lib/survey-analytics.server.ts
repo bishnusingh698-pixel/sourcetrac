@@ -48,6 +48,8 @@ export type SurveyResponseRow = {
   /** The order never arrived in time, so the row is excluded from revenue. */
   unverifiedFailed: boolean;
   createdAt: Date;
+  /** T8: numeric product ids on the order's lines (may be empty). */
+  productIds: string[];
   answers: SurveyAnswerRow[];
   order: OrderFacts | null;
 };
@@ -111,6 +113,7 @@ export async function fetchSurveyResponses(params: {
       verified: row.verified,
       unverifiedFailed: row.unverifiedFailed,
       createdAt: row.createdAt,
+      productIds: safeParseArray(row.productIds),
       answers: row.answers.map((answer) => ({
         questionId: answer.questionId,
         optionIds: safeParseArray(answer.optionIds),
@@ -131,7 +134,8 @@ export async function fetchSurveyResponses(params: {
   });
 }
 
-function safeParseArray(raw: string): string[] {
+function safeParseArray(raw: string | null): string[] {
+  if (!raw) return [];
   try {
     const value = JSON.parse(raw);
     return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];

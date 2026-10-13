@@ -581,7 +581,16 @@
     "answered_other": "{{count}} 条回答",
     "removed": "（已删除）",
     "no_text_answers": "还没有文字回答。",
-    "download": "下载 CSV"
+    "download": "下载 CSV",
+    "by_product_title": "按产品",
+    "by_product_empty": "每个产品的回答还不够。",
+    "by_product_row": "{{count}} 个回答 · {{label}} {{percent}}%",
+    "cross_title": "比较两个问题",
+    "cross_needs_more": "两个问题都需要至少 30 个回答。",
+    "cross_caption": "按 {{col}} 划分的 {{row}}",
+    "cross_percent": "{{percent}}%",
+    "ideas_title": "可尝试的想法",
+    "filter_product": "产品"
   },
   "responses": {
     "title": "回答",
@@ -820,5 +829,34 @@
     "fulfillment_sample": "已下单 · 备货中 · 已发货 · 已送达",
     "template_info": "{{count}} 个问题",
     "tab_studio": "工作室"
+  },
+  "confidence": {
+    "too_early": "尚早",
+    "too_early_help": "回答少于 30 个。结果仍可能有很大变化。",
+    "early_signal": "初步信号",
+    "early_signal_help": "结果开始显现出规律。",
+    "getting_clear": "逐渐清晰",
+    "getting_clear_help": "结果相当稳定。",
+    "reliable": "可靠",
+    "reliable_help": "更多回答不太可能大幅改变整体情况。",
+    "answers_one": "{{count}} 个回答",
+    "answers_other": "{{count}} 个回答"
+  },
+  "ideas": {
+    "dismiss": "忽略",
+    "based_on_one": "基于 {{count}} 个回答",
+    "based_on_other": "基于 {{count}} 个回答",
+    "empty": "暂无建议。当结果足够清晰时会出现。"
+  },
+  "home": {
+    "status_live": "你的问卷已在感谢页上线。",
+    "status_add_block": "将问卷添加到你的结账页",
+    "your_surveys": "你的问卷",
+    "view_all": "查看所有问卷",
+    "next_step": "下一步",
+    "start_with": "从 {{name}} 开始",
+    "view": "查看",
+    "reliable_ideas": "{{name}} 的结果已可靠。查看可尝试的想法。",
+    "unpublished": "{{name}} 有未发布的更改。查看并发布。"
   }
 }

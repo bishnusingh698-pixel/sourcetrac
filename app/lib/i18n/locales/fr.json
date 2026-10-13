@@ -581,7 +581,16 @@
     "answered_other": "{{count}} répondues",
     "removed": "(supprimée)",
     "no_text_answers": "Pas encore de réponses textuelles.",
-    "download": "Télécharger le CSV"
+    "download": "Télécharger le CSV",
+    "by_product_title": "Par produit",
+    "by_product_empty": "Pas encore assez de réponses par produit.",
+    "by_product_row": "{{count}} réponses · {{label}} {{percent}} %",
+    "cross_title": "Comparer deux questions",
+    "cross_needs_more": "Nécessite au moins 30 réponses aux deux questions.",
+    "cross_caption": "{{row}} par {{col}}",
+    "cross_percent": "{{percent}} %",
+    "ideas_title": "Idées à essayer",
+    "filter_product": "Produit"
   },
   "responses": {
     "title": "Réponses",
@@ -820,5 +829,34 @@
     "fulfillment_sample": "Commande passée · En préparation · Expédiée · Livrée",
     "template_info": "{{count}} questions",
     "tab_studio": "Studio"
+  },
+  "confidence": {
+    "too_early": "Trop tôt",
+    "too_early_help": "Moins de 30 réponses. Les résultats peuvent encore beaucoup changer.",
+    "early_signal": "Premier signal",
+    "early_signal_help": "Les résultats commencent à montrer une tendance.",
+    "getting_clear": "Devient clair",
+    "getting_clear_help": "Les résultats sont assez stables.",
+    "reliable": "Fiable",
+    "reliable_help": "D'autres réponses ne changeront probablement pas beaucoup le tableau.",
+    "answers_one": "{{count}} réponse",
+    "answers_other": "{{count}} réponses"
+  },
+  "ideas": {
+    "dismiss": "Ignorer",
+    "based_on_one": "D'après {{count}} réponse",
+    "based_on_other": "D'après {{count}} réponses",
+    "empty": "Pas encore de suggestions. Elles apparaissent lorsque les résultats sont assez clairs."
+  },
+  "home": {
+    "status_live": "Votre sondage est actif sur la page de remerciement.",
+    "status_add_block": "Ajoutez le sondage à votre paiement",
+    "your_surveys": "Vos sondages",
+    "view_all": "Voir tous les sondages",
+    "next_step": "Étape suivante",
+    "start_with": "Commencez par {{name}}",
+    "view": "Voir",
+    "reliable_ideas": "Vos résultats pour {{name}} sont fiables. Voir les idées à essayer.",
+    "unpublished": "{{name}} a des modifications non publiées. Vérifier et publier."
   }
 }

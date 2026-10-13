@@ -121,6 +121,56 @@ verification/abuse items. See `AUDIT_REPORT.md`.
 
 ---
 
+## I. Templates, Insight Library and Survey Studio (T1-T16, S1-S13)
+
+Source: `templates-and-studio.md`. Six phases committed on `main`
+(`Phase 0-1` through `Phase 5`), plus the Phase 6 Overview/Results/Home pass.
+Where the plan and the code disagree, the code wins; divergences are recorded in
+`TEMPLATES_NOTES.md`.
+
+### Templates and insights
+
+| ID | Requirement | Status | Evidence |
+|---|---|---|---|
+| T1 | Insight library: categories, search, filters, outcome tags | DONE | `app/routes/app.surveys.library._index.tsx`; `shared/templates/catalog.ts`; `tests/unit/templates-catalog.test.ts` |
+| T2 | Template detail: learn, questions, logic, preview, example results, ideas | DONE | `app/routes/app.surveys.library.$id.tsx` |
+| T3 | Quick setup (3 steps) | DONE | `app/routes/app.surveys.library.$id.setup.tsx`; `shared/templates/setup.ts`; `tests/unit/templates-setup.test.ts` |
+| T4 | Answer packs (region / occasion / industry) | DONE | `shared/templates/packs.ts`; locale keys `packs.*` |
+| T5 | Lite versions | DONE | `template.liteQuestionKeys`; `buildSurveyDefinition({ lite })`; catalog `hasLite` |
+| T6 | Exclusive answer option | DONE | `Option.exclusive` (migration `20261012160000`); `shared/survey-rules.ts`; server rejection in `app/lib/answers.server.ts` |
+| T7 | Payment-method targeting | PARTIAL | `shared/survey-config.ts`; extension reads `selectedPaymentOptions`, empty = not matched. Unverified on shopify.dev from this container (see `TEMPLATES_NOTES.md`) |
+| T8 | Results by product | DONE | `Response.productIds`; `buildProductBreakdown`; `ProductTable`; `getProductTitles` cache |
+| T9 | Confidence meter | DONE | `shared/templates/confidence.ts`; `ConfidenceBadge` / `ConfidenceHelp`; boundaries tested in `tests/unit/templates-stats.test.ts` |
+| T10 | Learn & stop | DONE | `Survey.learnAndStop`; trigger in `app/lib/answers.server.ts` |
+| T11 | Insight rotation | DONE | `Survey.rotation` / `rotationWeight`; `shared/survey-config.ts` selection; `app/lib/surveys.server.ts` |
+| T12 | Ideas to try | DONE | `shared/templates/ideas.ts`; `app/lib/insights.server.ts`; `IdeasList` |
+| T13 | Smart actions | DONE | `shared/templates/smart-actions.ts`; pending-retry sync in `app/lib/sync.server.ts`; scope-gated |
+| T14 | Cross-question view | DONE | `buildCrossTab` / `crossTabRowShares`; `CrossTabView`; key resolution in `app/lib/insights.server.ts` (guarded by `tests/unit/insights-build.test.ts`) |
+| T15 | Seasonal spotlight | DONE | `shared/templates/seasons.ts`; `currentSpotlight`; Home next-step |
+| T16 | Minimal home | DONE | `app/routes/app._index.tsx`; `app/lib/home.server.ts` |
+
+### Survey Studio
+
+| ID | Requirement | Status | Evidence |
+|---|---|---|---|
+| S1 | Three-panel Studio (responsive) | DONE | `app/routes/app.surveys.$id.tsx` |
+| S2 | Realistic preview (shop name, currency, product) | DONE | `app/components/checkout-mock.tsx`; `getShopDisplay` |
+| S3 | Placement switcher | DONE | Studio preview tabs |
+| S4 | Device switcher | DONE | desktop / mobile frames |
+| S5 | Interactive preview | DONE | shared `isQuestionVisible` / `validateResponse` in `app/components/survey-preview.tsx` |
+| S6 | Click to edit | DONE | preview selects the question in the editor |
+| S7 | Drafts for live surveys | DONE | `Survey.draft` / `draftUpdatedAt`; publish/discard transactions |
+| S8 | Change summary | DONE | `diffSurvey`; publish modal |
+| S9 | Ready check | DONE | `shared/templates/readiness.ts`; `getReadiness` |
+| S10 | Preview in Shopify's checkout editor | PARTIAL | Fallback "Open checkout editor" link only; editor-detect property unverifiable from this container (see `TEMPLATES_NOTES.md`) |
+| S11 | Design tab | DONE | `DesignSettings` in `shared/survey-rules.ts`; Studio Design panel |
+| S12 | Scale labels | DONE | `scaleLowLabel` / `scaleHighLabel`, max 30 chars |
+| S13 | Preview language | DONE | Studio locale select; survey translations |
+
+Status legend for this table: DONE / PARTIAL (built defensively, gap recorded).
+
+---
+
 ## Open items feeding Phase F
 
 - **F-010** — Free plan limits: the plan says 100 responses/mo and 1 active

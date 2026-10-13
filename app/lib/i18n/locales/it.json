@@ -581,7 +581,16 @@
     "answered_other": "{{count}} risposte",
     "removed": "(rimossa)",
     "no_text_answers": "Nessuna risposta testuale.",
-    "download": "Scarica CSV"
+    "download": "Scarica CSV",
+    "by_product_title": "Per prodotto",
+    "by_product_empty": "Non ci sono ancora abbastanza risposte per prodotto.",
+    "by_product_row": "{{count}} risposte · {{label}} {{percent}}%",
+    "cross_title": "Confronta due domande",
+    "cross_needs_more": "Servono almeno 30 risposte a entrambe le domande.",
+    "cross_caption": "{{row}} per {{col}}",
+    "cross_percent": "{{percent}}%",
+    "ideas_title": "Idee da provare",
+    "filter_product": "Prodotto"
   },
   "responses": {
     "title": "Risposte",
@@ -820,5 +829,34 @@
     "fulfillment_sample": "Ordine effettuato · In preparazione · Spedito · Consegnato",
     "template_info": "{{count}} domande",
     "tab_studio": "Studio"
+  },
+  "confidence": {
+    "too_early": "Troppo presto",
+    "too_early_help": "Meno di 30 risposte. I risultati possono ancora cambiare molto.",
+    "early_signal": "Segnale iniziale",
+    "early_signal_help": "I risultati iniziano a mostrare uno schema.",
+    "getting_clear": "Sempre più chiaro",
+    "getting_clear_help": "I risultati sono abbastanza stabili.",
+    "reliable": "Affidabile",
+    "reliable_help": "È improbabile che altre risposte cambino molto il quadro.",
+    "answers_one": "{{count}} risposta",
+    "answers_other": "{{count}} risposte"
+  },
+  "ideas": {
+    "dismiss": "Ignora",
+    "based_on_one": "Basato su {{count}} risposta",
+    "based_on_other": "Basato su {{count}} risposte",
+    "empty": "Ancora nessun suggerimento. Compaiono quando i risultati sono abbastanza chiari."
+  },
+  "home": {
+    "status_live": "Il tuo sondaggio è attivo nella pagina di ringraziamento.",
+    "status_add_block": "Aggiungi il sondaggio al tuo checkout",
+    "your_surveys": "I tuoi sondaggi",
+    "view_all": "Vedi tutti i sondaggi",
+    "next_step": "Passo successivo",
+    "start_with": "Inizia con {{name}}",
+    "view": "Vedi",
+    "reliable_ideas": "I risultati di {{name}} sono affidabili. Vedi le idee da provare.",
+    "unpublished": "{{name}} ha modifiche non pubblicate. Rivedi e pubblica."
   }
 }

@@ -71,3 +71,26 @@ template field key defined in `en` exists in all 10 template locale files.
   are mapped to the new library where they overlap and kept under a "Classic"
   origin label otherwise; existing surveys created from them are independent
   copies and keep working.
+
+## Phase 6 — Overview, Results and minimal Home
+
+- **Home (T16) vs dashboard.** `/app` is the minimal landing page the plan asks
+  for: three cards (status, up to three active surveys with one key number each,
+  one next step). The full channel report, trend and range switcher — which
+  previously lived on `/app` — moved to `/app/dashboard`, a legacy route kept
+  reachable and re-listed in `s-app-nav`. This is a deliberate split, not a
+  removal: nothing the dashboard showed was dropped, it changed address.
+- **Cross-question key resolution.** `resultsHints.crossQuestion` names template
+  question keys (`q_channel`); a stored survey uses the stable id
+  `buildSurveyDefinition` derives (`channel_compass_q_channel`). The insights
+  builder converts through `stableQuestionId`. Reverting that conversion makes
+  the T14 view vanish for every template silently — guarded by
+  `tests/unit/insights-build.test.ts`.
+- **Home falls back to a template name from the template bundle.** Template names
+  are not in the admin i18n bundle, so `app._index.tsx` resolves the seasonal
+  spotlight and the "Channel Compass" default server-side via `templateText` and
+  passes them as props. A component that called `t()` for these would render a raw
+  key.
+- **Ideas only for template surveys.** A survey created from scratch shows no
+  ideas unless it carries a `templateId` and keeps the template's question keys,
+  matching the plan.

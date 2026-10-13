@@ -491,4 +491,3 @@ The app must **never**:
 9. Show a stack trace or raw error to a buyer or merchant.
 10. Block response collection because a merchant is on Free, unpaid, or cancelled — it collects and flags.
 11. Require the uptime pinger to function.
-</content>

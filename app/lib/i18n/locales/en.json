@@ -527,7 +527,16 @@
     "answered_other": "{{count}} answered",
     "removed": "(removed)",
     "no_text_answers": "No text answers yet.",
-    "download": "Download CSV"
+    "download": "Download CSV",
+    "by_product_title": "By product",
+    "by_product_empty": "Not enough answers per product yet.",
+    "by_product_row": "{{count}} answers · {{label}} {{percent}}%",
+    "cross_title": "Compare two questions",
+    "cross_needs_more": "Needs at least 30 answers to both questions.",
+    "cross_caption": "{{row}} by {{col}}",
+    "cross_percent": "{{percent}}%",
+    "ideas_title": "Ideas to try",
+    "filter_product": "Product"
   },
   "responses": {
     "title": "Responses",
@@ -820,5 +829,34 @@
     "fulfillment_sample": "Order placed · Preparing · Shipped · Delivered",
     "template_info": "{{count}} questions",
     "tab_studio": "Studio"
+  },
+  "confidence": {
+    "too_early": "Too early",
+    "too_early_help": "Fewer than 30 answers. Results can still change a lot.",
+    "early_signal": "Early signal",
+    "early_signal_help": "Results are starting to show a pattern.",
+    "getting_clear": "Getting clear",
+    "getting_clear_help": "Results are fairly stable.",
+    "reliable": "Reliable",
+    "reliable_help": "More answers are unlikely to change the picture much.",
+    "answers_one": "{{count}} answer",
+    "answers_other": "{{count}} answers"
+  },
+  "ideas": {
+    "dismiss": "Dismiss",
+    "based_on_one": "Based on {{count}} answer",
+    "based_on_other": "Based on {{count}} answers",
+    "empty": "No suggestions yet. They appear once results are clear enough."
+  },
+  "home": {
+    "status_live": "Your survey is live on the Thank you page.",
+    "status_add_block": "Add the survey to your checkout",
+    "your_surveys": "Your surveys",
+    "view_all": "View all surveys",
+    "next_step": "Next step",
+    "start_with": "Start with {{name}}",
+    "view": "View",
+    "reliable_ideas": "Your {{name}} results are reliable. See ideas to try.",
+    "unpublished": "{{name}} has unpublished changes. Review and publish."
   }
 }

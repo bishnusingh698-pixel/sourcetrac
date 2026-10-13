@@ -581,7 +581,16 @@
     "answered_other": "{{count}} 件の回答",
     "removed": "（削除済み）",
     "no_text_answers": "まだテキスト回答がありません。",
-    "download": "CSV をダウンロード"
+    "download": "CSV をダウンロード",
+    "by_product_title": "商品別",
+    "by_product_empty": "商品ごとの回答がまだ十分にありません。",
+    "by_product_row": "{{count}} 件の回答 · {{label}} {{percent}}%",
+    "cross_title": "2 つの質問を比較",
+    "cross_needs_more": "両方の質問に少なくとも 30 件の回答が必要です。",
+    "cross_caption": "{{col}} 別の {{row}}",
+    "cross_percent": "{{percent}}%",
+    "ideas_title": "試せるアイデア",
+    "filter_product": "商品"
   },
   "responses": {
     "title": "回答",
@@ -820,5 +829,34 @@
     "fulfillment_sample": "注文済み · 準備中 · 発送済み · 配達済み",
     "template_info": "{{count}} 問",
     "tab_studio": "スタジオ"
+  },
+  "confidence": {
+    "too_early": "まだ早い",
+    "too_early_help": "回答が 30 件未満です。結果はまだ大きく変わる可能性があります。",
+    "early_signal": "初期の兆し",
+    "early_signal_help": "結果に傾向が見え始めています。",
+    "getting_clear": "はっきりしてきた",
+    "getting_clear_help": "結果はかなり安定しています。",
+    "reliable": "信頼できる",
+    "reliable_help": "回答が増えても全体像は大きく変わらないでしょう。",
+    "answers_one": "{{count}} 件の回答",
+    "answers_other": "{{count}} 件の回答"
+  },
+  "ideas": {
+    "dismiss": "閉じる",
+    "based_on_one": "{{count}} 件の回答に基づく",
+    "based_on_other": "{{count}} 件の回答に基づく",
+    "empty": "まだ提案はありません。結果が十分に明確になると表示されます。"
+  },
+  "home": {
+    "status_live": "アンケートはサンクスページで公開中です。",
+    "status_add_block": "アンケートをチェックアウトに追加する",
+    "your_surveys": "あなたのアンケート",
+    "view_all": "すべてのアンケートを見る",
+    "next_step": "次のステップ",
+    "start_with": "{{name}} から始める",
+    "view": "表示",
+    "reliable_ideas": "{{name}} の結果は信頼できます。試せるアイデアを見てください。",
+    "unpublished": "{{name}} に未公開の変更があります。確認して公開してください。"
   }
 }

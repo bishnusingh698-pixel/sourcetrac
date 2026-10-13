@@ -126,9 +126,10 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
   };
 
   const created = await createSurvey(shop.id, input);
-  // Quick setup (Phase 4) owns `/setup`; until then the merchant edits the fresh
-  // draft in the Studio. The Lite flag rides along for Quick setup to consume.
-  return redirect(`/app/surveys/${created.id}?lite=${lite ? "1" : "0"}`);
+  // Quick setup (T3) owns the next step: it walks the merchant through
+  // customize → who sees it → review, then launches. The Lite flag rides along
+  // so the wizard can explain what the full version adds.
+  return redirect(`/app/surveys/library/${created.id}/setup?lite=${lite ? "1" : "0"}`);
 });
 
 /** Optional questions start ON unless the Lite version excludes them. */
