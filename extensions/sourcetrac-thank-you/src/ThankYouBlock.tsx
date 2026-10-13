@@ -49,6 +49,13 @@ function ThankYouBlock() {
         getSessionToken: () => shopify.sessionToken.get(),
         translate: (key) => shopify.i18n.translate(key),
         getLocale: () => shopify.localization?.language?.value?.isoCode,
+        // T7: read the buyer's selected payment method types so the server can
+        // apply the "only orders paid on delivery" rule. Read lazily, not
+        // captured: the selection can change and `fetchSurvey` is called after
+        // the confirmation resolves. The array may be empty for some offsite
+        // methods, which the server treats as "not a manual payment".
+        getPaymentTypes: () =>
+          (shopify.selectedPaymentOptions?.value ?? []).map((option) => option.type),
       }),
     [shopify],
   );

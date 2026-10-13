@@ -280,6 +280,57 @@ import the shared module). `tests/unit/survey-rules.test.ts` covers the server
 rejection and both helpers; the new `tests/unit/exclusive-option.test.ts` pins
 the extension helper to identical behavior so the two copies cannot drift.
 
+### Phase-8 verification pass — concurrency conflict detection (S7, section 6.6)
+
+The plan lists **"Conflict detection"** as a required test (§13) and gives the
+exact copy to show (§11, `studio.conflict`). The string existed in all 10 admin
+locale bundles, but **nothing referenced it**: save and publish had no
+optimistic-concurrency check, so two Studio windows on the same survey would
+silently clobber each other.
+
+Fixed with a dedicated token, not `updatedAt`:
+
+- `Survey.revision` (`Int`, migration `20261012170000_survey_revision`, additive,
+  default 0). A plain column bumped only by merchant writes — save, publish,
+  pause/activate.
+- `updateSurvey` and `publishSurveyDraft` take an optional `expectedRevision` and
+  throw the new `ConflictError` (409) on a mismatch. `undefined` skips the check,
+  so older payloads and direct library calls are unaffected.
+- The route reads `revision` from the form (hidden save input and `submitIntent`)
+  and returns `{ ok: false, conflict: true }`; the Studio renders the
+  `studio.conflict` banner instead of a generic save error.
+
+**Why `revision` and not `updatedAt`.** Answer counting increments
+`responseCount` via `survey.update`, which moves Prisma's `@updatedAt` on every
+answer. Keying the conflict check on `updatedAt` would refuse a merchant's save
+whenever a shopper answered while the editor was open — a false conflict on
+exactly the busiest surveys. `tests/db-survey-drafts.test.ts` pins this: a
+`responseCount` increment must not move the token. Four new DB tests (stale save
+refused, current save accepted, stale publish refused, no false conflict); each
+was confirmed to **fail** when `assertRevision` is reverted.
+
+### Phase-8 verification pass — S10 editor detection (corrected)
+
+The earlier note said the plan's metafield mechanism "does not fit" and that
+editor detection "could not be confirmed". **Both claims were wrong**, now
+checked against shopify.dev (2026-07) and the installed types:
+
+- `shopify.extension.editor` (`Editor`, `type: 'checkout'`) detects the editor
+  and is already read by both checkout blocks.
+- `shopify.appMetafields` **is** available on `purchase.thank-you.block.render`,
+  declared with `[[extensions.targeting.metafields]]` (`key` + `namespace`; no
+  `owner_type` in the extension config syntax). A second app-owned preview
+  metafield is therefore feasible, and the compiled config (~11.5 KB) is well
+  under the metafield size limit.
+
+S10 still ships the plan's **step-3 fallback** ("Open checkout editor" link
+under the Studio preview), but now as a **stated scope decision**: shipping the
+metafield preview would add a parallel metafield read/write path plus a Studio
+action for an admin-only preview. The plan sanctions this outcome ("If not
+supported … Open checkout editor"). Concrete build steps are recorded in
+`FUTURE_TASKS.md`, and the wrong rationale is corrected in `TEMPLATES_NOTES.md`
+and `AGENTS.md` so it is not repeated.
+
 **Definition of done.** All 21 templates exist in all 10 languages (After
 delivery only when its flag is on); T1–T16 and S1–S13 are implemented or
 documented as skipped with a reason (`COMPLIANCE_MATRIX.md`, `TEMPLATES_NOTES.md`

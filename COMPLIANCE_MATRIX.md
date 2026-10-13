@@ -138,7 +138,7 @@ Where the plan and the code disagree, the code wins; divergences are recorded in
 | T4 | Answer packs (region / occasion / industry) | DONE | `shared/templates/packs.ts`; locale keys `packs.*` |
 | T5 | Lite versions | DONE | `template.liteQuestionKeys`; `buildSurveyDefinition({ lite })`; catalog `hasLite` |
 | T6 | Exclusive answer option | DONE | `Option.exclusive` (migration `20261012160000`); server rejection as `exclusive_with_others` in `shared/survey-rules.ts`; clearing rule shared by the admin preview (`reconcileMultiChoiceSelection`) and checkout (`applyExclusiveToggle`), pinned by `tests/unit/exclusive-option.test.ts` |
-| T7 | Payment-method targeting | PARTIAL | `shared/survey-config.ts`; extension reads `selectedPaymentOptions`, empty = not matched. Unverified on shopify.dev from this container (see `TEMPLATES_NOTES.md`) |
+| T7 | Payment-method targeting | DONE | Verified against shopify.dev + installed `@shopify/ui-extensions` types (2026-07): `selectedPaymentOptions` exists on the thank-you target and `paymentOnDelivery` is a distinct type. `matchesPaymentRule` matches `manualPayment` **and** `paymentOnDelivery`; the thank-you block binds `getPaymentTypes` so the fetch actually carries `paymentTypes`; empty = not matched. `tests/unit/templates-phase2.test.ts` + `tests/integration/extension-bundle.test.ts` |
 | T8 | Results by product | DONE | `Response.productIds`; `buildProductBreakdown`; `ProductTable`; `getProductTitles` cache |
 | T9 | Confidence meter | DONE | `shared/templates/confidence.ts`; `ConfidenceBadge` / `ConfidenceHelp`; boundaries tested in `tests/unit/templates-stats.test.ts` |
 | T10 | Learn & stop | DONE | `Survey.learnAndStop`; trigger in `app/lib/answers.server.ts` |
@@ -159,10 +159,10 @@ Where the plan and the code disagree, the code wins; divergences are recorded in
 | S4 | Device switcher | DONE | desktop / mobile frames |
 | S5 | Interactive preview | DONE | shared `isQuestionVisible` / `validateResponse` in `app/components/survey-preview.tsx` |
 | S6 | Click to edit | DONE | preview selects the question in the editor |
-| S7 | Drafts for live surveys | DONE | `Survey.draft` / `draftUpdatedAt`; publish/discard transactions |
+| S7 | Drafts for live surveys | DONE | `Survey.draft` / `draftUpdatedAt`; publish/discard transactions. Concurrency: `Survey.revision` optimistic token (migration `20261012170000`) checked on save/publish; a stale token returns 409 and the `studio.conflict` banner. `tests/db-survey-drafts.test.ts` |
 | S8 | Change summary | DONE | `diffSurvey`; publish modal |
 | S9 | Ready check | DONE | `shared/templates/readiness.ts`; `getReadiness` |
-| S10 | Preview in Shopify's checkout editor | PARTIAL | Fallback "Open checkout editor" link wired under the Studio preview (`app/routes/app.surveys.$id.tsx`). The plan's metafield mechanism does not fit: config is served over HTTP, and the editor has no order id. `shopify.extension.editor` detection exists and is used — see `TEMPLATES_NOTES.md` Phase 7 |
+| S10 | Preview in Shopify's checkout editor | PARTIAL | Both halves verified **supported**: `shopify.extension.editor` (`Editor`, `type: 'checkout'`) detects the editor, and `shopify.appMetafields` is available on `purchase.thank-you.block.render` (declared with `[[extensions.targeting.metafields]]`). Ships the plan's step-3 fallback ("Open checkout editor" link under the Studio preview); the metafield preview is deferred as a scope decision with build steps in `FUTURE_TASKS.md`. See `TEMPLATES_NOTES.md` |
 | S11 | Design tab | DONE | `DesignSettings` in `shared/survey-rules.ts`; Studio Design panel |
 | S12 | Scale labels | DONE | `scaleLowLabel` / `scaleHighLabel`, max 30 chars |
 | S13 | Preview language | DONE | Studio locale select; survey translations |
@@ -175,8 +175,17 @@ Status legend for this table: DONE / PARTIAL (built defensively, gap recorded).
 
 - **F-010** — Free plan limits: the plan says 100 responses/mo and 1 active
   survey / 2 questions; the code enforces `FREE_RESPONSE_CAP = 50` server-side
-  and does **not** enforce the survey/question counts server-side. Either bring
-  the constant to 100 and add count enforcement, or record the divergence.
-- **F-011** — Advanced options are not yet grouped under a collapsed
-  "Advanced" disclosure (Phase H item).
-- **F-021** — Product/collection targeting picker (deferred, needs live docs).
+  (atomic via `claimUsageSlot`) and does **not** enforce the survey/question
+  counts server-side (it uses global `MAX_ACTIVE_SURVEYS = 10` /
+  `MAX_QUESTIONS = 5`). **Recorded divergence**: the constant is interpolated
+  into the plans page and help copy, and at the cap the app keeps collecting and
+  flags rows rather than hiding the survey — a deliberate "never lose buyer
+  data" choice. Changing the number and adding per-plan count gating is a
+  product decision, tracked in `FUTURE_TASKS.md`.
+- **F-011** — **DONE.** Sample %, dates, response limit, countries and languages
+  now sit under a collapsed `AdvancedDisclosure` in the editor's "Who sees it"
+  section; multi-choice min/max stay inline (they appear for that one question
+  type only).
+- **F-021** — Product/collection targeting picker: still open. The targeting
+  schema (`productIds`, `collectionIds`, `resolvedProductIds`) and the compiled
+  rule exist; only the admin picker is deferred.

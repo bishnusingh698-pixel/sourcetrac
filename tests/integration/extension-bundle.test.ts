@@ -127,11 +127,18 @@ async function mount(code: string, surface: (typeof SURFACES)[number], editor: b
   // As in checkout, the extension hands the host its own Signal class, and the
   // host builds its signals from it so the extension's Preact can subscribe.
   let orderSignal: { value: unknown } | undefined;
+  let paymentSignal: { value: unknown } | undefined;
   let run: unknown;
   const host: Record<string, unknown> = {
     setSignals(SignalClass: new (value: unknown) => { value: unknown }) {
       orderSignal = new SignalClass(undefined);
       host[surface.signal] = orderSignal;
+      // Only the thank-you surface exposes payment options; the customer-account
+      // one does not, so it must still render without them.
+      if (surface.name === "thank-you") {
+        paymentSignal = new SignalClass([]);
+        host.selectedPaymentOptions = paymentSignal;
+      }
     },
     extend(_target: string, fn: () => unknown) {
       run = fn();
@@ -154,6 +161,10 @@ async function mount(code: string, surface: (typeof SURFACES)[number], editor: b
     setOrder(value: unknown) {
       if (!orderSignal) throw new Error("the extension never called shopify.setSignals");
       orderSignal.value = value;
+    },
+    setPaymentTypes(types: string[]) {
+      if (!paymentSignal) throw new Error("this surface does not expose payment options");
+      paymentSignal.value = types.map((type, i) => ({ handle: `h${i}`, type }));
     },
     click(element: Element) {
       element.dispatchEvent(new win.Event("click", { bubbles: true }) as unknown as Event);
@@ -208,6 +219,25 @@ describe.each(SURFACES)("$name extension bundle", (surface) => {
     const code = await bundle(surface);
     expect(code).not.toMatch(/node_modules\/react\//);
     expect(code).not.toMatch(/react-reconciler|@remote-ui/);
+  });
+
+  it("sends the selected payment types on the config fetch (T7)", async () => {
+    // Regression guard: the config fetch used to omit `paymentTypes` entirely,
+    // so a survey targeting manual payment methods saw an empty list on every
+    // order and hid itself. Only the thank-you surface exposes the selection.
+    if (surface.name !== "thank-you") return;
+
+    const page = await mount(await bundle(surface), surface, false);
+    page.setPaymentTypes(["manualPayment", "creditCard"]);
+    page.setOrder(surface.value);
+    await page.settle();
+    await page.settle();
+
+    const config = page.calls.find((call) => call.url.includes("/api/survey?"));
+    expect(config).toBeDefined();
+    expect(new URL(config!.url, "https://example.test").searchParams.get("paymentTypes")).toBe(
+      "manualPayment,creditCard",
+    );
   });
 });
 

@@ -1132,15 +1132,19 @@ into `Survey.syncOptions.presets`, but nothing turned them into Shopify writes:
   `tests/unit/smart-actions.test.ts` pins the numberValue-only shape, and the
   both-shape case is covered too.
 
-**S10 cannot use the plan's metafield mechanism.** This app serves the compiled
-config over HTTP (`getCompiledConfig` → `/api/survey-config`), so there is no
-config metafield to add a preview sibling to; and the editor has no order id, so
-the extension's order-keyed config fetch does not run there (the blocks render a
-static `MultiSurveyPreview`). Built the fallback: an **"Open checkout editor"**
-link plus note under the Studio preview caption, opening
-`/settings/checkout/editor?page=thank-you` with `target="_top"`. The
-`shopify.extension.editor` detect property **does** exist and is already used —
-detection was never the blocker. See `TEMPLATES_NOTES.md` for the full reasoning.
+**S10 ships the plan's fallback, and the metafield mechanism is feasible (not
+impossible).** An earlier note here said the plan's mechanism "does not fit".
+That was **wrong** and is corrected: `shopify.appMetafields` is available on
+`purchase.thank-you.block.render` (declared with
+`[[extensions.targeting.metafields]]`, key + namespace, no `owner_type`), and
+`shopify.extension.editor` (`Editor`, `type: 'checkout'`) detects the editor —
+both verified against shopify.dev 2026-07 and the installed types. What ships
+now is the plan's **step-3 fallback**: an **"Open checkout editor"** link plus
+note under the Studio preview caption, opening
+`/settings/checkout/editor?page=thank-you` with `target="_top"`. The metafield
+preview is deferred as a scope decision (it would add a parallel metafield
+read/write path for an admin-only preview), with concrete build steps in
+`FUTURE_TASKS.md`. See `TEMPLATES_NOTES.md` for the full reasoning.
 
 **T6 exclusive options have a UI half and a server half, and both must agree.**
 `validateResponse` rejects an answer that combines an exclusive option with any
@@ -1155,6 +1159,35 @@ to identical behavior, because drift means a buyer's answer is rejected as
 `exclusive_with_others` and lost. `tests/unit/survey-rules.test.ts` covers the
 server rejection and both helpers.
 
-Verified 2026-10-13: `npm run check` = 827 tests / 59 files green.
+Verified 2026-10-13: `npm run check` = 834 tests / 59 files green.
+
+## Studio concurrency: `Survey.revision`, never `updatedAt` (2026-10-13)
+
+The Studio's optimistic-concurrency token (section 6.6, "Conflict detection") is
+a dedicated `Survey.revision Int @default(0)`, **not** Prisma's `updatedAt`.
+
+`responseCount` is incremented with `survey.update` on every answer, which moves
+`@updatedAt`. A conflict check keyed on `updatedAt` would therefore refuse a
+merchant's save whenever a shopper answered while the editor was open — a false
+conflict on exactly the busiest surveys, and the merchant would be told another
+window changed their survey when nobody did. `revision` is bumped only by
+merchant writes: `updateSurvey`, `publishSurveyDraft`, `discardSurveyDraft`,
+`setSurveyStatus`.
+
+- `updateSurvey(shopId, id, input, expectedRevision?)` and
+  `publishSurveyDraft(shopId, id, expectedRevision?)` throw `ConflictError`
+  (status 409, code `conflict`) when the stored revision differs.
+  **`undefined` skips the check** — older payloads and direct library calls in
+  tests do not track a token and must keep working.
+- The route passes the form's `revision` through and returns
+  `{ ok: false, conflict: true, issues: [] }`; the Studio renders the
+  `studio.conflict` banner. That string already existed in all 10 locales but had
+  no consumer until now — a locale key with no code reference is the tell.
+- `setSurveyStatus` bumps the revision (a merchant action), but the automatic
+  learn-&-stop pause in `answers.server.ts` uses its own `updateMany` and does
+  **not** — a shopper-driven pause must not invalidate the merchant's editor.
+- `tests/db-survey-drafts.test.ts` covers stale save, fresh save, stale publish
+  and the false-conflict case (a `responseCount` increment must not move the
+  token). Each fails when `assertRevision` is neutered.
 
 

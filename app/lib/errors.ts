@@ -53,6 +53,17 @@ export class NotFoundError extends AppError {
   }
 }
 
+/**
+ * Optimistic-concurrency conflict: the row changed since the editor loaded it
+ * (section 6.6). Not retryable by the client — the merchant must reload to see
+ * the other window's version.
+ */
+export class ConflictError extends AppError {
+  constructor(message = "This survey changed in another window.", fields: Record<string, unknown> = {}) {
+    super({ status: 409, code: "conflict", message, hint: "Reload to see the latest version.", fields });
+  }
+}
+
 export class RateLimitError extends AppError {
   constructor(retryAfterSeconds: number, fields: Record<string, unknown> = {}) {
     super({

@@ -138,6 +138,13 @@ describe("payment-method targeting (T7)", () => {
     expect(matchesPaymentRule(manual, ["manualPayment"], "thank_you")).toBe(true);
   });
 
+  it("matches a payment collected on delivery (the COD case the plan names)", () => {
+    // Verified against the installed @shopify/ui-extensions type union:
+    // `paymentOnDelivery` is distinct from `manualPayment`, and a COD shop can
+    // report either, so both must match.
+    expect(matchesPaymentRule(manual, ["paymentOnDelivery"], "thank_you")).toBe(true);
+  });
+
   it("does not match card payments", () => {
     expect(matchesPaymentRule(manual, ["creditCard"], "thank_you")).toBe(false);
   });
@@ -148,6 +155,7 @@ describe("payment-method targeting (T7)", () => {
 
   it("never applies off the thank-you page", () => {
     expect(matchesPaymentRule(manual, ["manualPayment"], "order_status")).toBe(false);
+    expect(matchesPaymentRule(manual, ["paymentOnDelivery"], "order_status")).toBe(false);
   });
 
   it("ignores the rule when the survey does not use it", () => {

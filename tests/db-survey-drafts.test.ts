@@ -197,6 +197,70 @@ describe("drafts for a live survey (S7)", () => {
   });
 });
 
+describe("concurrency conflict detection (section 6.6)", () => {
+  it("refuses a save whose revision is stale", async () => {
+    const survey = await createSurvey(shopId, baseInput({ name: "Concurrency" }));
+    const loaded = await getEditorSurvey(shopId, survey.id);
+    const staleRevision = loaded.revision;
+
+    // Window B saves first, moving the revision.
+    await updateSurvey(shopId, survey.id, baseInput({ name: "Concurrency", title: "B saved" }), staleRevision);
+
+    // Window A, still holding the old revision, is refused rather than
+    // clobbering B's save.
+    await expect(
+      updateSurvey(shopId, survey.id, baseInput({ name: "Concurrency", title: "A saved" }), staleRevision),
+    ).rejects.toMatchObject({ code: "conflict", status: 409 });
+
+    // B's save stands.
+    const after = await getEditorSurvey(shopId, survey.id);
+    expect(after.title).toBe("B saved");
+  });
+
+  it("accepts a save whose revision is current", async () => {
+    const survey = await createSurvey(shopId, baseInput({ name: "Fresh" }));
+    const loaded = await getEditorSurvey(shopId, survey.id);
+    const saved = await updateSurvey(
+      shopId,
+      survey.id,
+      baseInput({ name: "Fresh", title: "Saved fine" }),
+      loaded.revision,
+    );
+    expect(saved.title).toBe("Saved fine");
+    // The token moved so the next window holding the old value is refused.
+    expect(saved.revision).toBeGreaterThan(loaded.revision);
+  });
+
+  it("refuses a publish whose revision is stale", async () => {
+    const survey = await createSurvey(shopId, baseInput({ name: "Publish conflict" }));
+    const loaded = await getEditorSurvey(shopId, survey.id);
+    await updateSurvey(shopId, survey.id, baseInput({ name: "Publish conflict", title: "draft" }), loaded.revision);
+
+    await expect(publishSurveyDraft(shopId, survey.id, loaded.revision)).rejects.toMatchObject({
+      code: "conflict",
+      status: 409,
+    });
+  });
+
+  it("does not move the revision when a response is counted", async () => {
+    // The editor's token must not be invalidated by shoppers answering, or
+    // every active survey would report a false conflict. `revision` is bumped
+    // only by merchant writes, unlike `updatedAt`.
+    const survey = await createSurvey(shopId, baseInput({ name: "No false conflict" }));
+    const loaded = await getEditorSurvey(shopId, survey.id);
+    await prisma.survey.update({
+      where: { id: survey.id },
+      data: { responseCount: { increment: 1 } },
+    });
+    const after = await getEditorSurvey(shopId, survey.id);
+    expect(after.revision).toBe(loaded.revision);
+    // And the loaded token still saves cleanly.
+    await expect(
+      updateSurvey(shopId, survey.id, baseInput({ name: "No false conflict", title: "still fine" }), loaded.revision),
+    ).resolves.toBeTruthy();
+  });
+});
+
 describe("rotation and payment targeting through the config route (T11, T7)", () => {
   it("picks the same rotation member for a given order on the thank-you surface", async () => {
     clearConfigCache();
