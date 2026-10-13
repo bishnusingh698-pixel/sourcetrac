@@ -203,7 +203,7 @@ by both blocks — detection was never the blocker. Recorded in `TEMPLATES_NOTES
 
 ### Verification
 
-- `npm run check` = 814 tests / 58 files green; typecheck, extension typecheck,
+- `npm run check` = 816 tests / 58 files green; typecheck, extension typecheck,
   lint and `shopify app build` clean. Extension bundles unchanged (no new
   extension code this phase).
 - Housekeeping: fixed 11 mis-encoded em-dashes (CP1251 byte sequence for the
@@ -238,6 +238,25 @@ Housekeeping fixed in this phase:
   the "builds a valid Lite version for every template" test.
 - Repaired three CP1251-mangled severity headings in this file
   (`рџџ  High` / `рџџЎ Medium` / `рџ”µ Low` -> the 🟠 / 🟡 / 🔵 originals).
+
+### Follow-up fix — yes/no presets never fired
+
+Found while re-auditing the T13 resolver. `shared/survey-rules.ts` stores a
+**yes/no** answer as `numberValue` (yes = 1, no = 0) with no option id, but the
+resolver read `answer.optionIds[0]` for every preset. Three presets sit on a
+yes/no question, so all three silently never wrote:
+
+- `reorder_customer_tag` / `reorder_window_metafield` — gated on
+  `q_reorder_reminder` = Yes (so the whole Reorder Clock smart action did nothing),
+- `needs_by_date_order_tag` (`q_needs_date` = Yes),
+- `bulk_interest_order_tag` (`q_bulk_price` = Yes).
+
+The resolver now reads the answer through `answerOptionKey`, which maps a
+numeric yes/no answer (1/0) back to `yes`/`no` using the template's question
+type, and keeps reading option ids for choice questions. The old unit tests
+missed it because their fixture stored yes/no as an option id — a shape
+production never writes; the fixture now stores yes/no the real way. Verified by
+reverting the fix: 4 tests fail. Suite is 816 tests / 58 files green.
 
 **Definition of done.** All 21 templates exist in all 10 languages (After
 delivery only when its flag is on); T1–T16 and S1–S13 are implemented or

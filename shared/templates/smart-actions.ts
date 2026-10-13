@@ -10,6 +10,7 @@
  */
 
 import { stableQuestionId } from "./resolve";
+import { templateById } from "./index";
 
 /** What a preset writes. */
 export type SmartActionKind = "order_tag" | "customer_tag" | "customer_metafield";
@@ -212,12 +213,34 @@ export type ResolvedSmartActions = {
  * Recover the template option key behind a stored option id.
  *
  * A merchant option id is `stableQuestionId(...)_optionKey`, so stripping the
- * question-id prefix yields the key. A fixed option (Yes / No) is stored by its
- * literal id (`yes`), which is already the key.
+ * question-id prefix yields the key. (A yes/no answer never stores an option id;
+ * see `answerOptionKey`.)
  */
 function optionKeyFor(questionId: string, optionId: string): string {
   const prefix = `${questionId}_`;
   return optionId.startsWith(prefix) ? optionId.slice(prefix.length) : optionId;
+}
+
+/**
+ * Recover the answer's template option key, regardless of how the question type
+ * stores it. Choice questions keep option ids; yes/no stores a number
+ * (`shared/survey-rules.ts`: yes = 1, no = 0) with no option id, so a preset
+ * naming `onlyForOptionKeys: ["yes"]` (needs-by-date, bulk-interest) or gating on
+ * a reminder answer would never match if we only read `optionIds`.
+ */
+function answerOptionKey(
+  questionType: string | undefined,
+  questionId: string,
+  answer: SmartActionAnswer,
+): string | null {
+  if (questionType === "yes_no") {
+    if (answer.numberValue === 1) return "yes";
+    if (answer.numberValue === 0) return "no";
+    return null;
+  }
+  const optionId = answer.optionIds[0];
+  if (!optionId) return null;
+  return optionKeyFor(questionId, optionId);
 }
 
 /** `sourcetrac.profile` -> { namespace: "sourcetrac", key: "profile" }. */
@@ -251,6 +274,10 @@ export function resolveSmartActionWrites(params: {
   const byQuestion = new Map<string, SmartActionAnswer>();
   for (const answer of params.answers) byQuestion.set(answer.questionId, answer);
 
+  const template = templateById(params.templateId);
+  const typeOf = (questionKey: string): string | undefined =>
+    template?.questions.find((q) => q.key === questionKey)?.type;
+
   for (const id of params.presetIds) {
     const preset = SMART_ACTION_PRESETS[id];
     if (!preset) continue;
@@ -263,7 +290,7 @@ export function resolveSmartActionWrites(params: {
     if (preset.gateQuestionKey && preset.gateOptionKeys) {
       const gateId = stableQuestionId(params.templateId, preset.gateQuestionKey);
       const gate = byQuestion.get(gateId);
-      const gateKey = gate?.optionIds[0] ? optionKeyFor(gateId, gate.optionIds[0]) : null;
+      const gateKey = gate ? answerOptionKey(typeOf(preset.gateQuestionKey), gateId, gate) : null;
       if (gateKey == null || !preset.gateOptionKeys.includes(gateKey)) continue;
     }
 
@@ -278,9 +305,8 @@ export function resolveSmartActionWrites(params: {
       if (!band) continue;
       value = band.value;
     } else {
-      const optionId = answer.optionIds[0];
-      if (!optionId) continue;
-      const key = optionKeyFor(questionId, optionId);
+      const key = answerOptionKey(typeOf(preset.questionKey), questionId, answer);
+      if (key == null) continue;
       if (preset.onlyForOptionKeys && !preset.onlyForOptionKeys.includes(key)) continue;
       // A `valueMap` writes only for the keys it names, so e.g. the reorder
       // window leaves "Not sure" without a value rather than writing "not_sure".

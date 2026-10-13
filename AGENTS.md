@@ -1113,11 +1113,21 @@ into `Survey.syncOptions.presets`, but nothing turned them into Shopify writes:
   always used the order GID.
 - **Pro gate at submit, and again at load.** `submitAnswer` deletes
   `options.presets` when `input.plan !== "scale"`. `loadSyncContext` drops them
-  again when `shopRow.plan !== PLAN_SCALE`, because the lazy sweep re-reads
-  `syncOptions` from the database — a shop that downgraded after enqueue would
-  otherwise still write. Both skip, neither throws (the same shape as the scope
+  again when `effectivePlan(shopRow) !== PLAN_SCALE`, because the lazy sweep
+  re-reads `syncOptions` from the database — a shop that downgraded after enqueue
+  would otherwise still write. Both use `effectivePlan`, so a cancelled Scale plan
+  agrees on both sides. Both skip, neither throws (the same shape as the scope
   gate). `hasSyncWork` counts a preset only if its id is in the dictionary, so an
   unknown id does not enqueue a row that writes nothing.
+- **A yes/no answer is stored as a number, not an option id.** `survey-rules.ts`
+  keeps yes/no in `numberValue` (yes = 1, no = 0) with an empty `optionIds`. The
+  resolver reads every preset answer through `answerOptionKey`, which maps the
+  numeric yes/no back to `yes`/`no` via the template's question type and reads
+  option ids only for choice questions. Reading `optionIds[0]` unconditionally
+  made all three yes/no presets silently never fire (`reorder_customer_tag`,
+  `reorder_window_metafield`, `needs_by_date_order_tag`, `bulk_interest_order_tag`).
+  Test fixtures must store yes/no the real way (`yesNo()` in the test), or they
+  pass against a shape production never writes.
 
 **S10 cannot use the plan's metafield mechanism.** This app serves the compiled
 config over HTTP (`getCompiledConfig` → `/api/survey-config`), so there is no
@@ -1129,6 +1139,6 @@ link plus note under the Studio preview caption, opening
 `shopify.extension.editor` detect property **does** exist and is already used —
 detection was never the blocker. See `TEMPLATES_NOTES.md` for the full reasoning.
 
-Verified 2026-10-13: `npm run check` = 814 tests / 58 files green.
+Verified 2026-10-13: `npm run check` = 816 tests / 58 files green.
 
 

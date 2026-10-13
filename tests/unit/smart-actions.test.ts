@@ -4,13 +4,28 @@ import { resolveSmartActionWrites, SMART_ACTION_PRESETS } from "@shared/template
 import { stableOptionId, stableQuestionId } from "@shared/templates/resolve";
 import { TEMPLATES } from "@shared/templates";
 
-/** Build the answer rows a resolver call needs, using real stable ids. */
+/**
+ * Build the answer rows a resolver call needs, using real stable ids.
+ *
+ * Yes/No is stored as a NUMBER, not an option id (`shared/survey-rules.ts`:
+ * yes = 1, no = 0), so pass `yesNo` for those questions — passing an option key
+ * would test a shape production never writes.
+ */
 function answer(templateId: string, questionKey: string, optionKey?: string, numberValue?: number) {
   const questionId = stableQuestionId(templateId, questionKey);
   return {
     questionId,
     optionIds: optionKey ? [stableOptionId(templateId, questionKey, optionKey)] : [],
     numberValue: numberValue ?? null,
+  };
+}
+
+/** A yes/no answer, stored the way production stores it (numberValue 1 or 0). */
+function yesNo(templateId: string, questionKey: string, yes: boolean) {
+  return {
+    questionId: stableQuestionId(templateId, questionKey),
+    optionIds: [] as string[],
+    numberValue: yes ? 1 : 0,
   };
 }
 
@@ -98,14 +113,14 @@ describe("resolveSmartActionWrites (T13)", () => {
     const notSure = resolveSmartActionWrites({
       templateId: "reorder-clock",
       presetIds: ["reorder_window_metafield"],
-      answers: [answer("reorder-clock", "q_lasts", "not_sure"), answer("reorder-clock", "q_reorder_reminder", "yes")],
+      answers: [answer("reorder-clock", "q_lasts", "not_sure"), yesNo("reorder-clock", "q_reorder_reminder", true)],
     });
     expect(notSure.customerMetafields).toEqual([]);
 
     const month = resolveSmartActionWrites({
       templateId: "reorder-clock",
       presetIds: ["reorder_window_metafield"],
-      answers: [answer("reorder-clock", "q_lasts", "about_a_month"), answer("reorder-clock", "q_reorder_reminder", "yes")],
+      answers: [answer("reorder-clock", "q_lasts", "about_a_month"), yesNo("reorder-clock", "q_reorder_reminder", true)],
     });
     expect(month.customerMetafields).toEqual([
       { namespace: "sourcetrac", key: "reorder_window_days", value: "30" },
@@ -115,7 +130,7 @@ describe("resolveSmartActionWrites (T13)", () => {
     const noReminder = resolveSmartActionWrites({
       templateId: "reorder-clock",
       presetIds: ["reorder_window_metafield"],
-      answers: [answer("reorder-clock", "q_lasts", "about_a_month"), answer("reorder-clock", "q_reorder_reminder", "no")],
+      answers: [answer("reorder-clock", "q_lasts", "about_a_month"), yesNo("reorder-clock", "q_reorder_reminder", false)],
     });
     expect(noReminder.customerMetafields).toEqual([]);
   });
@@ -127,7 +142,7 @@ describe("resolveSmartActionWrites (T13)", () => {
       presetIds: ["reorder_customer_tag"],
       answers: [
         answer("reorder-clock", "q_lasts", "two_weeks"),
-        answer("reorder-clock", "q_reorder_reminder", "yes"),
+        yesNo("reorder-clock", "q_reorder_reminder", true),
       ],
     });
     expect(optedIn.customerTags).toEqual(["reorder:two_weeks"]);
@@ -138,10 +153,42 @@ describe("resolveSmartActionWrites (T13)", () => {
       presetIds: ["reorder_customer_tag"],
       answers: [
         answer("reorder-clock", "q_lasts", "two_weeks"),
-        answer("reorder-clock", "q_reorder_reminder", "no"),
+        yesNo("reorder-clock", "q_reorder_reminder", false),
       ],
     });
     expect(optedOut.customerTags).toEqual([]);
+  });
+
+  it("writes the needs-by-date tag only when the yes/no answer is Yes", () => {
+    const yes = resolveSmartActionWrites({
+      templateId: "delivery-promise",
+      presetIds: ["needs_by_date_order_tag"],
+      answers: [yesNo("delivery-promise", "q_needs_date", true)],
+    });
+    expect(yes.orderTags).toEqual(["needs-by-date"]);
+
+    const no = resolveSmartActionWrites({
+      templateId: "delivery-promise",
+      presetIds: ["needs_by_date_order_tag"],
+      answers: [yesNo("delivery-promise", "q_needs_date", false)],
+    });
+    expect(no.orderTags).toEqual([]);
+  });
+
+  it("writes the bulk-interest tag only when the yes/no answer is Yes", () => {
+    const yes = resolveSmartActionWrites({
+      templateId: "business-buyer",
+      presetIds: ["bulk_interest_order_tag"],
+      answers: [answer("business-buyer", "q_buying_for", "business"), yesNo("business-buyer", "q_bulk_price", true)],
+    });
+    expect(yes.orderTags).toEqual(["bulk-interest"]);
+
+    const no = resolveSmartActionWrites({
+      templateId: "business-buyer",
+      presetIds: ["bulk_interest_order_tag"],
+      answers: [answer("business-buyer", "q_buying_for", "business"), yesNo("business-buyer", "q_bulk_price", false)],
+    });
+    expect(no.orderTags).toEqual([]);
   });
 
   it("returns nothing without a template or without presets", () => {
