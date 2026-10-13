@@ -25,20 +25,36 @@ export function SurveyPreview({
   survey,
   languages,
   t,
+  showChrome = true,
+  showNote = true,
+  previewLocale,
+  onSelectQuestion,
+  highlightQuestionId,
 }: {
   survey: EditorSurvey;
   languages: Array<{ code: string; name: string }>;
   t: TFn;
+  /** Hide the title/device/language controls when embedded in the Studio mock. */
+  showChrome?: boolean;
+  /** Hide the "colors and fonts" note when the Studio renders its own caption. */
+  showNote?: boolean;
+  /** Controlled preview language, so the Studio can drive it from its own state. */
+  previewLocale?: string;
+  /** S6: clicking a question's text selects it in the editor. */
+  onSelectQuestion?: (questionId: string) => void;
+  highlightQuestionId?: string | null;
 }) {
   const [answers, setAnswers] = useState<Record<string, AnswerInput>>({});
   const [step, setStep] = useState(0);
   const [width, setWidth] = useState<"desktop" | "mobile">("desktop");
   const [locale, setLocale] = useState<string>("");
 
+  const activeLocale = previewLocale !== undefined ? previewLocale : locale;
+
   const translated = useMemo(() => {
-    if (!locale) return survey;
+    if (!activeLocale) return survey;
     const tr = (survey.translations ?? {}) as Record<string, Record<string, unknown>>;
-    const pack = tr[locale];
+    const pack = tr[activeLocale];
     if (!pack) return survey;
     return {
       ...survey,
@@ -51,7 +67,7 @@ export function SurveyPreview({
         return { ...question, text: qtr[question.id]?.text ?? question.text };
       }),
     };
-  }, [survey, locale]);
+  }, [survey, activeLocale]);
 
   const answersSoFar = useMemo(() => Object.values(answers), [answers]);
   const visible = translated.questions.filter((q) => isQuestionVisible(q, answersSoFar));
@@ -65,19 +81,21 @@ export function SurveyPreview({
 
   return (
     <s-stack gap="base">
-      <s-stack direction="inline" gap="small" justifyContent="space-between" alignItems="center">
-        <s-text type="strong">{t("surveys.preview_title")}</s-text>
-        <s-stack direction="inline" gap="small">
-          <s-button type="button" onClick={() => setWidth("desktop")} variant={width === "desktop" ? "primary" : "secondary"}>
-            {t("surveys.preview_desktop")}
-          </s-button>
-          <s-button type="button" onClick={() => setWidth("mobile")} variant={width === "mobile" ? "primary" : "secondary"}>
-            {t("surveys.preview_mobile")}
-          </s-button>
+      {showChrome ? (
+        <s-stack direction="inline" gap="small" justifyContent="space-between" alignItems="center">
+          <s-text type="strong">{t("surveys.preview_title")}</s-text>
+          <s-stack direction="inline" gap="small">
+            <s-button type="button" onClick={() => setWidth("desktop")} variant={width === "desktop" ? "primary" : "secondary"}>
+              {t("surveys.preview_desktop")}
+            </s-button>
+            <s-button type="button" onClick={() => setWidth("mobile")} variant={width === "mobile" ? "primary" : "secondary"}>
+              {t("surveys.preview_mobile")}
+            </s-button>
+          </s-stack>
         </s-stack>
-      </s-stack>
+      ) : null}
 
-      {languages.length > 1 ? (
+      {showChrome && languages.length > 1 ? (
         <s-select
           label={t("surveys.preview_language")}
           value={locale}
@@ -92,12 +110,17 @@ export function SurveyPreview({
         </s-select>
       ) : null}
 
-      <s-box padding="small" border="base" borderRadius="base" background="subdued">
+      <s-box
+        padding={survey.design.spacing === "compact" ? "small" : "base"}
+        border={survey.design.cardBorder === "border" ? "base" : "none"}
+        borderRadius="base"
+        background="subdued"
+      >
         <s-stack gap="base">
-          <s-heading>{translated.title}</s-heading>
+          {survey.design.showTitle ? <s-heading>{translated.title}</s-heading> : null}
           {translated.intro ? <s-text color="subdued">{translated.intro}</s-text> : null}
 
-          {oneByOne && visible.length > 1 ? (
+          {oneByOne && survey.design.showProgress && visible.length > 1 ? (
             <s-text color="subdued" fontSize="small">
               {t("surveys.preview_progress", { current: Math.min(step + 1, visible.length), total: visible.length })}
             </s-text>
@@ -111,6 +134,9 @@ export function SurveyPreview({
               orderId="preview"
               onAnswer={setAnswer}
               t={t}
+              design={survey.design}
+              onSelect={onSelectQuestion}
+              highlighted={question.id === highlightQuestionId}
             />
           ))}
 
@@ -133,9 +159,11 @@ export function SurveyPreview({
         </s-stack>
       </s-box>
 
-      <s-text color="subdued" fontSize="small">
-        {t("surveys.preview_note")}
-      </s-text>
+      {showNote ? (
+        <s-text color="subdued" fontSize="small">
+          {t("surveys.preview_note")}
+        </s-text>
+      ) : null}
     </s-stack>
   );
 }
@@ -146,23 +174,42 @@ function PreviewQuestion({
   orderId,
   onAnswer,
   t,
+  design,
+  onSelect,
+  highlighted,
 }: {
   question: EditorSurvey["questions"][number];
   answer: AnswerInput | undefined;
   orderId: string;
   onAnswer: (questionId: string, patch: Partial<AnswerInput>) => void;
   t: TFn;
+  design?: EditorSurvey["design"];
+  onSelect?: (questionId: string) => void;
+  highlighted?: boolean;
 }) {
   const options = orderOptions(resolveOptions(question), question.randomizeOptions ?? false, orderId);
+  const clickable = Boolean(onSelect && question.id);
 
   return (
     <s-stack gap="small">
-      <s-text type="strong">{question.text || t("surveys.preview_untitled_question")}</s-text>
-      {question.helpText ? (
-        <s-text color="subdued" fontSize="small">
-          {question.helpText}
-        </s-text>
-      ) : null}
+      <s-clickable
+        {...(clickable ? { onClick: () => onSelect?.(question.id), padding: "none" } : {})}
+        {...(highlighted ? { background: "strong" } : {})}
+      >
+        <s-stack gap="small-200">
+          <s-text type="strong">{question.text || t("surveys.preview_untitled_question")}</s-text>
+          {question.helpText ? (
+            <s-text color="subdued" fontSize="small">
+              {question.helpText}
+            </s-text>
+          ) : null}
+          {clickable ? (
+            <s-text color="subdued" fontSize="small">
+              {t("studio.click_to_edit")}
+            </s-text>
+          ) : null}
+        </s-stack>
+      </s-clickable>
 
       {isChoiceType(question.type) && question.type !== "satisfaction_5" ? (
         <s-choice-list
@@ -218,18 +265,28 @@ function PreviewQuestion({
       ) : null}
 
       {question.type === "rating_5" ? (
-        <s-stack direction="inline" gap="small">
-          {[1, 2, 3, 4, 5].map((n) => (
-            <s-button
-              key={n}
-              type="button"
-              variant={answer?.numberValue === n ? "primary" : "secondary"}
-              onClick={() => onAnswer(question.id, { numberValue: n })}
-              accessibilityLabel={t("surveys.rating_aria", { n })}
-            >
-              {String(n)}
-            </s-button>
-          ))}
+        <s-stack gap="small">
+          <s-stack direction="inline" gap="small">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <s-button
+                key={n}
+                type="button"
+                variant={answer?.numberValue === n ? "primary" : "secondary"}
+                onClick={() => onAnswer(question.id, { numberValue: n })}
+                accessibilityLabel={t("surveys.rating_aria", { n })}
+              >
+                {design?.ratingStyle === "stars" ? "★" : String(n)}
+              </s-button>
+            ))}
+          </s-stack>
+          <s-stack direction="inline" gap="small" justifyContent="space-between">
+            <s-text color="subdued" fontSize="small">
+              {design?.scaleLowLabel ?? t("surveys.rating_aria", { n: 1 })}
+            </s-text>
+            <s-text color="subdued" fontSize="small">
+              {design?.scaleHighLabel ?? t("surveys.rating_aria", { n: 5 })}
+            </s-text>
+          </s-stack>
         </s-stack>
       ) : null}
 
@@ -250,10 +307,10 @@ function PreviewQuestion({
           </s-stack>
           <s-stack direction="inline" gap="small" justifyContent="space-between">
             <s-text color="subdued" fontSize="small">
-              {t("surveys.nps_low")}
+              {design?.scaleLowLabel ?? t("surveys.nps_low")}
             </s-text>
             <s-text color="subdued" fontSize="small">
-              {t("surveys.nps_high")}
+              {design?.scaleHighLabel ?? t("surveys.nps_high")}
             </s-text>
           </s-stack>
         </s-stack>

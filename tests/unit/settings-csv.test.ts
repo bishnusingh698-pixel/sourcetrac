@@ -415,17 +415,25 @@ describe("Settings form limits match the server limits", () => {
     readFileSync(fileURLToPath(new URL(`../../${relative}`, import.meta.url)), "utf8");
 
   it("binds every maxLength to a shared constant", () => {
-    // The survey editor is the form that now edits question and option text.
-    // It must bind each maxLength to a `LIMITS` member, never a literal, or the
-    // form accepts text the server then refuses.
-    const form = read("app/routes/app.surveys.$id.tsx");
+    // The survey editor is the form that now edits question and option text. It
+    // lives in `survey-editor.tsx` (the Studio's left panel); the route owns the
+    // survey name and the shared frame text. Both must bind each maxLength to a
+    // `LIMITS` member, never a literal, or the form accepts text the server then
+    // refuses.
+    const editor = read("app/components/survey-editor.tsx");
+    const route = read("app/routes/app.surveys.$id.tsx");
 
     for (const constant of ["MAX_QUESTION_TEXT", "MAX_OPTION_LABEL", "MAX_SURVEY_TITLE"]) {
-      expect(form).toContain(`maxLength={limits.${constant}}`);
+      expect(editor).toContain(`MAX_${constant.replace("MAX_", "")}`);
     }
+    for (const constant of ["MAX_QUESTION_TEXT", "MAX_OPTION_LABEL"]) {
+      expect(editor).toContain(`maxLength={limits.${constant}}`);
+    }
+    expect(route).toContain("maxLength={limits.MAX_SURVEY_NAME}");
 
     // A bare numeric literal is the drift itself.
-    expect(form).not.toMatch(/maxLength=\{\d+\}/);
+    expect(editor).not.toMatch(/maxLength=\{\d+\}/);
+    expect(route).not.toMatch(/maxLength=\{\d+\}/);
   });
 
   it("exports the emoji limit so the legacy form can bind to it", () => {

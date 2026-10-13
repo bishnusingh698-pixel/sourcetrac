@@ -167,6 +167,63 @@ export const SHOP_TIMEZONE_QUERY = `#graphql
   }
 `;
 
+export const SHOP_DISPLAY_QUERY = `#graphql
+  query SourceTracShopDisplay {
+    shop {
+      name
+      currencyCode
+      primaryDomain {
+        url
+      }
+    }
+    products(first: 1, query: "status:active") {
+      nodes {
+        title
+        featuredImage {
+          url
+          altText
+        }
+      }
+    }
+  }
+`;
+
+/**
+ * The shop name, presentment currency and one active product, for the Studio's
+ * realistic checkout mock (S2). Cached per shop for ten minutes by the caller.
+ *
+ * Never returns real order or customer data: the mock always uses the fixed
+ * sample name "Alex" and order "#1001".
+ */
+export async function fetchShopDisplay(
+  shopDomain: string,
+  accessToken: string | null | undefined,
+): Promise<{
+  name: string | null;
+  currencyCode: string | null;
+  product: { title: string; imageUrl: string | null } | null;
+}> {
+  if (!accessToken) return { name: null, currencyCode: null, product: null };
+  try {
+    const result = await shopifyGraphql<{
+      shop: { name: string | null; currencyCode: string | null } | null;
+      products: { nodes: Array<{ title: string; featuredImage: { url: string; altText: string | null } | null }> } | null;
+    }>(shopDomain, accessToken, SHOP_DISPLAY_QUERY);
+    const node = result.data.products?.nodes?.[0];
+    return {
+      name: result.data.shop?.name ?? null,
+      currencyCode: result.data.shop?.currencyCode ?? null,
+      product: node ? { title: node.title, imageUrl: node.featuredImage?.url ?? null } : null,
+    };
+  } catch (error) {
+    logger.warn("shop_display_lookup_failed", {
+      shop_domain: shopDomain,
+      error_message: error instanceof Error ? error.message : String(error),
+    });
+    return { name: null, currencyCode: null, product: null };
+  }
+}
+
 /**
  * The shop's IANA time zone (e.g. "Asia/Kolkata") and store country (ISO-3166
  * alpha-2, e.g. "US"), or null when Shopify could not be asked.
