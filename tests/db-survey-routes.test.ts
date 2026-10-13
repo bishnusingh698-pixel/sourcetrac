@@ -232,3 +232,99 @@ describe("v2 survey routes, as the multi-question extension calls them", () => {
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
   });
 });
+
+/**
+ * Server-side targeting facts. Each of these was passed as a hardcoded `null`
+ * (or, for `responseCount`, `0`) by the loader, so a survey targeting
+ * first/returning customers, a country, or "pause after N answers" never
+ * matched and the block silently never appeared. The facts now arrive from the
+ * extension's host API as query params.
+ */
+describe("targeting facts supplied by the extension", () => {
+  async function makeSurvey(name: string, targeting: Record<string, unknown>): Promise<string> {
+    const survey = await createSurvey(shopId, {
+      name,
+      status: "active",
+      priority: 1,
+      placements: ["thank_you"],
+      layout: "all",
+      title: "Quick question",
+      intro: null,
+      buttonLabel: "Submit",
+      thankYouText: "Thanks!",
+      targeting: targeting as never,
+      questions: [
+        {
+          type: "single_choice",
+          text: "Where did you find us?",
+          required: true,
+          randomizeOptions: false,
+          allowOther: false,
+          options: [{ label: "Google search" }, { label: "Instagram" }],
+        },
+      ],
+    });
+    return survey.id;
+  }
+
+  it("shows a first_order survey only when isFirstOrder=1", async () => {
+    const id = await makeSurvey("First order only", { customerType: "first_order" });
+    try {
+      const surveyIdOf = async (query: string) => {
+        const res = await call(surveyLoader, request(`/api/survey?placement=thank_you&${query}`));
+        const body = (await res.json()) as { survey: { id: string } | null };
+        return body.survey?.id ?? null;
+      };
+
+      // No fact: the targeted survey does not match; the untargeted base survey does.
+      expect(await surveyIdOf(`orderId=${ORDER_ID}`)).not.toBe(id);
+      expect(await surveyIdOf(`orderId=${ORDER_ID}&isFirstOrder=1`)).toBe(id);
+      expect(await surveyIdOf(`orderId=${ORDER_ID}&isFirstOrder=0`)).not.toBe(id);
+    } finally {
+      await prisma.survey.delete({ where: { id } });
+      await clearConfigCache();
+    }
+  });
+
+  it("shows a country-targeted survey only for that country", async () => {
+    const id = await makeSurvey("US only", { countries: ["US"] });
+    try {
+      const surveyIdOf = async (country: string) => {
+        const res = await call(
+          surveyLoader,
+          request(`/api/survey?placement=thank_you&orderId=${ORDER_ID}&country=${country}`),
+        );
+        const body = (await res.json()) as { survey: { id: string } | null };
+        return body.survey?.id ?? null;
+      };
+      expect(await surveyIdOf("DE")).not.toBe(id);
+      expect(await surveyIdOf("US")).toBe(id);
+    } finally {
+      await prisma.survey.delete({ where: { id } });
+      await clearConfigCache();
+    }
+  });
+
+  it("pauses a survey once maxResponses is reached", async () => {
+    const id = await makeSurvey("Cap at one", { maxResponses: 1 });
+    try {
+      const surveyIdOf = async () => {
+        const res = await call(
+          surveyLoader,
+          request(`/api/survey?placement=thank_you&orderId=${ORDER_ID}`),
+        );
+        const body = (await res.json()) as { survey: { id: string } | null };
+        return body.survey?.id ?? null;
+      };
+      expect(await surveyIdOf()).toBe(id);
+
+      await prisma.survey.update({ where: { id }, data: { responseCount: 1 } });
+      await clearConfigCache();
+
+      expect(await surveyIdOf()).not.toBe(id);
+    } finally {
+      await prisma.survey.delete({ where: { id } });
+      await clearConfigCache();
+    }
+  });
+});

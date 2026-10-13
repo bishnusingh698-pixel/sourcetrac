@@ -36,6 +36,7 @@ function survey(id: string, over: Partial<CompiledSurvey> = {}): CompiledSurvey 
     channelReportQuestionId: null,
     targeting: {},
     questions: [],
+    responseCount: 0,
     ...over,
   };
 }

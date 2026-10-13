@@ -56,6 +56,11 @@ function ThankYouBlock() {
         // methods, which the server treats as "not a manual payment".
         getPaymentTypes: () =>
           (shopify.selectedPaymentOptions?.value ?? []).map((option) => option.type),
+        // First/returning and country targeting, read lazily for the same
+        // reason. `isFirstOrder` is on the order-confirmation signal; the
+        // country comes from the buyer's localization context.
+        getIsFirstOrder: () => shopify.orderConfirmation.value?.isFirstOrder,
+        getCountry: () => shopify.localization?.country?.value?.isoCode,
       }),
     [shopify],
   );

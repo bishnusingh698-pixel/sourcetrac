@@ -810,6 +810,7 @@ export function compileSurvey(row: SurveyWithQuestions): CompiledSurvey {
     design: compileDesign(parseJson<Partial<DesignSettings>>(row.designJson, {})),
     rotation: row.rotation,
     rotationWeight: row.rotationWeight,
+    responseCount: row.responseCount,
     paymentManualOnly: targeting.paymentManualOnly === true,
   };
 }
