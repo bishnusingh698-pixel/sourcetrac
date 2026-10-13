@@ -36,3 +36,26 @@ No App Proxy routes found.
   productsOnly:true (index.ts:483,763) show to everyone. Deferred (needs line-item read).
 - LOGIC_MAP.md:52 claims first/returning + country are evaluated inside matchesTargeting - true
   of the function, but the route never supplies the facts. Doc/code mismatch.
+
+## DH-002 — Template plan enforcement (2026-10-13)
+
+- Loophole: library only hides the "Use template" button; createSurvey had no
+  server-side plan gate. A Free shop could POST the setup intent with lite:false
+  (or a by-product template) and get the full Growth survey.
+- Gate added: assertPlanAllowsSurvey (create) + assertPlanAllowsEdit
+  (update/publish), app/lib/surveys.server.ts. Content-based: blocks a definition
+  that has an exclusive option (T6) or a resultsHints.byProduct template (T8).
+  effectivePlan used, so a cancelled/frozen Growth shop reads as Free.
+- Grandfathering: edit/publish allow an existing exclusive option, block ADDING
+  one; otherwise a downgrade makes an existing survey unsaveable.
+- Setup route hardened: forces lite on a locked plan (loader + action), so a
+  direct URL or crafted config cannot build the full template.
+- Library display aligned: the three library routes now use
+  catalogPlanFromKey(effectivePlan(shop)), not raw shop.plan.
+- hasLite corrected: a by-product template has NO Free version (Lite cannot strip
+  the results feature); the detail page hides the Lite button and says so.
+- Tests: tests/unit/template-plan-enforcement.test.ts (6) +
+  tests/db-template-plan.test.ts (6, fails on gate revert).
+- Deferred: a downgrade that makes a survey unsaveable without edits is only
+  grandfathered, not re-gated; by-product results view gating needs a DB flag.
+

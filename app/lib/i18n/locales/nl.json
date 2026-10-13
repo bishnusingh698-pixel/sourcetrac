@@ -653,7 +653,8 @@
     "required": "Verplicht",
     "optional": "Optioneel",
     "only_if": "Alleen als het antwoord “{{option}}” is",
-    "spotlight_dismiss": "Sluiten"
+    "spotlight_dismiss": "Sluiten",
+    "no_free_version": "Deze template heeft geen gratis versie."
   },
   "setup": {
     "title": "Stel je enquête in",

@@ -653,7 +653,8 @@
     "required": "Obligatorisk",
     "optional": "Valfri",
     "only_if": "Endast om svaret är ”{{option}}”",
-    "spotlight_dismiss": "Dölj"
+    "spotlight_dismiss": "Dölj",
+    "no_free_version": "Den här mallen har ingen gratisversion."
   },
   "setup": {
     "title": "Ställ in din enkät",

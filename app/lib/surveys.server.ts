@@ -15,6 +15,10 @@ import { Prisma, type SurveyStatus } from "@prisma/client";
 import { db } from "~/db.server";
 import { ConflictError, NotFoundError, ValidationError } from "~/lib/errors";
 import { logger } from "~/lib/logger";
+import { effectivePlan } from "~/lib/plans";
+import { findShopById } from "~/lib/shop.server";
+import { catalogPlanFromKey, definitionHasExclusiveOption, planIncludesGrowth } from "@shared/templates/catalog";
+import { templateById } from "@shared/templates";
 import {
   DEFAULT_SURVEY_TEXT,
   type CompiledConfig,
@@ -490,6 +494,63 @@ async function persistQuestions(
   return questions[0]?.id ?? null;
 }
 
+/**
+ * Reject a create that uses a Growth-only feature on a plan that does not
+ * include it. The library only hides the button; a crafted POST to the
+ * create/setup/duplicate intents could otherwise hand a Free shop the Growth
+ * feature (an exclusive option, T6, or a by-product breakdown, T8).
+ *
+ * Content-based for the exclusive option, so the Lite build (which strips it)
+ * still creates on Free; the by-product breakdown cannot be subset away, so a
+ * template that ships it is blocked outright on Free.
+ */
+async function assertPlanAllowsSurvey(shopId: string, input: SurveyInput): Promise<void> {
+  const shop = await findShopById(shopId);
+  const plan = catalogPlanFromKey(effectivePlan(shop ?? { plan: null, planStatus: "" }));
+  if (planIncludesGrowth(plan)) return;
+
+  const definition = inputToDefinition(input);
+  const template = input.templateId ? templateById(input.templateId) : undefined;
+  const blocked =
+    definitionHasExclusiveOption(definition) || template?.resultsHints?.byProduct === true;
+  if (!blocked) return;
+
+  throw new ValidationError(
+    "That survey uses a feature included in a paid plan.",
+    "Use the Lite version, or upgrade to unlock it.",
+    { field: "templateId", code: "template_plan_locked" },
+  );
+}
+
+/**
+ * Reject an edit that ADDS a Growth-only feature on the Free plan, while
+ * grandfathering a survey that already has one.
+ *
+ * A merchant who used a Growth feature while paying and then downgraded keeps
+ * their existing survey; they just cannot switch the feature on anew. Without
+ * the grandfather a downgrade would make an existing survey unsaveable.
+ */
+async function assertPlanAllowsEdit(
+  shopId: string,
+  input: SurveyInput,
+  existing: SurveyWithQuestions,
+): Promise<void> {
+  const shop = await findShopById(shopId);
+  const plan = catalogPlanFromKey(effectivePlan(shop ?? { plan: null, planStatus: "" }));
+  if (planIncludesGrowth(plan)) return;
+
+  const next = inputToDefinition(input);
+  if (!definitionHasExclusiveOption(next)) return;
+  const hadExclusive = existing.questions.some((q) => q.options.some((o) => o.exclusive));
+  if (hadExclusive) return;
+
+  throw new ValidationError(
+    "That option is included in a paid plan.",
+    "Upgrade to use the exclusive option, or turn it off.",
+    { field: "questions", code: "template_plan_locked" },
+  );
+}
+
 export async function createSurvey(shopId: string, input: SurveyInput): Promise<EditorSurvey> {
   const { total } = await countSurveys(shopId);
   if (total >= LIMITS.MAX_SURVEYS_TOTAL) {
@@ -500,6 +561,7 @@ export async function createSurvey(shopId: string, input: SurveyInput): Promise<
     );
   }
 
+  await assertPlanAllowsSurvey(shopId, input);
   assertValid(inputToDefinition(input));
 
   const created = await db.$transaction(async (tx) => {
@@ -569,6 +631,7 @@ export async function updateSurvey(
   if (!existing) throw new NotFoundError("That survey does not exist.", { surveyId });
   assertRevision(expectedRevision, existing.revision);
 
+  await assertPlanAllowsEdit(shopId, input, existing);
   assertValid(inputToDefinition(input, surveyId));
 
   const wasActive = existing.status === "active";
@@ -645,6 +708,7 @@ export async function publishSurveyDraft(
   assertRevision(expectedRevision, existing.revision);
 
   const draftInput = parseJson<SurveyInput>(existing.draft, null as unknown as SurveyInput);
+  await assertPlanAllowsEdit(shopId, draftInput, existing);
   assertValid(inputToDefinition(draftInput, surveyId));
 
   const hasResponses = existing.responseCount > 0;

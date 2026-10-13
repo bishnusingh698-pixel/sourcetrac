@@ -653,7 +653,8 @@
     "required": "Erforderlich",
     "optional": "Optional",
     "only_if": "Nur wenn die Antwort „{{option}}“ lautet",
-    "spotlight_dismiss": "Ausblenden"
+    "spotlight_dismiss": "Ausblenden",
+    "no_free_version": "Diese Vorlage hat keine kostenlose Version."
   },
   "setup": {
     "title": "Umfrage einrichten",
