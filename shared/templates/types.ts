@@ -76,6 +76,8 @@ export interface TemplateDefaults {
   samplePercent: number;
   /** T7: only orders paid with a manual payment method. */
   paymentManualOnly?: boolean;
+  /** Quick setup step 2 pre-opens product targeting (Fit Confidence, Reorder Clock). */
+  productsOnly?: boolean;
   /** T10. */
   learnAndStop?: boolean;
   /** S11 design overrides. */

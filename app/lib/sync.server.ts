@@ -35,6 +35,13 @@ export type SurveySyncOptions = {
   metafields?: Array<{ namespace: string; key: string; keyTemplate?: string; type?: string }>;
   /** Fire the app's Flow trigger with the answer. */
   flowTrigger?: boolean;
+  /**
+   * T13 smart-action preset ids turned on for a template-created survey. Kept
+   * verbatim so the per-answer write logic (Phase 7) can build tags from option
+   * keys, and so an unknown preset on an old survey is simply ignored rather
+   * than silently dropped at save time.
+   */
+  presets?: string[];
 };
 
 export const MAX_SYNC_TAGS = 4;
@@ -75,6 +82,9 @@ export function parseSyncOptions(raw: unknown): SurveySyncOptions {
     customerTags: tags(source.customerTags, "sourcetrac"),
     metafields: metafields && metafields.length > 0 ? metafields : undefined,
     flowTrigger: source.flowTrigger === true,
+    presets: Array.isArray(source.presets)
+      ? source.presets.filter((v): v is string => typeof v === "string").slice(0, 8)
+      : undefined,
   };
 }
 

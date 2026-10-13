@@ -13,13 +13,12 @@ import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import { ensureShop } from "~/lib/provision.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
-import { createSurvey, type EditorSurvey, type SurveyInput } from "~/lib/surveys.server";
+import { definitionToPreview } from "~/lib/preview-model";
 import { NotFoundError, ValidationError } from "~/lib/errors";
 import { isEnabled } from "@shared/feature-flags";
 import { catalogDetail, catalogCards, templatePlacements, type CatalogPlan } from "@shared/templates/catalog";
 import { buildSurveyDefinition } from "@shared/templates/resolve";
 import { regionPackFor } from "@shared/templates/packs";
-import { resolveDesign } from "@shared/survey-rules";
 import type { Placement } from "@shared/survey-config";
 import { templateById } from "@shared/templates";
 import { fetchShopLocaleInfo } from "~/lib/shopify-graphql.server";
@@ -64,57 +63,12 @@ export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) =>
     region: regionPackFor(countryCode),
     toggles: defaultToggles(template.questions),
   });
-  const preview: EditorSurvey = {
-    id: "preview",
-    name: definition.name ?? "",
-    status: "draft",
-    priority: 0,
-    placements: templatePlacements(template),
-    layout: definition.layout ?? "all",
-    title: definition.title ?? "",
-    intro: definition.intro ?? null,
-    buttonLabel: definition.buttonLabel ?? "",
-    thankYouText: definition.thankYouText ?? "",
-    channelReportQuestionId: null,
-    targeting: {},
-    syncOptions: {},
-    translations: {},
-    version: template.version,
-    responseCount: 0,
+  const preview = definitionToPreview(definition, {
     templateId: template.id,
     templateVersion: template.version,
-    rotation: false,
-    rotationWeight: 2,
-    learnAndStop: template.defaults.learnAndStop ?? false,
-    design: resolveDesign(definition.design),
-    draftUpdatedAt: null,
-    hasDraft: false,
-    updatedAt: new Date().toISOString(),
-    questions: definition.questions.map((q, i) => ({
-      id: q.id ?? `q${i}`,
-      type: q.type,
-      text: q.text,
-      helpText: q.helpText ?? null,
-      placeholder: q.placeholder ?? null,
-      textMultiline: q.textMultiline ?? false,
-      required: q.required ?? false,
-      randomizeOptions: q.randomizeOptions ?? false,
-      allowOther: q.allowOther ?? false,
-      minSelections: q.minSelections ?? null,
-      maxSelections: q.maxSelections ?? null,
-      showIf: q.showIf ?? null,
-      translations: {},
-      archived: false,
-      options: (q.options ?? []).map((o, j) => ({
-        id: o.id ?? `o${i}_${j}`,
-        label: o.label,
-        isOther: o.isOther ?? false,
-        exclusive: o.exclusive ?? false,
-        archived: false,
-        translations: {},
-      })),
-    })),
-  };
+    placements: templatePlacements(template),
+    design: template.defaults.design,
+  });
 
   const questionTypeLabel = (type: string) => `surveys.type_${shortType(type)}`;
 
@@ -149,7 +103,7 @@ function defaultToggles(questions: { key?: string; required: boolean; optionalIn
 
 export const action = guarded(async ({ request, params }: ActionFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-  const shop = await ensureShop(session);
+  await ensureShop(session);
   const id = params.id ?? "";
   const form = await request.formData();
   const lite = form.get("lite") === "1";
@@ -157,36 +111,10 @@ export const action = guarded(async ({ request, params }: ActionFunctionArgs) =>
   const template = templateById(id);
   if (!template) throw new ValidationError("That template does not exist.", "Pick another template.");
 
-  const { countryCode } = await fetchShopLocaleInfo(shop.shopDomain, session.accessToken);
-  const locale = shop.language ?? "en";
-  const definition = buildSurveyDefinition({
-    template,
-    locale,
-    region: regionPackFor(countryCode),
-    lite,
-    toggles: defaultToggles(template.questions),
-  });
-
-  const input: SurveyInput = {
-    name: definition.name ?? template.nameKey,
-    status: "draft",
-    placements: templatePlacements(template),
-    layout: definition.layout ?? "all",
-    title: definition.title ?? "Quick question",
-    intro: definition.intro ?? null,
-    buttonLabel: definition.buttonLabel ?? "Submit",
-    thankYouText: definition.thankYouText ?? "Thanks for your feedback!",
-    templateId: template.id,
-    templateVersion: template.version,
-    rotation: false,
-    rotationWeight: 2,
-    learnAndStop: template.defaults.learnAndStop ?? false,
-    design: definition.design ?? undefined,
-    questions: definition.questions.map((q) => ({ ...q, options: q.options?.map((o) => ({ ...o })) })),
-  };
-
-  const created = await createSurvey(shop.id, input);
-  return redirect(`/app/surveys/${created.id}?lite=${lite ? "1" : "0"}`);
+  // Quick setup (T3) owns the customization and final Go live / Save as draft.
+  // Carrying the Lite flag lets step 1 restrict optional questions to the Free
+  // subset without changing the template itself.
+  return redirect(`/app/surveys/library/${template.id}/setup${lite ? "?lite=1" : ""}`);
 });
 
 export default function TemplateDetail() {

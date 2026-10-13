@@ -67,10 +67,18 @@ export function buildSurveyDefinition(params: {
   toggles?: Record<string, boolean>;
   /** Override a question's text/options (inline edits in Quick setup). */
   overrides?: Record<string, { text?: string; helpText?: string; placeholder?: string; options?: Record<string, string> }>;
+  /** Override the answer-pack family for profile questions (Taste Profile industry). */
+  profileFamily?: PackFamily;
   design?: Partial<DesignSettings>;
 }): SurveyDefinition {
   const { template, locale, region, lite = false } = params;
-  const questions = includedQuestions(template, lite);
+  const incoming = includedQuestions(template, lite);
+  // A profile question's pack is an industry the merchant picks in Quick setup,
+  // so a `profileFamily` replaces the template's default beauty pack. The
+  // question text then comes from the chosen pack, not the template's copy.
+  const questions = params.profileFamily
+    ? incoming.map((q) => (q.pack && q.pack.startsWith("profiles_") ? { ...q, pack: params.profileFamily } : q))
+    : incoming;
   const t = (key: string) => templateText(locale, key);
 
   const includedKeys = new Set(questions.map((q) => q.key));
