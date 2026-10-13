@@ -1,5 +1,5 @@
 /** @jsxImportSource preact */
-import { OTHER_CHANNEL, type CompiledQuestion } from "./survey-logic";
+import { OTHER_CHANNEL, applyExclusiveToggle, type CompiledQuestion } from "./survey-logic";
 import { optionsFor, type AnswerState } from "./use-multi-survey";
 
 /**
@@ -177,7 +177,16 @@ function QuestionField({
           name={question.id}
           values={answer?.optionIds ?? []}
           multiple
-          onChange={(event) => set({ optionIds: fieldValues(event), numberValue: null })}
+          onChange={(event) =>
+            set({
+              optionIds: applyExclusiveToggle(
+                options.filter((option) => option.exclusive).map((option) => option.id),
+                answer?.optionIds ?? [],
+                fieldValues(event),
+              ),
+              numberValue: null,
+            })
+          }
         >
           {options.map((option) => (
             <s-choice key={option.id} value={option.id}>

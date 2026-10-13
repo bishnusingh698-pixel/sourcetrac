@@ -26,6 +26,8 @@ export type CompiledOption = {
   id: string;
   label: string;
   isOther: boolean;
+  /** T6: selecting it clears the others in multiple choice. */
+  exclusive?: boolean;
   translations?: Record<string, string | undefined>;
 };
 
@@ -102,6 +104,37 @@ export function surveyChoices(
 ): SurveyOption[] {
   if (!allowOther || options.some((option) => option.value === OTHER_CHANNEL)) return options;
   return [...options, { value: OTHER_CHANNEL, label: otherLabel, emoji: null }];
+}
+
+/**
+ * T6 for a multi-choice control: reconcile the selection the host reports after
+ * a tap with the exclusive rule.
+ *
+ * `s-choice-list` hands back the *whole* new value array, not which option was
+ * tapped, so the tapped option is the id that differs from `previous`. Tapping
+ * an exclusive option leaves just it; tapping any other drops the exclusive
+ * ones. Without this a buyer could hold an exclusive option and another, which
+ * the submit route rejects as `exclusive_with_others`, losing the answer.
+ *
+ * The checkout renderer mirrors `reconcileMultiChoiceSelection` from
+ * shared/survey-rules.ts rather than importing it (separate bundles), so the two
+ * must agree; `tests/unit/exclusive-option.test.ts` pins them together.
+ */
+export function applyExclusiveToggle(
+  exclusiveIds: readonly string[],
+  previous: readonly string[],
+  next: readonly string[],
+): string[] {
+  const exclusive = new Set(exclusiveIds);
+  const added = next.find((id) => !previous.includes(id));
+  if (added) {
+    // The buyer tapped `added`. An exclusive tap stands alone; a normal tap
+    // clears any exclusive option that was selected before.
+    return exclusive.has(added) ? [added] : next.filter((id) => !exclusive.has(id));
+  }
+  // A pure deselection, or no change: whatever remains is already valid because
+  // the previous value was.
+  return [...next];
 }
 
 export interface SurveyConfig {

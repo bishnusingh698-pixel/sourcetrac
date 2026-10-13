@@ -346,9 +346,33 @@ export function orderOptions<T>(
   return [...shuffled, ...other];
 }
 
-// ---------------------------------------------------------------------------
-// Show-if logic
-// ---------------------------------------------------------------------------
+/**
+ * T6: reconcile a multiple-choice selection after a tap, applying the exclusive
+ * rule.
+ *
+ * The controls (`s-choice-list`) report the *whole* new value array, not which
+ * option was tapped, so the tapped option is the id in `next` that was not in
+ * `previous`. Tapping an exclusive option ("None of these") leaves just it;
+ * tapping any other drops the exclusive ones. Without this a buyer could hold an
+ * exclusive option *and* another, which `/api/responses` rejects as
+ * `exclusive_with_others` — the whole answer would be lost.
+ *
+ * Pure, so the admin preview, the checkout extension and the tests share one
+ * rule. The extension mirrors it in `extensions/shared/src/survey-logic.ts`.
+ */
+export function reconcileMultiChoiceSelection(
+  exclusiveIds: readonly string[],
+  previous: readonly string[],
+  next: readonly string[],
+): string[] {
+  const exclusive = new Set(exclusiveIds);
+  const added = next.find((id) => !previous.includes(id));
+  if (added) {
+    return exclusive.has(added) ? [added] : next.filter((id) => !exclusive.has(id));
+  }
+  // A pure deselection, or no change: what remains was already valid.
+  return [...next];
+}
 
 /**
  * Whether a question is shown, given the answers so far.

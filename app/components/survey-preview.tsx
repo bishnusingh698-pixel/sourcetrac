@@ -4,6 +4,7 @@ import {
   isChoiceType,
   isQuestionVisible,
   orderOptions,
+  reconcileMultiChoiceSelection,
   resolveOptions,
   SATISFACTION_OPTIONS,
   YES_NO_IDS,
@@ -218,7 +219,16 @@ function PreviewQuestion({
           multiple={question.type === "multi_choice" || undefined}
           onChange={(e: Event) => {
             const target = e.currentTarget as { values?: string[] };
-            onAnswer(question.id, { optionIds: target.values ?? [] });
+            const next = target.values ?? [];
+            if (question.type !== "multi_choice") {
+              onAnswer(question.id, { optionIds: next });
+              return;
+            }
+            // T6: an exclusive option clears the others (and any other clears it).
+            const exclusiveIds = options.filter((o) => o.exclusive).map((o) => o.id);
+            onAnswer(question.id, {
+              optionIds: reconcileMultiChoiceSelection(exclusiveIds, answer?.optionIds ?? [], next),
+            });
           }}
         >
           {options.map((option) => (

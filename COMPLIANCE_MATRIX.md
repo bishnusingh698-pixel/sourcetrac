@@ -137,7 +137,7 @@ Where the plan and the code disagree, the code wins; divergences are recorded in
 | T3 | Quick setup (3 steps) | DONE | `app/routes/app.surveys.library.$id.setup.tsx`; `shared/templates/setup.ts`; `tests/unit/templates-setup.test.ts` |
 | T4 | Answer packs (region / occasion / industry) | DONE | `shared/templates/packs.ts`; locale keys `packs.*` |
 | T5 | Lite versions | DONE | `template.liteQuestionKeys`; `buildSurveyDefinition({ lite })`; catalog `hasLite` |
-| T6 | Exclusive answer option | DONE | `Option.exclusive` (migration `20261012160000`); `shared/survey-rules.ts`; server rejection in `app/lib/answers.server.ts` |
+| T6 | Exclusive answer option | DONE | `Option.exclusive` (migration `20261012160000`); server rejection as `exclusive_with_others` in `shared/survey-rules.ts`; clearing rule shared by the admin preview (`reconcileMultiChoiceSelection`) and checkout (`applyExclusiveToggle`), pinned by `tests/unit/exclusive-option.test.ts` |
 | T7 | Payment-method targeting | PARTIAL | `shared/survey-config.ts`; extension reads `selectedPaymentOptions`, empty = not matched. Unverified on shopify.dev from this container (see `TEMPLATES_NOTES.md`) |
 | T8 | Results by product | DONE | `Response.productIds`; `buildProductBreakdown`; `ProductTable`; `getProductTitles` cache |
 | T9 | Confidence meter | DONE | `shared/templates/confidence.ts`; `ConfidenceBadge` / `ConfidenceHelp`; boundaries tested in `tests/unit/templates-stats.test.ts` |

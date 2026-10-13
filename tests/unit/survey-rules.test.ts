@@ -8,6 +8,7 @@ import {
   npsScore,
   orderOptions,
   OTHER_CHANNEL_VALUE,
+  reconcileMultiChoiceSelection,
   resolveOptions,
   validateResponse,
   validateSurveyDefinition,
@@ -407,6 +408,46 @@ describe("validateResponse", () => {
     ]);
     const errors = validateResponse(s, [{ questionId: "q1", optionIds: ["a", "b"] }]);
     expect(errors.some((e) => e.code === "max_selections")).toBe(true);
+  });
+
+  it("rejects an exclusive option combined with another (T6)", () => {
+    const s = survey([
+      {
+        id: "q1",
+        type: "multi_choice",
+        text: "Which have you seen?",
+        options: [
+          { id: "a", label: "A" },
+          { id: "b", label: "B" },
+          { id: "none", label: "None of these", exclusive: true },
+        ],
+      },
+    ]);
+    expect(validateResponse(s, [{ questionId: "q1", optionIds: ["none"] }])).toEqual([]);
+    expect(validateResponse(s, [{ questionId: "q1", optionIds: ["a", "b"] }])).toEqual([]);
+    const errors = validateResponse(s, [{ questionId: "q1", optionIds: ["a", "none"] }]);
+    expect(errors.some((e) => e.code === "exclusive_with_others")).toBe(true);
+  });
+});
+
+describe("exclusive-option selection reconciler (T6)", () => {
+  it("an exclusive tap clears the others", () => {
+    // Host reports the whole new array: the exclusive option plus "a".
+    expect(reconcileMultiChoiceSelection(["none"], ["a"], ["a", "none"])).toEqual(["none"]);
+  });
+
+  it("a normal tap clears the exclusive option", () => {
+    expect(reconcileMultiChoiceSelection(["none"], ["none"], ["none", "a"])).toEqual(["a"]);
+  });
+
+  it("a normal tap toggles within the non-exclusive set", () => {
+    expect(reconcileMultiChoiceSelection(["none"], ["a"], ["a", "b"])).toEqual(["a", "b"]);
+    // Tapping the exclusive option is an exclusive tap, so only it remains.
+    expect(reconcileMultiChoiceSelection(["none"], ["a"], ["none"])).toEqual(["none"]);
+  });
+
+  it("a deselection leaves the rest untouched", () => {
+    expect(reconcileMultiChoiceSelection(["none"], ["a", "b"], ["a"])).toEqual(["a"]);
   });
 });
 

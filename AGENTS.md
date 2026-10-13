@@ -1142,6 +1142,19 @@ link plus note under the Studio preview caption, opening
 `shopify.extension.editor` detect property **does** exist and is already used —
 detection was never the blocker. See `TEMPLATES_NOTES.md` for the full reasoning.
 
-Verified 2026-10-13: `npm run check` = 817 tests / 58 files green.
+**T6 exclusive options have a UI half and a server half, and both must agree.**
+`validateResponse` rejects an answer that combines an exclusive option with any
+other (`exclusive_with_others`). The `s-choice-list` controls report the whole
+new value array on a tap, not which option was tapped, so each surface
+reconciles the array against the previous selection: the shared
+`reconcileMultiChoiceSelection` / `applyMultiChoiceToggle` in
+`shared/survey-rules.ts` (admin preview) and the mirrored `applyExclusiveToggle`
+in `extensions/shared/src/survey-logic.ts` (checkout -- it cannot import the
+shared module across bundles). `tests/unit/exclusive-option.test.ts` pins the two
+to identical behavior, because drift means a buyer's answer is rejected as
+`exclusive_with_others` and lost. `tests/unit/survey-rules.test.ts` covers the
+server rejection and both helpers.
+
+Verified 2026-10-13: `npm run check` = 827 tests / 59 files green.
 
 

@@ -203,9 +203,9 @@ by both blocks — detection was never the blocker. Recorded in `TEMPLATES_NOTES
 
 ### Verification
 
-- `npm run check` = 817 tests / 58 files green; typecheck, extension typecheck,
-  lint and `shopify app build` clean. Extension bundles unchanged (no new
-  extension code this phase).
+- `npm run check` = 827 tests / 59 files green; typecheck, extension typecheck,
+  lint and `shopify app build` clean. (The bundle grew slightly in the follow-up
+  below: the exclusive-option reconciler added to the shared extension view.)
 - Housekeeping: fixed 11 mis-encoded em-dashes (CP1251 byte sequence for the
   em-dash) in this file.
 
@@ -261,6 +261,24 @@ extension's redundant mirror — a field a future client or the admin preview ne
 not send. The unit fixture gained a `yesNo()` helper that pins the numberValue-
 only shape, and the both-shapes case is asserted too. See `AGENTS.md` for the
 storage detail.
+
+### Follow-up hardening — the exclusive option now clears the others (T6)
+
+T6 was only half-built. The server (`validateResponse`) rejected an answer that
+combined an exclusive option ("None of these") with any other
+(`exclusive_with_others`), and the editor let a merchant mark an option
+exclusive — but **neither the admin preview nor the checkout extension applied
+the clearing rule**. A buyer who tapped a normal option and then "None of these"
+(wrongly kept both by the `s-choice-list` control) got a 422 back and lost the
+whole submission, not just the one answer.
+
+Both surfaces now reconcile the selection the control reports against the
+previous one: `reconcileMultiChoiceSelection` / `applyMultiChoiceToggle` in
+`shared/survey-rules.ts` for the preview, and a mirrored `applyExclusiveToggle`
+in `extensions/shared/src/survey-logic.ts` for checkout (the extension cannot
+import the shared module). `tests/unit/survey-rules.test.ts` covers the server
+rejection and both helpers; the new `tests/unit/exclusive-option.test.ts` pins
+the extension helper to identical behavior so the two copies cannot drift.
 
 **Definition of done.** All 21 templates exist in all 10 languages (After
 delivery only when its flag is on); T1–T16 and S1–S13 are implemented or
