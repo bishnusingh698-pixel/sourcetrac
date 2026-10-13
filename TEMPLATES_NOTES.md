@@ -62,8 +62,12 @@ template field key defined in `en` exists in all 10 template locale files.
   survey when empty rather than showing it, and this is stated in Good to know.
 - **S10 preview in checkout editor.** Could not confirm an
   `extension.editor`-style property on the current checkout extension API from
-  this container. Built the fallback (`Open checkout editor` link) and left a
-  hook in place; recorded as not-built with the reason.
+  this container. Built the fallback (`Open checkout editor` link, wired into the
+  Studio preview panel under the caption) rather than the metafield mechanism the
+  plan describes — see the Phase 7 note below for why the plan's mechanism does
+  not fit this app. The editor-detect property the plan asks about *does* exist
+  (`shopify.extension.editor`, already used by both checkout blocks), so the
+  blocker is the data path, not detection.
 - **`s-box` card border / choice layout attributes.** Both verified against the
   installed `@shopify/polaris-types` rather than guessed. Where an attribute had
   no match, the setting was hidden (see the Design tab).
@@ -94,3 +98,61 @@ template field key defined in `en` exists in all 10 template locale files.
 - **Ideas only for template surveys.** A survey created from scratch shows no
   ideas unless it carries a `templateId` and keeps the template's question keys,
   matching the plan.
+
+## Phase 7 — Smart actions (T13) and S10
+
+### T13 was stored but never applied
+
+The presets were persisted (`buildWizardSyncOptions` wrote the preset ids into
+`Survey.syncOptions.presets`) but nothing turned them into Shopify writes. The
+one `runSyncKind` implementation substituted `{channel}` only, so a preset tag
+named `delivery-check:{optionKey}` would have shipped **literally** as
+`delivery-check:optionkey` on every order — the same failure the earlier note
+warned about, just moved one layer down.
+
+- **`resolveSmartActionWrites`** (`shared/templates/smart-actions.ts`) is now the
+  single resolver: preset ids + the response's stored answers → concrete order
+  tags, customer tags, customer metafields. Pure and unit-tested
+  (`tests/unit/smart-actions.test.ts`). It maps a value through the preset's
+  `valueMap`, guards on `onlyForOptionKeys`, and bands a numeric answer
+  (rating/NPS) through `numericBands`.
+- **Tags are built from option keys only.** The resolver receives stored option
+  *ids*; `optionKeyFor` strips the stable-question-id prefix back to the template
+  key. A translated label can never reach a tag, so the tag is identical in every
+  language — pinned by a test.
+- **`buildWizardSyncOptions` now stores only `{ presets }`.** The literal tag
+  names it used to write are gone; the resolver builds them per answer.
+- **`requiredKinds` / `hasSyncWork` / `requiredScopes` account for presets.**
+  Without this a preset-only survey would enqueue nothing, or the metafield kind
+  would try to write with the order scope when the field belongs to the customer.
+- **Customer metafields target the customer, not the order.** `MetafieldsSetInput`
+  needs `ownerId` = the customer GID; the old code always used the order GID and
+  put the *channel label* in the value. A preset metafield now carries the
+  **answer** as its value, against the order's customer, and is gated on
+  `write_customers`.
+- **Pro gate at submit.** T13 is Pro-only, so `submitAnswer` drops `presets` when
+  `input.plan !== "scale"`. A shop that downgrades keeps its stored config but
+  stops writing. This is the same shape as the scope gate: skip, never throw.
+
+### S10 — the plan's mechanism does not fit this app
+
+The plan says to write a preview config to a **second app-owned metafield** and
+have the extension read it only when it detects the editor. Two mismatches:
+
+1. **This app serves config over HTTP, not metafields.** There is no config
+   metafield to add a preview sibling to; `getCompiledConfig` builds the payload
+   in memory and `/api/survey-config` returns it. Adding a metafield path just for
+   preview would be a second source of truth for the same data.
+2. **The editor has no order,** and the extension's config fetch is keyed on the
+   order id (`useMultiSurvey(orderId, …)`). Inside the editor the blocks render a
+   static `MultiSurveyPreview` and fetch nothing, by design — so "render the draft
+   in the editor" cannot reuse that path without giving the editor a fake order,
+   which the plan itself forbids (submissions in editor mode must never be sent).
+
+Built the fallback instead: an **"Open checkout editor"** link (with its
+explanatory note) under the Studio preview caption, opening
+`/settings/checkout/editor?page=thank-you` with `target="_top"`. The i18n keys for
+both branches already existed in all 10 locales; the fallback branch is now wired.
+The editor-detect property the plan asks about (`shopify.extension.editor`) does
+exist and is already used by both checkout blocks — detection was never the
+blocker.

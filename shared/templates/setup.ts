@@ -49,10 +49,10 @@ export function buildWizardTargeting(config: {
 /**
  * Turn enabled smart-action toggles into sync settings (T13).
  *
- * The per-answer tag is built from option keys in `sync.server.ts`, so a preset
- * stores its literal name template (e.g. `delivery-check:{optionKey}`) with
- * `{optionKey}` kept in place. Writing `{channel}` into the tag here, as an
- * earlier draft did, produced a fixed tag rather than one per answer.
+ * Only the preset ids are stored. The concrete tag/metafield names depend on the
+ * buyer's answer, so they are built per response by `resolveSmartActionWrites`
+ * (`shared/templates/smart-actions.ts`) — writing `{optionKey}` into a tag name
+ * here, as an earlier draft did, would ship a literal `optionkey` tag.
  */
 export function buildWizardSyncOptions(
   template: Pick<TemplateDefinition, "smartActions">,
@@ -61,31 +61,12 @@ export function buildWizardSyncOptions(
   const enabled = new Set(config.smartActions ?? []);
   if (enabled.size === 0) return {};
 
-  const orderTags: string[] = [];
-  const customerTags: string[] = [];
-  const metafields: Array<{ namespace: string; key: string; type?: string }> = [];
   const presets: string[] = [];
-
   for (const id of template.smartActions ?? []) {
     if (!enabled.has(id)) continue;
-    const preset = SMART_ACTION_PRESETS[id];
-    if (!preset) continue;
+    if (!SMART_ACTION_PRESETS[id]) continue;
     presets.push(id);
-    if (preset.kind === "order_tag") orderTags.push(preset.name);
-    else if (preset.kind === "customer_tag") customerTags.push(preset.name);
-    else {
-      metafields.push({
-        namespace: "sourcetrac",
-        key: (preset.name.replace(/\{optionKey\}/g, "") || "profile").replace(/[-:]/g, "_").slice(0, 64),
-        type: "single_line_text_field",
-      });
-    }
   }
 
-  return {
-    orderTags: orderTags.length ? orderTags.slice(0, 4) : undefined,
-    customerTags: customerTags.length ? customerTags.slice(0, 4) : undefined,
-    metafields: metafields.length ? metafields.slice(0, 4) : undefined,
-    presets: presets.length ? presets : undefined,
-  };
+  return presets.length ? { presets } : {};
 }

@@ -4,6 +4,8 @@ import { withRetry } from "~/lib/retry.server";
 import { canSync, hasScope, type SyncScope } from "~/lib/scopes.server";
 import { getAccessToken, findShopById } from "~/lib/shop.server";
 import { shopifyGraphql } from "~/lib/shopify-graphql.server";
+import { resolveSmartActionWrites, SMART_ACTION_PRESETS, type ResolvedSmartActions } from "@shared/templates/smart-actions";
+import { PLAN_SCALE, effectivePlan } from "~/lib/plans";
 
 /**
  * Optional write-back to Shopify (Phase 7).
@@ -31,8 +33,14 @@ export type SurveySyncOptions = {
   orderTags?: string[];
   /** Customer tags to add. */
   customerTags?: string[];
-  /** Order metafields to set. */
-  metafields?: Array<{ namespace: string; key: string; keyTemplate?: string; type?: string }>;
+  /** Metafields to set, on the order (default) or the customer. */
+  metafields?: Array<{
+    namespace: string;
+    key: string;
+    keyTemplate?: string;
+    type?: string;
+    owner?: "order" | "customer";
+  }>;
   /** Fire the app's Flow trigger with the answer. */
   flowTrigger?: boolean;
   /**
@@ -73,6 +81,7 @@ export function parseSyncOptions(raw: unknown): SurveySyncOptions {
           namespace: String(m.namespace ?? "sourcetrac").slice(0, 64),
           key: String(m.key ?? "channel").slice(0, 64),
           type: typeof m.type === "string" ? m.type : "single_line_text_field",
+          owner: m.owner === "customer" ? ("customer" as const) : ("order" as const),
         }))
         .slice(0, 4)
     : undefined;
@@ -93,6 +102,10 @@ export function hasSyncWork(options: SurveySyncOptions): boolean {
     (options.orderTags && options.orderTags.length > 0) ||
       (options.customerTags && options.customerTags.length > 0) ||
       (options.metafields && options.metafields.length > 0) ||
+      // Only presets we recognise produce work; an unknown id (a survey saved
+      // by a newer build, then rolled back) would otherwise enqueue a row that
+      // writes nothing.
+      (options.presets && options.presets.some((id) => SMART_ACTION_PRESETS[id])) ||
       options.flowTrigger,
   );
 }
@@ -100,9 +113,13 @@ export function hasSyncWork(options: SurveySyncOptions): boolean {
 /** Which PendingSync kinds `syncOptions` requires, in a stable order. */
 function requiredKinds(options: SurveySyncOptions): Array<"tags" | "customer" | "metafield" | "flow"> {
   const kinds: Array<"tags" | "customer" | "metafield" | "flow"> = [];
-  if (options.orderTags?.length) kinds.push("tags");
-  if (options.customerTags?.length) kinds.push("customer");
-  if (options.metafields?.length) kinds.push("metafield");
+  const presets = (options.presets ?? []).map((id) => SMART_ACTION_PRESETS[id]).filter(Boolean);
+  const wantsOrderTag = (options.orderTags?.length ?? 0) > 0 || presets.some((p) => p!.kind === "order_tag");
+  const wantsCustomerTag = (options.customerTags?.length ?? 0) > 0 || presets.some((p) => p!.kind === "customer_tag");
+  const wantsMetafield = (options.metafields?.length ?? 0) > 0 || presets.some((p) => p!.kind === "customer_metafield");
+  if (wantsOrderTag) kinds.push("tags");
+  if (wantsCustomerTag) kinds.push("customer");
+  if (wantsMetafield) kinds.push("metafield");
   if (options.flowTrigger) kinds.push("flow");
   return kinds;
 }
@@ -197,6 +214,12 @@ type SyncContext = {
   orderId: string | null;
   channel: string;
   channelLabel: string;
+  /** Template provenance, for T13 preset resolution. Null for from-scratch surveys. */
+  templateId: string | null;
+  /** The preset ids the merchant turned on, resolved into tags per answer. */
+  presetIds: string[];
+  /** The stored answers, for preset resolution. */
+  answers: Array<{ questionId: string; optionIds: string[]; numberValue: number | null }>;
 };
 
 /**
@@ -212,7 +235,7 @@ async function loadSyncContext(shopId: string, responseId: string): Promise<{
     db.response.findFirst({
       where: { id: responseId, shopId },
       include: {
-        survey: { select: { syncOptions: true, channelReportQuestionId: true } },
+        survey: { select: { syncOptions: true, channelReportQuestionId: true, templateId: true } },
         answers: true,
       },
     }),
@@ -222,7 +245,6 @@ async function loadSyncContext(shopId: string, responseId: string): Promise<{
   const options = parseSyncOptions(
     safeJson<Record<string, unknown>>(response.survey.syncOptions, {}),
   );
-
   let channel = "";
   let channelLabel = "";
 
@@ -245,6 +267,14 @@ async function loadSyncContext(shopId: string, responseId: string): Promise<{
   const accessToken = await getAccessToken(shopId);
   if (!accessToken) return null;
 
+  // T13 is Pro-only. Gate on the *current* plan here, not only at enqueue time:
+  // the lazy sweep re-reads `syncOptions` from the database, so a shop that
+  // downgraded after enqueue would otherwise still write presets. Dropping them
+  // from the loaded options keeps the scope/plan gates in one place. Uses the
+  // same `effectivePlan` rule as submit, so a cancelled Scale plan agrees on
+  // both sides.
+  if (effectivePlan(shopRow) !== PLAN_SCALE) delete options.presets;
+
   return {
     options,
     context: {
@@ -254,6 +284,13 @@ async function loadSyncContext(shopId: string, responseId: string): Promise<{
       orderId: response.orderId,
       channel,
       channelLabel,
+      templateId: response.survey.templateId,
+      presetIds: options.presets ?? [],
+      answers: response.answers.map((a) => ({
+        questionId: a.questionId,
+        optionIds: safeJson<string[]>(a.optionIds, []),
+        numberValue: a.numberValue,
+      })),
     },
   };
 }
@@ -316,6 +353,22 @@ export function sanitizeTag(raw: string): string {
 /** Hard ceiling for a Flow payload, below Shopify's 50,000-byte limit. */
 export const MAX_FLOW_PAYLOAD_BYTES = 45_000;
 
+/**
+ * The tags/metafields the survey's enabled T13 presets produce for this answer.
+ * Empty when the survey was not created from a template or has no presets, so
+ * the plain `orderTags`/`customerTags`/`metafields` path is unaffected.
+ */
+function presetWrites(ctx: SyncContext): ResolvedSmartActions {
+  if (!ctx.templateId || ctx.presetIds.length === 0) {
+    return { orderTags: [], customerTags: [], customerMetafields: [] };
+  }
+  return resolveSmartActionWrites({
+    templateId: ctx.templateId,
+    presetIds: ctx.presetIds,
+    answers: ctx.answers,
+  });
+}
+
 /** Truncate a string so the JSON payload stays under `maxBytes`. */
 export function truncateForPayload(value: string, maxBytes: number): string {
   if (Buffer.byteLength(value, "utf8") <= maxBytes) return value;
@@ -342,8 +395,11 @@ export async function runSyncKind(
 
   if (kind === "tags") {
     if (!canSync(grantedScopes, "write_orders", ctx.shopId)) return;
-    const tags = (options.orderTags ?? [])
-      .map((tag) => sanitizeTag(tag.replace("{channel}", ctx.channelLabel || ctx.channel)))
+    const tags = [
+      ...(options.orderTags ?? []).map((tag) => tag.replace("{channel}", ctx.channelLabel || ctx.channel)),
+      ...presetWrites(ctx).orderTags,
+    ]
+      .map(sanitizeTag)
       .filter((tag) => tag.length > 0);
     if (tags.length === 0) return;
     const result = await shopifyGraphql<{ tagsAdd: { userErrors: UserErrors } }>(
@@ -360,8 +416,11 @@ export async function runSyncKind(
     if (!canSync(grantedScopes, "write_customers", ctx.shopId)) return;
     const customerId = await fetchOrderCustomerId(ctx);
     if (!customerId) return;
-    const tags = (options.customerTags ?? [])
-      .map((tag) => sanitizeTag(tag.replace("{channel}", ctx.channelLabel || ctx.channel)))
+    const tags = [
+      ...(options.customerTags ?? []).map((tag) => tag.replace("{channel}", ctx.channelLabel || ctx.channel)),
+      ...presetWrites(ctx).customerTags,
+    ]
+      .map(sanitizeTag)
       .filter((tag) => tag.length > 0);
     if (tags.length === 0) return;
     const result = await shopifyGraphql<{ tagsAdd: { userErrors: UserErrors } }>(
@@ -375,23 +434,67 @@ export async function runSyncKind(
   }
 
   if (kind === "metafield") {
-    if (!canSync(grantedScopes, "write_orders", ctx.shopId)) return;
-    const metafields = (options.metafields ?? []).map((m) => ({
-      ownerId: orderGid(ctx.orderId!),
-      namespace: m.namespace,
-      key: m.key,
-      // A single_line_text_field has a Shopify-imposed length cap, and the
-      // channel label can be a buyer's free-text answer. Truncate rather than
-      // let the write be rejected.
-      value: truncateForPayload(ctx.channelLabel || ctx.channel, 500),
-      type: m.type ?? "single_line_text_field",
-    }));
-    if (metafields.length === 0) return;
+    const presetMetafields = presetWrites(ctx).customerMetafields;
+    const orderMetafields = (options.metafields ?? [])
+      .filter((m) => m.owner !== "customer")
+      .map((m) => ({
+        ownerId: orderGid(ctx.orderId!),
+        namespace: m.namespace,
+        key: m.key,
+        // A single_line_text_field has a Shopify-imposed length cap, and the
+        // channel label can be a buyer's free-text answer. Truncate rather than
+        // let the write be rejected.
+        value: truncateForPayload(ctx.channelLabel || ctx.channel, 500),
+        type: m.type ?? "single_line_text_field",
+      }));
+
+    // Customer-owned metafields (an explicit customer metafield, or a T13
+    // preset like the profile/reorder value) need the customer scope and the
+    // order's customer. Order metafields only need the order scope.
+    const wantsCustomerMetafield =
+      presetMetafields.length > 0 || (options.metafields ?? []).some((m) => m.owner === "customer");
+    const customerMetafields = (options.metafields ?? []).filter((m) => m.owner === "customer");
+
+    const writes: Array<{
+      ownerId: string;
+      namespace: string;
+      key: string;
+      value: string;
+      type: string;
+    }> = [];
+    if (orderMetafields.length > 0 && canSync(grantedScopes, "write_orders", ctx.shopId)) {
+      writes.push(...orderMetafields);
+    }
+    if (wantsCustomerMetafield && canSync(grantedScopes, "write_customers", ctx.shopId)) {
+      const customerId = await fetchOrderCustomerId(ctx);
+      if (customerId) {
+        for (const m of customerMetafields) {
+          writes.push({
+            ownerId: customerId,
+            namespace: m.namespace,
+            key: m.key,
+            value: truncateForPayload(ctx.channelLabel || ctx.channel, 500),
+            type: m.type ?? "single_line_text_field",
+          });
+        }
+        // Preset metafields carry the answer itself, not the channel.
+        for (const m of presetMetafields) {
+          writes.push({
+            ownerId: customerId,
+            namespace: m.namespace,
+            key: m.key,
+            value: truncateForPayload(m.value, 500),
+            type: "single_line_text_field",
+          });
+        }
+      }
+    }
+    if (writes.length === 0) return;
     const result = await shopifyGraphql<{ metafieldsSet: { userErrors: UserErrors } }>(
       ctx.shopDomain,
       ctx.accessToken,
       METAFIELDS_SET,
-      { metafields },
+      { metafields: writes },
     );
     assertNoUserErrors(result.data.metafieldsSet.userErrors, "metafieldsSet");
     return;
@@ -519,8 +622,17 @@ export async function maybeRunPendingSync(shopId: string): Promise<void> {
 /** The write scopes needed to fully run a survey's sync options. */
 export function requiredScopes(options: SurveySyncOptions): SyncScope[] {
   const scopes: SyncScope[] = [];
-  if (options.orderTags?.length || options.metafields?.length) scopes.push("write_orders");
-  if (options.customerTags?.length) scopes.push("write_customers");
+  const presets = (options.presets ?? []).map((id) => SMART_ACTION_PRESETS[id]).filter(Boolean);
+  const wantsOrders =
+    (options.orderTags?.length ?? 0) > 0 ||
+    (options.metafields?.some((m) => m.owner !== "customer") ?? false) ||
+    presets.some((p) => p!.kind === "order_tag");
+  const wantsCustomers =
+    (options.customerTags?.length ?? 0) > 0 ||
+    (options.metafields?.some((m) => m.owner === "customer") ?? false) ||
+    presets.some((p) => p!.kind === "customer_tag" || p!.kind === "customer_metafield");
+  if (wantsOrders) scopes.push("write_orders");
+  if (wantsCustomers) scopes.push("write_customers");
   return scopes;
 }
 

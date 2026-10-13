@@ -274,12 +274,28 @@ flowchart TD
 
 | Decision | File / function |
 |---|---|
-| Triggers | `app/lib/answers.server.ts` (inline), `app/routes/app._index.tsx` (`maybeRunPendingSync`) |
+| Triggers | `app/lib/answers.server.ts` (inline, Pro-gated), `app/routes/app._index.tsx` (`maybeRunPendingSync`) |
 | Batch + backoff + give-up | `app/lib/sync.server.ts` → `processPendingSync` (MAX_SYNC_ATTEMPTS = 5) |
 | Scope gate | `app/lib/scopes.server.ts` → `canSync` |
-| Example worker | `tests/unit/sync-pending.test.ts` |
+| T13 preset → concrete writes | `shared/templates/smart-actions.ts` → `resolveSmartActionWrites` |
+| Preset resolver tests | `tests/unit/smart-actions.test.ts` |
+| Flow trigger contract | `tests/unit/flow-trigger-contract.test.ts` |
 
-Status: implemented as the plan describes.
+**T13 (smart actions).** A survey created from a template stores only the preset
+ids in `Survey.syncOptions.presets` (`buildWizardSyncOptions`). At submit,
+`submitAnswer` drops `presets` unless the plan is Scale, then `runSyncKind`
+(`kind === "tags"` / `"customer"` / `"metafield"`) merges
+`resolveSmartActionWrites(...)` — which turns each enabled preset plus the
+response's stored answers into concrete order tags, customer tags and customer
+metafields. Tags are built from option keys only, so they are byte-identical in
+every language. A preset `customer_metafield` is written to the customer GID and
+gated on `write_customers`.
+
+**S10.** Not built as the plan describes (its metafield mechanism does not fit a
+config-over-HTTP app); the fallback "Open checkout editor" link is wired in the
+Studio preview panel. See `TEMPLATES_NOTES.md`.
+
+Status: implemented as the plan describes, except S10 (fallback link).
 
 ---
 

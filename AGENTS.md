@@ -1086,3 +1086,49 @@ generated from both by `scripts/gen-translation-review.py` for a native pass.
 
 Verified 2026-10-13: `npm run check` = 794 tests / 57 files green.
 
+## Phase 7 — Smart actions applied, and why S10 is a link (2026-10-13)
+
+**T13 was stored but never applied.** `buildWizardSyncOptions` wrote preset ids
+into `Survey.syncOptions.presets`, but nothing turned them into Shopify writes:
+`runSyncKind` substituted `{channel}` only. A preset tag named
+`delivery-check:{optionKey}` would have shipped **literally** as
+`delivery-check:optionkey` on every order.
+
+- `resolveSmartActionWrites` (`shared/templates/smart-actions.ts`) is the single
+  resolver: preset ids + the response's stored answers → order tags, customer
+  tags, customer metafields. Pure; `tests/unit/smart-actions.test.ts` covers it.
+  It maps values through `valueMap`, guards on `onlyForOptionKeys`, and bands a
+  numeric answer (rating / NPS) through `numericBands`.
+- **Tags are built from option keys only.** `optionKeyFor` strips the stable
+  question-id prefix (`stableQuestionId(templateId, q)` + `_` + key) back to the
+  template key, so a translated label can never reach a tag. The same tag is
+  identical in every language.
+- `buildWizardSyncOptions` now stores only `{ presets }`; it no longer writes the
+  literal tag names (that was the bug above, one layer up).
+- `requiredKinds` / `hasSyncWork` / `requiredScopes` all account for presets, or a
+  preset-only survey enqueues nothing. A preset `customer_metafield` needs
+  `write_customers`, not `write_orders`.
+- **A customer metafield's `ownerId` is the customer GID**, not the order GID, and
+  its value is the *answer* (not the channel label). The old metafield branch
+  always used the order GID.
+- **Pro gate at submit, and again at load.** `submitAnswer` deletes
+  `options.presets` when `input.plan !== "scale"`. `loadSyncContext` drops them
+  again when `shopRow.plan !== PLAN_SCALE`, because the lazy sweep re-reads
+  `syncOptions` from the database — a shop that downgraded after enqueue would
+  otherwise still write. Both skip, neither throws (the same shape as the scope
+  gate). `hasSyncWork` counts a preset only if its id is in the dictionary, so an
+  unknown id does not enqueue a row that writes nothing.
+
+**S10 cannot use the plan's metafield mechanism.** This app serves the compiled
+config over HTTP (`getCompiledConfig` → `/api/survey-config`), so there is no
+config metafield to add a preview sibling to; and the editor has no order id, so
+the extension's order-keyed config fetch does not run there (the blocks render a
+static `MultiSurveyPreview`). Built the fallback: an **"Open checkout editor"**
+link plus note under the Studio preview caption, opening
+`/settings/checkout/editor?page=thank-you` with `target="_top"`. The
+`shopify.extension.editor` detect property **does** exist and is already used —
+detection was never the blocker. See `TEMPLATES_NOTES.md` for the full reasoning.
+
+Verified 2026-10-13: `npm run check` = 814 tests / 58 files green.
+
+

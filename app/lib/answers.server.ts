@@ -277,6 +277,11 @@ export async function submitAnswers(input: AnswerSubmitInput): Promise<AnswerSub
     // never fails the buyer's submission.
     try {
       const options = parseSyncOptions(input.syncOptions);
+      // T13 smart actions are Pro-only. A downgraded shop may still carry the
+      // presets in its stored config, so drop them unless the plan grants them.
+      if (input.plan !== "scale" && options.presets) {
+        delete options.presets;
+      }
       if (hasSyncWork(options)) {
         await enqueueSync(input.shopId, created.id, options);
         await processPendingSync(input.shopId, 5);

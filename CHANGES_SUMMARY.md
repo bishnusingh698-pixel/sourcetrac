@@ -1,4 +1,4 @@
-# Changes summary вЂ” SourceTrac
+# Changes summary — SourceTrac
 
 ## Phase 6 — Overview, Results and minimal Home (2026-10-13)
 
@@ -121,24 +121,24 @@ recorded in `COMPLIANCE_MATRIX.md` and `AUDIT_REPORT.md`.
 
 ### New tests
 
-- `tests/unit/token-submission-limit.test.ts` вЂ” per-token cap.
-- `tests/unit/tag-sanitize.test.ts` вЂ” tag sanitisation + payload truncation.
-- `tests/db-verification-cap.test.ts` вЂ” atomic cap + verified/unverified revenue
+- `tests/unit/token-submission-limit.test.ts` — per-token cap.
+- `tests/unit/tag-sanitize.test.ts` — tag sanitisation + payload truncation.
+- `tests/db-verification-cap.test.ts` — atomic cap + verified/unverified revenue
   (real Postgres).
-- `tests/unit/logic-tree.test.ts` вЂ” `buildLogicTree` + the no-duplicate-rule
+- `tests/unit/logic-tree.test.ts` — `buildLogicTree` + the no-duplicate-rule
   guard (Phase G).
-- `tests/unit/survey-rules.test.ts` вЂ” added show-if chain and range-edge cases.
+- `tests/unit/survey-rules.test.ts` — added show-if chain and range-edge cases.
 
 ### Verification (2026-10-12)
 
-- `npm run check` вЂ” 624 tests across 50 files, all green; typecheck and lint clean.
-- `npm run check:extensions` / `typecheck:extensions` вЂ” clean.
-- `npx shopify app build` вЂ” thank-you and order-status blocks 33.5 KB original /
+- `npm run check` — 624 tests across 50 files, all green; typecheck and lint clean.
+- `npm run check:extensions` / `typecheck:extensions` — clean.
+- `npx shopify app build` — thank-you and order-status blocks 33.5 KB original /
   ~11.5 KB compressed each (budget 64 KB); admin blocks 22.5 KB / ~8.1 KB.
 
 ### New / changed database columns
 
-- `prisma/migrations/20261012140000_response_verification/` вЂ” additive only:
+- `prisma/migrations/20261012140000_response_verification/` — additive only:
   - `Response.verified  BOOLEAN NULL`
   - `Response.unverifiedFailed BOOLEAN NOT NULL DEFAULT false`
 
@@ -153,7 +153,7 @@ recorded in `COMPLIANCE_MATRIX.md` and `AUDIT_REPORT.md`.
 1. Re-deploy on Render (`npm run start`) so the migration applies.
 2. No Partner Dashboard changes are required by this audit.
 3. Optional: decide the Free response cap (code currently 50; the brief said
-   100) вЂ” see `FUTURE_TASKS.md`.
+   100) — see `FUTURE_TASKS.md`.
 
 ### Accepted risks / documented divergences
 
@@ -163,3 +163,49 @@ recorded in `COMPLIANCE_MATRIX.md` and `AUDIT_REPORT.md`.
 - Product/collection targeting has data plumbing but no picker (deferred).
 - Plan reconciliation on a transient Shopify read failure still downgrades
   (billing-policy decision, tracked in `BUG_FIX_REPORT.md`).
+
+## Phase 7 — Smart actions (T13) and S10 (2026-10-13)
+
+### Fixed: T13 presets were stored but never applied
+
+`buildWizardSyncOptions` wrote the smart-action preset ids into
+`Survey.syncOptions.presets`, but nothing turned them into Shopify writes. The
+only substitution in `runSyncKind` was `{channel}`, so a preset tag like
+`delivery-check:{optionKey}` would have shipped **literally** as
+`delivery-check:optionkey` on every order.
+
+- `resolveSmartActionWrites` (`shared/templates/smart-actions.ts`) now resolves a
+  preset + the stored answers into concrete order tags, customer tags and
+  customer metafields. Pure; `tests/unit/smart-actions.test.ts` (13 cases) covers
+  the value map, the `onlyForOptionKeys` guard, rating bands and NPS bands.
+- Tags are built from option keys only, so the same answer produces the same tag
+  in every language.
+- `buildWizardSyncOptions` stores only `{ presets }` now.
+- `requiredKinds` / `hasSyncWork` / `requiredScopes` account for presets, and a
+  preset metafield is gated on `write_customers` (a customer field, not an order
+  field).
+- A customer metafield's `ownerId` is now the **customer** GID, and its value is
+  the **answer** — the old code always wrote to the order with the channel label.
+- Pro gate: `submitAnswer` drops `presets` unless the plan is Scale, and
+  `loadSyncContext` drops them again against the *current* plan so the lazy
+  sweep cannot bypass a downgrade.
+
+### S10 — fallback link, not the plan's metafield mechanism
+
+The plan's mechanism (write a preview config to a second app-owned metafield, read
+it only in the editor) does not fit this app: the compiled config is served over
+HTTP, so there is no config metafield to add a sibling to; and the checkout editor
+has no order id, so the extension's order-keyed config fetch never runs there.
+Built the fallback: an **"Open checkout editor"** link and note under the Studio
+preview caption, opening `/settings/checkout/editor?page=thank-you` in the top
+window. The `shopify.extension.editor` detect property exists and is already used
+by both blocks — detection was never the blocker. Recorded in `TEMPLATES_NOTES.md`.
+
+### Verification
+
+- `npm run check` = 814 tests / 58 files green; typecheck, extension typecheck,
+  lint and `shopify app build` clean. Extension bundles unchanged (no new
+  extension code this phase).
+- Housekeeping: fixed 11 mis-encoded em-dashes (CP1251 byte sequence for the
+  em-dash) in this file.
+

@@ -162,7 +162,7 @@ Where the plan and the code disagree, the code wins; divergences are recorded in
 | S7 | Drafts for live surveys | DONE | `Survey.draft` / `draftUpdatedAt`; publish/discard transactions |
 | S8 | Change summary | DONE | `diffSurvey`; publish modal |
 | S9 | Ready check | DONE | `shared/templates/readiness.ts`; `getReadiness` |
-| S10 | Preview in Shopify's checkout editor | PARTIAL | Fallback "Open checkout editor" link only; editor-detect property unverifiable from this container (see `TEMPLATES_NOTES.md`) |
+| S10 | Preview in Shopify's checkout editor | PARTIAL | Fallback "Open checkout editor" link wired under the Studio preview (`app/routes/app.surveys.$id.tsx`). The plan's metafield mechanism does not fit: config is served over HTTP, and the editor has no order id. `shopify.extension.editor` detection exists and is used — see `TEMPLATES_NOTES.md` Phase 7 |
 | S11 | Design tab | DONE | `DesignSettings` in `shared/survey-rules.ts`; Studio Design panel |
 | S12 | Scale labels | DONE | `scaleLowLabel` / `scaleHighLabel`, max 30 chars |
 | S13 | Preview language | DONE | Studio locale select; survey translations |

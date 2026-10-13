@@ -101,6 +101,7 @@ export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) =>
   return {
     survey,
     shopName: display.name ?? shop.shopDomain.replace(".myshopify.com", ""),
+    shopHandle: shop.shopDomain.replace(".myshopify.com", ""),
     shopCurrency: currency,
     sampleTotal,
     product: display.product,
@@ -452,6 +453,22 @@ export default function SurveyStudio() {
 
                 <s-text color="subdued" fontSize="small">
                   {t("studio.preview_caption")}
+                </s-text>
+
+                {/*
+                  S10 fallback. This app serves the compiled config over HTTP, not
+                  from a metafield, and the checkout editor has no real order, so a
+                  draft cannot be rendered inside Shopify's editor. Offer the plain
+                  link instead of pretending otherwise.
+                */}
+                <s-link
+                  href={`https://admin.shopify.com/store/${data.shopHandle}/settings/checkout/editor?page=thank-you`}
+                  target="_top"
+                >
+                  {t("studio.open_editor")}
+                </s-link>
+                <s-text color="subdued" fontSize="small">
+                  {t("studio.open_editor_note")}
                 </s-text>
 
                 <s-select

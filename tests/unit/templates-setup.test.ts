@@ -41,25 +41,25 @@ describe("quick setup smart actions", () => {
     expect(buildWizardSyncOptions(template, { smartActions: [] })).toEqual({});
   });
 
-  it("keeps the tag name template so each answer gets its own tag", () => {
+  it("stores only the preset id, not a literal tag name", () => {
     const template = templateById("delivery-ready")!;
     const sync = buildWizardSyncOptions(template, { smartActions: ["delivery_status_order_tag"] }) as {
       orderTags?: string[];
       presets?: string[];
     };
-    // The literal `{optionKey}` placeholder must survive, not be replaced with a
-    // fixed value, or every order would carry the same tag.
-    expect(sync.orderTags).toContain("delivery-check:{optionKey}");
+    // The concrete per-answer tag is built at submit time, so no literal
+    // `{optionKey}` tag name is stored (it would ship as `optionkey`).
     expect(sync.presets).toEqual(["delivery_status_order_tag"]);
+    expect(sync.orderTags).toBeUndefined();
   });
 
   it("ignores a preset id that the template does not offer", () => {
     const template = templateById("channel-compass")!;
     // `fit_unsure_order_tag` belongs to a different template.
     const sync = buildWizardSyncOptions(template, { smartActions: ["fit_unsure_order_tag"] }) as {
-      orderTags?: string[];
+      presets?: string[];
     };
-    expect(sync.orderTags).toBeUndefined();
+    expect(sync.presets).toBeUndefined();
   });
 
   it("offers only presets that exist in the dictionary for every template", () => {
