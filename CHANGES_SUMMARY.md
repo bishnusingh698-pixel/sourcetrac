@@ -96,7 +96,7 @@ recorded in `COMPLIANCE_MATRIX.md` and `AUDIT_REPORT.md`.
 
 ### Fixed, grouped by severity
 
-**рџџ  High**
+**🟠 High**
 - **Per-token submission cap** (`app/lib/rate-limit.server.ts`
   `consumeTokenSubmission`; `app/routes/api.survey-responses.tsx`). One checkout
   session token may submit at most `MAX_SUBMISSIONS_PER_TOKEN` (2) responses,
@@ -108,14 +108,14 @@ recorded in `COMPLIANCE_MATRIX.md` and `AUDIT_REPORT.md`.
   server.ts`). Revenue counts verified orders only; unverified-failed answers
   leave the totals; pending is never faked as `$0.00`.
 
-**рџџЎ Medium**
+**🟡 Medium**
 - **Tag sanitisation** (`app/lib/sync.server.ts` `sanitizeTag`). Commas, control
   characters and quotes stripped; 40-char cap; letters of any script kept.
 - **Flow/metafield size guards** (`truncateForPayload`,
   `MAX_FLOW_PAYLOAD_BYTES=45_000`). Prevents silently-rejected Flow payloads.
 - **CSV row cap** (`app/routes/app.export_.csv.tsx`, `MAX_CSV_ROWS=50_000`).
 
-**рџ”µ Low**
+**🔵 Low**
 - **Flow trigger contract test** updated to read the `flowPayload` object after
   the size-guard refactor.
 
