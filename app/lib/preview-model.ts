@@ -46,6 +46,7 @@ export function definitionToPreview(
     design: resolveDesign((options.design as object) ?? definition.design),
     draftUpdatedAt: null,
     hasDraft: false,
+    revision: 0,
     updatedAt: new Date().toISOString(),
     questions: definition.questions.map((q, i) => ({
       id: q.id ?? `q${i}`,

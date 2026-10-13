@@ -24,7 +24,7 @@ import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
 import { ensureShop } from "~/lib/provision.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
-import { NotFoundError, ValidationError } from "~/lib/errors";
+import { ConflictError, NotFoundError, ValidationError } from "~/lib/errors";
 import {
   discardSurveyDraft,
   getEditorSurvey,
@@ -122,13 +122,20 @@ export const action = guarded(async ({ request, params }: ActionFunctionArgs) =>
   const id = params.id ?? "";
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "save");
+  // The concurrency token the editor loaded. Absent from older payloads; the
+  // server then skips the check (see `assertRevision`).
+  const rawRevision = form.get("revision");
+  const expectedRevision = typeof rawRevision === "string" && rawRevision !== "" ? Number(rawRevision) : undefined;
 
   if (intent === "publish") {
     try {
-      await publishSurveyDraft(shop.id, id);
+      await publishSurveyDraft(shop.id, id, expectedRevision);
     } catch (error) {
       if (error instanceof ValidationError) {
-        return { ok: false as const, issues: extractIssues(error) };
+        return { ok: false as const, conflict: false, issues: extractIssues(error) };
+      }
+      if (error instanceof ConflictError) {
+        return { ok: false as const, conflict: true, issues: [] };
       }
       throw error;
     }
@@ -163,7 +170,7 @@ export const action = guarded(async ({ request, params }: ActionFunctionArgs) =>
   }
 
   try {
-    await updateSurvey(shop.id, id, input);
+    await updateSurvey(shop.id, id, input, expectedRevision);
     // "Go live" saves the survey, then activates it in one round trip. A
     // live/paused survey's save lands as a draft, so activation is only
     // meaningful for a draft, which `updateSurvey` writes directly.
@@ -173,7 +180,10 @@ export const action = guarded(async ({ request, params }: ActionFunctionArgs) =>
     }
   } catch (error) {
     if (error instanceof ValidationError) {
-      return { ok: false as const, issues: extractIssues(error) };
+      return { ok: false as const, conflict: false, issues: extractIssues(error) };
+    }
+    if (error instanceof ConflictError) {
+      return { ok: false as const, conflict: true, issues: [] };
     }
     throw error;
   }
@@ -311,6 +321,7 @@ export default function SurveyStudio() {
   const submitIntent = (intent: string) => {
     const body = new FormData();
     body.set("intent", intent);
+    body.set("revision", String(draft.revision));
     submit(body, { method: "post" });
   };
 
@@ -335,9 +346,15 @@ export default function SurveyStudio() {
       <s-section heading={draft.name} subheading={t("studio.right_purpose")} padding="none" />
 
       {actionData && actionData.ok === false ? (
-        <Banner tone="critical" heading={t("surveys.save_failed_title")}>
-          {t("surveys.save_failed_body", { count: actionData.issues.length })}
-        </Banner>
+        actionData.conflict ? (
+          <Banner tone="warning" heading={t("studio.conflict")}>
+            {t("studio.conflict")}
+          </Banner>
+        ) : (
+          <Banner tone="critical" heading={t("surveys.save_failed_title")}>
+            {t("surveys.save_failed_body", { count: actionData.issues.length })}
+          </Banner>
+        )
       ) : null}
 
       <s-stack direction="inline" gap="small">
@@ -367,6 +384,7 @@ export default function SurveyStudio() {
       {tab === "studio" ? (
         <Form method="post">
           <input type="hidden" name="survey" value={JSON.stringify(draft)} />
+          <input type="hidden" name="revision" value={draft.revision} />
 
           <s-query-container>
             <s-grid

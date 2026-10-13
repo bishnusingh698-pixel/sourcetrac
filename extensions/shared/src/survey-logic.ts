@@ -208,6 +208,13 @@ export interface ApiBinding {
   translate: (key: string) => unknown;
   /** The buyer's language (e.g. "de"), stored with the answer. Optional. */
   getLocale?: () => string | null | undefined;
+  /**
+   * The selected payment option `type`s for this checkout (T7). Only the
+   * Thank-you block can provide this; elsewhere it is absent and the server
+   * treats an empty list as "not a manual payment". Optional so the
+   * order-status and admin blocks need not implement it.
+   */
+  getPaymentTypes?: () => readonly string[];
 }
 
 /**
@@ -333,6 +340,11 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
     const query = new URLSearchParams({ placement });
     if (orderId) query.set("orderId", orderId);
     if (locale) query.set("locale", locale);
+    // T7: only the Thank-you block binds this. Sending it here keeps the payment
+    // rule server-side, so a survey that targets manual payment methods is
+    // matched against the real selection rather than always seeing an empty list.
+    const paymentTypes = binding.getPaymentTypes?.() ?? [];
+    if (paymentTypes.length > 0) query.set("paymentTypes", paymentTypes.join(","));
     return withRetries("survey_fetch", "thank-you", () =>
       attempt<SurveyConfigV2>(`/api/survey?${query.toString()}`, { method: "GET" }),
     );

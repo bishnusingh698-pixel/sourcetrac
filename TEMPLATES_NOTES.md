@@ -50,24 +50,43 @@ template field key defined in `en` exists in all 10 template locale files.
   file-name conflict; the code wins.
 - **Question type name.** `shared/survey-rules.ts` calls the NPS type `nps`, not
   `nps_0_10`. The templates use `nps`.
-- **Payment-method targeting (T7).** Shopify's checkout UI extension exposes
-  `shopify.selectedPaymentOptions` on the Thank you page, but the *type* field
-  value for manual/COD payment methods could not be verified against
-  shopify.dev from this container (network blocked). Implemented defensively:
-  the extension matches an option whose `type` is `manualPayment` and treats an
-  empty array as **not matched**. Recorded as unverified; revisit before
-  enabling the toggle by default.
+- **Payment-method targeting (T7).** Now **verified** against shopify.dev and the
+  installed `@shopify/ui-extensions` types (2026-07). `shopify.selectedPaymentOptions`
+  is on the thank-you target's `StandardApi`, and each option's `type` union is
+  `creditCard | deferred | local | manualPayment | offsite | other |
+  paymentOnDelivery | redeemable | wallet | customOnsite`. Two findings closed a
+  real defect:
+  - The old matcher accepted `manualPayment` or a non-existent `manual`; it
+    **missed `paymentOnDelivery`**, the exact "payment collected on delivery"
+    case the plan names. Both are now matched.
+  - The extension **never read the selection and never sent `paymentTypes`**, so
+    the server saw an empty list on every order and hid the survey — the rule was
+    non-functional, not merely unverified. The thank-you block now binds
+    `getPaymentTypes` (reading `shopify.selectedPaymentOptions.value` lazily) and
+    `fetchSurvey` sends them. An empty array still means "not matched" (hiding is
+    the safe failure), which is stated in Good to know.
 - **`selectedPaymentOptions` empty.** Documented developer reports of it coming
   back empty on Thank you for some offsite methods. The rule therefore hides the
   survey when empty rather than showing it, and this is stated in Good to know.
-- **S10 preview in checkout editor.** Could not confirm an
-  `extension.editor`-style property on the current checkout extension API from
-  this container. Built the fallback (`Open checkout editor` link, wired into the
-  Studio preview panel under the caption) rather than the metafield mechanism the
-  plan describes — see the Phase 7 note below for why the plan's mechanism does
-  not fit this app. The editor-detect property the plan asks about *does* exist
-  (`shopify.extension.editor`, already used by both checkout blocks), so the
-  blocker is the data path, not detection.
+- **S10 preview in checkout editor.** Both halves are **verified supported**, so
+  the earlier "does not fit" note was wrong and is corrected here:
+  - *Detection:* `shopify.extension.editor` (type `Editor`, `type: 'checkout'`)
+    is typed in the installed `@shopify/ui-extensions` and already read by both
+    checkout blocks.
+  - *Data path:* `shopify.appMetafields` is available on
+    `purchase.thank-you.block.render` and declared with
+    `[[extensions.targeting.metafields]]` (key + namespace; no `owner_type` in
+    the extension config syntax). So a second app-owned metafield holding a
+    preview config is feasible, and the compiled config (~11.5 KB) is far under
+    the metafield size limit.
+
+  Shipped instead the plan's **step-3 fallback** ("Open checkout editor" link
+  under the Studio preview) as a deliberate scope decision, not a limitation:
+  the app's config path is HTTP (`getCompiledConfig` → `/api/survey`) and
+  shipping the metafield preview would add a parallel metafield read/write path
+  plus a Studio action, for an admin-only preview. Recorded in `FUTURE_TASKS.md`
+  with the concrete steps to build it. The plan sanctions this outcome ("If not
+  supported … Open checkout editor"), so S10 is PARTIAL with a stated reason.
 - **`s-box` card border / choice layout attributes.** Both verified against the
   installed `@shopify/polaris-types` rather than guessed. Where an attribute had
   no match, the setting was hidden (see the Design tab).
@@ -75,6 +94,26 @@ template field key defined in `en` exists in all 10 template locale files.
   are mapped to the new library where they overlap and kept under a "Classic"
   origin label otherwise; existing surveys created from them are independent
   copies and keep working.
+
+## Phase 5 — Survey Studio concurrency (section 6.6)
+
+- **`Survey.revision` is the optimistic token, not `updatedAt`.** Answer counting
+  increments `responseCount` through `survey.update`, which moves Prisma's
+  `@updatedAt` on every answer. Using `updatedAt` as the conflict token would
+  therefore refuse a merchant's save whenever a shopper answered while the editor
+  was open — a false conflict on exactly the busiest surveys. `revision` is a
+  plain `Int` bumped only by merchant writes (save, publish, pause/activate).
+  `tests/db-survey-drafts.test.ts` pins the false-conflict case: incrementing
+  `responseCount` must not move the token.
+- **The check is skipped when the token is absent.** `updateSurvey` /
+  `publishSurveyDraft` take an optional `expectedRevision`; `undefined` means the
+  caller is not tracking one (older payloads, direct library calls in tests) and
+  no comparison happens. The route reads `revision` from the form and passes it
+  through; both the hidden save input and `submitIntent` carry it.
+- **A conflict is a warning, not an error page.** The action returns
+  `{ ok: false, conflict: true, issues: [] }` and the Studio renders the
+  `studio.conflict` banner ("This survey changed in another window. Reload to
+  see the latest version."). The message is translated in all 10 locales.
 
 ## Phase 6 — Overview, Results and minimal Home
 

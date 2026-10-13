@@ -26,6 +26,35 @@ blocker. When the syntax can be confirmed:
    a store mid-deploy keeps working.
 4. Extend `tests/integration/extension-bundle.test.ts` with the metafield path.
 
+## S10 — preview a draft inside Shopify's checkout editor
+
+Deferred: the plan's step-3 fallback ("Open checkout editor" link) ships now, and
+the plan sanctions that outcome. But the full mechanism is **feasible** — an
+earlier note wrongly said it "does not fit", and the facts have since been
+verified against shopify.dev (2026-07) and the installed types:
+
+- `shopify.extension.editor` (`Editor`, `type: 'checkout'`) detects the editor —
+  already read by both checkout blocks.
+- `shopify.appMetafields` is available on `purchase.thank-you.block.render`, and
+  metafields are declared with `[[extensions.targeting.metafields]]`
+  (`key` + `namespace`; no `owner_type` in the extension config syntax).
+
+To build it:
+
+1. Add a second app-owned metafield (`preview_config`) to
+   `extensions/sourcetrac-thank-you/shopify.extension.toml` and to the extension
+   `appMetafields` read.
+2. In the Studio, add a "Preview in checkout editor" action that writes the
+   selected survey's draft (or published definition) compiled the same way as
+   `getCompiledConfig` to that metafield, then opens
+   `/settings/checkout/editor?page=thank-you` in a new tab.
+3. The block renders the preview config **only** when
+   `shopify.extension.editor` is set, and ignores it on real checkouts.
+   Submissions in editor mode are shown locally and never POSTed.
+4. Clear the preview metafield on publish and discard.
+5. Keep the added extension code minimal and re-check the bundle budget
+   (~11.5 KB compressed today).
+
 ## Product / collection targeting UI (Phase 7)
 
 `Targeting` in `shared/survey-config.ts` carries `productIds`, `collectionIds`

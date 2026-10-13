@@ -320,6 +320,11 @@ model Survey {
   /// running the published version. Null when there are no unpublished changes.
   draft          String?
   draftUpdatedAt DateTime?
+  /// Optimistic-concurrency token (section 6.6). The editor posts back the value
+  /// it loaded; a mismatch means another window changed the survey. Bumped on
+  /// every save, publish and status change. Not `@updatedAt`, so answer counting
+  /// (which increments `responseCount`) cannot raise a false conflict.
+  revision      Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

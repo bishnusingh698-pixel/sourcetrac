@@ -13,7 +13,7 @@
 import { Prisma, type SurveyStatus } from "@prisma/client";
 
 import { db } from "~/db.server";
-import { NotFoundError, ValidationError } from "~/lib/errors";
+import { ConflictError, NotFoundError, ValidationError } from "~/lib/errors";
 import { logger } from "~/lib/logger";
 import {
   DEFAULT_SURVEY_TEXT,
@@ -84,6 +84,11 @@ export type EditorSurvey = {
   draftUpdatedAt: string | null;
   /** True when an unpublished draft exists (live/paused surveys only). */
   hasDraft: boolean;
+  /**
+   * Optimistic-concurrency token (section 6.6). The editor posts it back on save
+   * and publish; a mismatch means another window changed the survey.
+   */
+  revision: number;
   questions: EditorQuestion[];
   updatedAt: string;
 };
@@ -176,6 +181,7 @@ export function rowToEditor(row: SurveyWithQuestions): EditorSurvey {
     design: resolveDesign(parseJson<Partial<DesignSettings>>(row.designJson, {})),
     draftUpdatedAt: row.draftUpdatedAt ? row.draftUpdatedAt.toISOString() : null,
     hasDraft: row.draft !== null,
+    revision: row.revision,
     updatedAt: row.updatedAt.toISOString(),
     questions: row.questions.map(toEditorQuestion),
   };
@@ -337,6 +343,20 @@ export async function listSurveys(shopId: string): Promise<SurveyListItem[]> {
 
 export async function getSurveyRow(shopId: string, surveyId: string): Promise<SurveyWithQuestions | null> {
   return db.survey.findFirst({ where: { id: surveyId, shopId }, include: surveyInclude });
+}
+
+/**
+ * Guard an optimistic-concurrency write (section 6.6).
+ *
+ * The editor sends the `revision` it loaded; if the stored row has moved on, a
+ * different window changed the survey and this write is refused so the merchant
+ * reloads instead of silently clobbering the other edit. `undefined` means the
+ * caller is not tracking a revision (older clients, tests) and the check is
+ * skipped.
+ */
+function assertRevision(expected: number | undefined, actual: number): void {
+  if (expected === undefined) return;
+  if (expected !== actual) throw new ConflictError(undefined, { expected, actual });
 }
 
 export async function getEditorSurvey(shopId: string, surveyId: string): Promise<EditorSurvey> {
@@ -539,9 +559,15 @@ export async function createSurvey(shopId: string, input: SurveyInput): Promise<
  * the full editable definition (questions, design, targeting, placements), so
  * publishing can apply it in one transaction.
  */
-export async function updateSurvey(shopId: string, surveyId: string, input: SurveyInput): Promise<EditorSurvey> {
+export async function updateSurvey(
+  shopId: string,
+  surveyId: string,
+  input: SurveyInput,
+  expectedRevision?: number,
+): Promise<EditorSurvey> {
   const existing = await getSurveyRow(shopId, surveyId);
   if (!existing) throw new NotFoundError("That survey does not exist.", { surveyId });
+  assertRevision(expectedRevision, existing.revision);
 
   assertValid(inputToDefinition(input, surveyId));
 
@@ -552,7 +578,7 @@ export async function updateSurvey(shopId: string, surveyId: string, input: Surv
     // Hold the change back as a draft. One row update; no polling (section 6.6).
     await db.survey.update({
       where: { id: surveyId },
-      data: { draft: JSON.stringify(input), draftUpdatedAt: new Date() },
+      data: { draft: JSON.stringify(input), draftUpdatedAt: new Date(), revision: { increment: 1 } },
     });
     await invalidateConfig(shopId);
     logger.info("survey_draft_saved", { shop_id: shopId, survey_id: surveyId });
@@ -587,6 +613,9 @@ export async function updateSurvey(shopId: string, surveyId: string, input: Surv
         // Bump the version on every save of an active survey, so responses
         // record which revision they answered.
         version: wasActive ? { increment: 1 } : existing.version,
+        // Move the concurrency token so a second window holding the old value
+        // is refused rather than clobbering this save.
+        revision: { increment: 1 },
       },
     });
 
@@ -605,10 +634,15 @@ export async function updateSurvey(shopId: string, surveyId: string, input: Surv
  * existing rules (stable ids, archive when answers exist, version + 1), clear
  * the draft, then recompile. Any failure leaves everything untouched.
  */
-export async function publishSurveyDraft(shopId: string, surveyId: string): Promise<EditorSurvey> {
+export async function publishSurveyDraft(
+  shopId: string,
+  surveyId: string,
+  expectedRevision?: number,
+): Promise<EditorSurvey> {
   const existing = await getSurveyRow(shopId, surveyId);
   if (!existing) throw new NotFoundError("That survey does not exist.", { surveyId });
   if (existing.draft === null) throw new ValidationError("There is nothing to publish.", "Edit the survey first.", { field: "draft", code: "no_draft" });
+  assertRevision(expectedRevision, existing.revision);
 
   const draftInput = parseJson<SurveyInput>(existing.draft, null as unknown as SurveyInput);
   assertValid(inputToDefinition(draftInput, surveyId));
@@ -635,6 +669,7 @@ export async function publishSurveyDraft(shopId: string, surveyId: string): Prom
         learnAndStop: draftInput.learnAndStop ?? existing.learnAndStop,
         designJson: JSON.stringify(draftInput.design ?? parseJson(existing.designJson, DEFAULT_DESIGN)),
         version: { increment: 1 },
+        revision: { increment: 1 },
         draft: null,
         draftUpdatedAt: null,
       },
@@ -652,7 +687,7 @@ export async function publishSurveyDraft(shopId: string, surveyId: string): Prom
 export async function discardSurveyDraft(shopId: string, surveyId: string): Promise<void> {
   const existing = await getSurveyRow(shopId, surveyId);
   if (!existing) throw new NotFoundError("That survey does not exist.", { surveyId });
-  await db.survey.update({ where: { id: surveyId }, data: { draft: null, draftUpdatedAt: null } });
+  await db.survey.update({ where: { id: surveyId }, data: { draft: null, draftUpdatedAt: null, revision: { increment: 1 } } });
   await invalidateConfig(shopId);
 }
 
@@ -678,7 +713,7 @@ export async function setSurveyStatus(shopId: string, surveyId: string, status: 
     }
   }
 
-  await db.survey.update({ where: { id: surveyId }, data: { status } });
+  await db.survey.update({ where: { id: surveyId }, data: { status, revision: { increment: 1 } } });
   await invalidateConfig(shopId);
 }
 

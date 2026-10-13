@@ -271,6 +271,13 @@ export function pickFromRotation(group: readonly CompiledSurvey[], orderId: stri
  * `shopify.selectedPaymentOptions` and passes the option type strings. An empty
  * list is treated as NOT matched, because the field has been observed empty on
  * Thank-you for some offsite methods, and hiding is the safe failure.
+ *
+ * Verified against the installed `@shopify/ui-extensions` types (2026-07): the
+ * `type` union is `creditCard | deferred | local | manualPayment | offsite |
+ * other | paymentOnDelivery | redeemable | wallet | customOnsite`. A manual
+ * payment method ("Cash on Delivery", bank transfer) is `manualPayment`, and a
+ * payment collected on delivery is `paymentOnDelivery` — a COD shop can be
+ * either, so both must match.
  */
 export function matchesPaymentRule(
   survey: CompiledSurvey,
@@ -280,5 +287,5 @@ export function matchesPaymentRule(
   if (!survey.paymentManualOnly) return true;
   // Payment targeting is a Thank-you-page concept only (T7).
   if (placement !== "thank_you") return false;
-  return paymentTypes.some((type) => type === "manualPayment" || type === "manual");
+  return paymentTypes.some((type) => type === "manualPayment" || type === "paymentOnDelivery");
 }
