@@ -114,10 +114,9 @@ describe("template structure", () => {
 describe("template resolution and validation", () => {
   for (const template of TEMPLATES) {
     for (const region of REGIONS) {
-      const lite = template.category === "after_delivery" ? false : false;
-      it(`${template.id} validates for ${region}${lite ? " lite" : ""} in every locale`, () => {
+      it(`${template.id} validates for ${region} in every locale`, () => {
         for (const locale of TEMPLATE_LOCALES) {
-          const definition = buildSurveyDefinition({ template, locale, region, lite });
+          const definition = buildSurveyDefinition({ template, locale, region, lite: false });
           const issues = validateSurveyDefinition(definition);
           expect(issues, `${template.id}/${locale}/${region}: ${JSON.stringify(issues)}`).toEqual([]);
         }

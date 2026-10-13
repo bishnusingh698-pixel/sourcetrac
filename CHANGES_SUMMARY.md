@@ -209,3 +209,40 @@ by both blocks — detection was never the blocker. Recorded in `TEMPLATES_NOTES
 - Housekeeping: fixed 11 mis-encoded em-dashes (CP1251 byte sequence for the
   em-dash) in this file.
 
+## Phase 8 — Polish, acceptance and docs (2026-10-13)
+
+Closing phase of the Templates, Insight Library and Survey Studio build. No new
+features; the work is verification, small clean-ups and the docs the plan asks
+for. All automated checks the plan names are green:
+
+- **Locale parity and length limits.** `tests/unit/template-locales.test.ts`
+  (84 tests) asserts every template field key in `en` exists in all 10 template
+  locale files, that English tag text is <= 32 characters, and that every
+  template builds a valid definition for every region **in every locale** — so a
+  translation that overflows its field fails the build, not a shopper. Admin
+  parity (every key present in `en` appears in all 9 other bundles, with the same
+  `{{placeholders}}`) is enforced by `tests/i18n.test.ts`.
+- **No browser `process.env`.** A `process.env` scan over
+  `build/client/assets/*.js` is empty (the root-loader-only rule holds).
+- **Extension bundles under budget.** `npx shopify app build`: checkout blocks
+  ~11.5 KB compressed, admin blocks ~8.1 KB, unchanged this phase.
+- **No hard-coded colours** in `app/` (themeable tokens only), checked on the
+  diff.
+
+Housekeeping fixed in this phase:
+
+- Removed a dead ternary in `tests/unit/template-locales.test.ts`
+  (`category === "after_delivery" ? false : false`) left from Phase 1; both legs
+  evaluated to `false`, so the full (non-Lite) definition was always the one
+  tested, which is what the test intends. The Lite path is covered separately by
+  the "builds a valid Lite version for every template" test.
+- Repaired three CP1251-mangled severity headings in this file
+  (`рџџ  High` / `рџџЎ Medium` / `рџ”µ Low` -> the 🟠 / 🟡 / 🔵 originals).
+
+**Definition of done.** All 21 templates exist in all 10 languages (After
+delivery only when its flag is on); T1–T16 and S1–S13 are implemented or
+documented as skipped with a reason (`COMPLIANCE_MATRIX.md`, `TEMPLATES_NOTES.md`
+— the one partial is S10, fallback link); tests and build pass; shoppers never
+see drafts or previews; and `TRANSLATION_REVIEW.md` lists every added string by
+language for a native-speaker pass.
+
