@@ -1119,15 +1119,18 @@ into `Survey.syncOptions.presets`, but nothing turned them into Shopify writes:
   agrees on both sides. Both skip, neither throws (the same shape as the scope
   gate). `hasSyncWork` counts a preset only if its id is in the dictionary, so an
   unknown id does not enqueue a row that writes nothing.
-- **A yes/no answer is stored as a number, not an option id.** `survey-rules.ts`
-  keeps yes/no in `numberValue` (yes = 1, no = 0) with an empty `optionIds`. The
-  resolver reads every preset answer through `answerOptionKey`, which maps the
-  numeric yes/no back to `yes`/`no` via the template's question type and reads
-  option ids only for choice questions. Reading `optionIds[0]` unconditionally
-  made all three yes/no presets silently never fire (`reorder_customer_tag`,
-  `reorder_window_metafield`, `needs_by_date_order_tag`, `bulk_interest_order_tag`).
-  Test fixtures must store yes/no the real way (`yesNo()` in the test), or they
-  pass against a shape production never writes.
+- **A yes/no answer's canonical field is `numberValue`, not `optionIds`.**
+  `survey-rules.ts` defines yes/no as numeric (yes = 1, no = 0), and that is the
+  field the validators and the confidence/learn-&-stop code read. The checkout
+  extension *also* mirrors the choice into `optionIds` (`["yes"]`/`["no"]`), so
+  the stored row carries both. The resolver reads the canonical `numberValue`
+  through `answerOptionKey` (mapping 1/0 back to `yes`/`no` via the template's
+  question type) and reads option ids only for choice questions. This is a
+  robustness fix, **not** a bug fix: the earlier code read `optionIds[0]`, which
+  worked solely because of the extension's mirror — a redundant field that a
+  future client (or the admin preview) need not send. The `yesNo()` helper in
+  `tests/unit/smart-actions.test.ts` pins the numberValue-only shape, and the
+  both-shape case is covered too.
 
 **S10 cannot use the plan's metafield mechanism.** This app serves the compiled
 config over HTTP (`getCompiledConfig` → `/api/survey-config`), so there is no
@@ -1139,6 +1142,6 @@ link plus note under the Studio preview caption, opening
 `shopify.extension.editor` detect property **does** exist and is already used —
 detection was never the blocker. See `TEMPLATES_NOTES.md` for the full reasoning.
 
-Verified 2026-10-13: `npm run check` = 816 tests / 58 files green.
+Verified 2026-10-13: `npm run check` = 817 tests / 58 files green.
 
 

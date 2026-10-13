@@ -7,9 +7,11 @@ import { TEMPLATES } from "@shared/templates";
 /**
  * Build the answer rows a resolver call needs, using real stable ids.
  *
- * Yes/No is stored as a NUMBER, not an option id (`shared/survey-rules.ts`:
- * yes = 1, no = 0), so pass `yesNo` for those questions — passing an option key
- * would test a shape production never writes.
+ * Yes/No is defined as a NUMBER (`shared/survey-rules.ts`: yes = 1, no = 0) and
+ * the resolver reads that field, so pass `yesNo` for those questions. The real
+ * checkout extension additionally mirrors the choice into `optionIds`
+ * (`["yes"]`) — a shape also covered below — but a client need not send it, so
+ * the numberValue-only shape is the one the fixture pins.
  */
 function answer(templateId: string, questionKey: string, optionKey?: string, numberValue?: number) {
   const questionId = stableQuestionId(templateId, questionKey);
@@ -20,11 +22,23 @@ function answer(templateId: string, questionKey: string, optionKey?: string, num
   };
 }
 
-/** A yes/no answer, stored the way production stores it (numberValue 1 or 0). */
+/** A yes/no answer in its canonical shape: numberValue 1 or 0, no option id. */
 function yesNo(templateId: string, questionKey: string, yes: boolean) {
   return {
     questionId: stableQuestionId(templateId, questionKey),
     optionIds: [] as string[],
+    numberValue: yes ? 1 : 0,
+  };
+}
+
+/**
+ * A yes/no answer exactly as the checkout extension posts it: the numeric value
+ * AND the mirrored option id. The resolver must treat both shapes the same.
+ */
+function yesNoMirrored(templateId: string, questionKey: string, yes: boolean) {
+  return {
+    questionId: stableQuestionId(templateId, questionKey),
+    optionIds: [yes ? "yes" : "no"],
     numberValue: yes ? 1 : 0,
   };
 }
@@ -189,6 +203,23 @@ describe("resolveSmartActionWrites (T13)", () => {
       answers: [answer("business-buyer", "q_buying_for", "business"), yesNo("business-buyer", "q_bulk_price", false)],
     });
     expect(no.orderTags).toEqual([]);
+  });
+
+  it("treats the extension's mirrored yes/no shape the same as the canonical one", () => {
+    // The checkout extension posts numberValue AND optionIds (["yes"]); the
+    // resolver must not care which of the two shapes arrives.
+    const canonical = resolveSmartActionWrites({
+      templateId: "delivery-promise",
+      presetIds: ["needs_by_date_order_tag"],
+      answers: [yesNo("delivery-promise", "q_needs_date", true)],
+    });
+    const mirrored = resolveSmartActionWrites({
+      templateId: "delivery-promise",
+      presetIds: ["needs_by_date_order_tag"],
+      answers: [yesNoMirrored("delivery-promise", "q_needs_date", true)],
+    });
+    expect(mirrored).toEqual(canonical);
+    expect(mirrored.orderTags).toEqual(["needs-by-date"]);
   });
 
   it("returns nothing without a template or without presets", () => {

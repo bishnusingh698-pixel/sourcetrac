@@ -223,10 +223,13 @@ function optionKeyFor(questionId: string, optionId: string): string {
 
 /**
  * Recover the answer's template option key, regardless of how the question type
- * stores it. Choice questions keep option ids; yes/no stores a number
- * (`shared/survey-rules.ts`: yes = 1, no = 0) with no option id, so a preset
- * naming `onlyForOptionKeys: ["yes"]` (needs-by-date, bulk-interest) or gating on
- * a reminder answer would never match if we only read `optionIds`.
+ * stores it.
+ *
+ * Choice questions keep option ids. Yes/no is defined as *numeric* by
+ * `shared/survey-rules.ts` (yes = 1, no = 0), so read `numberValue` first; the
+ * checkout extension also mirrors the choice into `optionIds` (`["yes"]`), so
+ * fall back to that when the number is absent. A future client that sends only
+ * the canonical numeric field still matches (see the T13 note in AGENTS.md).
  */
 function answerOptionKey(
   questionType: string | undefined,
@@ -236,7 +239,8 @@ function answerOptionKey(
   if (questionType === "yes_no") {
     if (answer.numberValue === 1) return "yes";
     if (answer.numberValue === 0) return "no";
-    return null;
+    const mirrored = answer.optionIds[0];
+    return mirrored === "yes" || mirrored === "no" ? mirrored : null;
   }
   const optionId = answer.optionIds[0];
   if (!optionId) return null;
