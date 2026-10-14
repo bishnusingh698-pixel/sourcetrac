@@ -462,7 +462,10 @@ export async function reconcileOrderForResponses(params: {
   const result = await retryDb(() =>
     db.response.updateMany({
       where: { shopId: params.shopId, orderId: params.orderId, orderTotal: null },
-      data: { orderTotal: decimal, currency: params.currency, verified },
+      // Clear `unverifiedFailed`: the 24h sweep may have written this answer off
+      // while its order was missing, and a late order (webhook or dashboard
+      // backfill) must recover the revenue rather than leave it excluded forever.
+      data: { orderTotal: decimal, currency: params.currency, verified, unverifiedFailed: false },
     }),
   );
 
