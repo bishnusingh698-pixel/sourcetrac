@@ -26,6 +26,22 @@ export type HomeSurvey = {
 /** At most three active surveys get a row on Home. */
 const HOME_SURVEY_LIMIT = 3;
 
+/**
+ * Whether this shop has ever collected an answer.
+ *
+ * Both tables must be checked: the single-question extension wrote
+ * `SurveyResponse`, but the multi-question extension writes only `Response`.
+ * Checking the legacy table alone left a merchant whose answers are all v2
+ * staring at the setup guide forever.
+ */
+export async function hasAnyResponse(shopId: string): Promise<boolean> {
+  const [legacy, v2] = await Promise.all([
+    db.surveyResponse.findFirst({ where: { shopId }, select: { id: true } }),
+    db.response.findFirst({ where: { shopId }, select: { id: true } }),
+  ]);
+  return legacy !== null || v2 !== null;
+}
+
 export async function loadHomeSurveys(shopId: string, locale: string): Promise<HomeSurvey[]> {
   const surveys = (await listSurveys(shopId)).filter((s) => s.status === "active").slice(0, HOME_SURVEY_LIMIT);
   if (surveys.length === 0) return [];

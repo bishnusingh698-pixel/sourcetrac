@@ -70,4 +70,28 @@ No App Proxy routes found.
 - Test: tests/db-extension-routes.test.ts "caps submissions per session token"
   (fails 200,200,200 without the call; passes 200,200,429 with it).
 
+## DH-004 — v2 reconcile never cleared `unverifiedFailed` (2026-10-14)
+
+- Loophole: `markUnverifiedFailedResponses` (24h sweep) sets `unverifiedFailed=true`
+  for a v2 Response with a null total. `reconcileOrderForResponses` filled the
+  total and `verified` on a late order but never reset `unverifiedFailed`, so
+  `decideSurveyRevenue` excluded the row forever. A late webhook or the dashboard
+  backfill could never recover the revenue.
+- Legacy path already cleared its flag (`reconcileFromOrderCache` sets
+  `unreconcilable: false`); v2 was the regression.
+- Fix: reconcile now writes `unverifiedFailed: false` in the same UPDATE
+  (app/lib/answers.server.ts). Reverting it fails the new test.
+- Test: tests/db-verification-cap.test.ts "recovers revenue when an order arrives
+  after the response was written off".
+
+## DH-005 — Home "has any answer" gate ignored the v2 table (2026-10-14)
+
+- Loophole: `app._index.tsx` gated the setup guide on `SurveyResponse` only. The
+  multi-question extension writes `Response`; it never writes `SurveyResponse`.
+  A merchant whose answers are all v2 saw the setup guide forever, and Home's
+  survey cards never rendered.
+- Fix: extracted `hasAnyResponse(shopId)` in app/lib/home.server.ts, reading both
+  tables; the route uses it for the setup-guide gate.
+- Test: tests/db-home-gate.test.ts (2; the v2-only case fails on revert).
+
 
