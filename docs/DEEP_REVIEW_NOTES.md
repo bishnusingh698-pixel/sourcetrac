@@ -94,4 +94,37 @@ No App Proxy routes found.
   tables; the route uses it for the setup-guide gate.
 - Test: tests/db-home-gate.test.ts (2; the v2-only case fails on revert).
 
+## DH-006 — Buyer language never reached the config fetch; translations never applied (2026-10-14)
+
+- Loophole: `useMultiSurvey` called `fetchSurvey(orderId, placement, null)` with a
+  hardcoded `locale = null`, so (a) `targeting.languages` never matched — a
+  language-targeted survey was hidden from every buyer — and (b) the merchant's
+  per-language text (`Survey.translations`, shipped in the compiled config) was
+  never applied. Every buyer read the survey in the merchant's default language.
+  The checkout blocks already wired `getLocale` into `createSurveyApi`, and the
+  admin preview (`survey-preview.tsx`) already applied translations, so only the
+  live checkout path was wrong.
+- Fix: `createSurveyApi` now returns `getLocale`; `useMultiSurvey` reads it, sends
+  it on the config request, and overlays the matching pack via the new
+  `localizeSurvey` (option labels from `option.translations[locale]`, falling back
+  to the default text). Options still render by key, so revenue is unaffected.
+- Test: tests/integration/extension-bundle.test.ts "sends the buyer's language and
+  renders the translated survey" (fails when `localizeSurvey` is reverted).
+
+## Deferred / not-a-bug (recorded, not fixed)
+
+- **D1 — dashboard + /app/export still read the legacy `SurveyResponse` table.**
+  The live extension writes only `Response`, so `/app/dashboard` and the legacy
+  CSV show zero for a real store. Not a regression this hunt introduced (the v2
+  migration is additive and these pages predate it), and the working reports are
+  Home, Results, Responses and the Results CSV, all on v2. Merging the two shapes
+  on the dashboard is a redesign, not a small safe change — deferred with a plan.
+- **D2 — dependency advisories.** tinypool (critical) is reached only by vitest;
+  braces/deepmerge-ts/@vitest/mocker/sprintf-js are build- or test-time. None is
+  in the runtime bundle (`npm run build` output contains none of them). Fixes are
+  major downgrades/bumps of build tooling — deferred, documented in AGENTS.md.
+- **D3 — productIds targeting** carries no line-item read, so `productsOnly`
+  templates show to everyone. Needs `read_products`; already in FUTURE_TASKS.
+
+
 

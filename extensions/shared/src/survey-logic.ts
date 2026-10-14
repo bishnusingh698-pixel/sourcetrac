@@ -435,5 +435,5 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
     }
   }
 
-  return { fetchSurveyConfig, fetchSurvey, submitResponse, submitAnswers, t };
+  return { fetchSurveyConfig, fetchSurvey, submitResponse, submitAnswers, getLocale: buyerLocale, t };
 }

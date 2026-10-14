@@ -57,6 +57,15 @@ the `orderConfirmation` signal) and `country` (from `localization`), the
 Order-status block sends `country` only (its order object has no first-order
 flag). A missing fact leaves the rule inert rather than excluding the buyer.
 
+The buyer's **language** travels the same way: `useMultiSurvey` reads it from
+`api.getLocale()` (the block's `shopify.localization.language.isoCode`), sends
+it as the `locale` query param, and then overlays the matching pack from
+`Survey.translations` onto the survey it renders via `localizeSurvey`. Before
+this the config fetch hardcoded `locale = null`, so language targeting never
+matched and per-language text was never applied (DH-006). Option labels are
+translated for display only — the answer still stores the option **id**, so
+revenue and reporting are unaffected by the buyer's language.
+
 - **Rotation (T11):** when the highest-priority matching survey has
   `rotation = true`, one member of the rotation group (same placement, targeting
   matches) is chosen by `pickFromRotation`, weighted by `rotationWeight` and

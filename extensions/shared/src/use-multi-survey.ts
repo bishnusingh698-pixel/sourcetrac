@@ -25,6 +25,8 @@ export interface MultiSurveyApi {
     placement: Placement;
     answers: AnswerInput[];
   }) => Promise<SubmitResult | null>;
+  /** The buyer's language (e.g. "de"), for language targeting and translation. */
+  getLocale?: () => string | null;
   t: (key: string, fallback: string) => string;
 }
 
@@ -61,6 +63,42 @@ export function optionsFor(question: CompiledQuestion, otherLabel: string): Comp
   const base = question.options;
   if (!question.allowOther || base.some((o) => o.isOther || o.id === OTHER_CHANNEL)) return base;
   return [...base, { id: OTHER_CHANNEL, label: otherLabel, isOther: true }];
+}
+
+/**
+ * Overlay the buyer's language onto a compiled survey.
+ *
+ * The merchant authors per-language text in the Studio (`Survey.translations`),
+ * which the compiler ships in the config, but nothing used to apply it: every
+ * buyer read the survey in the merchant's default language regardless of their
+ * own. Falls back to the default text for any string a locale does not define.
+ * Mirrors `survey-preview.tsx`, which does the same for the admin preview.
+ */
+export function localizeSurvey(survey: CompiledSurvey, locale: string | null): CompiledSurvey {
+  if (!locale) return survey;
+  const packs = (survey.translations ?? {}) as Record<string, Record<string, unknown>>;
+  const pack = packs[locale];
+  if (!pack) return survey;
+
+  const questions = (pack.questions as Record<string, Record<string, string>> | undefined) ?? {};
+  return {
+    ...survey,
+    title: typeof pack.title === "string" ? pack.title : survey.title,
+    intro: pack.intro != null ? String(pack.intro) : survey.intro,
+    buttonLabel: typeof pack.buttonLabel === "string" ? pack.buttonLabel : survey.buttonLabel,
+    thankYouText: typeof pack.thankYouText === "string" ? pack.thankYouText : survey.thankYouText,
+    questions: survey.questions.map((question) => {
+      const text = questions[question.id]?.text;
+      return {
+        ...question,
+        text: typeof text === "string" && text.length > 0 ? text : question.text,
+        options: question.options.map((option) => {
+          const label = option.translations?.[locale];
+          return typeof label === "string" && label.length > 0 ? { ...option, label } : option;
+        }),
+      };
+    }),
+  };
 }
 
 function hasContent(answer: AnswerInput | undefined): boolean {
@@ -114,7 +152,8 @@ export function useMultiSurvey(
     // never fire `?orderId=`, which the route would reject.
     if (!orderId) return;
 
-    apiRef.current.fetchSurvey(orderId, placement, null).then((result) => {
+    const locale = apiRef.current.getLocale?.() ?? null;
+    apiRef.current.fetchSurvey(orderId, placement, locale).then((result) => {
       if (cancelled || !mounted.current) return;
 
       const config = result;
@@ -133,7 +172,9 @@ export function useMultiSurvey(
         return;
       }
 
-      setSurvey(config.survey);
+      // Apply the buyer's language to the merchant-authored text, and remember
+      // it so the answer is stored with the language the buyer actually read.
+      setSurvey(localizeSurvey(config.survey, locale));
       setPhase("asking");
     });
 
