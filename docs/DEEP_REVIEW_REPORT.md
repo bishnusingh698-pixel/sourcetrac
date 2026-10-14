@@ -13,7 +13,7 @@ billing/plan gates, admin writes, CSV/search, sync/Flow, extensions.
 | DH-003 | High | Legacy `/api/responses` missed the per-session-token cap | Fixed | `57857fb` | db-extension-routes |
 | DH-004 | High | v2 reconcile never cleared `unverifiedFailed` → revenue lost forever | Fixed | `b16c4b7` | db-verification-cap |
 | DH-005 | Medium | Home setup gate ignored the v2 `Response` table | Fixed | `fc784e8` | db-home-gate |
-| DH-006 | High | Buyer language never sent → language targeting dead + translations unapplied | Fixed | this commit | extension-bundle |
+| DH-006 | High | Buyer language never sent → language targeting dead + translations unapplied | Fixed | `3b8ab26` | extension-bundle |
 | D1 | Medium | Dashboard + `/app/export` still read legacy `SurveyResponse` | Deferred | — | — |
 | D2 | Low | Build/test-only dependency advisories (tinypool, braces, …) | Deferred | — | — |
 | D3 | Low | `productIds` targeting inert (no line-item read) | Deferred | — | — |
