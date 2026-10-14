@@ -59,3 +59,15 @@ No App Proxy routes found.
 - Deferred: a downgrade that makes a survey unsaveable without edits is only
   grandfathered, not re-gated; by-product results view gating needs a DB flag.
 
+## DH-003 — Legacy submit route missing the per-token cap (2026-10-14)
+
+- Loophole: `/api/survey-responses` calls `consumeTokenSubmission` (max 2 per
+  session token), but the legacy `/api/responses` did not. A valid checkout
+  token + a fresh made-up order id per request got a fresh per-order bucket, so
+  a script could write unlimited forged answers on the legacy route.
+- Fix: added the same `consumeTokenSubmission` call in
+  app/routes/api.responses.tsx, before the per-order bucket.
+- Test: tests/db-extension-routes.test.ts "caps submissions per session token"
+  (fails 200,200,200 without the call; passes 200,200,429 with it).
+
+
