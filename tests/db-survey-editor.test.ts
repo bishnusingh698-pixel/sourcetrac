@@ -22,7 +22,6 @@ import {
 import { templateById } from "@shared/templates";
 import { buildSurveyDefinition } from "@shared/templates/resolve";
 import { regionPackFor } from "@shared/templates/packs";
-import { LIMITS } from "@shared/survey-rules";
 
 const prisma = new PrismaClient();
 const DOMAIN = "survey-editor-test.myshopify.com";
@@ -205,9 +204,11 @@ describe("server-side guards", () => {
   });
 
   it("enforces the live-survey limit and refuses pausing a draft (M24, L62)", async () => {
-    for (let i = 0; i < LIMITS.MAX_ACTIVE_SURVEYS; i += 1) await createSurvey(shopId, input({ status: "active", name: `S${i}` }));
+    // Scale has no live-survey limit, so this runs on Growth's ten.
+    await prisma.shop.update({ where: { id: shopId }, data: { plan: "growth" } });
+    for (let i = 0; i < 10; i += 1) await createSurvey(shopId, input({ status: "active", name: `S${i}` }));
     const extra = await createSurvey(shopId, input({ name: "Extra" }));
-    await expect(setSurveyStatus(shopId, extra.id, "active")).rejects.toMatchObject({ fields: { code: "too_many_active" } });
+    await expect(setSurveyStatus(shopId, extra.id, "active")).rejects.toMatchObject({ fields: { code: "plan_live_limit" } });
     await expect(setSurveyStatus(shopId, extra.id, "paused")).rejects.toMatchObject({ fields: { code: "not_live" } });
   });
 

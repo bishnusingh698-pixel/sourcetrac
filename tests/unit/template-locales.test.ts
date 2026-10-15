@@ -130,8 +130,8 @@ describe("template resolution and validation", () => {
         const definition = buildSurveyDefinition({ template, locale: "en", region, lite: true });
         const issues = validateSurveyDefinition(definition);
         expect(issues, `${template.id} lite / ${region}: ${JSON.stringify(issues)}`).toEqual([]);
-        // Lite must fit the Free limit of 2 questions.
-        expect(definition.questions.length, `${template.id} lite`).toBeLessThanOrEqual(2);
+        // A Free version stays short: at most the recommended question count.
+        expect(definition.questions.length, `${template.id} lite`).toBeLessThanOrEqual(3);
       }
     }
   });

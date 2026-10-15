@@ -90,7 +90,7 @@ describe("template catalogue", () => {
 describe("template detail", () => {
   it("returns the full detail in the admin language", () => {
     const detail = catalogDetail({ ...base, id: "channel-compass" })!;
-    expect(detail.name).toBe("Channel Compass");
+    expect(detail.name).toBe("How did you hear about us?");
     expect(detail.learn.length).toBeGreaterThanOrEqual(2);
     expect(detail.questions.length).toBe(3);
     expect(detail.packFamily).toBe("channels");
@@ -110,7 +110,8 @@ describe("template detail", () => {
     const usKeys = us.questions[0]!.packOptions.map((o) => o.key);
     const euKeys = eu.questions[0]!.packOptions.map((o) => o.key);
     expect(usKeys).toContain("podcast");
-    expect(euKeys).toContain("newspaper_magazine");
+    expect(euKeys).toContain("ai_assistant");
+    expect(usKeys).toContain("ai_assistant");
     expect(euKeys).not.toContain("online_marketplace");
   });
 

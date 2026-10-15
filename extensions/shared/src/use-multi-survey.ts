@@ -89,35 +89,63 @@ export function optionsFor(question: CompiledQuestion, otherLabel: string): Comp
 }
 
 /**
+ * The stored language key that best matches the buyer's language tag.
+ *
+ * Checkout reports a BCP-47 tag, which may carry a region ("de-DE", "pt-BR").
+ * Translations are stored under the app's own codes ("de", "pt-BR", "zh-CN"),
+ * so an exact match is tried first, then the bare language, then any stored
+ * code for the same language ("pt" finds "pt-BR").
+ */
+export function matchLocale(locale: string | null, available: readonly string[]): string | null {
+  if (!locale) return null;
+  const wanted = locale.toLowerCase();
+  const exact = available.find((code) => code.toLowerCase() === wanted);
+  if (exact) return exact;
+  const base = wanted.split("-")[0] ?? wanted;
+  const bare = available.find((code) => code.toLowerCase() === base);
+  if (bare) return bare;
+  return available.find((code) => code.toLowerCase().split("-")[0] === base) ?? null;
+}
+
+/**
  * Overlay the buyer's language onto a compiled survey.
  *
- * The merchant authors per-language text in the Studio (`Survey.translations`),
- * which the compiler ships in the config, but nothing used to apply it: every
- * buyer read the survey in the merchant's default language regardless of their
- * own. Falls back to the default text for any string a locale does not define.
- * Mirrors `survey-preview.tsx`, which does the same for the admin preview.
+ * Two places hold translations: the survey's own `translations` (frame text,
+ * plus question text keyed by id in older surveys), and each question's and
+ * option's `translations`, which surveys created from a template carry for
+ * every language the templates ship. Falls back to the default text for any
+ * string a locale does not define.
  */
 export function localizeSurvey(survey: CompiledSurvey, locale: string | null): CompiledSurvey {
   if (!locale) return survey;
   const packs = (survey.translations ?? {}) as Record<string, Record<string, unknown>>;
-  const pack = packs[locale];
-  if (!pack) return survey;
+  const codes = new Set(Object.keys(packs));
+  for (const question of survey.questions) {
+    for (const code of Object.keys(question.translations ?? {})) codes.add(code);
+    for (const option of question.options) for (const code of Object.keys(option.translations ?? {})) codes.add(code);
+  }
+  const code = matchLocale(locale, [...codes]);
+  if (!code) return survey;
+  const pack = packs[code] ?? {};
 
-  const questions = (pack.questions as Record<string, Record<string, string>> | undefined) ?? {};
+  const legacyQuestions = (pack.questions as Record<string, Record<string, string>> | undefined) ?? {};
+  const text = (value: unknown): string | null => (typeof value === "string" && value.length > 0 ? value : null);
   return {
     ...survey,
-    title: typeof pack.title === "string" ? pack.title : survey.title,
+    title: text(pack.title) ?? survey.title,
     intro: pack.intro != null ? String(pack.intro) : survey.intro,
-    buttonLabel: typeof pack.buttonLabel === "string" ? pack.buttonLabel : survey.buttonLabel,
-    thankYouText: typeof pack.thankYouText === "string" ? pack.thankYouText : survey.thankYouText,
+    buttonLabel: text(pack.buttonLabel) ?? survey.buttonLabel,
+    thankYouText: text(pack.thankYouText) ?? survey.thankYouText,
     questions: survey.questions.map((question) => {
-      const text = questions[question.id]?.text;
+      const own = question.translations?.[code];
       return {
         ...question,
-        text: typeof text === "string" && text.length > 0 ? text : question.text,
+        text: text(legacyQuestions[question.id]?.text) ?? text(own?.text) ?? question.text,
+        helpText: text(own?.helpText) ?? question.helpText,
+        placeholder: text(own?.placeholder) ?? question.placeholder,
         options: question.options.map((option) => {
-          const label = option.translations?.[locale];
-          return typeof label === "string" && label.length > 0 ? { ...option, label } : option;
+          const label = text(option.translations?.[code]);
+          return label ? { ...option, label } : option;
         }),
       };
     }),

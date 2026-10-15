@@ -18,6 +18,16 @@ import { logger } from "~/lib/logger";
 import { effectivePlan } from "~/lib/plans";
 import { findShopById } from "~/lib/shop.server";
 import { catalogPlanFromKey, definitionHasExclusiveOption, planIncludesGrowth } from "@shared/templates/catalog";
+import {
+  advancedTargetingKey,
+  liveSurveyLimit,
+  planHas,
+  planTier,
+  usesAdvancedTargeting,
+  usesShopifyActions,
+  type PlanFeature,
+  type PlanTier,
+} from "@shared/plan-features";
 import { templateById } from "@shared/templates";
 import { stableQuestionId } from "@shared/templates/resolve";
 import { isEnabled } from "@shared/feature-flags";
@@ -709,24 +719,46 @@ function assertTypesUnchanged(input: SurveyInput, existing: SurveyWithQuestions)
   });
 }
 
+/** The plan a shop is billed on right now (a cancelled charge reads as Free). */
+async function shopPlanTier(shopId: string): Promise<PlanTier> {
+  const shop = await findShopById(shopId);
+  return planTier(effectivePlan(shop ?? { plan: null, planStatus: "" }));
+}
+
+/** How many surveys this plan may have live; null is no limit. */
+function activeLimitFor(plan: PlanTier): number | null {
+  return liveSurveyLimit(plan);
+}
+
 /** Refuse activation past the active-survey limit (not counting `exceptId`). */
 async function assertActiveLimit(client: Prisma.TransactionClient | typeof db, shopId: string, exceptId?: string): Promise<void> {
   const active = await client.survey.count({
     where: { shopId, status: "active", ...(exceptId ? { id: { not: exceptId } } : {}) },
   });
-  if (active >= LIMITS.MAX_ACTIVE_SURVEYS) {
-    throw new ValidationError(
-      `You can have at most ${LIMITS.MAX_ACTIVE_SURVEYS} live surveys.`,
-      "Pause a survey you no longer need, then try again.",
-      { field: "status", code: "too_many_active" },
-    );
-  }
+  const plan = await shopPlanTier(shopId);
+  const limit = activeLimitFor(plan);
+  if (limit === null || active < limit) return;
+  throw new ValidationError(
+    `Your plan includes ${limit} live ${limit === 1 ? "survey" : "surveys"}.`,
+    "Pause another survey, or upgrade to run more at once.",
+    { field: "status", code: "plan_live_limit", limit },
+  );
 }
 
 /** Whether another live survey limit would be exceeded by activating `surveyId`. */
 export async function isOverActiveLimit(shopId: string, surveyId: string): Promise<boolean> {
   const active = await db.survey.count({ where: { shopId, status: "active", id: { not: surveyId } } });
-  return active >= LIMITS.MAX_ACTIVE_SURVEYS;
+  const limit = activeLimitFor(await shopPlanTier(shopId));
+  return limit !== null && active >= limit;
+}
+
+/** Live surveys versus what the plan includes, for the surveys list notice. */
+export async function liveSurveyUsage(shopId: string): Promise<{ live: number; limit: number | null; plan: PlanTier }> {
+  const [live, plan] = await Promise.all([
+    db.survey.count({ where: { shopId, status: "active" } }),
+    shopPlanTier(shopId),
+  ]);
+  return { live, limit: activeLimitFor(plan), plan };
 }
 
 /**
@@ -758,8 +790,13 @@ async function claimRevision(
  * template that ships it is blocked outright on Free.
  */
 async function assertPlanAllowsSurvey(shopId: string, input: SurveyInput): Promise<void> {
-  const shop = await findShopById(shopId);
-  const plan = catalogPlanFromKey(effectivePlan(shop ?? { plan: null, planStatus: "" }));
+  const tier = await shopPlanTier(shopId);
+  // Paid survey settings (targeting, Shopify actions, auto-stop, rotation) are
+  // checked first: a new survey has nothing to grandfather.
+  const feature = firstLockedFeature(tier, input, []);
+  if (feature) throw planFeatureError(feature);
+
+  const plan = catalogPlanFromKey(tier);
   if (planIncludesGrowth(plan)) return;
 
   const definition = inputToDefinition(input);
@@ -772,6 +809,49 @@ async function assertPlanAllowsSurvey(shopId: string, input: SurveyInput): Promi
     "That survey uses a feature included in a paid plan.",
     "Use the Lite version, or upgrade to unlock it.",
     { field: "templateId", code: "template_plan_locked" },
+  );
+}
+
+/** The settings a plan feature is judged on, in a comparable form. */
+type GatedSettings = {
+  targeting?: Targeting | null;
+  syncOptions?: Record<string, unknown> | null;
+  learnAndStop?: boolean | null;
+  rotation?: boolean | null;
+};
+
+/**
+ * The first paid survey setting `input` turns on that the plan does not
+ * include, or null.
+ *
+ * A setting that matches one of the `baselines` (what the survey already had)
+ * is grandfathered: a merchant who set it up while paying and then downgraded
+ * can keep editing the rest of the survey. They just cannot switch it on anew.
+ */
+function firstLockedFeature(tier: PlanTier, input: GatedSettings, baselines: GatedSettings[]): PlanFeature | null {
+  const unchanged = (pick: (settings: GatedSettings) => string) =>
+    baselines.some((baseline) => pick(baseline) === pick(input));
+
+  if (!planHas(tier, "advanced_targeting") && usesAdvancedTargeting(input.targeting)) {
+    if (!unchanged((s) => advancedTargetingKey(s.targeting))) return "advanced_targeting";
+  }
+  if (!planHas(tier, "shopify_actions") && usesShopifyActions(input.syncOptions)) {
+    if (!unchanged((s) => JSON.stringify(s.syncOptions ?? {}))) return "shopify_actions";
+  }
+  if (!planHas(tier, "auto_stop") && input.learnAndStop === true) {
+    if (!baselines.some((b) => b.learnAndStop === true)) return "auto_stop";
+  }
+  if (!planHas(tier, "rotation") && input.rotation === true) {
+    if (!baselines.some((b) => b.rotation === true)) return "rotation";
+  }
+  return null;
+}
+
+function planFeatureError(feature: PlanFeature): ValidationError {
+  return new ValidationError(
+    "That setting is included in a paid plan.",
+    "Upgrade to use it, or turn it off.",
+    { field: feature, code: `plan_${feature}` },
   );
 }
 
@@ -788,8 +868,16 @@ async function assertPlanAllowsEdit(
   input: SurveyInput,
   existing: SurveyWithQuestions,
 ): Promise<void> {
-  const shop = await findShopById(shopId);
-  const plan = catalogPlanFromKey(effectivePlan(shop ?? { plan: null, planStatus: "" }));
+  const tier = await shopPlanTier(shopId);
+  // The published survey, and an unpublished draft if there is one, are both
+  // "what the survey already had" for grandfathering.
+  const feature = firstLockedFeature(tier, input, [
+    rowToEditor(existing, { view: "published" }),
+    ...(existing.draft ? [rowToEditor(existing)] : []),
+  ]);
+  if (feature) throw planFeatureError(feature);
+
+  const plan = catalogPlanFromKey(tier);
   if (planIncludesGrowth(plan)) return;
 
   const next = inputToDefinition(input);
@@ -1238,7 +1326,13 @@ export async function getCompiledConfig(shopId: string): Promise<CompiledConfig>
   const cached = configCache.get(shopId);
   if (cached && Date.now() - cached.at < CONFIG_TTL_MS) return cached.config;
 
-  const rows = await getActiveSurveys(shopId);
+  // Serve only as many live surveys as the plan includes, highest priority
+  // first. Activation already enforces the limit; this covers a shop that
+  // downgraded with more surveys live, without pausing (or touching) any of
+  // them, so they come back as they were on an upgrade.
+  const [active, plan] = await Promise.all([getActiveSurveys(shopId), shopPlanTier(shopId)]);
+  const limit = activeLimitFor(plan);
+  const rows = limit === null ? active : active.slice(0, limit);
   const config = buildConfig(rows);
   const size = Buffer.byteLength(JSON.stringify(config), "utf8");
   if (size > LIMITS.MAX_COMPILED_CONFIG_BYTES) {

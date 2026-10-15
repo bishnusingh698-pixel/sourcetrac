@@ -1,5 +1,5 @@
 /**
- * The 21 outcome-first templates.
+ * The 25 outcome-first templates.
  *
  * All copy lives in `shared/templates/locales/<locale>.json`, keyed by template
  * id and field. This module holds structure only: stable ids, question types,
@@ -86,7 +86,9 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
         },
       },
     ],
-    liteQuestionKeys: ["q_channel", "q_when"],
+    // All three questions are on Free: attribution is the reason most stores
+    // install, and the creator follow-up is what makes "Instagram" actionable.
+    liteQuestionKeys: ["q_channel", "q_when", "q_creator"],
     defaults: { audience: "everyone", placements: ["thank_you"], samplePercent: 100 },
     seasons: ["bfcm"],
     smartActions: ["channel_order_tag"],
@@ -294,6 +296,46 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
     resultsHints: { byProduct: true },
   },
   {
+    id: "purchase-reason",
+    version: 1,
+    nameKey: "templates.purchase-reason.name",
+    oneLinerKey: "templates.purchase-reason.one_liner",
+    category: "product_page",
+    outcomeTags: ["page_convincers", "buyer_values"],
+    learnKeys: ["templates.purchase-reason.learn_1", "templates.purchase-reason.learn_2"],
+    questions: [
+      {
+        key: "q_reason",
+        type: "single_choice",
+        textKey: "templates.purchase-reason.q_reason.text",
+        required: true,
+        randomize: true,
+        options: [
+          opt("price_deal", "templates.purchase-reason.q_reason.price_deal"),
+          opt("quality", "templates.purchase-reason.q_reason.quality"),
+          opt("reviews", "templates.purchase-reason.q_reason.reviews"),
+          opt("needed_now", "templates.purchase-reason.q_reason.needed_now"),
+          opt("gift", "templates.purchase-reason.q_reason.gift"),
+          opt("recommended", "templates.purchase-reason.q_reason.recommended"),
+          opt("bought_before", "templates.purchase-reason.q_reason.bought_before"),
+          opt("other", "templates.purchase-reason.q_reason.other"),
+        ],
+      },
+      {
+        key: "q_detail",
+        type: "text",
+        textKey: "templates.purchase-reason.q_detail.text",
+        placeholderKey: "templates.purchase-reason.q_detail.placeholder",
+        required: false,
+        optionalInSetup: true,
+        multiline: true,
+      },
+    ],
+    liteQuestionKeys: ["q_reason"],
+    defaults: { audience: "everyone", placements: ["thank_you"], samplePercent: 100 },
+    ideas: [],
+  },
+  {
     id: "almost-left",
     version: 1,
     nameKey: "templates.almost-left.name",
@@ -344,6 +386,35 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
     liteQuestionKeys: ["q_blocker", "q_easier"],
     defaults: { audience: "everyone", placements: ["thank_you"], samplePercent: 100 },
     ideas: ["blocker_share"],
+  },
+  {
+    id: "site-ease",
+    version: 1,
+    nameKey: "templates.site-ease.name",
+    oneLinerKey: "templates.site-ease.one_liner",
+    category: "product_page",
+    outcomeTags: ["checkout_blockers"],
+    learnKeys: ["templates.site-ease.learn_1", "templates.site-ease.learn_2"],
+    questions: [
+      {
+        key: "q_hard",
+        type: "yes_no",
+        textKey: "templates.site-ease.q_hard.text",
+        required: true,
+      },
+      {
+        key: "q_what",
+        type: "text",
+        textKey: "templates.site-ease.q_what.text",
+        placeholderKey: "templates.site-ease.q_what.placeholder",
+        required: false,
+        multiline: true,
+        showIf: { questionKey: "q_hard", optionKeys: ["yes"] },
+      },
+    ],
+    liteQuestionKeys: ["q_hard", "q_what"],
+    defaults: { audience: "everyone", placements: ["thank_you"], samplePercent: 100 },
+    ideas: [],
   },
   {
     id: "price-pulse",
@@ -647,6 +718,39 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
     classicOf: "nps",
   },
   {
+    id: "product-fit",
+    version: 1,
+    nameKey: "templates.product-fit.name",
+    oneLinerKey: "templates.product-fit.one_liner",
+    category: "loyalty",
+    outcomeTags: ["loyalty", "repeat_intent"],
+    learnKeys: ["templates.product-fit.learn_1", "templates.product-fit.learn_2"],
+    questions: [
+      {
+        key: "q_miss",
+        type: "single_choice",
+        textKey: "templates.product-fit.q_miss.text",
+        required: true,
+        options: [
+          opt("very", "templates.product-fit.q_miss.very"),
+          opt("somewhat", "templates.product-fit.q_miss.somewhat"),
+          opt("not", "templates.product-fit.q_miss.not"),
+        ],
+      },
+      {
+        key: "q_why",
+        type: "text",
+        textKey: "templates.product-fit.q_why.text",
+        required: false,
+        optionalInSetup: true,
+        multiline: true,
+      },
+    ],
+    liteQuestionKeys: ["q_miss", "q_why"],
+    defaults: { audience: "returning", placements: ["thank_you", "order_status"], samplePercent: 100 },
+    ideas: [],
+  },
+  {
     id: "come-back-reasons",
     version: 1,
     nameKey: "templates.come-back-reasons.name",
@@ -802,6 +906,39 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
     liteQuestionKeys: ["q_profile", "q_hear_about"],
     defaults: { audience: "first_order", placements: ["thank_you"], samplePercent: 100 },
     smartActions: ["profile_customer_tag", "profile_customer_metafield"],
+    ideas: [],
+  },
+  {
+    id: "age-range",
+    version: 1,
+    nameKey: "templates.age-range.name",
+    oneLinerKey: "templates.age-range.one_liner",
+    category: "know_customer",
+    outcomeTags: ["profiles"],
+    learnKeys: ["templates.age-range.learn_1", "templates.age-range.learn_2"],
+    questions: [
+      {
+        key: "q_age",
+        type: "single_choice",
+        textKey: "templates.age-range.q_age.text",
+        helpTextKey: "templates.age-range.q_age.help",
+        // Optional on purpose: an age question a buyer must answer reads as
+        // intrusive, and a forced answer is often a wrong one.
+        required: false,
+        options: [
+          opt("under_18", "templates.age-range.q_age.under_18"),
+          opt("18_24", "templates.age-range.q_age.18_24"),
+          opt("25_34", "templates.age-range.q_age.25_34"),
+          opt("35_44", "templates.age-range.q_age.35_44"),
+          opt("45_54", "templates.age-range.q_age.45_54"),
+          opt("55_64", "templates.age-range.q_age.55_64"),
+          opt("65_plus", "templates.age-range.q_age.65_plus"),
+          opt("prefer_not", "templates.age-range.q_age.prefer_not"),
+        ],
+      },
+    ],
+    liteQuestionKeys: ["q_age"],
+    defaults: { audience: "everyone", placements: ["thank_you"], samplePercent: 100 },
     ideas: [],
   },
   {

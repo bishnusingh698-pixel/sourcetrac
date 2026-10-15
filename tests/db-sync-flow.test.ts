@@ -68,6 +68,8 @@ beforeEach(async () => {
   await prisma.session.deleteMany({ where: { shop: DOMAIN } });
   const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/940000", accessToken: "shpat_test" });
   shopId = shop.id;
+  // Several live surveys, targeting rules and Shopify actions are paid features.
+  await prisma.shop.update({ where: { id: shopId }, data: { plan: "scale", planStatus: "active" } });
   await prisma.session.create({
     data: { id: `offline_${DOMAIN}`, shop: DOMAIN, state: "s", isOnline: false, scope: "read_orders,write_orders", accessToken: "x" },
   });

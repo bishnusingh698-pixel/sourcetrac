@@ -79,15 +79,19 @@ export function templateHasFreeVersion(template: TemplateDefinition): boolean {
 /**
  * The plan a template's FULL version needs.
  *
- * Only intrinsic features gate the template: an exclusive option (T6) or a
- * by-product breakdown (T8), both Growth. Smart actions (T13) are opt-in toggles
- * inside a survey, not a property of the template, so they do not gate it — they
- * are offered and gated in Quick setup step 3 instead.
+ * Growth includes the full version of every template (`full_templates` in
+ * `shared/plan-features.ts`): one with questions beyond its Free version, an
+ * exclusive option (T6) or a by-product breakdown (T8). A template whose Free
+ * version is the whole template is free. Smart actions (T13) are opt-in
+ * settings inside a survey, not a property of the template, so they do not gate
+ * it; the editor offers them on Scale.
  */
 export function templateRequiredPlan(template: TemplateDefinition): CatalogPlan {
   const hasExclusive = template.questions.some((q) => q.options?.some((o) => o.exclusive));
   if (hasExclusive) return "growth";
   if (template.resultsHints?.byProduct) return "growth";
+  const lite = new Set(template.liteQuestionKeys);
+  if (lite.size > 0 && template.questions.some((q) => !lite.has(q.key))) return "growth";
   return "free";
 }
 

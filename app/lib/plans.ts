@@ -6,6 +6,7 @@
  * comparison against null can never accidentally evaluate true.
  */
 
+import { LIVE_SURVEY_LIMIT } from "@shared/plan-features";
 import { minorToDecimalString } from "./money";
 
 export const PLAN_FREE = "free" as const;
@@ -81,6 +82,8 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
     displayName: "SourceTrac — Free",
     features: [
       { key: "plans.feature_responses", params: { cap: FREE_RESPONSE_CAP } },
+      { key: "plans.feature_live_surveys", params: { count: LIVE_SURVEY_LIMIT.free ?? 0 } },
+      { key: "plans.feature_follow_ups" },
       { key: "plans.feature_revenue" },
       { key: "plans.feature_trends" },
       { key: "plans.feature_csv" },
@@ -98,7 +101,9 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
     features: [
       { key: "plans.feature_unlimited" },
       { key: "plans.feature_everything_free" },
+      { key: "plans.feature_live_surveys", params: { count: LIVE_SURVEY_LIMIT.growth ?? 0 } },
       { key: "plans.feature_templates_full" },
+      { key: "plans.feature_targeting" },
       { key: "plans.feature_priority_support" },
     ],
   },
@@ -113,7 +118,9 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
     features: [
       { key: "plans.feature_unlimited" },
       { key: "plans.feature_everything_growth" },
+      { key: "plans.feature_unlimited_surveys" },
       { key: "plans.feature_smart_actions" },
+      { key: "plans.feature_automation" },
       { key: "plans.feature_priority_support" },
     ],
   },
