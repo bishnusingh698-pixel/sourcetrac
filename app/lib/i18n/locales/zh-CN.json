@@ -108,7 +108,11 @@
     "privacy_description": "SourceTrac 存储的内容以及我们处理过的请求。",
     "privacy_body": "SourceTrac 仅存储订单 ID、回答、渠道和时间戳。绝不存储姓名、电子邮件、电话或地址。",
     "privacy_requests_title": "最近的数据请求",
-    "remove_option": "删除 {{label}}"
+    "remove_option": "删除 {{label}}",
+    "sync_failed_one": "有 {{count}} 项 Shopify 写入在多次重试后仍未完成。最近的错误：{{error}}",
+    "sync_failed_other": "有 {{count}} 项 Shopify 写入在多次重试后仍未完成。最近的错误：{{error}}",
+    "privacy_request_found_one": "找到 {{count}} 个订单的回答：{{orders}}",
+    "privacy_request_found_other": "找到 {{count}} 个订单的回答：{{orders}}"
   },
   "onboarding": {
     "title": "开始使用",
@@ -150,7 +154,8 @@
     "download": "下载 CSV",
     "preview_title": "预览",
     "preview_description": "您最近的 {{count}} 条回答，与导出时完全一致。",
-    "download_failed": "下载未能开始。请稍后重试。"
+    "download_failed": "下载未能开始。请稍后重试。",
+    "truncated": "此文件仅包含最新的 {{limit}} 条回答，较早的回答未包含在内。"
   },
   "plans": {
     "title": "套餐",
@@ -198,7 +203,8 @@
     "msg_cancelled": "订阅已取消。您已回到免费套餐，每月 {{cap}} 条回答。",
     "msg_subscribe_failed": "Shopify 无法开始订阅：{{error}}",
     "msg_subscription_created": "订阅已创建。如果您没有被带到确认页面，请查看 Shopify 后台的账单页面。",
-    "msg_plan_unavailable": "该套餐不可用。"
+    "msg_plan_unavailable": "该套餐不可用。",
+    "msg_already_on_plan": "您已在使用此套餐。"
   },
   "help": {
     "title": "帮助",
@@ -590,7 +596,10 @@
     "cross_caption": "按 {{col}} 划分的 {{row}}",
     "cross_percent": "{{percent}}%",
     "ideas_title": "可尝试的想法",
-    "filter_product": "产品"
+    "filter_product": "产品",
+    "multi_credit_note": "多选回答会把订单计入每个所选项，因此这些金额之和可能超过总额。",
+    "capped_note": "基于最新的 {{limit}} 条回答。",
+    "download_failed": "下载未能开始，请稍后重试。"
   },
   "responses": {
     "title": "回答",
@@ -608,7 +617,16 @@
     "counted": "已计入",
     "not_counted": "未计入",
     "previous": "上一页",
-    "next": "下一页"
+    "next": "下一页",
+    "status_counted": "已计入",
+    "status_awaiting_order": "等待订单",
+    "status_order_not_received": "未收到订单",
+    "status_test_order": "测试订单",
+    "status_cancelled": "已取消",
+    "status_voided": "已作废",
+    "status_refunded": "已退款",
+    "status_total_unreadable": "总额无法读取",
+    "status_no_order": "无订单"
   },
   "library": {
     "title": "模板库",

@@ -6,16 +6,19 @@ import { minorToDecimalString, parseMoneyToMinor } from "~/lib/money";
 import { withRetry } from "~/lib/retry.server";
 import { reconcileOrderForResponses } from "~/lib/answers.server";
 import { reconcileResponsesForOrder } from "~/lib/responses.server";
+import { isRedactedOrder } from "~/lib/compliance.server";
+import { startSyncForOrder } from "~/lib/sync.server";
 import {
   clearAccessToken,
   findShopByDomain,
   findShopById,
   getAccessToken,
+  refreshStoredToken,
   setCheckoutSupport,
   setPlan,
-  upsertShop,
 } from "~/lib/shop.server";
 import { checkoutSurfacesSupported, fetchShopPlanName } from "~/lib/shopify-rest.server";
+import { fetchActiveSubscriptions, testChargesAllowed } from "~/lib/billing.server";
 import { isPlanKey, type PlanKey } from "~/lib/plans";
 
 /**
@@ -49,15 +52,16 @@ export async function resolveInstalledShop(shopDomain: string, accessToken: stri
   const existing = await findShopByDomain(shopDomain);
   if (!existing || existing.installState !== "installed") return null;
 
-  // Keep the stored copy of the offline token fresh. upsertShop leaves the token
-  // alone when none is supplied.
+  // Keep the stored copy of the offline token fresh, for an installed shop only.
   if (accessToken) {
-    await upsertShop({ shopDomain, shopId: existing.shopId, accessToken });
+    await refreshStoredToken(existing.id, accessToken);
   }
 
-  // Only probe the Admin API while the plan check is unresolved or failed, so we
-  // do not hit it on every healthy webhook.
-  if (!existing.checkoutSupported) {
+  // Only probe the Admin API while the plan check is unresolved or failed, and
+  // at most once per CHECKOUT_RECHECK_MS: a shop on an unsupported plan used to
+  // trigger a plan query on every single order webhook.
+  const checkedAt = existing.checkoutCheckedAt?.getTime() ?? 0;
+  if (!existing.checkoutSupported && Date.now() - checkedAt > CHECKOUT_RECHECK_MS) {
     void refreshCheckoutSupport(existing.id).catch((error: unknown) => {
       logger.warn("checkout_support_refresh_failed", {
         shop_id: existing.id,
@@ -69,6 +73,9 @@ export async function resolveInstalledShop(shopDomain: string, accessToken: stri
   return existing.id;
 }
 
+/** How often an unsupported or unknown plan is asked about again. */
+const CHECKOUT_RECHECK_MS = 6 * 60 * 60 * 1000;
+
 export async function refreshCheckoutSupport(internalShopId: string): Promise<void> {
   const shop = await findShopById(internalShopId);
   if (!shop) return;
@@ -77,6 +84,8 @@ export async function refreshCheckoutSupport(internalShopId: string): Promise<vo
   if (!token) return;
 
   const planName = await fetchShopPlanName(shop.shopDomain, token);
+  // A failed lookup must not erase a known answer.
+  if (planName === null) return;
   const supported = checkoutSurfacesSupported(planName);
   await setCheckoutSupport(internalShopId, supported);
 }
@@ -143,7 +152,7 @@ export async function claimWebhook(params: {
   apiVersion: string | null;
 }): Promise<ClaimResult> {
   try {
-    await db.webhookEvent.create({
+    await retryDb(() => db.webhookEvent.create({
       data: {
         webhookId: params.webhookId,
         topic: params.topic,
@@ -155,7 +164,7 @@ export async function claimWebhook(params: {
         // (name, email, phone, address) that this app has no use for.
         payloadJson: null,
       },
-    });
+    }));
     return { claimed: true };
   } catch (error) {
     if (!isUniqueViolation(error)) throw error;
@@ -176,6 +185,25 @@ export async function claimWebhook(params: {
     if (!existing.error && !abandoned) {
       // Still being worked on by another request. Re-claiming would run the
       // handler twice in parallel, which is what insert-first exists to prevent.
+      logger.info("webhook_duplicate_in_flight", { webhook_id: params.webhookId, topic: params.topic });
+      return { claimed: false, inFlight: true };
+    }
+
+    // Re-claim atomically and restart the row's clock: the conditional update
+    // matches only while the row is still failed/abandoned, so of two
+    // concurrent retries exactly one wins, and the winner's attempt is not
+    // itself treated as abandoned five minutes after the ORIGINAL delivery.
+    const reclaimed = await retryDb(() =>
+      db.webhookEvent.updateMany({
+        where: {
+          webhookId: params.webhookId,
+          processedAt: null,
+          OR: [{ error: { not: null } }, { createdAt: { lt: new Date(Date.now() - INFLIGHT_STALE_MS) } }],
+        },
+        data: { error: null, createdAt: new Date() },
+      }),
+    );
+    if (reclaimed.count === 0) {
       logger.info("webhook_duplicate_in_flight", { webhook_id: params.webhookId, topic: params.topic });
       return { claimed: false, inFlight: true };
     }
@@ -256,8 +284,11 @@ export async function processWebhook(params: {
   shopDomain: string;
   payload: Record<string, unknown>;
   accessToken: string | null;
+  /** X-Shopify-Triggered-At, when the route has it. */
+  triggeredAt?: Date | null;
 }): Promise<OrderWebhookResult> {
   const { topic, shopDomain, payload, accessToken } = params;
+  const triggeredAt = params.triggeredAt ?? null;
 
   switch (topic) {
     case "orders/create":
@@ -275,6 +306,7 @@ export async function processWebhook(params: {
         shopInternalId,
         payload as unknown as ShopifyOrder,
         topic === "orders/cancelled",
+        triggeredAt,
       );
 
       if (!outcome) {
@@ -291,6 +323,9 @@ export async function processWebhook(params: {
         return { action: "order_stale_ignored", shopInternalId, orderId: outcome.orderId };
       }
 
+      // Sync work (tags, Flow) that was waiting for this order can run now.
+      startSyncForOrder(shopInternalId, outcome.orderId);
+
       if (topic === "orders/cancelled") {
         return { action: "order_cancelled", shopInternalId, orderId: outcome.orderId };
       }
@@ -304,12 +339,21 @@ export async function processWebhook(params: {
     }
 
     case "app/uninstalled": {
-      // Sessions hold the access token in plaintext. They must not outlive the
-      // installation, whether or not we still have a shop row.
-      await retryDb(() => db.session.deleteMany({ where: { shop: shopDomain } }));
-
       const shop = await findShopByDomain(shopDomain);
+      // A delivery retried after the merchant already reinstalled belongs to the
+      // previous installation. Applying it would delete the new sessions, null
+      // the new token and drop a paying merchant to Free.
+      if (shop && triggeredAt && shop.installedAt && triggeredAt < shop.installedAt) {
+        logger.info("app_uninstalled_stale_ignored", { shop_id: shop.id });
+        return { action: "app_uninstalled", shopInternalId: shop.id };
+      }
+
+      // Sessions hold the access token. They must not outlive the installation,
+      // whether or not we still have a shop row.
+      await retryDb(() => db.session.deleteMany({ where: { shop: shopDomain } }));
       if (!shop) return { action: "app_uninstalled", shopInternalId: "" };
+      // Queued Shopify writes must not fire months later after a reinstall.
+      await retryDb(() => db.pendingSync.deleteMany({ where: { shopId: shop.id } }));
       // Data is RETAINED (see docs/03 FLOW 10). Only the credential is erased.
       await clearAccessToken(shop.id);
       logger.info("app_uninstalled", { shop_id: shop.id, shop_domain: shopDomain });
@@ -317,6 +361,18 @@ export async function processWebhook(params: {
     }
 
     case "app/scopes_update": {
+      // Store the newly granted scopes on the offline session, as Shopify's app
+      // template does. `canSync` and the Settings page read `Session.scope`,
+      // and nothing else updates it while the offline token stays valid, so a
+      // merchant who approved the write scopes kept "missing scopes" forever.
+      const current = Array.isArray(payload.current)
+        ? payload.current.filter((scope): scope is string => typeof scope === "string")
+        : null;
+      if (current) {
+        await retryDb(() =>
+          db.session.updateMany({ where: { shop: shopDomain, isOnline: false }, data: { scope: current.join(",") } }),
+        );
+      }
       const shop = await findShopByDomain(shopDomain);
       if (!shop) return { action: "scopes_updated", shopInternalId: "" };
       logger.info("scopes_updated", { shop_id: shop.id, current: payload.current });
@@ -333,7 +389,7 @@ export async function processWebhook(params: {
         logger.info("subscription_ignored_uninstalled", { shop_id: shop.id });
         return { action: "subscription_updated", shopInternalId: shop.id };
       }
-      await applySubscription(shop.id, payload);
+      await applySubscription(shop.id, payload, { shopDomain, accessToken });
       return { action: "subscription_updated", shopInternalId: shop.id };
     }
 
@@ -373,6 +429,7 @@ function readOrder(order: ShopifyOrder): ValidOrder | null {
 
 type OrderOutcome = { orderId: string; applied: boolean; reconciled: number };
 
+
 /**
  * Write an order into the cache.
  *
@@ -390,11 +447,18 @@ export async function upsertOrderCache(
   shopInternalId: string,
   order: ShopifyOrder,
   forceCancelled: boolean,
+  triggeredAt: Date | null = null,
 ): Promise<OrderOutcome | null> {
   const valid = readOrder(order);
   if (!valid) return null;
 
   const { orderId, createdAt, updatedAt } = valid;
+
+  // An order a customer asked to have redacted is never stored again.
+  if (await isRedactedOrder(shopInternalId, orderId)) {
+    logger.info("order_redacted_ignored", { shop_id: shopInternalId, order_id: orderId });
+    return { orderId, applied: false, reconciled: 0 };
+  }
   // orders/cancelled means cancelled even if the payload omits cancelled_at.
   const cancelledAt = valid.cancelledAt ?? (forceCancelled ? updatedAt : null);
 
@@ -417,6 +481,7 @@ export async function upsertOrderCache(
     isCancelled: cancelledAt !== null,
     cancelledAt,
     updatedAtShop: updatedAt,
+    triggeredAt,
   };
 
   // Shopify cannot un-cancel an order, so an update never clears cancellation.
@@ -427,14 +492,31 @@ export async function upsertOrderCache(
   const { isCancelled: _isCancelled, cancelledAt: _cancelledAt, ...withoutCancellation } = common;
   const updateData = cancelledAt === null ? withoutCancellation : common;
 
-  const updated = await retryDb(() =>
-    db.orderCache.updateMany({
-      where: { shopId: shopInternalId, orderId, updatedAtShop: { lte: updatedAt } },
-      data: totalDecimal === null ? updateData : { ...updateData, totalPrice: totalDecimal },
-    }),
-  );
+  // Newer `updated_at` wins. Within the same second (its precision), the later
+  // delivery by X-Shopify-Triggered-At wins; a write without one (the API
+  // backfill, which reads the order's current state) or a row without one keeps
+  // the old "same second applies" rule.
+  const notNewer =
+    triggeredAt === null
+      ? { updatedAtShop: { lte: updatedAt } }
+      : {
+          OR: [
+            { updatedAtShop: { lt: updatedAt } },
+            {
+              updatedAtShop: updatedAt,
+              OR: [{ triggeredAt: null }, { triggeredAt: { lte: triggeredAt } }],
+            },
+          ],
+        };
+  const guardedUpdate = () =>
+    retryDb(() =>
+      db.orderCache.updateMany({
+        where: { shopId: shopInternalId, orderId, ...notNewer },
+        data: totalDecimal === null ? updateData : { ...updateData, totalPrice: totalDecimal },
+      }),
+    );
 
-  let applied = updated.count > 0;
+  let applied = (await guardedUpdate()).count > 0;
 
   if (!applied) {
     try {
@@ -445,8 +527,11 @@ export async function upsertOrderCache(
       );
       applied = true;
     } catch (error) {
-      // The row exists with a newer updatedAtShop: this delivery is stale.
       if (!isUniqueViolation(error)) throw error;
+      // Another delivery created the row between our update and our create (an
+      // orders/create and orders/cancelled milliseconds apart). It is not
+      // necessarily newer: run the guarded update once more against it.
+      applied = (await guardedUpdate()).count > 0;
     }
   }
 
@@ -465,26 +550,17 @@ export async function upsertOrderCache(
 
   // The v2 model too: an answer stored before the order landed has a null total
   // and must be filled in here, or it stays Pending forever. Idempotent (only
-  // null-total rows change), and never throws out of the webhook for a bookkeeping
-  // miss.
-  let reconciledV2 = 0;
-  try {
-    const v2 = await reconcileOrderForResponses({
-      shopId: shopInternalId,
-      orderId,
-      currency: order.currency,
-      totalPrice: totalDecimal,
-    });
-    reconciledV2 = v2.reconciled;
-  } catch (error) {
-    logger.warn("reconcile_v2_failed", {
-      shop_id: shopInternalId,
-      order_id: orderId,
-      error_message: error instanceof Error ? error.message : String(error),
-    });
-  }
+  // null-total rows change). A failure throws, like the legacy reconcile above,
+  // so the route answers 500 and Shopify retries: swallowing it acknowledged the
+  // delivery and the answer was later written off as "order not received".
+  const v2 = await reconcileOrderForResponses({
+    shopId: shopInternalId,
+    orderId,
+    currency: order.currency,
+    totalPrice: totalDecimal,
+  });
 
-  return { orderId, applied: true, reconciled: reconciled + reconciledV2 };
+  return { orderId, applied: true, reconciled: reconciled + v2.reconciled };
 }
 
 type SubscriptionPayload = {
@@ -501,7 +577,11 @@ type SubscriptionPayload = {
  * so an unrelated subscription on the same shop cannot grant SourceTrac a
  * paid plan.
  */
-async function applySubscription(shopInternalId: string, raw: Record<string, unknown>): Promise<void> {
+async function applySubscription(
+  shopInternalId: string,
+  raw: Record<string, unknown>,
+  { shopDomain, accessToken }: { shopDomain: string; accessToken: string | null },
+): Promise<void> {
   // Shopify nests the subscription: `{ "app_subscription": { name, status, ... } }`.
   // Reading the top level matched nothing, so every real notice was logged as
   // "unmatched" and cancellations, freezes and upgrades were never applied.
@@ -520,34 +600,63 @@ async function applySubscription(shopInternalId: string, raw: Record<string, unk
     return;
   }
 
-  // A test charge costs the merchant nothing, so in production it must not
-  // grant a paid plan, matching `paidPlanFromSubscriptions` on the Plans page.
-  // Before this, the webhook path applied it anyway.
-  if (isIgnoredTestCharge(payload)) {
+  const planStatus = normaliseSubscriptionStatus(status);
+
+  // Notices can arrive late, retried or out of order (an old plan's ACTIVE
+  // retry after an upgrade, a PENDING after the ACTIVE). Shopify's current
+  // state of THIS subscription decides whether the notice still holds. The
+  // payload carries no `test` flag, so this is also where a test charge is
+  // recognised. A failed lookup throws: the webhook answers 500 and Shopify
+  // retries, rather than applying a notice we could not confirm.
+  if (accessToken && gid) {
+    const live = await fetchActiveSubscriptions({ shopDomain, accessToken });
+    const entry = live.find((subscription) => subscription.id === gid);
+    const liveActive = entry?.status.toUpperCase() === "ACTIVE";
+    if (planStatus === "active") {
+      if (!liveActive) {
+        logger.info("subscription_stale_active_ignored", { shop_id: shopInternalId });
+        return;
+      }
+      if (entry?.test && !(await testChargesAllowed(shopDomain, accessToken))) {
+        logger.info("subscription_test_charge_ignored", { shop_id: shopInternalId, name: displayName, status });
+        return;
+      }
+    } else if (liveActive) {
+      logger.info("subscription_stale_status_ignored", { shop_id: shopInternalId, status: planStatus });
+      return;
+    }
+  } else if (isIgnoredTestCharge(payload)) {
+    // No way to ask Shopify: fall back to the payload's own test flag, if any.
+    // (With a token, the live lookup above decides, including for a
+    // development store, whose test charges count.)
     logger.info("subscription_test_charge_ignored", { shop_id: shopInternalId, name: displayName, status });
     return;
   }
 
-  const planStatus = normaliseSubscriptionStatus(status);
+  const data = { plan: matched.key, planStatus, subscriptionGid: gid, planDisplayName: displayName };
 
-  // Changing plan creates a new subscription and Shopify cancels the old one,
-  // so the old charge's CANCELLED notice can land after the new one went
-  // ACTIVE. Applying it would drop a merchant who just paid back to free. A
-  // non-active status only applies to the subscription we currently hold.
-  if (planStatus !== "active") {
-    const shop = await findShopById(shopInternalId);
-    if (shop?.subscriptionGid && gid && shop.subscriptionGid !== gid) {
+  if (planStatus === "active") {
+    await setPlan(shopInternalId, data);
+  } else {
+    // Changing plan creates a new subscription and Shopify cancels the old one,
+    // so the old charge's CANCELLED notice can land after the new one went
+    // ACTIVE. A non-active status only applies to the subscription we hold, and
+    // the check is part of the write: a read-then-write let an ACTIVE notice
+    // for the new plan land in between, and the merchant dropped to Free.
+    const applied = await retryDb(() =>
+      db.shop.updateMany({
+        where: {
+          id: shopInternalId,
+          ...(gid ? { OR: [{ subscriptionGid: gid }, { subscriptionGid: null }] } : {}),
+        },
+        data,
+      }),
+    );
+    if (applied.count === 0) {
       logger.info("subscription_superseded_ignored", { shop_id: shopInternalId, status: planStatus });
       return;
     }
   }
-
-  await setPlan(shopInternalId, {
-    plan: matched.key,
-    planStatus,
-    subscriptionGid: gid,
-    planDisplayName: displayName,
-  });
 
   logger.info("subscription_applied", { shop_id: shopInternalId, plan: matched.key, status: planStatus });
 }
@@ -587,6 +696,9 @@ export function normaliseSubscriptionStatus(status: string): PlanStatus {
       return "expired";
     case "frozen":
     case "pending":
+    // ACCEPTED: approved by the merchant but not yet active. Not a lapsed
+    // charge, so it must not read as expired.
+    case "accepted":
       return "frozen";
     default:
       return "expired";

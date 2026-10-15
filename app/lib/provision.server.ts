@@ -15,7 +15,18 @@ import {
  * on install and the row must be provisioned from `afterAuth` (new sessions) and
  * from the admin shell loader (sessions that already exist).
  */
-export async function provisionShop(session: {
+/** One provisioning per shop at a time: parallel first loaders share it. */
+const provisioning = new Map<string, Promise<{ id: string }>>();
+
+export function provisionShop(session: { shop: string; accessToken?: string | null }): Promise<{ id: string }> {
+  const running = provisioning.get(session.shop);
+  if (running) return running;
+  const run = provisionShopOnce(session).finally(() => provisioning.delete(session.shop));
+  provisioning.set(session.shop, run);
+  return run;
+}
+
+async function provisionShopOnce(session: {
   shop: string;
   accessToken?: string | null;
 }): Promise<{ id: string }> {
@@ -24,6 +35,7 @@ export async function provisionShop(session: {
 
   // Fall back to the domain if the GID read fails: still unique, keeps the
   // install working. Losing an install is worse than a provisional id.
+  // `ensureShop` replaces the placeholder on a later load.
   let shopId = shopDomain;
   if (accessToken) {
     try {
@@ -38,27 +50,33 @@ export async function provisionShop(session: {
 
   const row = await upsertShop({ shopDomain, shopId, accessToken });
 
-  // Best-effort plan probe; a failure leaves checkoutSupported null ("unknown").
-  if (accessToken) {
-    try {
-      const planName = await fetchShopPlanName(shopDomain, accessToken);
-      const supported = checkoutSurfacesSupported(planName);
-      await setCheckoutSupport(row.id, supported);
-      logger.info("auth_plan_probe", {
-        shop_domain: shopDomain,
-        plan_name: planName,
-        checkout_supported: supported,
-      });
-    } catch (error) {
-      logger.warn("auth_plan_probe_failed", {
-        shop_domain: shopDomain,
-        error_message: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
+  // Best-effort plan probe, in the background: the first page load after
+  // install used to wait on it (a second Admin call with its own timeout and
+  // retries). A failed lookup leaves the stored answer as it was.
+  if (accessToken) void probeCheckoutSupport(row.id, shopDomain, accessToken);
 
   return row;
 }
+
+async function probeCheckoutSupport(shopId: string, shopDomain: string, accessToken: string): Promise<void> {
+  try {
+    const planName = await fetchShopPlanName(shopDomain, accessToken);
+    // A failed lookup (null) must not erase a known answer: a Starter shop
+    // would lose its "plan blocked" banner on one 5xx.
+    if (planName === null) return;
+    const supported = checkoutSurfacesSupported(planName);
+    await setCheckoutSupport(shopId, supported);
+    logger.info("auth_plan_probe", { shop_domain: shopDomain, plan_name: planName, checkout_supported: supported });
+  } catch (error) {
+    logger.warn("auth_plan_probe_failed", {
+      shop_domain: shopDomain,
+      error_message: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+/** Shops whose placeholder id was retried in this process, so a failing lookup is not repeated per load. */
+const placeholderRetried = new Set<string>();
 
 /** Existing installed shop, or provision it now. */
 export async function ensureShop(session: {
@@ -66,7 +84,24 @@ export async function ensureShop(session: {
   accessToken?: string | null;
 }): Promise<ShopRecord> {
   const existing = await findShopByDomain(session.shop);
-  if (existing && existing.installState === "installed") return existing;
+  if (existing && existing.installState === "installed") {
+    // A first install whose identity lookup failed stored the domain as the
+    // shop id. Replace it with the real GID once Shopify answers.
+    if (!existing.shopId.startsWith("gid://") && session.accessToken && !placeholderRetried.has(session.shop)) {
+      placeholderRetried.add(session.shop);
+      try {
+        const identity = await fetchShopIdentity(session.shop, session.accessToken);
+        await upsertShop({ shopDomain: session.shop, shopId: identity.id, accessToken: null });
+        return requireShopByDomain(session.shop);
+      } catch (error) {
+        logger.warn("shop_placeholder_id_retry_failed", {
+          shop_domain: session.shop,
+          error_message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+    return existing;
+  }
 
   await provisionShop(session);
   return requireShopByDomain(session.shop);

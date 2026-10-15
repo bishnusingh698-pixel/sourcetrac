@@ -22,6 +22,9 @@ const prisma = new PrismaClient();
 
 const SHOP_ID = "gid://shopify/Shop/3000001";
 const SHOP_DOMAIN = "backfill.myshopify.com";
+// A second shop seeded with the same default options: production always has
+// several, and a shared channel value used to abort the block on the primary key.
+const SECOND_SHOP_ID = "gid://shopify/Shop/3000002";
 
 /** The 8-option survey the brief describes as the old shape. */
 const OLD_OPTIONS = [
@@ -64,7 +67,7 @@ async function reset() {
   const shop = await prisma.shop.findUnique({ where: { shopId: SHOP_ID }, select: { id: true } });
   await prisma.surveyResponse.deleteMany({ where: { shopId: shop?.id ?? "__none__" } });
   await prisma.orderCache.deleteMany({ where: { shopId: shop?.id ?? "__none__" } });
-  await prisma.shop.deleteMany({ where: { shopId: SHOP_ID } });
+  await prisma.shop.deleteMany({ where: { shopId: { in: [SHOP_ID, SECOND_SHOP_ID] } } });
 }
 
 /** The shop's internal cuid, which the new models reference (not the GID). */
@@ -88,6 +91,16 @@ beforeAll(async () => {
       questionText: "How did you hear about us?",
       optionsJson: JSON.stringify(OLD_OPTIONS),
       allowOther: true,
+    },
+  });
+
+  await prisma.shop.create({
+    data: {
+      shopId: SECOND_SHOP_ID,
+      shopDomain: "backfill-second.myshopify.com",
+      installState: "installed",
+      questionText: "How did you hear about us?",
+      optionsJson: JSON.stringify(OLD_OPTIONS),
     },
   });
 
@@ -153,9 +166,15 @@ describe("migration backfill", () => {
 
     const options = survey?.questions[0]?.options ?? [];
     expect(options).toHaveLength(8);
-    // Option ids are preserved verbatim, so a later read through either model agrees.
-    expect(options.map((o) => o.id)).toEqual(OLD_OPTIONS.map((o) => o.value));
+    // Option ids are shop-scoped: the primary key spans every shop.
+    expect(options.map((o) => o.id)).toEqual(OLD_OPTIONS.map((o) => `bf-option-${shopId}-${o.value}`));
     expect(options.map((o) => o.label)).toEqual(OLD_OPTIONS.map((o) => o.label));
+  });
+
+  it("backfills a second shop that shares the same option values", async () => {
+    const second = await prisma.shop.findUniqueOrThrow({ where: { shopId: SECOND_SHOP_ID } });
+    const options = await prisma.option.findMany({ where: { question: { survey: { shopId: second.id } } } });
+    expect(options).toHaveLength(OLD_OPTIONS.length);
   });
 
   it("converts every old response into a Response + Answer, keeping the order id", async () => {
@@ -177,7 +196,8 @@ describe("migration backfill", () => {
     const shopId = await internalShopId();
     const oldCounts = new Map<string, number>();
     for (const row of await prisma.surveyResponse.findMany({ where: { shopId: await internalShopId() } })) {
-      oldCounts.set(row.channel, (oldCounts.get(row.channel) ?? 0) + 1);
+      const id = `bf-option-${shopId}-${row.channel}`;
+      oldCounts.set(id, (oldCounts.get(id) ?? 0) + 1);
     }
 
     const answers = await prisma.answer.findMany({ where: { shopId } });

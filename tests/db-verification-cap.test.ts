@@ -209,11 +209,13 @@ describe("atomic Free-cap claim", () => {
     });
     const claim = await claimUsageSlot(shopId, FREE_RESPONSE_CAP);
     expect(claim.withinCap).toBe(false);
-    // The stored count is not bumped past the cap by the refused claim path.
+    // Every answer is counted, past the cap too, so usage shows the true
+    // volume and agrees with the legacy counter on the same row (L37).
     const usage = await prisma.billingUsage.findUniqueOrThrow({
       where: { shopId_periodStart: { shopId, periodStart } },
     });
-    expect(usage.responsesCount).toBe(FREE_RESPONSE_CAP);
+    expect(usage.responsesCount).toBe(FREE_RESPONSE_CAP + 1);
+    expect(claim.count).toBe(FREE_RESPONSE_CAP + 1);
   });
 
   it("evaluateCap agrees with the atomic claim at the boundary", () => {

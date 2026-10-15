@@ -35,7 +35,9 @@ export type RevenueStatus =
   | "cancelled"
   | "voided"
   | "refunded"
-  | "total unreadable";
+  | "total unreadable"
+  /** An answer collected without an order (on-site or link placement). */
+  | "no order";
 
 export type CsvRow = {
   /** Shopify order name, e.g. "#1001". Null until the order webhook lands. */

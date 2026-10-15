@@ -10,7 +10,8 @@ import {
   BUCKETS,
   consumeShopBackstop,
   consumeToken,
-  consumeTokenSubmission,
+  releaseTokenSubmission,
+  reserveTokenSubmission,
 } from "~/lib/rate-limit.server";
 import { submitAnswers } from "~/lib/answers.server";
 import { findShopByDomain, isKnownOrder } from "~/lib/shop.server";
@@ -56,11 +57,17 @@ const answerSchema = z.object({
 
 const bodySchema = z.object({
   surveyId: z.string().min(1).max(64),
+  /** The published version the buyer answered (from the compiled config). */
+  surveyVersion: z.number().int().min(0).optional(),
   orderId: orderIdSchema.optional().nullable(),
   placement: z.enum(PLACEMENTS).optional(),
   locale: z.string().max(32).optional().nullable(),
   /** T8: numeric product ids on the order's lines. */
-  productIds: z.array(z.string().min(1).max(64)).max(10).optional(),
+  productIds: z.array(z.string().regex(/^\d+$/).max(20)).max(10).optional(),
+  /** The buyer's first completed order with this shop (Thank-you page only). */
+  isFirstOrder: z.boolean().optional(),
+  /** ISO 3166-1 alpha-2. */
+  country: z.string().regex(/^[A-Za-z]{2}$/).optional(),
   answers: z.array(answerSchema).min(1).max(MAX_ANSWERS),
 });
 
@@ -77,6 +84,10 @@ export const action = async ({ request }: { request: Request }) => {
 
   const { sessionToken, cors } = await authenticate.public.checkout(request);
   const shopDomain = sessionToken.dest.toLowerCase();
+
+  // Set once a submission slot is reserved; released unless an answer is stored.
+  let reservedToken: string | null = null;
+  let stored = false;
 
   try {
     const text = await readBodyText(request, MAX_BODY_BYTES);
@@ -101,18 +112,25 @@ export const action = async ({ request }: { request: Request }) => {
     const orderId = parsed.data.orderId ?? null;
     const placement: Placement = parsed.data.placement ?? "thank_you";
 
-    // Per session token, before anything else that costs a database read: one
-    // lifted checkout token cannot be reused to write many forged orders.
-    consumeTokenSubmission(
-      `token:${shopDomain}:${sessionToken.jti ?? sessionToken.sub ?? "anon"}`,
-      (sessionToken.exp ?? 0) * 1000,
-    );
-    consumeToken(`answer:${shopDomain}:${orderId ?? "none"}`, BUCKETS.response);
-    if (orderId) {
-      await consumeShopBackstop(`answer-shop:${shopDomain}`, BUCKETS.responseShop, () =>
-        isKnownOrder(shopDomain, orderId),
-      );
+    // The Thank-you and Order-status pages always have an order. Without one the
+    // per-order duplicate guard cannot apply (NULL order ids are distinct), so an
+    // id-less checkout submission is refused rather than written unbounded.
+    if (!orderId && (placement === "thank_you" || placement === "order_status")) {
+      throw new ValidationError("An order id is required.", "Reload the page and try again.", { field: "orderId" });
     }
+
+    // Per session token, before anything else that costs a database read: one
+    // lifted checkout token cannot be reused to write many forged orders. Only
+    // stored answers count (recorded below), so failed attempts never burn it.
+    const tokenKey = `token:${shopDomain}:${sessionToken.jti ?? sessionToken.sub ?? "anon"}`;
+    reserveTokenSubmission(tokenKey, (sessionToken.exp ?? 0) * 1000);
+    reservedToken = tokenKey;
+    consumeToken(`answer:${shopDomain}:${orderId ?? "none"}`, BUCKETS.response);
+    // The shop-wide backstop applies to every submission. Only a real order
+    // Shopify told us about is exempt; an id-less one never is.
+    await consumeShopBackstop(`answer-shop:${shopDomain}`, BUCKETS.responseShop, () =>
+      orderId ? isKnownOrder(shopDomain, orderId) : Promise.resolve(false),
+    );
 
     const shop = await findShopByDomain(shopDomain);
     if (!shop || shop.installState === "uninstalled") {
@@ -124,7 +142,18 @@ export const action = async ({ request }: { request: Request }) => {
       throw new ValidationError("That survey is no longer available.", "Please reload the page.");
     }
 
-    const editor = rowToEditor(row);
+    // Buyers are only ever served a live survey on one of its placements. A
+    // paused survey still accepts answers already in flight (learn-and-stop can
+    // pause it between the buyer's load and submit); a draft or archived one,
+    // or a placement it is not on, never had a buyer.
+    const publishedPlacements = rowToEditor(row, { view: "published" }).placements;
+    if ((row.status !== "active" && row.status !== "paused") || !publishedPlacements.includes(placement)) {
+      throw new ValidationError("That survey is no longer available.", "Please reload the page.");
+    }
+
+    // Validate against the PUBLISHED survey the buyer was served, never the
+    // merchant's unpublished draft.
+    const editor = rowToEditor(row, { view: "published" });
     const definition = {
       id: editor.id,
       name: editor.name,
@@ -139,11 +168,14 @@ export const action = async ({ request }: { request: Request }) => {
     const result = await submitAnswers({
       shopId: shop.id,
       surveyId: row.id,
-      surveyVersion: row.version,
+      currentVersion: row.version,
+      surveyVersion: Math.min(parsed.data.surveyVersion ?? row.version, row.version),
       orderId,
       placement,
       locale: parsed.data.locale ?? null,
       productIds: parsed.data.productIds,
+      isFirstOrder: parsed.data.isFirstOrder ?? null,
+      country: parsed.data.country?.toUpperCase() ?? null,
       answers: parsed.data.answers as AnswerInput[],
       plan: effectivePlan(shop),
       definition,
@@ -164,6 +196,8 @@ export const action = async ({ request }: { request: Request }) => {
       });
     }
 
+    stored = result.outcome === "created";
+
     logger.info("answer_accepted", {
       request_id: requestId,
       shop_domain: shopDomain,
@@ -182,5 +216,7 @@ export const action = async ({ request }: { request: Request }) => {
       route: "api_survey_responses",
     });
     return cors(toResponse(body, { status }));
+  } finally {
+    if (reservedToken && !stored) releaseTokenSubmission(reservedToken);
   }
 };

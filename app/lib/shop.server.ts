@@ -27,7 +27,11 @@ export type ShopRecord = {
   /// Shopify admin locale last seen on a document load. Fallback only.
   adminLocale: string | null;
   checkoutSupported: boolean | null;
+  /// When the checkout-support plan check last ran.
+  checkoutCheckedAt: Date | null;
   installState: "installed" | "uninstalled";
+  /// When the current installation began (null on rows from before it was kept).
+  installedAt: Date | null;
 };
 
 export function defaultOptionsJson(): string {
@@ -42,6 +46,19 @@ function retryDb<T>(operation: () => Promise<T>): Promise<T> {
   });
 }
 
+/**
+ * Two first loads of a new shop can both try to create its row; the loser's
+ * P2002 means the row now exists, so the upsert is simply run again.
+ */
+async function retryUniqueRace<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await retryDb(operation);
+  } catch (error) {
+    if ((error as { code?: unknown } | null)?.code !== "P2002") throw error;
+    return retryDb(operation);
+  }
+}
+
 /** Upsert on shopDomain. Used by OAuth and by reinstall. */
 export async function upsertShop(params: {
   shopDomain: string;
@@ -51,7 +68,13 @@ export async function upsertShop(params: {
   const { shopDomain, shopId } = params;
   const encrypted = params.accessToken ? encryptSecret(params.accessToken) : null;
 
-  const row = await retryDb(() =>
+  // A new installation starts now; a re-auth of a live one keeps its start.
+  const prior = await retryDb(() =>
+    db.shop.findUnique({ where: { shopDomain }, select: { installState: true, installedAt: true } }),
+  );
+  const startsInstallation = !prior || prior.installState !== "installed" || prior.installedAt === null;
+
+  const row = await retryUniqueRace(() =>
     db.shop.upsert({
       where: { shopDomain },
       create: {
@@ -67,6 +90,7 @@ export async function upsertShop(params: {
           : {}),
         installState: "installed",
         uninstalledAt: null,
+        installedAt: new Date(),
       },
       update: {
         // provisionShop falls back to the domain when Shopify's identity lookup
@@ -84,6 +108,7 @@ export async function upsertShop(params: {
           : {}),
         installState: "installed",
         uninstalledAt: null,
+        ...(startsInstallation ? { installedAt: new Date() } : {}),
       },
       select: { id: true },
     }),
@@ -109,7 +134,9 @@ export async function findShopByDomain(shopDomain: string): Promise<ShopRecord |
         language: true,
         adminLocale: true,
         checkoutSupported: true,
+        checkoutCheckedAt: true,
         installState: true,
+        installedAt: true,
       },
     }),
   );
@@ -140,7 +167,9 @@ export async function findShopById(shopId: string): Promise<ShopRecord | null> {
         language: true,
         adminLocale: true,
         checkoutSupported: true,
+        checkoutCheckedAt: true,
         installState: true,
+        installedAt: true,
       },
     }),
   );
@@ -173,6 +202,25 @@ export async function getAccessToken(internalShopId: string): Promise<string | n
   return token;
 }
 
+/**
+ * Store a fresh copy of the offline token for an INSTALLED shop only. Unlike
+ * `upsertShop` it never flips a shop back to installed: a webhook racing an
+ * uninstall used to resurrect the shop with the revoked token.
+ */
+export async function refreshStoredToken(internalShopId: string, accessToken: string): Promise<void> {
+  const encrypted = encryptSecret(accessToken);
+  await retryDb(() =>
+    db.shop.updateMany({
+      where: { id: internalShopId, installState: "installed" },
+      data: {
+        accessTokenEncrypted: encrypted.ciphertext,
+        accessTokenIv: encrypted.iv,
+        accessTokenTag: encrypted.tag,
+      },
+    }),
+  );
+}
+
 /** Erase the token on uninstall so no credential outlives the installation. */
 export async function clearAccessToken(internalShopId: string): Promise<void> {
   await retryDb(() =>
@@ -188,7 +236,9 @@ export async function clearAccessToken(internalShopId: string): Promise<void> {
         // plan meant a reinstall came back on Growth/Scale with nothing billed,
         // because no later notice ever corrected it.
         plan: "free",
-        planStatus: "active",
+        // The paid charge ended with the uninstall; recorded the same way the
+        // Plans page records a charge it no longer finds.
+        planStatus: "cancelled",
         subscriptionGid: null,
         planDisplayName: null,
       },
@@ -248,6 +298,19 @@ export async function setPlan(
   await retryDb(() =>
     db.shop.update({ where: { id: internalShopId }, data }),
   );
+  if (data.plan !== "free" && data.planStatus === "active") await unlockAnswers(internalShopId);
+}
+
+/**
+ * Clear the over-cap flag once a shop is on a paid plan. The flag exists to
+ * prompt an upgrade; after one, the answers are simply the merchant's data, and
+ * a retried submit must report them as counted.
+ */
+async function unlockAnswers(internalShopId: string): Promise<void> {
+  await retryDb(() => db.response.updateMany({ where: { shopId: internalShopId, flagged: true }, data: { flagged: false } }));
+  await retryDb(() =>
+    db.surveyResponse.updateMany({ where: { shopId: internalShopId, isLocked: true }, data: { isLocked: false } }),
+  );
 }
 
 /**
@@ -259,10 +322,13 @@ export async function setPlan(
  * free of survey-response dependencies.
  */
 export async function hasResponseFor(internalShopId: string, orderId: string): Promise<boolean> {
-  const count = await retryDb(() =>
-    db.surveyResponse.count({ where: { shopId: internalShopId, orderId } }),
-  );
-  return count > 0;
+  // Both stores: the multi-question blocks write `Response`, so an order
+  // answered there must also hide the single-question survey.
+  const [legacy, v2] = await Promise.all([
+    retryDb(() => db.surveyResponse.count({ where: { shopId: internalShopId, orderId } })),
+    retryDb(() => db.response.count({ where: { shopId: internalShopId, orderId } })),
+  ]);
+  return legacy + v2 > 0;
 }
 
 /**

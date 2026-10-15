@@ -158,7 +158,14 @@ function QuestionField({
               <s-clickable
                 key={option.id}
                 disabled={false}
-                onClick={() => set({ optionIds: [option.id], numberValue: null })}
+                onClick={() =>
+                  set({
+                    optionIds: [option.id],
+                    numberValue: null,
+                    // Text typed into "Other" belongs to "Other" only.
+                    otherText: option.isOther || option.id === OTHER_CHANNEL ? (answer?.otherText ?? null) : null,
+                  })
+                }
                 accessibilityLabel={option.label}
                 border="base"
                 borderRadius="base"
@@ -177,16 +184,17 @@ function QuestionField({
           name={question.id}
           values={answer?.optionIds ?? []}
           multiple
-          onChange={(event) =>
-            set({
-              optionIds: applyExclusiveToggle(
-                options.filter((option) => option.exclusive).map((option) => option.id),
-                answer?.optionIds ?? [],
-                fieldValues(event),
-              ),
-              numberValue: null,
-            })
-          }
+          onChange={(event) => {
+            const optionIds = applyExclusiveToggle(
+              options.filter((option) => option.exclusive).map((option) => option.id),
+              answer?.optionIds ?? [],
+              fieldValues(event),
+            );
+            const keepsOther = optionIds.some(
+              (id) => id === OTHER_CHANNEL || options.find((o) => o.id === id)?.isOther,
+            );
+            set({ optionIds, numberValue: null, otherText: keepsOther ? (answer?.otherText ?? null) : null });
+          }}
         >
           {options.map((option) => (
             <s-choice key={option.id} value={option.id}>
@@ -271,6 +279,7 @@ function QuestionField({
         (question.textMultiline ? (
           <s-text-area
             label={question.text}
+            defaultValue={answer?.textValue ?? ""}
             placeholder={question.placeholder ?? undefined}
             maxLength={500}
             onInput={(event) => set({ textValue: fieldValue(event) })}
@@ -279,6 +288,7 @@ function QuestionField({
         ) : (
           <s-text-field
             label={question.text}
+            defaultValue={answer?.textValue ?? ""}
             placeholder={question.placeholder ?? undefined}
             maxLength={500}
             onInput={(event) => set({ textValue: fieldValue(event) })}
@@ -289,6 +299,7 @@ function QuestionField({
       {isOtherSelected ? (
         <s-text-field
           label={t("sourcetrac.otherLabel", "Tell us more")}
+          defaultValue={answer?.otherText ?? ""}
           onInput={(event) => set({ otherText: fieldValue(event) })}
           onChange={(event) => set({ otherText: fieldValue(event) })}
           maxLength={500}

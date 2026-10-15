@@ -12,8 +12,11 @@
 
 import { db, isRetryableDbError } from "~/db.server";
 import { previousWindowBounds, windowBounds } from "~/lib/analytics";
+import type { RevenueStatus } from "~/lib/csv";
+import { formatDecimalForCurrency } from "~/lib/money";
 import { evaluateResponseRevenue, type RevenueDecision } from "~/lib/revenue";
 import { withRetry } from "~/lib/retry.server";
+import { SATISFACTION_OPTIONS, YES_NO_IDS } from "@shared/survey-rules";
 
 function retryDb<T>(operation: () => Promise<T>): Promise<T> {
   return withRetry(operation, { attempts: 3, baseDelayMs: 250, shouldRetry: isRetryableDbError });
@@ -54,6 +57,14 @@ export type SurveyResponseRow = {
   order: OrderFacts | null;
 };
 
+const ORDER_LOOKUP_CHUNK = 2_000;
+
+/**
+ * How many of a survey's newest answers the Results page aggregates. Loading
+ * every answer and its rows held them all in memory on a 512 MB instance.
+ */
+export const RESULTS_RESPONSE_LIMIT = 5_000;
+
 /** Load responses for a survey in a window, with their answers and order facts. */
 export async function fetchSurveyResponses(params: {
   shopId: string;
@@ -82,10 +93,14 @@ export async function fetchSurveyResponses(params: {
   // Join orders on (shopId, orderId). No Prisma relation exists on purpose: a
   // response can precede its order, and requiring a relation would drop it.
   const orderIds = [...new Set(rows.map((r) => r.orderId).filter((id): id is string => id !== null))];
-  const orders = orderIds.length
-    ? await retryDb(() =>
+  // Chunked so a large export never sends one unbounded `IN (...)` list.
+  const orders = [];
+  for (let i = 0; i < orderIds.length; i += ORDER_LOOKUP_CHUNK) {
+    const chunk = orderIds.slice(i, i + ORDER_LOOKUP_CHUNK);
+    orders.push(
+      ...(await retryDb(() =>
         db.orderCache.findMany({
-          where: { shopId: params.shopId, orderId: { in: orderIds } },
+          where: { shopId: params.shopId, orderId: { in: chunk } },
           select: {
             orderId: true,
             orderNumber: true,
@@ -96,8 +111,9 @@ export async function fetchSurveyResponses(params: {
             isCancelled: true,
           },
         }),
-      )
-    : [];
+      )),
+    );
+  }
   const orderById = new Map(orders.map((o) => [o.orderId, o]));
 
   return rows.map((row) => {
@@ -180,6 +196,49 @@ export function decideSurveyRevenue(row: SurveyResponseRow): RevenueDecision {
   );
 }
 
+/**
+ * Why a response does or does not count, in the CSV's words. Shared by the
+ * Results CSV and the Responses page so they cannot disagree.
+ */
+export function surveyRevenueStatus(row: SurveyResponseRow, decision = decideSurveyRevenue(row)): RevenueStatus {
+  if (decision.included) return "counted";
+  switch (decision.reason) {
+    case "test_order":
+      return "test order";
+    case "cancelled":
+      return "cancelled";
+    case "voided":
+      return "voided";
+    case "fully_refunded":
+      return "refunded";
+    case "unparseable_total":
+      return "total unreadable";
+    case "unreconciled":
+      if (row.orderId === null) return "no order";
+      if (row.unverifiedFailed) return "order not received";
+      if (row.order && row.order.totalPrice === null) return "total unreadable";
+      return "awaiting order";
+  }
+}
+
+/**
+ * The order's total as it stands now, at its currency's precision. The live
+ * order (net of refunds and edits) wins over the total snapshotted on the
+ * response at first reconcile, so a refunded order does not keep showing its
+ * original value next to a revenue figure that already reflects the refund.
+ */
+export function currentOrderTotal(row: SurveyResponseRow): { total: string; currency: string } | null {
+  if (row.order && row.order.totalPrice !== null) {
+    const total = formatDecimalForCurrency(row.order.totalPrice, row.order.currency);
+    if (total !== null) return { total, currency: row.order.currency };
+  }
+  if (row.orderTotal !== null && row.currency) {
+    const total = formatDecimalForCurrency(row.orderTotal, row.currency);
+    if (total !== null) return { total, currency: row.currency };
+  }
+  return null;
+}
+
 export type QuestionBreakdown =
   | {
       kind: "choice";
@@ -192,6 +251,12 @@ export type QuestionBreakdown =
         revenueByCurrency: Array<{ currency: string; minor: number }>;
       }>;
       otherCount: number;
+      /**
+       * Multiple choice: an answer with several choices credits its whole order
+       * to each one, so the per-option revenue can sum to more than the total.
+       * The page says so.
+       */
+      multiple: boolean;
     }
   | {
       kind: "numeric";
@@ -254,7 +319,15 @@ export function buildBreakdowns(params: {
       };
     }
 
-    // Choice types (single / multi / dropdown / yes_no / satisfaction).
+    // Choice types (single / multi / dropdown / yes_no / satisfaction). Yes/No
+    // and satisfaction have fixed option ids and no Option rows, so their bars
+    // come from the fixed list.
+    const optionList =
+      question.type === "yes_no"
+        ? [{ id: YES_NO_IDS.yes }, { id: YES_NO_IDS.no }]
+        : question.type === "satisfaction_5"
+          ? SATISFACTION_OPTIONS.map((option) => ({ id: option.id }))
+          : question.options;
     const optionCounts = new Map<string, number>();
     const revenueByOption = new Map<string, Array<{ currency: string; minor: number }>>();
     let otherCount = 0;
@@ -266,7 +339,7 @@ export function buildBreakdowns(params: {
       const decision = decideSurveyRevenue(response);
       const revenue = decision.included && response.order ? { currency: response.order.currency, minor: decision.minor } : null;
 
-      for (const optionId of answer.optionIds) {
+      for (const optionId of choiceIds(question.type, answer)) {
         optionCounts.set(optionId, (optionCounts.get(optionId) ?? 0) + 1);
         if (revenue) {
           const bucket = revenueByOption.get(optionId) ?? [];
@@ -277,7 +350,7 @@ export function buildBreakdowns(params: {
       if (answer.otherText) otherCount += 1;
     }
 
-    const options = question.options.map((option) => ({
+    const options = optionList.map((option) => ({
       optionId: option.id,
       count: optionCounts.get(option.id) ?? 0,
       revenueByCurrency: rollup(revenueByOption.get(option.id) ?? []),
@@ -289,8 +362,32 @@ export function buildBreakdowns(params: {
       total: relevant.length,
       options,
       otherCount,
+      multiple: question.type === "multi_choice",
     };
   });
+}
+
+/**
+ * The option ids an answer chose. Yes/No's canonical value is `numberValue`
+ * (1/0); the `["yes"]`/`["no"]` mirror is only a convenience, so older answers
+ * without it still count.
+ */
+function choiceIds(type: string, answer: SurveyAnswerRow): string[] {
+  if (type === "yes_no") {
+    if (answer.numberValue === 1) return [YES_NO_IDS.yes];
+    if (answer.numberValue === 0) return [YES_NO_IDS.no];
+  }
+  return [...new Set(answer.optionIds)];
+}
+
+/**
+ * Still waiting for its order: an answer with an order id whose total has not
+ * arrived and that the 24h sweep has not given up on. An answer with no order
+ * (on-site, link) or a written-off one will never resolve, so it is not shown
+ * as "Pending" forever.
+ */
+export function isPendingResponse(row: Pick<SurveyResponseRow, "orderId" | "orderTotal" | "unverifiedFailed">): boolean {
+  return row.orderId !== null && row.orderTotal === null && !row.unverifiedFailed;
 }
 
 function rollup(entries: ReadonlyArray<{ currency: string; minor: number }>): Array<{ currency: string; minor: number }> {
@@ -320,7 +417,7 @@ export function summariseSurvey(responses: ReadonlyArray<SurveyResponseRow>): Su
 
   for (const response of responses) {
     if (response.flagged) flagged += 1;
-    if (response.orderTotal === null) pending += 1;
+    if (isPendingResponse(response)) pending += 1;
     byPlacement.set(response.placement, (byPlacement.get(response.placement) ?? 0) + 1);
     const decision = decideSurveyRevenue(response);
     if (decision.included && response.order) {

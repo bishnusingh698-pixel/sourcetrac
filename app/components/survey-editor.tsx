@@ -14,6 +14,15 @@ import {
 import type { EditorSurvey } from "~/lib/surveys.server";
 
 /**
+ * A placeholder id for a question or option added in the editor. Unique, so two
+ * new options never collide as duplicates and a show-if can point at an item
+ * added in the same edit; the server swaps it for the saved id.
+ */
+function newItemId(): string {
+  return `new_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
+}
+
+/**
  * The Studio's left panel: the question editor, the design controls and the
  * Logic map, behind a segmented control.
  *
@@ -244,14 +253,14 @@ function QuestionList({
       questions: [
         ...questions,
         {
-          id: "",
+          id: newItemId(),
           type: "single_choice",
           text: "",
           required: false,
           allowOther: false,
           options: [
-            { id: "", label: "Answer 1", isOther: false, exclusive: false, archived: false, translations: {} },
-            { id: "", label: "Answer 2", isOther: false, exclusive: false, archived: false, translations: {} },
+            { id: newItemId(), label: "Answer 1", isOther: false, exclusive: false, archived: false, translations: {} },
+            { id: newItemId(), label: "Answer 2", isOther: false, exclusive: false, archived: false, translations: {} },
           ],
         },
       ],
@@ -266,8 +275,9 @@ function QuestionList({
     if (!source) return;
     const copy: EditorSurvey["questions"][number] = {
       ...source,
-      id: "",
-      options: source.options.map((o) => ({ ...o, id: "" })),
+      id: newItemId(),
+      templateKey: null,
+      options: source.options.map((o) => ({ ...o, id: newItemId(), templateKey: null })),
     };
     const next = [...questions];
     next.splice(index + 1, 0, copy);
@@ -486,7 +496,7 @@ function OptionEditor({
           onClick={() =>
             setOptions([
               ...options,
-              { id: "", label: t("surveys.new_option_label", { n: count + 1 }), isOther: false, exclusive: false, archived: false, translations: {} },
+              { id: newItemId(), label: t("surveys.new_option_label", { n: count + 1 }), isOther: false, exclusive: false, archived: false, translations: {} },
               ...question.options.filter((o) => o.isOther),
             ])
           }

@@ -1,5 +1,10 @@
 import { logger } from "~/lib/logger";
-import { handleCustomerRedact, handleDataRequest, handleShopRedact } from "~/lib/compliance.server";
+import {
+  handleCustomerRedact,
+  handleDataRequest,
+  handleShopRedact,
+  maybeRunAllPendingDeletions,
+} from "~/lib/compliance.server";
 import {
   claimWebhook,
   markWebhookFailed,
@@ -45,11 +50,33 @@ export const action = async ({ request }: { request: Request }) => {
     has_session: Boolean(session),
   });
 
-  const claim = await claimWebhook({
-    webhookId,
-    topic,
-    apiVersion: verified.apiVersion ?? null,
-  });
+  // Shopify's delivery time, to order two updates within one second of
+  // `updated_at` (and to tell a late uninstall from a reinstall).
+  const triggeredHeader = request.headers.get("X-Shopify-Triggered-At");
+  const triggeredAtParsed = triggeredHeader ? new Date(triggeredHeader) : null;
+  const triggeredAt = triggeredAtParsed && !Number.isNaN(triggeredAtParsed.getTime()) ? triggeredAtParsed : null;
+
+  let claim: Awaited<ReturnType<typeof claimWebhook>>;
+  try {
+    claim = await claimWebhook({
+      webhookId,
+      topic,
+      apiVersion: verified.apiVersion ?? null,
+    });
+  } catch (error) {
+    // The ledger is unreachable (typically Neon waking). Nothing was done, so
+    // a logged 500 lets Shopify retry the whole delivery.
+    logger.error("webhook_claim_failed", {
+      request_id: requestId,
+      topic,
+      webhook_id: webhookId,
+      error_message: error instanceof Error ? error.message : String(error),
+    });
+    return new Response(JSON.stringify({ error: "processing_failed" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
   if (!claim.claimed && claim.inFlight) {
     // Another request is still working on this delivery (typically Shopify's
@@ -74,7 +101,7 @@ export const action = async ({ request }: { request: Request }) => {
 
   try {
     if (COMPLIANCE_TOPICS.has(topic)) {
-      await handleCompliance(topic, shop, payload);
+      await handleCompliance(topic, shop, payload, webhookId, triggeredAt);
       await markWebhookProcessed(webhookId, null);
       return new Response(JSON.stringify({ received: true }), {
         status: 200,
@@ -87,14 +114,16 @@ export const action = async ({ request }: { request: Request }) => {
     // session row is loaded but we still hold a valid credential.
     const accessToken = session?.accessToken ?? (await getAccessTokenForShop(shop));
 
-    const result = await processWebhook({ topic, shopDomain: shop, payload, accessToken });
+    const result = await processWebhook({ topic, shopDomain: shop, payload, accessToken, triggeredAt });
 
     const shopInternalId = "shopInternalId" in result ? result.shopInternalId : null;
     await markWebhookProcessed(webhookId, shopInternalId || null);
     logger.info("webhook_processed", { request_id: requestId, topic, action: result.action });
 
-    // Fire-and-forget daily purge; the database is already awake here.
+    // Fire-and-forget daily purge, and any deferred redact still queued for any
+    // shop; the database is already awake here.
     void maybeRunRetention();
+    void maybeRunAllPendingDeletions();
 
     return new Response(JSON.stringify({ received: true }), {
       status: 200,
@@ -110,9 +139,17 @@ export const action = async ({ request }: { request: Request }) => {
       error_message: error instanceof Error ? error.message : String(error),
     });
 
-    await markWebhookFailed(webhookId, error instanceof Error ? error.message : String(error)).catch(() => {
-      // Never let a bookkeeping failure mask the original error.
-    });
+    await markWebhookFailed(webhookId, error instanceof Error ? error.message : String(error)).catch(
+      (markError: unknown) => {
+        // Never let a bookkeeping failure mask the original error, but do not
+        // lose it either: an unmarked row is only re-claimed once it is stale.
+        logger.warn("webhook_mark_failed_failed", {
+          request_id: requestId,
+          webhook_id: webhookId,
+          error_message: markError instanceof Error ? markError.message : String(markError),
+        });
+      },
+    );
 
     return new Response(JSON.stringify({ error: "processing_failed" }), {
       status: 500,
@@ -132,13 +169,22 @@ async function getAccessTokenForShop(shopDomain: string): Promise<string | null>
   return getAccessToken(record.id);
 }
 
-async function handleCompliance(topic: string, shopDomain: string, payload: Record<string, unknown>): Promise<void> {
+async function handleCompliance(
+  topic: string,
+  shopDomain: string,
+  payload: Record<string, unknown>,
+  webhookId: string,
+  triggeredAt: Date | null,
+): Promise<void> {
   if (topic === "customers/data_request") {
     const customer = (payload.customer ?? {}) as Record<string, unknown>;
     await handleDataRequest({
       shopDomain,
       customerEmail: asString(customer.email) ?? asString(payload.email),
       customerPhone: asString(customer.phone) ?? asString(payload.phone),
+      // The customer's orders, which is how their answers are found.
+      orderIds: numericIds(payload.orders_requested),
+      webhookId,
     });
     return;
   }
@@ -147,15 +193,19 @@ async function handleCompliance(topic: string, shopDomain: string, payload: Reco
     // `orders_to_redact` is the whole point of this webhook. It is an array of
     // numeric order IDs; the identifiers inside the payload cannot match our
     // rows because we store none of them.
-    const raw = Array.isArray(payload.orders_to_redact) ? payload.orders_to_redact : [];
-    const orderIds = raw
-      .map((v) => (typeof v === "number" ? String(v) : typeof v === "string" ? v : null))
-      .filter((v): v is string => v !== null && /^\d+$/.test(v));
-    await handleCustomerRedact({ shopDomain, orderIds });
+    await handleCustomerRedact({ shopDomain, orderIds: numericIds(payload.orders_to_redact), webhookId });
     return;
   }
 
-  await handleShopRedact({ shopDomain });
+  await handleShopRedact({ shopDomain, triggeredAt });
+}
+
+/** A payload array of numeric order ids, as strings. */
+function numericIds(value: unknown): string[] {
+  const raw = Array.isArray(value) ? value : [];
+  return raw
+    .map((v) => (typeof v === "number" ? String(v) : typeof v === "string" ? v : null))
+    .filter((v): v is string => v !== null && /^\d+$/.test(v));
 }
 
 function asString(value: unknown): string | undefined {

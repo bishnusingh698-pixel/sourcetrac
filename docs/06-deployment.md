@@ -77,7 +77,7 @@ Environment variables, all of them required:
 DATABASE_URL             Neon pooled URL (see step 1)
 SHOPIFY_API_KEY          from Partner Dashboard
 SHOPIFY_API_SECRET       from Partner Dashboard
-SCOPES                   read_orders
+SCOPES                   read_orders,write_orders,write_customers,read_products
 SHOPIFY_API_VERSION      2026-07
 APP_URL                  https://sourcetrac.onrender.com
 API_URL                  https://sourcetrac.onrender.com

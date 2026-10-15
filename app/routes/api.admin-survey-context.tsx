@@ -2,7 +2,9 @@ import { z } from "zod";
 
 import { lookupByCustomer, lookupByOrder } from "~/lib/admin-survey-context.server";
 import { IdTokenError, verifyIdToken } from "~/lib/id-token.server";
+import { RateLimitError } from "~/lib/errors";
 import { logger } from "~/lib/logger";
+import { BUCKETS, consumeToken } from "~/lib/rate-limit.server";
 import { getAccessToken, findShopByDomain } from "~/lib/shop.server";
 
 /**
@@ -33,6 +35,12 @@ const bodySchema = z
 function corsHeaders(init: ResponseInit = {}): ResponseInit {
   const headers = new Headers(init.headers);
   headers.set("Access-Control-Allow-Origin", "*");
+  // The block sends `Authorization` and a JSON `Content-Type`, neither of which
+  // is CORS-safelisted, so the preflight must allow them or the browser never
+  // sends the POST.
+  headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
+  headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  headers.set("Access-Control-Max-Age", "600");
   return { ...init, headers };
 }
 
@@ -55,6 +63,9 @@ export const action = async ({ request }: { request: Request }) => {
     if (!token) throw new IdTokenError("Missing ID token");
 
     const claims = verifyIdToken(token);
+    // Bounded per shop: every call is a database lookup (and, for a customer,
+    // an Admin API call).
+    consumeToken(`admin-context:${claims.dest}`, BUCKETS.surveyConfigShop);
     const shop = await findShopByDomain(claims.dest);
     if (!shop || shop.installState === "uninstalled") {
       return new Response(JSON.stringify({ found: false }), corsHeaders());
@@ -83,6 +94,9 @@ export const action = async ({ request }: { request: Request }) => {
     });
     return new Response(JSON.stringify(result), corsHeaders());
   } catch (error) {
+    if (error instanceof RateLimitError) {
+      return new Response(JSON.stringify({ found: false, error: "rate_limited" }), corsHeaders({ status: 429 }));
+    }
     if (error instanceof IdTokenError) {
       logger.warn("admin_survey_context_auth_failed", { request_id: requestId, reason: error.message });
       return new Response(JSON.stringify({ found: false, error: "unauthorized" }), corsHeaders({ status: 401 }));

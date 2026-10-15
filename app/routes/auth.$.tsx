@@ -20,6 +20,12 @@ export const loader = async ({ request }: { request: Request }) => {
 
   await provisionShop(session);
 
-  const target = url.searchParams.get("redirect") ?? "/app";
-  return redirect(safeInternalPath(target));
+  // Carry the embedded context (`shop`, `host`, `embedded`) into the app, or
+  // App Bridge has to bounce the merchant through another redirect to get it.
+  const target = new URL(safeInternalPath(url.searchParams.get("redirect") ?? "/app"), url.origin);
+  for (const key of ["shop", "host", "embedded"]) {
+    const value = url.searchParams.get(key);
+    if (value && !target.searchParams.has(key)) target.searchParams.set(key, value);
+  }
+  return redirect(`${target.pathname}${target.search}`);
 };

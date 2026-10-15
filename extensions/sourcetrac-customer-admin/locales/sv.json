@@ -1,0 +1,9 @@
+{
+  "sourcetrac": {
+    "heading": "SourceTrac-attribuering",
+    "loading": "Letar efter ett enkätsvar…",
+    "missing_order": "Inget enkätsvar registrerat för den här ordern.",
+    "missing_customer": "Inget enkätsvar registrerat för den här kunden.",
+    "found_prefix": "Så hittade de oss:"
+  }
+}

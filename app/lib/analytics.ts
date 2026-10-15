@@ -126,8 +126,10 @@ export function computeStats(params: {
     if (row.isLocked) {
       lockedByChannel.set(row.channel, (lockedByChannel.get(row.channel) ?? 0) + 1);
     }
-    // "Pending" means we have no revenue figure — explicitly not $0.00.
-    if (!row.reconciled || row.unreconcilable) {
+    // "Pending" means we are still waiting for the order — explicitly not
+    // $0.00. An answer whose order was given up on (`unreconcilable`) is not
+    // waiting for anything, so it is not shown as pending forever.
+    if (!row.reconciled && !row.unreconcilable) {
       pendingByChannel.set(row.channel, (pendingByChannel.get(row.channel) ?? 0) + 1);
     }
   }

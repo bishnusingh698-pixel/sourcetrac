@@ -96,6 +96,18 @@ export const loader = async ({ request }: { request: Request }) => {
     const parsedTotal = order?.totalPrice ? parseMoneyToMinor(order.totalPrice.toString(), order.currency) : null;
     const orderTotalMinor = parsedTotal?.ok ? parsedTotal.minor : null;
 
+    // `maxResponses` must read the live count: the compiled config is cached
+    // for up to a minute, so a busy survey kept collecting past its limit.
+    const capped = config.surveys.filter((candidate) => candidate.targeting?.maxResponses != null);
+    const liveCounts = new Map<string, number>();
+    if (capped.length > 0) {
+      const rows = await db.survey.findMany({
+        where: { shopId: shop.id, id: { in: capped.map((candidate) => candidate.id) } },
+        select: { id: true, responseCount: true },
+      });
+      for (const row of rows) liveCounts.set(row.id, row.responseCount);
+    }
+
     const paymentTypes = parsed.data.paymentTypes
       ? parsed.data.paymentTypes.split(",").map((s) => s.trim()).filter(Boolean)
       : [];
@@ -108,16 +120,17 @@ export const loader = async ({ request }: { request: Request }) => {
         orderTotalMinor,
         currency: order?.currency ?? null,
         currencyDigits: order ? minorUnitDigits(order.currency) : 2,
-        // Both come from the extension's host API. Absent means the rule stays
-        // inert rather than excluding every buyer, which is what the old
-        // hardcoded `null` did for first/returning and country targeting.
+        // Both come from the extension's host API. Absent (the Order-status
+        // page has no first-order signal) fails a first/returning or country
+        // rule: the merchant asked for that audience only, so an unknown buyer
+        // is not shown the survey. See DECISIONS.md (L17).
         isFirstOrder: parsed.data.isFirstOrder === undefined ? null : parsed.data.isFirstOrder === "1",
         country: parsed.data.country?.toUpperCase() ?? null,
         language: parsed.data.locale ?? null,
         now,
         // The survey's own collected count, so `maxResponses` can fire. It was
         // hardcoded to 0, so "pause after N responses" never triggered.
-        responseCount: candidate.responseCount,
+        responseCount: liveCounts.get(candidate.id) ?? candidate.responseCount,
       });
 
     // T11: the highest-priority match wins, unless it is in the rotation group,

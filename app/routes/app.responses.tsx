@@ -1,15 +1,15 @@
 import { useLoaderData, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 
 import { Panel } from "~/components/admin-ui";
-import { orderAdminLink } from "~/lib/csv";
+import { orderAdminLink, resolveExportTimeZone, type RevenueStatus } from "~/lib/csv";
 import { intlLocaleFor } from "~/lib/i18n";
 import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
-import { decideSurveyRevenue, fetchSurveyResponses } from "~/lib/survey-analytics.server";
+import { currentOrderTotal, fetchSurveyResponses, surveyRevenueStatus } from "~/lib/survey-analytics.server";
+import { getShopLocaleInfo } from "~/lib/studio.server";
 import { getSurveyRow, listSurveys } from "~/lib/surveys.server";
-import { formatDecimalForCurrency } from "~/lib/money";
 import { ensureShop } from "~/lib/provision.server";
-import { backfillMissingOrders } from "~/lib/order-backfill.server";
+import { startOrderBackfill } from "~/lib/order-backfill.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
 
@@ -26,22 +26,25 @@ import { authenticate } from "~/shopify.server";
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "responses.title");
 
 const PAGE_SIZE = 50;
+const MAX_PAGE = 10_000;
 
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
-  await backfillMissingOrders({ shopId: shop.id, shopDomain: shop.shopDomain, accessToken: session.accessToken });
+  startOrderBackfill({ shopId: shop.id, shopDomain: shop.shopDomain, accessToken: session.accessToken });
 
   const url = new URL(request.url);
   const surveys = await listSurveys(shop.id);
   const requestedId = url.searchParams.get("survey");
   const selectedId = surveys.find((s) => s.id === requestedId)?.id ?? surveys[0]?.id ?? null;
-  const page = Math.max(0, Number(url.searchParams.get("page") ?? "0") || 0);
+  // A whole page number within a sane range: `?page=1.01` or a huge value used
+  // to reach Prisma as a fractional or overflowing offset and fail with a 500.
+  const page = Math.min(MAX_PAGE, Math.max(0, Math.floor(Number(url.searchParams.get("page") ?? "0") || 0)));
 
   const locale = intlLocaleFor(resolveAdminLanguage(request, shop.language, shop.adminLocale));
 
   if (!selectedId) {
-    return { surveys: [], selected: null, rows: [], page: 0, hasMore: false, labels: {} };
+    return { surveys: [], selected: null, rows: [], page: 0, hasMore: false, labels: {}, timeZone: "UTC" };
   }
 
   const row = await getSurveyRow(shop.id, selectedId);
@@ -49,6 +52,11 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   for (const question of row?.questions ?? []) {
     for (const option of question.options) labels.set(option.id, option.label);
   }
+
+  // Times are shown in the shop's own zone, like the CSV, and labelled with it.
+  const { timeZone: shopZone } = await getShopLocaleInfo(shop.id, shop.shopDomain, session.accessToken);
+  const timeZone = resolveExportTimeZone(shopZone);
+  const when = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone });
 
   const responses = await fetchSurveyResponses({
     shopId: shop.id,
@@ -64,9 +72,11 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     selected: selectedId,
     page,
     hasMore,
+    timeZone,
     labels: Object.fromEntries(labels),
     rows: slice.map((response) => {
-      const decision = decideSurveyRevenue(response);
+      const status = surveyRevenueStatus(response);
+      const total = currentOrderTotal(response);
       const answers = response.answers.map((answer) => {
         const parts: string[] = [];
         for (const optionId of answer.optionIds) parts.push(labels.get(optionId) ?? optionId);
@@ -81,22 +91,30 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
         orderId: response.orderId,
         orderName: response.orderNumber,
         orderLink: response.orderId ? orderAdminLink(shop.shopDomain, response.orderId) : null,
-        submittedAt: new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(
-          response.createdAt,
-        ),
+        submittedAt: when.format(response.createdAt),
         placement: response.placement,
-        total:
-          response.orderTotal !== null && response.currency
-            ? formatDecimalForCurrency(response.orderTotal, response.currency)
-            : null,
-        currency: response.currency,
-        counted: decision.included,
-        reason: decision.included ? null : decision.reason,
+        total: total?.total ?? null,
+        currency: total?.currency ?? null,
+        counted: status === "counted",
+        /** i18n key suffix for the status cell. */
+        status: STATUS_KEY[status],
         answers,
       };
     }),
   };
 });
+
+const STATUS_KEY: Record<RevenueStatus, string> = {
+  counted: "counted",
+  "awaiting order": "awaiting_order",
+  "order not received": "order_not_received",
+  "test order": "test_order",
+  cancelled: "cancelled",
+  voided: "voided",
+  refunded: "refunded",
+  "total unreadable": "total_unreadable",
+  "no order": "no_order",
+};
 
 export default function Responses() {
   const data = useLoaderData<typeof loader>();
@@ -138,7 +156,7 @@ export default function Responses() {
           <s-table variant="auto">
             <s-table-header-row>
               <s-table-header listSlot="primary">{t("responses.col_order")}</s-table-header>
-              <s-table-header listSlot="secondary">{t("responses.col_when")}</s-table-header>
+              <s-table-header listSlot="secondary">{`${t("responses.col_when")} (${data.timeZone})`}</s-table-header>
               <s-table-header listSlot="labeled">{t("responses.col_where")}</s-table-header>
               <s-table-header listSlot="labeled">{t("responses.col_answer")}</s-table-header>
               <s-table-header listSlot="labeled">{t("responses.col_total")}</s-table-header>
@@ -160,7 +178,7 @@ export default function Responses() {
                   <s-table-cell>{t(`surveys.placement_${row.placement}`)}</s-table-cell>
                   <s-table-cell>{row.answers.map((a) => a.text).filter(Boolean).join(" · ") || "—"}</s-table-cell>
                   <s-table-cell>{row.total ? `${row.total} ${row.currency ?? ""}`.trim() : "—"}</s-table-cell>
-                  <s-table-cell>{row.counted ? t("responses.counted") : t("responses.not_counted")}</s-table-cell>
+                  <s-table-cell>{t(`responses.status_${row.status}`)}</s-table-cell>
                 </s-table-row>
               ))}
             </s-table-body>

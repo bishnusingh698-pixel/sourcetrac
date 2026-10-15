@@ -5,9 +5,8 @@
  * narrow queries (shop plan, app installation status), and pulling in the whole
  * SDK for that would add install weight and a second session-storage path.
  *
- * Uses the Admin REST API for the shop endpoint, because shop.plan is only
- * readable there — see docs/01-verification-report.md §A9 for why the GraphQL
- * Shop.plan field is not used.
+ * Every call goes to the Admin GraphQL endpoint (no REST), at the pinned
+ * `API_VERSION` (app/lib/env.ts).
  *
  * Docs:
  *   - Throttling: https://shopify.dev/docs/api/usage/limits
@@ -45,7 +44,12 @@ export class ShopifyThrottledError extends ShopifyGraphQLError {
 /** Throttle codes Shopify returns for rate limiting and token-bucket depletion. */
 const THROTTLE_CODES = new Set(["THROTTLED", "INTERNAL_SERVER_ERROR"]);
 
-function isThrottle(error: unknown): boolean {
+function isRejectedBeforeRunning(error: unknown): boolean {
+  if (error instanceof ShopifyGraphQLError && error.errors.some((e) => e.extensions?.code === "THROTTLED")) return true;
+  return error instanceof ShopifyThrottledError && error.message.startsWith("429");
+}
+
+export function isThrottle(error: unknown): boolean {
   if (error instanceof ShopifyThrottledError) return true;
   return error instanceof ShopifyGraphQLError && error.errors.some((e) => e.extensions?.code && THROTTLE_CODES.has(e.extensions.code));
 }
@@ -64,6 +68,7 @@ export async function shopifyGraphql<T>(
   accessToken: string,
   query: string,
   variables: Record<string, unknown> = {},
+  { idempotent = true }: { idempotent?: boolean } = {},
 ): Promise<GraphQLResponse<T>> {
   const { SHOPIFY_API_VERSION: apiVersion, SHOPIFY_API_KEY: apiKey } = env();
   const endpoint = `https://${shopDomain}/admin/api/${apiVersion}/graphql.json`;
@@ -117,7 +122,10 @@ export async function shopifyGraphql<T>(
       attempts: 4,
       baseDelayMs: 500,
       maxDelayMs: 8_000,
-      shouldRetry: isThrottle,
+      // A non-idempotent mutation (a Flow trigger, a new subscription) is only
+      // retried when Shopify certainly did not run it: a 429 or a THROTTLED
+      // error. A 5xx may have landed after the work was done.
+      shouldRetry: idempotent ? isThrottle : isRejectedBeforeRunning,
       // A 4xx is permanent; retrying wastes a webhook delivery.
       isAbort: (error) => error instanceof ShopifyGraphQLError && !isThrottle(error),
       onRetry: (error, attempt, delayMs) => {
@@ -179,9 +187,12 @@ export const SHOP_DISPLAY_QUERY = `#graphql
     products(first: 1, query: "status:active") {
       nodes {
         title
-        featuredImage {
-          url
-          altText
+        featuredMedia {
+          preview {
+            image {
+              url
+            }
+          }
         }
       }
     }
@@ -207,13 +218,16 @@ export async function fetchShopDisplay(
   try {
     const result = await shopifyGraphql<{
       shop: { name: string | null; currencyCode: string | null } | null;
-      products: { nodes: Array<{ title: string; featuredImage: { url: string; altText: string | null } | null }> } | null;
+      // `featuredImage` is deprecated; `featuredMedia.preview.image` replaces it.
+      products: {
+        nodes: Array<{ title: string; featuredMedia: { preview: { image: { url: string } | null } | null } | null }>;
+      } | null;
     }>(shopDomain, accessToken, SHOP_DISPLAY_QUERY);
     const node = result.data.products?.nodes?.[0];
     return {
       name: result.data.shop?.name ?? null,
       currencyCode: result.data.shop?.currencyCode ?? null,
-      product: node ? { title: node.title, imageUrl: node.featuredImage?.url ?? null } : null,
+      product: node ? { title: node.title, imageUrl: node.featuredMedia?.preview?.image?.url ?? null } : null,
     };
   } catch (error) {
     logger.warn("shop_display_lookup_failed", {

@@ -108,7 +108,11 @@
     "privacy_description": "Wat SourceTrac bewaart en welke verzoeken we hebben afgehandeld.",
     "privacy_body": "SourceTrac bewaart alleen een bestel-ID, het antwoord, het kanaal en een tijdstempel. Nooit een naam, e-mail, telefoonnummer of adres.",
     "privacy_requests_title": "Recente gegevensverzoeken",
-    "remove_option": "{{label}} verwijderen"
+    "remove_option": "{{label}} verwijderen",
+    "sync_failed_one": "{{count}} schrijfactie naar Shopify is na meerdere pogingen niet gelukt. Laatste fout: {{error}}",
+    "sync_failed_other": "{{count}} schrijfacties naar Shopify zijn na meerdere pogingen niet gelukt. Laatste fout: {{error}}",
+    "privacy_request_found_one": "Antwoorden gevonden voor {{count}} bestelling: {{orders}}",
+    "privacy_request_found_other": "Antwoorden gevonden voor {{count}} bestellingen: {{orders}}"
   },
   "onboarding": {
     "title": "Aan de slag",
@@ -150,7 +154,8 @@
     "download": "CSV downloaden",
     "preview_title": "Voorbeeld",
     "preview_description": "Je {{count}} meest recente antwoorden, precies zoals ze worden geëxporteerd.",
-    "download_failed": "De download is niet gestart. Probeer het zo opnieuw."
+    "download_failed": "De download is niet gestart. Probeer het zo opnieuw.",
+    "truncated": "Dit bestand bevat alleen de nieuwste {{limit}} antwoorden. Oudere antwoorden zijn weggelaten."
   },
   "plans": {
     "title": "Abonnementen",
@@ -198,7 +203,8 @@
     "msg_cancelled": "Abonnement opgezegd. Je zit weer op Gratis met {{cap}} antwoorden per maand.",
     "msg_subscribe_failed": "Shopify kon het abonnement niet starten: {{error}}",
     "msg_subscription_created": "Abonnement aangemaakt. Kwam je niet op een bevestigingspagina terecht? Controleer dan de factureringspagina in je Shopify-beheer.",
-    "msg_plan_unavailable": "Dat abonnement is niet beschikbaar."
+    "msg_plan_unavailable": "Dat abonnement is niet beschikbaar.",
+    "msg_already_on_plan": "Je hebt dit abonnement al."
   },
   "help": {
     "title": "Help",
@@ -590,7 +596,10 @@
     "cross_caption": "{{row}} naar {{col}}",
     "cross_percent": "{{percent}}%",
     "ideas_title": "Ideeën om te proberen",
-    "filter_product": "Product"
+    "filter_product": "Product",
+    "multi_credit_note": "Een antwoord met meerdere keuzes telt de bestelling bij elke keuze mee, dus deze bedragen kunnen samen meer zijn dan het totaal.",
+    "capped_note": "Gebaseerd op de nieuwste {{limit}} antwoorden.",
+    "download_failed": "De download is niet gestart. Probeer het zo opnieuw."
   },
   "responses": {
     "title": "Antwoorden",
@@ -608,7 +617,16 @@
     "counted": "Geteld",
     "not_counted": "Niet geteld",
     "previous": "Vorige",
-    "next": "Volgende"
+    "next": "Volgende",
+    "status_counted": "Meegeteld",
+    "status_awaiting_order": "Wacht op bestelling",
+    "status_order_not_received": "Bestelling niet ontvangen",
+    "status_test_order": "Testbestelling",
+    "status_cancelled": "Geannuleerd",
+    "status_voided": "Vervallen",
+    "status_refunded": "Terugbetaald",
+    "status_total_unreadable": "Totaal onleesbaar",
+    "status_no_order": "Geen bestelling"
   },
   "library": {
     "title": "Sjablonenbibliotheek",

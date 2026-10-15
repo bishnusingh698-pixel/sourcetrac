@@ -178,7 +178,13 @@ describe("parseMoneyToMinor", () => {
   it("still rejects precision the currency genuinely cannot represent", () => {
     expect(parseMoneyToMinor("42.501", "USD").ok).toBe(false);
     expect(parseMoneyToMinor("42.5001", "KWD").ok).toBe(false);
-    expect(parseMoneyToMinor("5000.5", "JPY").ok).toBe(false);
+    expect(parseMoneyToMinor("5000.505", "JPY").ok).toBe(false);
+  });
+
+  it("rounds cents on a zero-decimal currency instead of dropping the order (L23)", () => {
+    expect(parseMoneyToMinor("1990.50", "ISK")).toEqual({ ok: true, minor: 1991, decimals: 0 });
+    expect(parseMoneyToMinor("1990.49", "ISK")).toEqual({ ok: true, minor: 1990, decimals: 0 });
+    expect(parseMoneyToMinor("5000.5", "JPY")).toEqual({ ok: true, minor: 5001, decimals: 0 });
   });
 
   /**

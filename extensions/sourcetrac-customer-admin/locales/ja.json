@@ -1,0 +1,9 @@
+{
+  "sourcetrac": {
+    "heading": "SourceTrac の流入元",
+    "loading": "アンケートの回答を確認しています…",
+    "missing_order": "この注文のアンケート回答はありません。",
+    "missing_customer": "この顧客のアンケート回答はありません。",
+    "found_prefix": "当店を知ったきっかけ:"
+  }
+}

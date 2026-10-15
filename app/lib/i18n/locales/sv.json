@@ -108,7 +108,11 @@
     "privacy_description": "Vad SourceTrac sparar och vilka förfrågningar vi hanterat.",
     "privacy_body": "SourceTrac sparar bara ett order-ID, svaret, kanalen och en tidsstämpel. Namn, e-post, telefon eller adress sparas aldrig.",
     "privacy_requests_title": "Senaste dataförfrågningar",
-    "remove_option": "Ta bort {{label}}"
+    "remove_option": "Ta bort {{label}}",
+    "sync_failed_one": "{{count}} skrivning till Shopify kunde inte slutföras efter flera försök. Senaste fel: {{error}}",
+    "sync_failed_other": "{{count}} skrivningar till Shopify kunde inte slutföras efter flera försök. Senaste fel: {{error}}",
+    "privacy_request_found_one": "Svar hittades för {{count}} order: {{orders}}",
+    "privacy_request_found_other": "Svar hittades för {{count}} ordrar: {{orders}}"
   },
   "onboarding": {
     "title": "Kom igång",
@@ -150,7 +154,8 @@
     "download": "Ladda ner CSV",
     "preview_title": "Förhandsvisning",
     "preview_description": "Dina {{count}} senaste svar, exakt som de exporteras.",
-    "download_failed": "Nedladdningen startade inte. Försök igen om en stund."
+    "download_failed": "Nedladdningen startade inte. Försök igen om en stund.",
+    "truncated": "Den här filen innehåller bara de {{limit}} senaste svaren. Äldre svar har utelämnats."
   },
   "plans": {
     "title": "Planer",
@@ -198,7 +203,8 @@
     "msg_cancelled": "Abonnemanget är avslutat. Du är tillbaka på Gratis med {{cap}} svar per månad.",
     "msg_subscribe_failed": "Shopify kunde inte starta abonnemanget: {{error}}",
     "msg_subscription_created": "Abonnemanget har skapats. Om du inte skickades till en bekräftelsesida kan du kontrollera faktureringssidan i Shopify-admin.",
-    "msg_plan_unavailable": "Den planen är inte tillgänglig."
+    "msg_plan_unavailable": "Den planen är inte tillgänglig.",
+    "msg_already_on_plan": "Du har redan den här planen."
   },
   "help": {
     "title": "Hjälp",
@@ -590,7 +596,10 @@
     "cross_caption": "{{row}} per {{col}}",
     "cross_percent": "{{percent}} %",
     "ideas_title": "Idéer att prova",
-    "filter_product": "Produkt"
+    "filter_product": "Produkt",
+    "multi_credit_note": "Ett svar med flera val räknar ordern under varje val, så beloppen kan tillsammans bli mer än totalen.",
+    "capped_note": "Baserat på de {{limit}} senaste svaren.",
+    "download_failed": "Nedladdningen startade inte. Försök igen om en stund."
   },
   "responses": {
     "title": "Svar",
@@ -608,7 +617,16 @@
     "counted": "Räknas",
     "not_counted": "Räknas inte",
     "previous": "Föregående",
-    "next": "Nästa"
+    "next": "Nästa",
+    "status_counted": "Räknad",
+    "status_awaiting_order": "Väntar på order",
+    "status_order_not_received": "Ordern togs inte emot",
+    "status_test_order": "Testorder",
+    "status_cancelled": "Avbruten",
+    "status_voided": "Makulerad",
+    "status_refunded": "Återbetald",
+    "status_total_unreadable": "Totalen kan inte läsas",
+    "status_no_order": "Ingen order"
   },
   "library": {
     "title": "Mallbibliotek",

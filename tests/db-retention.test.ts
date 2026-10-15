@@ -278,13 +278,16 @@ describe("retention purge covers the Phase 8 tables", () => {
     expect(await prisma.pendingDeletion.count({ where: { shopId: "ret-shop" } })).toBe(0);
   });
 
-  it("keeps a deferred redact inside the record window", async () => {
+  it("executes a deferred redact instead of discarding it (M11)", async () => {
+    await prisma.surveyResponse.create({ data: { shopId: "ret-shop", orderId: "7701", channel: "instagram" } });
     await prisma.pendingDeletion.create({
-      data: { shopId: "ret-shop", scope: "customer", payload: "{}", createdAt: daysBefore(1) },
+      data: { shopId: "ret-shop", scope: "customer", payload: JSON.stringify({ orderIds: ["7701"] }), createdAt: daysBefore(800) },
     });
 
-    await runRetentionPurge();
+    const report = await runRetentionPurge();
 
-    expect(await prisma.pendingDeletion.count({ where: { shopId: "ret-shop" } })).toBe(1);
+    expect(report.pendingDeletionsDeleted).toBe(1);
+    expect(await prisma.pendingDeletion.count({ where: { shopId: "ret-shop" } })).toBe(0);
+    expect(await prisma.surveyResponse.count({ where: { shopId: "ret-shop", orderId: "7701" } })).toBe(0);
   });
 });

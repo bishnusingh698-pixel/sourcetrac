@@ -3,6 +3,7 @@ import { serialiseError } from "~/lib/errors";
 import { logger } from "~/lib/logger";
 import { minorToDecimalString, parseMoneyToMinor } from "~/lib/money";
 import { markUnverifiedFailedResponses } from "~/lib/answers.server";
+import { isRedactedOrder } from "~/lib/compliance.server";
 import { currentUtcPeriod, evaluateCap, type PlanKey } from "~/lib/plans";
 import { withRetry } from "~/lib/retry.server";
 
@@ -37,20 +38,17 @@ async function incrementUsage(shopId: string): Promise<number> {
   const { periodStart, periodEnd } = currentUtcPeriod();
 
   return retryDb(async () => {
-    // upsert-then-increment so the first response of a period creates the row.
-    await db.billingUsage.upsert({
-      where: { shopId_periodStart: { shopId, periodStart } },
-      create: { shopId, periodStart, periodEnd, responsesCount: 0 },
-      update: {},
-    });
-
-    const updated = await db.billingUsage.update({
-      where: { shopId_periodStart: { shopId, periodStart } },
-      data: { responsesCount: { increment: 1 } },
-      select: { responsesCount: true },
-    });
-
-    return updated.responsesCount;
+    // One statement, so two first-of-period answers cannot race on the insert
+    // (Prisma's upsert is a read-then-write and lost one with a P2002).
+    const id = `usage_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+    const rows = await db.$queryRaw<Array<{ responsesCount: number }>>`
+      INSERT INTO "BillingUsage" ("id", "shopId", "periodStart", "periodEnd", "responsesCount", "updatedAt")
+      VALUES (${id}, ${shopId}, ${periodStart}, ${periodEnd}, 1, now())
+      ON CONFLICT ("shopId", "periodStart") DO UPDATE
+        SET "responsesCount" = "BillingUsage"."responsesCount" + 1, "updatedAt" = now()
+      RETURNING "responsesCount"
+    `;
+    return rows[0]?.responsesCount ?? 1;
   });
 }
 
@@ -83,6 +81,23 @@ export async function submitResponse(input: SubmitInput): Promise<SubmitResult> 
   // At cap we still store the answer — losing a buyer's answer to a billing
   // state would be worse than free overage — but flag it for the merchant.
   const shouldLock = capStatus.shouldFlag;
+
+  // An order a customer asked to have redacted is never stored again.
+  if (await isRedactedOrder(input.shopId, input.orderId)) {
+    logger.info("response_redacted_order_ignored", { shop_id: input.shopId });
+    return { outcome: "duplicate", id: "", isLocked: false };
+  }
+
+  // The multi-question blocks answer into `Response`. An order already
+  // answered there must not be answered again (and counted twice) by a stale
+  // single-question client.
+  const v2 = await retryDb(() =>
+    db.response.findFirst({ where: { shopId: input.shopId, orderId: input.orderId }, select: { id: true, flagged: true } }),
+  );
+  if (v2) {
+    logger.info("response_duplicate_v2_ignored", { shop_id: input.shopId, response_id: v2.id });
+    return { outcome: "duplicate", id: v2.id, isLocked: v2.flagged };
+  }
 
   try {
     const created = await retryDb(() =>

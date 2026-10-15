@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks"
 
 import {
   log,
+  orderOptionsForBuyer,
   OTHER_CHANNEL,
   type AnswerInput,
   type CompiledOption,
@@ -21,6 +22,7 @@ export interface MultiSurveyApi {
   fetchSurvey: (orderId: string, placement: Placement, locale: string | null) => Promise<SurveyConfigV2 | null>;
   submitAnswers: (params: {
     surveyId: string;
+    surveyVersion?: number;
     orderId: string | null;
     placement: Placement;
     answers: AnswerInput[];
@@ -57,6 +59,27 @@ export function questionVisible(question: CompiledQuestion, answers: AnswerState
   }
   return false;
 }
+
+/**
+ * The visible questions, in order. Like `validateResponse` on the server, a
+ * show-if condition only reads answers to questions that are themselves
+ * visible: an answer left on a question that a later change hid must not keep
+ * its dependants visible, or the submission is rejected as `hidden_answered`.
+ */
+export function visibleQuestionsFor(questions: readonly CompiledQuestion[], answers: AnswerState): CompiledQuestion[] {
+  const visibleAnswers: AnswerState = {};
+  const visible: CompiledQuestion[] = [];
+  for (const question of questions) {
+    if (!questionVisible(question, visibleAnswers)) continue;
+    visible.push(question);
+    const answer = answers[question.id];
+    if (answer) visibleAnswers[question.id] = answer;
+  }
+  return visible;
+}
+
+/** Question types answered by a single tap, which a one-question survey submits at once. */
+const SINGLE_TAP_TYPES = new Set(["single_choice", "dropdown", "yes_no", "rating_5", "nps", "satisfaction_5"]);
 
 /** The options to render, including the synthetic "Other" when free text is on. */
 export function optionsFor(question: CompiledQuestion, otherLabel: string): CompiledOption[] {
@@ -174,7 +197,16 @@ export function useMultiSurvey(
 
       // Apply the buyer's language to the merchant-authored text, and remember
       // it so the answer is stored with the language the buyer actually read.
-      setSurvey(localizeSurvey(config.survey, locale));
+      // Randomised options are shuffled once, seeded by the order id, so the
+      // order is stable for this buyer and identical on both pages.
+      const localized = localizeSurvey(config.survey, locale);
+      setSurvey({
+        ...localized,
+        questions: localized.questions.map((question) => ({
+          ...question,
+          options: orderOptionsForBuyer(question.options, question.randomizeOptions === true, orderId),
+        })),
+      });
       setPhase("asking");
     });
 
@@ -186,7 +218,7 @@ export function useMultiSurvey(
   /** Visible questions in definition order. */
   const visibleQuestions = useMemo(() => {
     if (!survey) return [];
-    return survey.questions.filter((question) => questionVisible(question, answers));
+    return visibleQuestionsFor(survey.questions, answers);
   }, [survey, answers]);
 
   const oneByOne = survey?.layout === "one_by_one";
@@ -210,7 +242,7 @@ export function useMultiSurvey(
       submitted.current = true;
       setPhase("sending");
 
-      const visible = survey.questions.filter((question) => questionVisible(question, finalAnswers));
+      const visible = visibleQuestionsFor(survey.questions, finalAnswers);
       const payload: AnswerInput[] = visible.map((question) => ({
         ...(finalAnswers[question.id] ?? {}),
         questionId: question.id,
@@ -218,6 +250,7 @@ export function useMultiSurvey(
 
       const result = await apiRef.current.submitAnswers({
         surveyId: survey.id,
+        surveyVersion: survey.version,
         orderId,
         placement,
         answers: payload,
@@ -253,13 +286,15 @@ export function useMultiSurvey(
       const singleQuestion = survey?.questions.length === 1 && survey.layout === "all";
       if (!singleQuestion) return;
 
-      // A single-choice "Other" must wait for its free text, so only auto-submit
-      // when the question has no pending "Other" requirement.
+      // Only a tap submits: text, multiple choice and the "Other" box are typed
+      // or built up, so they wait for the Submit button (submitting on the first
+      // keystroke stored "a" and ignored the rest of the typing).
       const question = survey?.questions[0];
-      if (!question) return;
+      if (!question || !SINGLE_TAP_TYPES.has(question.type)) return;
+      if (patch.optionIds === undefined && patch.numberValue === undefined) return;
       const chosen = next[questionId]?.optionIds?.[0];
       const isOther = question.options.find((o) => o.id === chosen)?.isOther || chosen === OTHER_CHANNEL;
-      if (isOther && (next[questionId]?.otherText?.trim().length ?? 0) === 0) return;
+      if (isOther) return;
 
       void send(next);
     },
@@ -273,11 +308,18 @@ export function useMultiSurvey(
         if (question.required) return false;
         continue;
       }
-      if (question.type === "single_choice" || question.type === "dropdown") {
-        const chosen = answer?.optionIds?.[0];
-        const option = question.options.find((o) => o.id === chosen);
-        if ((option?.isOther || chosen === OTHER_CHANNEL) && (answer?.otherText?.trim().length ?? 0) === 0) {
-          return false;
+      if (question.type === "single_choice" || question.type === "dropdown" || question.type === "multi_choice") {
+        // The same rules the server enforces, so Submit is never enabled for a
+        // set the server would refuse (and the answer lost).
+        const chosen = answer?.optionIds ?? [];
+        const otherChosen = chosen.some(
+          (id) => id === OTHER_CHANNEL || question.options.find((o) => o.id === id)?.isOther,
+        );
+        if (otherChosen && (answer?.otherText?.trim().length ?? 0) === 0) return false;
+        if (question.type === "multi_choice") {
+          const count = new Set(chosen).size;
+          if (typeof question.minSelections === "number" && count < question.minSelections) return false;
+          if (typeof question.maxSelections === "number" && count > question.maxSelections) return false;
         }
       }
     }

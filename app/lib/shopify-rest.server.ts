@@ -135,6 +135,30 @@ export async function fetchShopPlanName(shopDomain: string, accessToken: string)
   }
 }
 
+/**
+ * Whether the store is a development store (Partner or dev-preview). Such a
+ * store can only approve TEST charges, which is how App Store review installs
+ * the app, so billing must create and honour test charges there. Throws when
+ * Shopify cannot be asked; callers decide the fallback.
+ */
+export async function fetchIsDevelopmentStore(shopDomain: string, accessToken: string): Promise<boolean> {
+  const response = await shopifyGraphql<{ shop?: { plan?: { partnerDevelopment?: boolean } } }>(
+    shopDomain,
+    accessToken,
+    `#graphql
+      query SourceTracPlan {
+        shop {
+          plan {
+            publicDisplayName
+            partnerDevelopment
+          }
+        }
+      }
+    `,
+  );
+  return response.data?.shop?.plan?.partnerDevelopment === true;
+}
+
 export async function fetchShopIdentity(shopDomain: string, accessToken: string): Promise<ShopInfo> {
   const response = await shopifyGraphql<{ shop: { id: string; myshopifyDomain: string; currencyCode: string } }>(
     shopDomain,

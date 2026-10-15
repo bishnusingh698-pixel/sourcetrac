@@ -108,7 +108,11 @@
     "privacy_description": "Ce que SourceTrac conserve et les demandes traitées.",
     "privacy_body": "SourceTrac ne conserve qu’un identifiant de commande, la réponse, le canal et un horodatage. Aucun nom, e-mail, téléphone ni adresse n’est jamais conservé.",
     "privacy_requests_title": "Demandes de données récentes",
-    "remove_option": "Supprimer {{label}}"
+    "remove_option": "Supprimer {{label}}",
+    "sync_failed_one": "{{count}} écriture dans Shopify n’a pas abouti après plusieurs essais. Dernière erreur : {{error}}",
+    "sync_failed_other": "{{count}} écritures dans Shopify n’ont pas abouti après plusieurs essais. Dernière erreur : {{error}}",
+    "privacy_request_found_one": "Réponses trouvées pour {{count}} commande : {{orders}}",
+    "privacy_request_found_other": "Réponses trouvées pour {{count}} commandes : {{orders}}"
   },
   "onboarding": {
     "title": "Prise en main",
@@ -150,7 +154,8 @@
     "download": "Télécharger le CSV",
     "preview_title": "Aperçu",
     "preview_description": "Vos {{count}} réponses les plus récentes, exactement telles qu'elles seront exportées.",
-    "download_failed": "Le téléchargement n'a pas démarré. Réessayez dans un instant."
+    "download_failed": "Le téléchargement n'a pas démarré. Réessayez dans un instant.",
+    "truncated": "Ce fichier ne contient que les {{limit}} réponses les plus récentes. Les plus anciennes ont été omises."
   },
   "plans": {
     "title": "Forfaits",
@@ -198,7 +203,8 @@
     "msg_cancelled": "Abonnement annulé. Vous êtes de retour sur le forfait Gratuit avec {{cap}} réponses par mois.",
     "msg_subscribe_failed": "Shopify n'a pas pu démarrer l'abonnement : {{error}}",
     "msg_subscription_created": "Abonnement créé. Si vous n'avez pas été redirigé vers une page de confirmation, consultez la page de facturation de votre administration Shopify.",
-    "msg_plan_unavailable": "Ce forfait n'est pas disponible."
+    "msg_plan_unavailable": "Ce forfait n'est pas disponible.",
+    "msg_already_on_plan": "Vous avez déjà cette formule."
   },
   "help": {
     "title": "Aide",
@@ -590,7 +596,10 @@
     "cross_caption": "{{row}} par {{col}}",
     "cross_percent": "{{percent}} %",
     "ideas_title": "Idées à essayer",
-    "filter_product": "Produit"
+    "filter_product": "Produit",
+    "multi_credit_note": "Une réponse à plusieurs choix compte sa commande pour chacun, ces montants peuvent donc dépasser le total.",
+    "capped_note": "Basé sur les {{limit}} réponses les plus récentes.",
+    "download_failed": "Le téléchargement n’a pas démarré. Réessayez dans un instant."
   },
   "responses": {
     "title": "Réponses",
@@ -608,7 +617,16 @@
     "counted": "Comptée",
     "not_counted": "Non comptée",
     "previous": "Précédent",
-    "next": "Suivant"
+    "next": "Suivant",
+    "status_counted": "Comptabilisée",
+    "status_awaiting_order": "En attente de la commande",
+    "status_order_not_received": "Commande non reçue",
+    "status_test_order": "Commande test",
+    "status_cancelled": "Annulée",
+    "status_voided": "Annulée (paiement)",
+    "status_refunded": "Remboursée",
+    "status_total_unreadable": "Total illisible",
+    "status_no_order": "Sans commande"
   },
   "library": {
     "title": "Bibliothèque de modèles",

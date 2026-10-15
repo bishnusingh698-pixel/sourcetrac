@@ -108,7 +108,11 @@
     "privacy_description": "SourceTrac が保存するものと、対応したリクエスト。",
     "privacy_body": "SourceTrac は注文 ID、回答、チャネル、タイムスタンプのみを保存します。氏名・メール・電話番号・住所は一切保存しません。",
     "privacy_requests_title": "最近のデータリクエスト",
-    "remove_option": "{{label}} を削除"
+    "remove_option": "{{label}} を削除",
+    "sync_failed_one": "Shopify への書き込み {{count}} 件が、複数回の再試行後も完了しませんでした。最後のエラー: {{error}}",
+    "sync_failed_other": "Shopify への書き込み {{count}} 件が、複数回の再試行後も完了しませんでした。最後のエラー: {{error}}",
+    "privacy_request_found_one": "{{count}} 件の注文で回答が見つかりました: {{orders}}",
+    "privacy_request_found_other": "{{count}} 件の注文で回答が見つかりました: {{orders}}"
   },
   "onboarding": {
     "title": "はじめに",
@@ -150,7 +154,8 @@
     "download": "CSV をダウンロード",
     "preview_title": "プレビュー",
     "preview_description": "最新 {{count}} 件の回答。エクスポート時とまったく同じ形式です。",
-    "download_failed": "ダウンロードを開始できませんでした。しばらくしてからもう一度お試しください。"
+    "download_failed": "ダウンロードを開始できませんでした。しばらくしてからもう一度お試しください。",
+    "truncated": "このファイルには最新の{{limit}}件の回答のみが含まれます。古い回答は含まれていません。"
   },
   "plans": {
     "title": "プラン",
@@ -198,7 +203,8 @@
     "msg_cancelled": "サブスクリプションを解約しました。1 か月あたり {{cap}} 件の回答が可能な無料プランに戻りました。",
     "msg_subscribe_failed": "Shopify でサブスクリプションを開始できませんでした：{{error}}",
     "msg_subscription_created": "サブスクリプションを作成しました。確認ページに移動しなかった場合は、Shopify 管理画面の請求ページをご確認ください。",
-    "msg_plan_unavailable": "このプランは利用できません。"
+    "msg_plan_unavailable": "このプランは利用できません。",
+    "msg_already_on_plan": "すでにこのプランをご利用中です。"
   },
   "help": {
     "title": "ヘルプ",
@@ -590,7 +596,10 @@
     "cross_caption": "{{col}} 別の {{row}}",
     "cross_percent": "{{percent}}%",
     "ideas_title": "試せるアイデア",
-    "filter_product": "商品"
+    "filter_product": "商品",
+    "multi_credit_note": "複数選択の回答は、選んだ各項目に注文が計上されるため、これらの金額の合計は全体を上回ることがあります。",
+    "capped_note": "最新の{{limit}}件の回答に基づいています。",
+    "download_failed": "ダウンロードを開始できませんでした。しばらくしてからもう一度お試しください。"
   },
   "responses": {
     "title": "回答",
@@ -608,7 +617,16 @@
     "counted": "集計対象",
     "not_counted": "集計対象外",
     "previous": "前へ",
-    "next": "次へ"
+    "next": "次へ",
+    "status_counted": "集計済み",
+    "status_awaiting_order": "注文待ち",
+    "status_order_not_received": "注文を受信できませんでした",
+    "status_test_order": "テスト注文",
+    "status_cancelled": "キャンセル済み",
+    "status_voided": "無効",
+    "status_refunded": "返金済み",
+    "status_total_unreadable": "合計を読み取れません",
+    "status_no_order": "注文なし"
   },
   "library": {
     "title": "テンプレートライブラリ",

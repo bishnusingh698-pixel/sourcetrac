@@ -2,7 +2,7 @@ import { db, isRetryableDbError } from "~/db.server";
 import { logger } from "~/lib/logger";
 import { withRetry } from "~/lib/retry.server";
 import { getAccessToken } from "~/lib/shop.server";
-import { shopifyGraphql } from "~/lib/shopify-graphql.server";
+import { isThrottle, shopifyGraphql, ShopifyGraphQLError } from "~/lib/shopify-graphql.server";
 import { upsertOrderCache, type ShopifyOrder } from "~/lib/webhooks.server";
 
 /**
@@ -77,19 +77,43 @@ const MIN_AGE_MS = 2 * 60 * 1000;
 const MAX_AGE_MS = 58 * 24 * 60 * 60 * 1000;
 /** Per shop and call, so one dashboard load cannot fan out unboundedly. */
 const BATCH = 10;
-/** An order Shopify could not return is not asked for again for an hour. */
+/** An order whose lookup failed (timeout, throttle) is retried after an hour. */
 const RETRY_AFTER_MS = 60 * 60 * 1000;
+/**
+ * An order Shopify answered with "no such order" (deleted, or older than the
+ * 60-day `read_orders` window even though the answer is recent) is not asked
+ * for again for a week, instead of failing every hour.
+ */
+const NOT_FOUND_RETRY_MS = 7 * 24 * 60 * 60 * 1000;
 
-const lastAttempt = new Map<string, number>();
+/** shop:order -> when it may be asked for again. Pruned as it is read. */
+const nextAttempt = new Map<string, number>();
+/** One backfill per shop at a time: parallel admin loaders share it. */
+const inFlight = new Map<string, Promise<number>>();
+
+function pruneAttempts(nowMs: number): void {
+  for (const [key, at] of nextAttempt) if (at <= nowMs) nextAttempt.delete(key);
+}
 
 function retryDb<T>(operation: () => Promise<T>): Promise<T> {
   return withRetry(operation, { attempts: 3, baseDelayMs: 250, shouldRetry: isRetryableDbError });
 }
 
 /**
- * Backfill the missing orders of one shop's unreconciled answers. Returns how
- * many orders were written. Never throws: this runs on the way to rendering the
- * dashboard, and a Shopify hiccup must not take the page down.
+ * Start the backfill for a shop in the background. Admin loaders call this
+ * instead of awaiting it: up to ten Admin API calls (each with its own timeout
+ * and retries) used to sit in front of every page render. Answers it resolves
+ * show on the next load.
+ */
+export function startOrderBackfill(params: { shopId: string; shopDomain: string; accessToken?: string | null }): void {
+  void backfillMissingOrders(params);
+}
+
+/**
+ * Backfill the missing orders of one shop's unreconciled answers, both the
+ * legacy `SurveyResponse` rows and the v2 `Response` rows the checkout blocks
+ * write. Returns how many orders were written. Never throws. Concurrent calls
+ * for one shop share a single run.
  */
 export async function backfillMissingOrders(params: {
   shopId: string;
@@ -97,31 +121,53 @@ export async function backfillMissingOrders(params: {
   accessToken?: string | null;
   now?: Date;
 }): Promise<number> {
+  const running = inFlight.get(params.shopId);
+  if (running) return running;
+  const run = runBackfill(params).finally(() => inFlight.delete(params.shopId));
+  inFlight.set(params.shopId, run);
+  return run;
+}
+
+async function runBackfill(params: {
+  shopId: string;
+  shopDomain: string;
+  accessToken?: string | null;
+  now?: Date;
+}): Promise<number> {
   const now = params.now ?? new Date();
+  pruneAttempts(now.getTime());
 
   try {
+    const after = new Date(now.getTime() - MAX_AGE_MS);
+    const before = new Date(now.getTime() - MIN_AGE_MS);
     const candidates = await retryDb(() =>
       db.$queryRaw<Array<{ orderId: string }>>`
-        SELECT r."orderId"
-        FROM "SurveyResponse" r
+        SELECT c."orderId", MAX(c.at) AS at FROM (
+          SELECT r."orderId", r."submittedAt" AS at
+          FROM "SurveyResponse" r
+          WHERE r."shopId" = ${params.shopId}
+            AND r.reconciled = false
+            AND r."submittedAt" < ${before} AND r."submittedAt" > ${after}
+          UNION ALL
+          SELECT v."orderId", v."createdAt" AS at
+          FROM "Response" v
+          WHERE v."shopId" = ${params.shopId}
+            AND v."orderId" IS NOT NULL
+            AND v."orderTotal" IS NULL
+            AND v."createdAt" < ${before} AND v."createdAt" > ${after}
+        ) c
         LEFT JOIN "OrderCache" o
-          ON o."shopId" = r."shopId" AND o."orderId" = r."orderId"
-        WHERE r."shopId" = ${params.shopId}
-          AND r.reconciled = false
-          AND o.id IS NULL
-          AND r."submittedAt" < ${new Date(now.getTime() - MIN_AGE_MS)}
-          AND r."submittedAt" > ${new Date(now.getTime() - MAX_AGE_MS)}
-        ORDER BY r."submittedAt" DESC
+          ON o."shopId" = ${params.shopId} AND o."orderId" = c."orderId"
+        WHERE o.id IS NULL
+        GROUP BY c."orderId"
+        ORDER BY at DESC
         LIMIT 100
       `,
     );
 
     const due = candidates
       .map((row) => row.orderId)
-      .filter((orderId) => {
-        const at = lastAttempt.get(`${params.shopId}:${orderId}`);
-        return at === undefined || now.getTime() - at >= RETRY_AFTER_MS;
-      })
+      .filter((orderId) => !nextAttempt.has(`${params.shopId}:${orderId}`))
       .slice(0, BATCH);
     if (due.length === 0) return 0;
 
@@ -130,20 +176,26 @@ export async function backfillMissingOrders(params: {
 
     let written = 0;
     for (const orderId of due) {
-      lastAttempt.set(`${params.shopId}:${orderId}`, now.getTime());
+      const key = `${params.shopId}:${orderId}`;
+      nextAttempt.set(key, now.getTime() + RETRY_AFTER_MS);
       try {
         const result = await shopifyGraphql<{ order: OrderNode | null }>(params.shopDomain, accessToken, ORDER_QUERY, {
           id: `gid://shopify/Order/${orderId}`,
         });
         if (!result.data.order) {
+          nextAttempt.set(key, now.getTime() + NOT_FOUND_RETRY_MS);
           logger.info("order_backfill_not_found", { shop_id: params.shopId, order_id: orderId });
           continue;
         }
         const outcome = await upsertOrderCache(params.shopId, orderNodeToPayload(result.data.order), false);
         if (outcome?.applied) written += 1;
       } catch (error) {
-        // One order failing (an order past the 60-day window answers with an
-        // access error) must not stop the rest of the batch.
+        // One order failing must not stop the rest of the batch. A permanent
+        // GraphQL error (an order past the 60-day window answers with an
+        // access error) waits a week; a throttle or 5xx retries in an hour.
+        if (error instanceof ShopifyGraphQLError && !isThrottle(error)) {
+          nextAttempt.set(key, now.getTime() + NOT_FOUND_RETRY_MS);
+        }
         logger.warn("order_backfill_failed", {
           shop_id: params.shopId,
           order_id: orderId,
@@ -165,5 +217,6 @@ export async function backfillMissingOrders(params: {
 
 /** For tests: forget which orders were already attempted. */
 export function resetBackfillAttempts(): void {
-  lastAttempt.clear();
+  nextAttempt.clear();
+  inFlight.clear();
 }

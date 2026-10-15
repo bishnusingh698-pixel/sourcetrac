@@ -4,17 +4,18 @@ import type { TFunction } from "~/lib/i18n";
 import { intlLocaleFor } from "~/lib/i18n";
 import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
-import { OTHER_CHANNEL_VALUE, parseSurveySettings } from "~/lib/settings";
+import { OTHER_CHANNEL_VALUE } from "~/lib/settings";
 
 import { Banner, Metric, MoneyList, Panel, type BadgeTone } from "~/components/admin-ui";
 import { db } from "~/db.server";
 import { type LanguageCode } from "~/lib/i18n";
 import { buildTrend, computeStats } from "~/lib/analytics";
-import { decideRevenue, fetchDashboardData } from "~/lib/analytics-queries.server";
+import { decideRevenue, fetchChannelLabels, fetchDashboardData } from "~/lib/analytics-queries.server";
 import { formatMoney } from "~/lib/money";
 import { effectivePlan, PLAN_FREE } from "~/lib/plans";
 import { ensureShop } from "~/lib/provision.server";
-import { backfillMissingOrders } from "~/lib/order-backfill.server";
+import { startOrderBackfill } from "~/lib/order-backfill.server";
+import { maybeMarkUnreconcilable } from "~/lib/responses.server";
 import { maybeRunPendingSync } from "~/lib/sync.server";
 import { maybeRunPendingDeletions } from "~/lib/compliance.server";
 import { guarded } from "~/lib/admin-errors.server";
@@ -50,13 +51,17 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
   // Orders the webhooks never delivered (placed before install, for one) are
-  // fetched now, so their answers stop reading "Pending". Bounded and never throws.
-  await backfillMissingOrders({ shopId: shop.id, shopDomain: shop.shopDomain, accessToken: session.accessToken });
+  // fetched in the background (never blocking this page), so their answers stop
+  // reading "Pending" on the next load. Bounded and never throws.
+  startOrderBackfill({ shopId: shop.id, shopDomain: shop.shopDomain, accessToken: session.accessToken });
 
   // Retry any deferred Shopify write-back (Phase 7) and drain any redact that
   // was too large for the webhook budget (Phase 8). Throttled to once per few
   // minutes per process, and never throws, so neither can break the page.
   void maybeRunPendingSync(shop.id);
+  // Age out answers whose order never arrived (hourly, process-wide). It used
+  // to run only from the legacy extension's config route.
+  void maybeMarkUnreconcilable();
   void maybeRunPendingDeletions(shop.id);
 
 
@@ -71,12 +76,11 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   // Responses store the channel slug (`friend-or-family`). Show the
   // merchant's own label for it. A slug no longer in the survey (the option
   // was deleted) has no label left, so the slug itself is the best name.
-  const labels = new Map(
-    parseSurveySettings(shop.optionsJson, { questionText: shop.questionText, options: [], allowOther: false })
-      .options.map((option) => [option.value, option.label] as const),
-  );
+  const labels = await fetchChannelLabels(shop);
 
-  const data = await fetchDashboardData({ shopId: shop.id, days: range.days });
+  // One clock for the window and the trend, so they cannot straddle midnight.
+  const now = new Date();
+  const data = await fetchDashboardData({ shopId: shop.id, days: range.days, now });
   const { summary, channels } = computeStats({
     responses: data.responses,
     decidedAmounts: data.decidedAmounts,
@@ -88,11 +92,14 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     responses: data.responses,
     decidedAmounts: data.decidedAmounts,
     days: range.days,
+    now,
   });
 
   return {
     range,
-    hasAnyResponse: summary.totalResponses > 0,
+    // Any answer ever, not just in this window: an established shop with a
+    // quiet month is not shown the brand-new "no answers yet" state.
+    hasAnyResponse: data.anyAnswer,
     ordersInWindow: data.ordersInWindow,
     summary: {
       totalResponses: summary.totalResponses,
@@ -382,7 +389,7 @@ export default function Dashboard() {
             {RANGES.map((range) => (
               <s-button
                 key={range.days}
-                href={`/app?range=${range.days}`}
+                href={`/app/dashboard?range=${range.days}`}
                 variant={range.days === data.range.days ? "primary" : "secondary"}
               >
                 {t(range.labelKey)}

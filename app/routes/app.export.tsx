@@ -2,12 +2,11 @@ import { useState } from "react";
 import { useLoaderData, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 
 import { Panel } from "~/components/admin-ui";
-import { fetchResponsesInWindow, toExportRows } from "~/lib/analytics-queries.server";
+import { countChannelAnswers, fetchResponsesInWindow, toExportRows } from "~/lib/analytics-queries.server";
 import { CSV_HEADERS } from "~/lib/csv";
-import { db } from "~/db.server";
 import { loadExportContext } from "~/lib/export.server";
 import { ensureShop } from "~/lib/provision.server";
-import { backfillMissingOrders } from "~/lib/order-backfill.server";
+import { startOrderBackfill } from "~/lib/order-backfill.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import { authenticate } from "~/shopify.server";
@@ -29,10 +28,11 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
   // Orders the webhooks never delivered (placed before install, for one) are
-  // fetched now, so their answers stop reading "Pending". Bounded and never throws.
-  await backfillMissingOrders({ shopId: shop.id, shopDomain: shop.shopDomain, accessToken: session.accessToken });
+  // fetched in the background (never blocking this page), so their answers stop
+  // reading "Pending" on the next load. Bounded and never throws.
+  startOrderBackfill({ shopId: shop.id, shopDomain: shop.shopDomain, accessToken: session.accessToken });
 
-  const count = await db.surveyResponse.count({ where: { shopId: shop.id } });
+  const count = await countChannelAnswers(shop.id);
 
   // A preview of the newest rows, so merchants can confirm the file looks right
   // before downloading. Same builder and same context as the CSV route, so the
@@ -63,6 +63,7 @@ export default function Export() {
   const { t } = useAdminI18n();
   const [downloading, setDownloading] = useState(false);
   const [downloadFailed, setDownloadFailed] = useState(false);
+  const [truncatedAt, setTruncatedAt] = useState<string | null>(null);
 
   /**
    * Fetched rather than linked. Inside the Shopify admin iframe a plain link
@@ -73,9 +74,15 @@ export default function Export() {
   async function download() {
     setDownloading(true);
     setDownloadFailed(false);
+    setTruncatedAt(null);
     try {
       const response = await fetch("/app/export/csv");
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      // The server says when the file was cut at its row limit; a partial file
+      // must not look complete.
+      if (response.headers.get("X-SourceTrac-Truncated") === "true") {
+        setTruncatedAt(response.headers.get("X-SourceTrac-Row-Limit") ?? "");
+      }
       const disposition = response.headers.get("Content-Disposition") ?? "";
       const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? "sourcetrac-responses.csv";
       const url = URL.createObjectURL(await response.blob());
@@ -115,6 +122,9 @@ export default function Export() {
           </div>
           {downloadFailed ? (
             <s-text tone="critical">{t("export.download_failed")}</s-text>
+          ) : null}
+          {truncatedAt !== null ? (
+            <s-text tone="warning">{t("export.truncated", { limit: truncatedAt })}</s-text>
           ) : null}
         </s-stack>
       </Panel>

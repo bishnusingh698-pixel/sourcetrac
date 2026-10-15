@@ -688,7 +688,10 @@ export function validateResponse(
       return;
     }
 
-    const options = resolveOptions(question);
+    // Archived options stay valid answers: a buyer who loaded the survey before
+    // the merchant removed an option must not lose the answer (results show it
+    // as "(removed)"). Shoppers loading the survey now never see it.
+    const options = resolveOptions(question, { includeArchived: true });
     const optionById = new Map(options.map((o) => [o.id, o]));
 
     switch (question.type) {
@@ -796,4 +799,106 @@ export function validateResponse(
   });
 
   return errors;
+}
+
+/**
+ * Reduce a buyer's raw answer set to what is stored, before `validateResponse`.
+ *
+ * - A question id answered twice is refused (`duplicate_answer`): validation
+ *   only ever saw the last entry, while every entry used to be stored.
+ * - Archived questions are removed from the definition: buyers never see them,
+ *   so a `required` flag left on one must not block every submission.
+ * - Answers to questions that are hidden by show-if (evaluated in order, using
+ *   only answers to visible questions, exactly like `validateResponse`) are
+ *   dropped rather than rejected, so a buyer who changed an earlier answer does
+ *   not lose the whole set.
+ * - With `stale` (the buyer answered an older published version), answers to
+ *   questions that no longer exist are dropped, and the caller relaxes
+ *   `required` for questions the buyer could not have seen.
+ * - Each kept answer carries only the fields its question type uses.
+ *   `satisfaction_5` gets its canonical 1–5 `numberValue` from the option id,
+ *   and yes/no keeps `optionIds` only as the `["yes"]`/`["no"]` mirror.
+ */
+export function normalizeResponseAnswers(
+  survey: SurveyDefinition,
+  answers: readonly AnswerInput[],
+  { stale = false }: { stale?: boolean } = {},
+): { definition: SurveyDefinition; answers: AnswerInput[]; issues: ValidationIssue[] } {
+  const issues: ValidationIssue[] = [];
+  const seen = new Set<string>();
+  for (const answer of answers) {
+    if (seen.has(answer.questionId)) {
+      issues.push(issue(`answers[${answer.questionId}]`, "duplicate_answer", "A question was answered twice."));
+    }
+    seen.add(answer.questionId);
+  }
+
+  const active = survey.questions.filter((q) => !q.archived);
+  const archivedIds = new Set(survey.questions.filter((q) => q.archived).map((q) => q.id));
+  const definition: SurveyDefinition = { ...survey, questions: active };
+  const byId = new Map(answers.map((a) => [a.questionId, a]));
+
+  const kept: AnswerInput[] = [];
+  const answersSoFar: AnswerInput[] = [];
+  for (const question of active) {
+    const answer = byId.get(question.id);
+    if (!isQuestionVisible(question, answersSoFar)) continue;
+    if (!answer) continue;
+    const projected = projectAnswer(question, answer);
+    kept.push(projected);
+    answersSoFar.push(projected);
+  }
+
+  // Unknown question ids stay in the set (so `validateResponse` reports them)
+  // unless the buyer answered an older version or the question was archived.
+  const known = new Set(active.map((q) => q.id));
+  for (const answer of answers) {
+    if (known.has(answer.questionId) || archivedIds.has(answer.questionId)) continue;
+    if (!stale) kept.push(answer);
+  }
+
+  return { definition, answers: kept, issues };
+}
+
+function projectAnswer(question: SurveyQuestionDef, answer: AnswerInput): AnswerInput {
+  const base: AnswerInput = { questionId: question.id };
+  switch (question.type) {
+    case "single_choice":
+    case "dropdown":
+    case "multi_choice": {
+      const optionIds = answer.optionIds ?? [];
+      const options = resolveOptions(question, { includeArchived: true });
+      const otherChosen = optionIds.some((id) => options.find((o) => o.id === id)?.isOther);
+      return {
+        ...base,
+        optionIds,
+        ...(otherChosen && answer.otherText != null ? { otherText: answer.otherText } : {}),
+      };
+    }
+    case "satisfaction_5": {
+      const optionIds = answer.optionIds ?? [];
+      const value = optionIds.length === 1 ? satisfactionValue(optionIds[0] as string) : undefined;
+      return { ...base, optionIds, numberValue: value ?? null };
+    }
+    case "yes_no": {
+      const mirrored = answer.optionIds?.[0];
+      const value =
+        answer.numberValue === 1 || answer.numberValue === 0
+          ? answer.numberValue
+          : mirrored === YES_NO_IDS.yes
+            ? 1
+            : mirrored === YES_NO_IDS.no
+              ? 0
+              : answer.numberValue;
+      if (value === 1 || value === 0) {
+        return { ...base, numberValue: value, optionIds: [value === 1 ? YES_NO_IDS.yes : YES_NO_IDS.no] };
+      }
+      return { ...base, numberValue: value ?? null };
+    }
+    case "rating_5":
+    case "nps":
+      return { ...base, numberValue: answer.numberValue ?? null };
+    case "text":
+      return { ...base, textValue: answer.textValue ?? null };
+  }
 }

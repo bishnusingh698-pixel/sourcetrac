@@ -1,4 +1,5 @@
 import { db } from "~/db.server";
+import { logger } from "~/lib/logger";
 import { shopifyGraphql } from "~/lib/shopify-graphql.server";
 
 /**
@@ -33,15 +34,20 @@ const EMPTY: AdminSurveyContext = {
 
 async function resolveChannelLabel(
   _shopId: string,
-  answer: { optionIds: string; otherText: string | null },
+  answer: { questionId: string; optionIds: string; otherText: string | null },
 ): Promise<string | null> {
   const optionIds = safeArray(answer.optionIds);
   const first = optionIds[0];
   let label = answer.otherText ?? null;
   if (!label && first) {
-    // Option ids are globally unique cuids; the response was already scoped to
-    // the shop, so a lookup by id cannot cross shops. Option has no shopId.
-    const option = await db.option.findUnique({ where: { id: first }, select: { label: true } });
+    // Option has no shopId. Scope the lookup to the answer's own question (the
+    // response was already scoped to the shop), so an id that is not globally
+    // unique - a backfilled channel value, a template key - cannot resolve to
+    // another shop's label.
+    const option = await db.option.findFirst({
+      where: { id: first, questionId: answer.questionId },
+      select: { label: true },
+    });
     label = option?.label ?? first;
   }
   return label;
@@ -85,7 +91,7 @@ export async function lookupByOrder(shopId: string, orderId: string): Promise<Ad
 
 const CUSTOMER_ORDERS = `#graphql
   query SourceTracCustomerOrders($query: String!) {
-    orders(first: 20, sortKey: CREATED_AT, reverse: true, query: $query) {
+    orders(first: 100, sortKey: CREATED_AT, reverse: true, query: $query) {
       nodes { id }
     }
   }
@@ -120,7 +126,11 @@ export async function lookupByCustomer(params: {
     orderIds = (result.data.orders.nodes ?? [])
       .map((node) => node.id.match(/(\d+)$/)?.[1])
       .filter((id): id is string => Boolean(id));
-  } catch {
+  } catch (error) {
+    logger.warn("admin_context_customer_orders_failed", {
+      shop_id: params.shopId,
+      error_message: error instanceof Error ? error.message : String(error),
+    });
     return EMPTY;
   }
   if (orderIds.length === 0) return EMPTY;

@@ -434,6 +434,8 @@ describe("uninstalled and unknown shops stay that way", () => {
   });
 
   it("shop/redact deletes the shop and every stored session", async () => {
+    // shop/redact follows an uninstall (48 hours later).
+    await prisma.shop.update({ where: { shopDomain: LIFE_DOMAIN }, data: { installState: "uninstalled" } });
     const result = await handleShopRedact({ shopDomain: LIFE_DOMAIN });
 
     expect(result).toEqual({ shopFound: true, deleted: true });

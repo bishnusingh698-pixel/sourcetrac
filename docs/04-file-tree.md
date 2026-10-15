@@ -12,7 +12,7 @@ The annotated tree lives in `02-architecture-and-costs.md` §7. This file covers
 |---|---|---|---|
 | `SHOPIFY_API_KEY` | ✅ | `a1b2c3...` | App client ID. Used as the expected JWT `aud`. |
 | `SHOPIFY_API_SECRET` | ✅ | `shpss_...` | App secret. Verifies webhook HMAC **and** extension session-token JWTs. Server-side only. |
-| `SCOPES` | ✅ | `read_orders` | Single scope. Keep in sync with `shopify.app.toml`. |
+| `SCOPES` | ✅ | `read_orders,write_orders,write_customers,read_products` | Identical to `shopify.app.toml` `[access_scopes]`; the boot check warns on a difference. |
 | `DATABASE_URL` | ✅ | `postgresql://user:pass@ep-xxx.aws.neon.tech/neondb?sslmode=require` | Use the **pooled** connection string for the server, not the direct one. |
 | `TOKEN_ENCRYPTION_KEY` | ✅ | 32-byte hex | AES-256-GCM key for `access_token_encrypted`. Generate: `openssl rand -hex 32`. **Rotating this without re-encrypting orphans every token.** |
 | `APP_URL` | ✅ | `https://sourcetrac.onrender.com` | Public base URL. Used for `returnUrl`, webhook registration, and absolute links. Must be HTTPS. |

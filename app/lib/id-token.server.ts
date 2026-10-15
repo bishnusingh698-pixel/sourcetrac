@@ -62,7 +62,9 @@ export function verifyIdToken(token: string): IdTokenClaims {
   const now = Math.floor(Date.now() / 1000);
   const exp = typeof claims.exp === "number" ? claims.exp : undefined;
   const nbf = typeof claims.nbf === "number" ? claims.nbf : undefined;
-  if (exp !== undefined && exp < now - JWT_CLOCK_TOLERANCE_SECONDS) throw new IdTokenError("Token expired");
+  // Every Shopify token carries `exp`; one without it would never expire.
+  if (exp === undefined) throw new IdTokenError("Token has no expiry");
+  if (exp < now - JWT_CLOCK_TOLERANCE_SECONDS) throw new IdTokenError("Token expired");
   if (nbf !== undefined && nbf > now + JWT_CLOCK_TOLERANCE_SECONDS) throw new IdTokenError("Token not yet valid");
 
   const aud = typeof claims.aud === "string" ? claims.aud : "";
@@ -70,6 +72,12 @@ export function verifyIdToken(token: string): IdTokenClaims {
 
   const dest = (typeof claims.dest === "string" ? claims.dest : "").replace(/^https?:\/\//, "").toLowerCase();
   if (!dest) throw new IdTokenError("Token has no shop claim");
+
+  // Only an ADMIN token, issued for this shop's admin. Checkout and customer
+  // account session tokens are signed with the same secret and carry the same
+  // `aud`, so without this a buyer could read any order's answers.
+  const iss = (typeof claims.iss === "string" ? claims.iss : "").toLowerCase();
+  if (iss !== `https://${dest}/admin`) throw new IdTokenError("Token was not issued by the shop admin");
 
   return {
     dest,

@@ -58,12 +58,11 @@ export function AdminResponseBlock({
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const token = await getToken();
-      if (!token) {
-        if (!cancelled) setLoading(false);
-        return;
-      }
       try {
+        // Inside the try: a rejected `idToken()` used to leave the block
+        // spinning forever.
+        const token = await getToken();
+        if (!token) return;
         const res = await fetch(`${apiUrl}/api/admin-survey-context`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },

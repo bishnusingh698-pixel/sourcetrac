@@ -40,6 +40,11 @@ export type SmartActionPreset = {
   gateQuestionKey?: string;
   gateOptionKeys?: string[];
   /**
+   * Only write for a buyer's first order. The merchant can widen the survey's
+   * audience, so a "first order" tag cannot rely on the targeting alone.
+   */
+  requiresFirstOrder?: boolean;
+  /**
    * For numeric questions (rating / NPS): write when the value falls in a band.
    * Checked in order; the first matching band wins.
    */
@@ -100,6 +105,7 @@ export const SMART_ACTION_PRESETS: Record<string, SmartActionPreset> = {
     questionKey: "q_ease",
     name: "first-order:low-rating",
     numericBands: [{ max: 2, value: "low-rating" }],
+    requiresFirstOrder: true,
     exampleKey: "smart_actions.example_order_tag",
     scope: "write_orders",
   },
@@ -271,6 +277,8 @@ export function resolveSmartActionWrites(params: {
   templateId: string;
   presetIds: readonly string[];
   answers: readonly SmartActionAnswer[];
+  /** From the Thank-you page; null/undefined when unknown. */
+  isFirstOrder?: boolean | null;
 }): ResolvedSmartActions {
   const out: ResolvedSmartActions = { orderTags: [], customerTags: [], customerMetafields: [] };
   if (!params.templateId || params.presetIds.length === 0) return out;
@@ -285,6 +293,8 @@ export function resolveSmartActionWrites(params: {
   for (const id of params.presetIds) {
     const preset = SMART_ACTION_PRESETS[id];
     if (!preset) continue;
+    // Unknown counts as "not a first order": the tag claims it is one.
+    if (preset.requiresFirstOrder && params.isFirstOrder !== true) continue;
     const questionId = stableQuestionId(params.templateId, preset.questionKey);
     const answer = byQuestion.get(questionId);
     if (!answer) continue;

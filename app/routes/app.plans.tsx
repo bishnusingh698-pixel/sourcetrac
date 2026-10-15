@@ -21,6 +21,7 @@ import {
   fetchActiveSubscriptions,
   needsPlanSync,
   paidPlanFromSubscriptions,
+  testChargesAllowed,
 } from "~/lib/billing.server";
 import { getAccessToken, setPlan } from "~/lib/shop.server";
 import { ensureShop } from "~/lib/provision.server";
@@ -71,10 +72,10 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
         shopDomain: shop.shopDomain,
         accessToken: session.accessToken,
       });
-      const paid = paidPlanFromSubscriptions(subscriptions);
-      const live = activeSourceTracSubscription(subscriptions);
+      const allowTest = await testChargesAllowed(shop.shopDomain, session.accessToken);
+      const paid = paidPlanFromSubscriptions(subscriptions, { allowTest });
+      const live = activeSourceTracSubscription(subscriptions, { allowTest });
       const reconciled: "free" | "growth" | "scale" = paid ?? "free";
-      activePlan = reconciled;
       if (needsPlanSync(shop, reconciled)) {
         // `planStatus` records whether a charge is actually live, and the
         // `app_subscriptions/*` webhooks own it. This page only sees
@@ -95,6 +96,9 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
         });
         synced = true;
       }
+      // Shown only once stored: if the write above failed, the page keeps
+      // showing the plan that is actually enforced.
+      activePlan = reconciled;
     } catch (error) {
       // Fall back to the stored plan rather than blocking the page. The webhook
       // will correct it on the next charge change.
@@ -142,7 +146,9 @@ async function cancelActiveSubscription(params: { shopDomain: string; accessToke
     return result(false, "plans.msg_lookup_failed");
   }
 
-  const active = activeSourceTracSubscription(subscriptions);
+  const active = activeSourceTracSubscription(subscriptions, {
+    allowTest: await testChargesAllowed(params.shopDomain, params.accessToken),
+  });
   if (!active) return result(true, "plans.msg_already_free");
 
   const cancelled = await cancelSubscription({ ...params, subscriptionGid: active.id });
@@ -180,7 +186,20 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
       return cancelActiveSubscription({ shopDomain: shop.shopDomain, accessToken });
     }
 
-    const created = await createSubscription({ shopDomain: shop.shopDomain, accessToken, plan });
+    const allowTest = await testChargesAllowed(shop.shopDomain, accessToken);
+
+    // Choosing the plan already held would create a second, duplicate charge
+    // for the merchant to approve.
+    try {
+      const current = paidPlanFromSubscriptions(await fetchActiveSubscriptions({ shopDomain: shop.shopDomain, accessToken }), {
+        allowTest,
+      });
+      if (current === plan) return result(true, "plans.msg_already_on_plan");
+    } catch {
+      return result(false, "plans.msg_lookup_failed");
+    }
+
+    const created = await createSubscription({ shopDomain: shop.shopDomain, accessToken, plan, test: allowTest });
 
     if (!created.ok) {
       return result(false, "plans.msg_subscribe_failed", { error: created.error });
@@ -190,7 +209,9 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
     // here — the app_subscriptions/update webhook confirms it.
     if (created.confirmationUrl) return redirect(created.confirmationUrl, { target: "_top" });
 
-    return result(true, "plans.msg_subscription_created");
+    // Without a confirmation URL there is nothing the merchant can approve.
+    logger.warn("billing_no_confirmation_url", { shop_domain: shop.shopDomain, plan });
+    return result(false, "plans.msg_subscribe_failed", { error: "—" });
   }
 
   if (intent === "cancel") {

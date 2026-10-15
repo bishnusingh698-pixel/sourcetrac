@@ -18,7 +18,7 @@ nothing.
 | `customers/data_request` avoids over-disclosure | **Fixed 2026-10-02** |
 | 24-month / 30-day retention enforced | **Implemented 2026-10-02** |
 | Customer contact details stored | None — by design |
-| `read_orders` only, Level 1 protected data | Correct |
+| `read_orders,write_orders,write_customers,read_products` (write scopes for the optional order/customer sync) | Correct; `write_customers` and customer metafields mean protected customer data review |
 
 ## What was actually broken
 
@@ -110,8 +110,11 @@ is reclaiming space.
 - **Data minimisation.** No customer name, email, phone, address, or customer
   GID is stored. A response is `order_id`, `channel`, `timestamp`, plus the
   order total and currency cached from the webhook.
-- **Scope.** `read_orders` only. No customer scopes, no `write_orders`. This
-  keeps the app at protected-customer-data **Level 1**.
+- **Scope.** `read_orders` for the survey, plus `write_orders`,
+  `write_customers` and `read_products` for the optional order/customer sync
+  and product targeting. Customer tags and metafields are customer data, so
+  the app must complete protected customer data review for them; no customer
+  name, email, phone or address is ever read.
 - **HMAC.** Webhook verification is delegated to
   `authenticate.webhook()`, which verifies over the raw body and returns 401 on
   a bad signature — the exact behaviour App Store review checks.

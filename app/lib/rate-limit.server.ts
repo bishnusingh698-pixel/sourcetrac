@@ -185,19 +185,33 @@ export function consumeTokenSubmission(
   expiresAtMs: number,
   now = Date.now(),
 ): void {
-  evictExpiredTokenSubs(now);
+  reserveTokenSubmission(tokenKey, expiresAtMs, now);
+}
 
+/**
+ * Reserve one of the token's submissions, synchronously, before any await: a
+ * check now and a count later let fifty parallel requests on one token all pass
+ * the check. The reservation is released (`releaseTokenSubmission`) when the
+ * attempt did not store an answer, so failed attempts (a 5xx while the
+ * database wakes, a backstop 429 before the order lands) never burn the cap.
+ */
+export function reserveTokenSubmission(tokenKey: string, expiresAtMs: number, now = Date.now()): void {
+  evictExpiredTokenSubs(now);
   const existing = tokenSubs.get(tokenKey);
   if (!existing || existing.expiresAt <= now) {
-    if (tokenSubs.size > MAX_BUCKETS * 2) evictExpiredTokenSubs(now);
     tokenSubs.set(tokenKey, { count: 1, expiresAt: expiresAtMs });
     return;
   }
-
   if (existing.count >= MAX_SUBMISSIONS_PER_TOKEN) {
     throw new RateLimitError(60, { bucket: "token" });
   }
   existing.count += 1;
+}
+
+/** Give back a reservation whose attempt stored nothing. */
+export function releaseTokenSubmission(tokenKey: string): void {
+  const existing = tokenSubs.get(tokenKey);
+  if (existing && existing.count > 0) existing.count -= 1;
 }
 
 /** Test helper: clear all buckets. */

@@ -1,0 +1,9 @@
+{
+  "sourcetrac": {
+    "heading": "Attribution SourceTrac",
+    "loading": "Recherche d’une réponse au sondage…",
+    "missing_order": "Aucune réponse au sondage enregistrée pour cette commande.",
+    "missing_customer": "Aucune réponse au sondage enregistrée pour ce client.",
+    "found_prefix": "Comment il nous a connus :"
+  }
+}

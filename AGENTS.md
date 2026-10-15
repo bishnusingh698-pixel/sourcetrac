@@ -23,7 +23,7 @@ Read `docs/01-verification-report.md` before writing any code — it contains th
 - **Session tokens are JWTs, TTL 5 minutes.** Trust only `dest` (shop domain), `aud`, `exp`. Never trust shop identity from the body.
 - **Polaris React is DEPRECATED/archived.** Use **Polaris Web Components** (`s-page`, `s-section`, `s-button`, …) with `@shopify/polaris-types`.
 - **Billing:** Shopify App Pricing stopped sending billing webhooks and stopped passing `charge_id` on **2026-04-28**. We use the **Billing API** (`appSubscriptionCreate`) — still supported, compliant with requirement 1.2.1. Migration seam is `app/lib/billing.server.ts`.
-- **`read_orders` is our only access scope.** No `write_orders`, no `read_all_orders`, no customer scopes. This keeps us at protected-customer-data **Level 1**.
+- **Scopes are `read_orders,write_orders,write_customers,read_products`** (Phase 7 sync). `read_orders` alone serves the survey; the write scopes are gated at runtime on what the merchant granted. `write_customers` puts the app in protected customer data review. No `read_all_orders`.
 - **"Custom branding" in the survey is impossible** — CSS cannot be overridden; merchant checkout branding is inherited. Offer copy + emoji control only. Permanent "no" to a colour picker.
 - **Render free:** 512 MB, spins down after 15 min idle, ~1 min cold start, 750 hrs/workspace/mo. **Neon free:** 100 CU-hrs, 0.5 GB, suspends after 5 min inactivity.
 - **Non-sleeping alternative: Northflank Sandbox** (explicitly "always-on-compute – no sleeping", 2 free services). Fly.io free tier is gone for new orgs; Koyeb free tier is not on their pricing page; Oracle Always Free sources contradict each other.

@@ -1,0 +1,9 @@
+{
+  "sourcetrac": {
+    "heading": "Atribuição do SourceTrac",
+    "loading": "Procurando uma resposta da pesquisa…",
+    "missing_order": "Nenhuma resposta da pesquisa registrada para este pedido.",
+    "missing_customer": "Nenhuma resposta da pesquisa registrada para este cliente.",
+    "found_prefix": "Como nos conheceu:"
+  }
+}

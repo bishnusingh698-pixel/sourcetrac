@@ -89,45 +89,11 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
   const template = templateById(templateId);
   if (!template) throw new ValidationError("That template does not exist.", "Pick another template.");
 
-  const { countryCode } = await fetchShopLocaleInfo(shop.shopDomain, session.accessToken);
-  const locale = shop.language ?? "en";
-
-  const definition = buildSurveyDefinition({
-    template,
-    locale,
-    region: regionPackFor(countryCode),
-    lite,
-    toggles: buildDefaultToggles(template.questions),
-  });
-
-  // The Lite choice restricts the created survey to the template's Free subset
-  // (T5); the merchant can widen it after upgrading without losing answers.
-  const input: SurveyInput = {
-    name: definition.name ?? template.nameKey,
-    status: "draft",
-    placements: templatePlacements(template),
-    layout: definition.layout ?? "all",
-    title: definition.title ?? "Quick question",
-    intro: definition.intro ?? null,
-    buttonLabel: definition.buttonLabel ?? "Submit",
-    thankYouText: definition.thankYouText ?? "Thanks for your feedback!",
-    templateId: template.id,
-    templateVersion: template.version,
-    rotation: false,
-    rotationWeight: 2,
-    learnAndStop: template.defaults.learnAndStop ?? false,
-    design: definition.design ?? undefined,
-    questions: definition.questions.map((q) => ({
-      ...q,
-      options: q.options?.map((o) => ({ ...o })),
-    })),
-  };
-
-  const created = await createSurvey(shop.id, input);
-  // Quick setup (T3) owns the next step: it walks the merchant through
-  // customize → who sees it → review, then launches. The Lite flag rides along
-  // so the wizard can explain what the full version adds.
-  return redirect(`/app/surveys/library/${created.id}/setup?lite=${lite ? "1" : "0"}`);
+  // Quick setup (T3) owns creation: it walks the merchant through customize →
+  // who sees it → review, then creates the survey. The setup route is keyed on
+  // the TEMPLATE id; creating a survey here and redirecting with its id left an
+  // orphan draft and a 404/500 in the wizard.
+  return redirect(`/app/surveys/library/${template.id}/setup?lite=${lite ? "1" : "0"}`);
 });
 
 /** Optional questions start ON unless the Lite version excludes them. */

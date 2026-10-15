@@ -7,7 +7,7 @@
  * cache keeps the Admin API cost off the critical path of every Studio load.
  */
 
-import { fetchProductTitles, fetchShopDisplay } from "~/lib/shopify-graphql.server";
+import { fetchProductTitles, fetchShopDisplay, fetchShopLocaleInfo } from "~/lib/shopify-graphql.server";
 
 export type ShopDisplay = {
   name: string | null;
@@ -16,8 +16,21 @@ export type ShopDisplay = {
 };
 
 const TTL_MS = 10 * 60 * 1000;
+/** A lookup that came back empty is usually a transient Admin API failure. */
+const EMPTY_TTL_MS = 30 * 1000;
+const MAX_ENTRIES = 500;
 
 const cache = new Map<string, { value: ShopDisplay; expiresAt: number }>();
+
+/** Drop expired entries, then the oldest, so neither cache grows without bound. */
+function prune<V>(map: Map<string, { value: V; expiresAt: number }>, now: number): void {
+  if (map.size < MAX_ENTRIES) return;
+  for (const [key, entry] of map) if (entry.expiresAt <= now) map.delete(key);
+  for (const key of map.keys()) {
+    if (map.size < MAX_ENTRIES) break;
+    map.delete(key);
+  }
+}
 
 export async function getShopDisplay(
   shopId: string,
@@ -29,7 +42,8 @@ export async function getShopDisplay(
   if (cached && cached.expiresAt > now) return cached.value;
 
   const value = await fetchShopDisplay(shopDomain, accessToken);
-  cache.set(shopId, { value, expiresAt: now + TTL_MS });
+  prune(cache, now);
+  cache.set(shopId, { value, expiresAt: now + (value.name === null ? EMPTY_TTL_MS : TTL_MS) });
   return value;
 }
 
@@ -53,7 +67,32 @@ export async function getProductTitles(
   if (cached && cached.expiresAt > now) return cached.value;
 
   const value = await fetchProductTitles(shopDomain, accessToken, productIds);
-  titleCache.set(key, { value, expiresAt: now + TTL_MS });
+  prune(titleCache, now);
+  const empty = productIds.length > 0 && Object.keys(value).length === 0;
+  titleCache.set(key, { value, expiresAt: now + (empty ? EMPTY_TTL_MS : TTL_MS) });
+  return value;
+}
+
+/**
+ * The shop's IANA time zone and country, cached per shop. Home and the
+ * Responses page need them on every load; asking Shopify each time put a
+ * blocking Admin API call (with its timeout and retries) in front of the page.
+ */
+const LOCALE_TTL_MS = 60 * 60 * 1000;
+const localeCache = new Map<string, { value: { timeZone: string | null; countryCode: string | null }; expiresAt: number }>();
+
+export async function getShopLocaleInfo(
+  shopId: string,
+  shopDomain: string,
+  accessToken: string | null | undefined,
+): Promise<{ timeZone: string | null; countryCode: string | null }> {
+  const now = Date.now();
+  const cached = localeCache.get(shopId);
+  if (cached && cached.expiresAt > now) return cached.value;
+
+  const value = await fetchShopLocaleInfo(shopDomain, accessToken);
+  prune(localeCache, now);
+  localeCache.set(shopId, { value, expiresAt: now + (value.timeZone === null ? EMPTY_TTL_MS : LOCALE_TTL_MS) });
   return value;
 }
 
@@ -61,4 +100,5 @@ export async function getProductTitles(
 export function clearShopDisplayCache(): void {
   cache.clear();
   titleCache.clear();
+  localeCache.clear();
 }

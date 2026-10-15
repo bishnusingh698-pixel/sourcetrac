@@ -125,7 +125,7 @@ DATABASE_URL=postgresql://user:pass@ep-xxx-pooler.aws.neon.tech/neondb?sslmode=r
 SHOPIFY_API_KEY=your_client_id
 SHOPIFY_API_SECRET=shpss_...
 SHOPIFY_API_VERSION=2026-07
-SCOPES=read_orders
+SCOPES=read_orders,write_orders,write_customers,read_products
 
 # Must be the render URL EXACTLY. No trailing slash.
 # First deploy: set it to the URL render gave you, then redeploy.

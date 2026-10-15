@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes, timingSafeEqual } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes, timingSafeEqual } from "node:crypto";
 
 import { env } from "./env";
 
@@ -24,6 +24,12 @@ function key(): Buffer {
   return Buffer.from(env().TOKEN_ENCRYPTION_KEY, "hex");
 }
 
+/** Keys to try when decrypting: the current one, then the one being rotated out. */
+function decryptionKeys(): Buffer[] {
+  const previous = env().TOKEN_ENCRYPTION_KEY_PREVIOUS;
+  return previous ? [key(), Buffer.from(previous, "hex")] : [key()];
+}
+
 export function encryptSecret(plaintext: string): EncryptedValue {
   const iv = randomBytes(IV_LENGTH);
   const cipher = createCipheriv(ALGORITHM, key(), iv);
@@ -43,21 +49,25 @@ export function encryptSecret(plaintext: string): EncryptedValue {
 export function decryptSecret(value: EncryptedValue | null | undefined): string | null {
   if (!value?.ciphertext || !value.iv || !value.tag) return null;
 
-  try {
-    const iv = Buffer.from(value.iv, "base64");
-    const tag = Buffer.from(value.tag, "base64");
-    if (iv.length !== IV_LENGTH || tag.length !== TAG_LENGTH) return null;
+  const iv = Buffer.from(value.iv, "base64");
+  const tag = Buffer.from(value.tag, "base64");
+  if (iv.length !== IV_LENGTH || tag.length !== TAG_LENGTH) return null;
 
-    const decipher = createDecipheriv(ALGORITHM, key(), iv);
-    decipher.setAuthTag(tag);
-    const plaintext = Buffer.concat([
-      decipher.update(Buffer.from(value.ciphertext, "base64")),
-      decipher.final(),
-    ]);
-    return plaintext.toString("utf8");
-  } catch {
-    return null;
+  // GCM authenticates, so a wrong key fails cleanly and the next one is tried.
+  for (const candidate of decryptionKeys()) {
+    try {
+      const decipher = createDecipheriv(ALGORITHM, candidate, iv);
+      decipher.setAuthTag(tag);
+      const plaintext = Buffer.concat([
+        decipher.update(Buffer.from(value.ciphertext, "base64")),
+        decipher.final(),
+      ]);
+      return plaintext.toString("utf8");
+    } catch {
+      // Try the next key.
+    }
   }
+  return null;
 }
 
 /**
@@ -65,12 +75,11 @@ export function decryptSecret(value: EncryptedValue | null | undefined): string 
  * timing side-channel would let an attacker forge a signature byte by byte.
  */
 export function safeEqual(a: string, b: string): boolean {
-  const bufA = Buffer.from(a, "utf8");
-  const bufB = Buffer.from(b, "utf8");
-  // timingSafeEqual throws on length mismatch, so compare lengths first.
-  // The early return leaks length only, which is not secret for an HMAC.
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
+  // Compare fixed-length digests: comparing the raw strings needs an early
+  // length check, which leaks the length of a secret it is compared against.
+  const digestA = createHash("sha256").update(a, "utf8").digest();
+  const digestB = createHash("sha256").update(b, "utf8").digest();
+  return timingSafeEqual(digestA, digestB);
 }
 
 /** URL-safe random token, used for jti replay tracking and nonces. */

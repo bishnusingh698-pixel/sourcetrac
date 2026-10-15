@@ -199,16 +199,18 @@ describe("customers/redact deletes the orders Shopify names", () => {
 
     expect(first.deferred).toBe(true);
     expect(first.deletedV2Responses).toBe(REDACT_BATCH_SIZE);
-    expect(await prisma.pendingDeletion.count({ where: { shopId: shop.id } })).toBe(1);
-    // The remaining 5 are still present until drained.
-    expect(await prisma.response.count({ where: { shopId: shop.id } })).toBe(5);
 
-    const drained = await processPendingDeletions(shop.id);
-
-    expect(drained.processed).toBe(5);
-    expect(drained.remaining).toBe(0);
+    // The remaining 5 are drained in the background right after the webhook,
+    // without waiting for the merchant to open the app (H19).
+    for (let i = 0; i < 100 && (await prisma.pendingDeletion.count({ where: { shopId: shop.id } })) > 0; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
     expect(await prisma.response.count({ where: { shopId: shop.id } })).toBe(0);
     expect(await prisma.pendingDeletion.count({ where: { shopId: shop.id } })).toBe(0);
+
+    // A later explicit drain finds nothing left.
+    const drained = await processPendingDeletions(shop.id);
+    expect(drained).toEqual({ processed: 0, remaining: 0 });
   });
 });
 
@@ -223,7 +225,18 @@ describe("shop/redact removes the whole shop", () => {
       },
     });
 
-    const result = await handleShopRedact({ shopDomain: DOMAIN_B });
+    // shop/redact comes 48 hours after an uninstall. A shop whose current
+    // installation began after that uninstall has reinstalled: nothing is
+    // deleted (H20).
+    await prisma.shop.update({ where: { id: shop.id }, data: { installedAt: new Date() } });
+    const stale = await handleShopRedact({ shopDomain: DOMAIN_B, triggeredAt: new Date() });
+    expect(stale.deleted).toBe(false);
+    expect(await prisma.surveyResponse.count({ where: { shopId: shop.id } })).toBe(1);
+
+    // Still marked installed only because the uninstall was never processed:
+    // the installation predates the uninstall, so the redact proceeds.
+    await prisma.shop.update({ where: { id: shop.id }, data: { installedAt: new Date(Date.now() - 10 * 24 * 3600 * 1000) } });
+    const result = await handleShopRedact({ shopDomain: DOMAIN_B, triggeredAt: new Date() });
 
     expect(result.deleted).toBe(true);
     expect(await prisma.shop.count({ where: { id: shop.id } })).toBe(0);

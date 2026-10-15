@@ -10,6 +10,7 @@ import { ensureShop } from "~/lib/provision.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
 import { FEATURE_FLAGS } from "@shared/feature-flags";
+import { countFailedSync } from "~/lib/sync.server";
 import { grantedSyncScopes } from "~/lib/scopes.server";
 
 /**
@@ -30,15 +31,17 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
 
-  const [surveyCount, responseCount, dataRequests] = await Promise.all([
+  const [surveyCount, responseCount, dataRequests, failedSync] = await Promise.all([
     db.survey.count({ where: { shopId: shop.id } }),
     db.response.count({ where: { shopId: shop.id } }),
     db.dataRequest.findMany({
       where: { shopId: shop.id },
       orderBy: { createdAt: "desc" },
       take: 10,
-      select: { id: true, createdAt: true },
+      select: { id: true, createdAt: true, payload: true },
     }),
+    // Shopify writes that gave up after every retry, so they are not silent.
+    countFailedSync(shop.id),
   ]);
 
   return {
@@ -52,12 +55,26 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     // this, so a store that has not re-approved keeps working unchanged.
     grantedScopes: grantedSyncScopes(session.scope),
     bonusFlagsOn: FEATURE_FLAGS.ONSITE_SURVEYS || FEATURE_FLAGS.SURVEY_LINK_PAGE,
+    failedSync,
     dataRequests: dataRequests.map((request) => ({
       id: request.id,
       createdAt: request.createdAt.toISOString(),
+      // The orders whose answers the request found, so the merchant can open
+      // them on the Responses page and pass the data on.
+      orders: requestOrders(request.payload),
     })),
   };
 });
+
+function requestOrders(payload: string): string[] {
+  try {
+    const parsed = JSON.parse(payload) as { records?: Array<{ orderId?: unknown }> };
+    const ids = (parsed.records ?? []).map((record) => record.orderId).filter((id): id is string => typeof id === "string");
+    return [...new Set(ids)];
+  } catch {
+    return [];
+  }
+}
 
 export default function Settings() {
   const data = useLoaderData<typeof loader>();
@@ -98,6 +115,11 @@ export default function Settings() {
           <s-text color="subdued" fontSize="small">
             {t("settings.sync_gated_note")}
           </s-text>
+          {data.failedSync.count > 0 ? (
+            <s-text tone="critical">
+              {t("settings.sync_failed", { count: data.failedSync.count, error: data.failedSync.lastError ?? "—" })}
+            </s-text>
+          ) : null}
           {data.bonusFlagsOn ? (
             <s-text color="subdued" fontSize="small">
               {t("settings.sync_flags_on")}
@@ -115,6 +137,9 @@ export default function Settings() {
               {data.dataRequests.map((request) => (
                 <s-text key={request.id} fontSize="small">
                   {request.createdAt.slice(0, 10)}
+                  {request.orders.length > 0
+                    ? ` · ${t("settings.privacy_request_found", { count: request.orders.length, orders: request.orders.join(", ") })}`
+                    : ""}
                 </s-text>
               ))}
             </s-stack>

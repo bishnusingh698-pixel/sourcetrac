@@ -108,7 +108,11 @@
     "privacy_description": "Was SourceTrac speichert und welche Anfragen wir bearbeitet haben.",
     "privacy_body": "SourceTrac speichert nur eine Bestell-ID, die Antwort, den Kanal und einen Zeitstempel. Kein Name, keine E-Mail, keine Telefonnummer und keine Adresse werden gespeichert.",
     "privacy_requests_title": "Aktuelle Datenanfragen",
-    "remove_option": "{{label}} entfernen"
+    "remove_option": "{{label}} entfernen",
+    "sync_failed_one": "{{count}} Schreibvorgang bei Shopify konnte nach mehreren Versuchen nicht abgeschlossen werden. Letzter Fehler: {{error}}",
+    "sync_failed_other": "{{count}} Schreibvorgänge bei Shopify konnten nach mehreren Versuchen nicht abgeschlossen werden. Letzter Fehler: {{error}}",
+    "privacy_request_found_one": "Antworten für {{count}} Bestellung gefunden: {{orders}}",
+    "privacy_request_found_other": "Antworten für {{count}} Bestellungen gefunden: {{orders}}"
   },
   "onboarding": {
     "title": "Erste Schritte",
@@ -150,7 +154,8 @@
     "download": "CSV herunterladen",
     "preview_title": "Vorschau",
     "preview_description": "Ihre {{count}} neuesten Antworten, genau wie im Export.",
-    "download_failed": "Der Download wurde nicht gestartet. Bitte versuchen Sie es gleich noch einmal."
+    "download_failed": "Der Download wurde nicht gestartet. Bitte versuchen Sie es gleich noch einmal.",
+    "truncated": "Diese Datei enthält nur die neuesten {{limit}} Antworten. Ältere Antworten wurden weggelassen."
   },
   "plans": {
     "title": "Tarife",
@@ -198,7 +203,8 @@
     "msg_cancelled": "Abo gekündigt. Sie sind wieder im Tarif Kostenlos mit {{cap}} Antworten pro Monat.",
     "msg_subscribe_failed": "Shopify konnte das Abo nicht starten: {{error}}",
     "msg_subscription_created": "Abo erstellt. Falls Sie nicht zu einer Bestätigungsseite weitergeleitet wurden, prüfen Sie die Abrechnungsseite in Ihrer Shopify-Administration.",
-    "msg_plan_unavailable": "Dieser Tarif ist nicht verfügbar."
+    "msg_plan_unavailable": "Dieser Tarif ist nicht verfügbar.",
+    "msg_already_on_plan": "Sie nutzen diesen Tarif bereits."
   },
   "help": {
     "title": "Hilfe",
@@ -590,7 +596,10 @@
     "cross_caption": "{{row}} nach {{col}}",
     "cross_percent": "{{percent}} %",
     "ideas_title": "Ideen zum Ausprobieren",
-    "filter_product": "Produkt"
+    "filter_product": "Produkt",
+    "multi_credit_note": "Eine Antwort mit mehreren Auswahlen zählt ihre Bestellung bei jeder davon, daher können diese Beträge zusammen mehr als die Gesamtsumme ergeben.",
+    "capped_note": "Basierend auf den neuesten {{limit}} Antworten.",
+    "download_failed": "Der Download wurde nicht gestartet. Bitte versuchen Sie es gleich noch einmal."
   },
   "responses": {
     "title": "Antworten",
@@ -608,7 +617,16 @@
     "counted": "Gezählt",
     "not_counted": "Nicht gezählt",
     "previous": "Zurück",
-    "next": "Weiter"
+    "next": "Weiter",
+    "status_counted": "Gezählt",
+    "status_awaiting_order": "Wartet auf Bestellung",
+    "status_order_not_received": "Bestellung nicht erhalten",
+    "status_test_order": "Testbestellung",
+    "status_cancelled": "Storniert",
+    "status_voided": "Ungültig gemacht",
+    "status_refunded": "Erstattet",
+    "status_total_unreadable": "Betrag nicht lesbar",
+    "status_no_order": "Keine Bestellung"
   },
   "library": {
     "title": "Vorlagenbibliothek",

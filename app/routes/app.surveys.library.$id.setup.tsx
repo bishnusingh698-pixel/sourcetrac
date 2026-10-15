@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   Form,
   redirect,
+  useActionData,
   useLoaderData,
   useSearchParams,
   type ActionFunctionArgs,
@@ -16,7 +17,7 @@ import { ensureShop } from "~/lib/provision.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
 import { NotFoundError, ValidationError } from "~/lib/errors";
-import { createSurvey, setSurveyStatus, type SurveyInput } from "~/lib/surveys.server";
+import { createSurvey, type SurveyInput } from "~/lib/surveys.server";
 import { definitionToPreview } from "~/lib/preview-model";
 import { grantedSyncScopes } from "~/lib/scopes.server";
 import { logger } from "~/lib/logger";
@@ -130,7 +131,14 @@ export const action = guarded(async ({ request, params }: ActionFunctionArgs) =>
     throw new ValidationError("Unknown action.", "Reload the page and try again.");
   }
 
-  const config = JSON.parse(String(form.get("config") ?? "{}")) as WizardConfig;
+  let config: WizardConfig;
+  try {
+    const parsed = JSON.parse(String(form.get("config") ?? "{}")) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("not an object");
+    config = parsed as WizardConfig;
+  } catch {
+    return { ok: false as const, code: "invalid", message: "The setup could not be read. Reload the page and try again." };
+  }
   const goLive = String(form.get("goLive") ?? "0") === "1";
   const { countryCode } = await fetchShopLocaleInfo(shop.shopDomain, session.accessToken);
   const locale = shop.language ?? "en";
@@ -151,15 +159,14 @@ export const action = guarded(async ({ request, params }: ActionFunctionArgs) =>
 
   const issues = validateSurveyDefinition(definition);
   if (issues.length > 0) {
-    throw new ValidationError(issues[0]!.message, "Fix the highlighted field and try again.", {
-      field: issues[0]!.path,
-      code: issues[0]!.code,
-    });
+    return { ok: false as const, code: issues[0]!.code, message: issues[0]!.message };
   }
 
   const input: SurveyInput = {
     name: config.name?.trim() || definition.name || template.nameKey,
-    status: "draft",
+    // Created live in one transaction when launching: a separate activate step
+    // could fail after the create, and the retry then made a second survey.
+    status: goLive ? "active" : "draft",
     placements: config.placements && config.placements.length > 0 ? config.placements : templatePlacements(template),
     layout: definition.layout ?? "all",
     title: definition.title ?? "Quick question",
@@ -177,10 +184,22 @@ export const action = guarded(async ({ request, params }: ActionFunctionArgs) =>
     questions: definition.questions.map((q) => ({ ...q, options: q.options?.map((o) => ({ ...o })) })),
   };
 
-  const created = await createSurvey(shop.id, input);
+  if (goLive && input.placements.length === 0) {
+    return { ok: false as const, code: "no_placements", message: "Choose where the survey shows before going live." };
+  }
+
+  let created: Awaited<ReturnType<typeof createSurvey>>;
+  try {
+    created = await createSurvey(shop.id, input);
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      const code = typeof error.fields.code === "string" ? error.fields.code : error.code;
+      return { ok: false as const, code, message: error.message };
+    }
+    throw error;
+  }
 
   if (goLive) {
-    await setSurveyStatus(shop.id, created.id, "active");
     logger.info("survey_launched_from_template", { shop_id: shop.id, survey_id: created.id, template: template.id });
     return redirect(`/app/surveys/${created.id}?launched=1`);
   }
@@ -192,8 +211,16 @@ export const action = guarded(async ({ request, params }: ActionFunctionArgs) =>
 
 export default function QuickSetup() {
   const data = useLoaderData<typeof loader>();
+  const actionData = useActionData<typeof action>();
   const { t } = useAdminI18n();
   const [params, setParams] = useSearchParams();
+  const failureKey = actionData && actionData.ok === false ? `surveys.validation_${actionData.code}` : null;
+  const failureText =
+    actionData && actionData.ok === false && failureKey
+      ? t(failureKey) === failureKey
+        ? actionData.message
+        : t(failureKey)
+      : null;
 
   const step = Math.min(3, Math.max(1, Number(params.get("step") ?? "1")));
   const template = templateById(data.templateId)!;
@@ -284,6 +311,7 @@ export default function QuickSetup() {
 
   return (
     <s-stack gap="base">
+      {failureText ? <Banner tone="critical" heading={failureText} /> : null}
       <s-link href={`/app/surveys/library/${template.id}`}>{t("library.back")}</s-link>
       <s-section heading={t("setup.title")} subheading={t("setup.subtitle")} padding="none" />
       <s-text color="subdued">{t("setup.step_of", { step })}</s-text>
