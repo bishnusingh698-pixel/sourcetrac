@@ -16,7 +16,8 @@
     "responses": "Respuestas",
     "home": "Inicio",
     "channels": "Informe de canales",
-    "preferences": "Ajustes"
+    "preferences": "Ajustes",
+    "current": "(página actual)"
   },
   "common": {
     "cancel": "Cancelar",
@@ -100,7 +101,11 @@
     "note_pending_other": "{{count}} respuestas esperan los datos de sus pedidos de Shopify, normalmente menos de un minuto. Después aparecen sus ingresos.",
     "note_test_orders_one": "{{count}} respuesta es de un pedido de prueba de Shopify. Los pedidos de prueba nunca cuentan como ingresos; los reales cuentan en cuanto llegan.",
     "note_test_orders_other": "{{count}} respuestas son de pedidos de prueba de Shopify. Los pedidos de prueba nunca cuentan como ingresos; los reales cuentan en cuanto llegan.",
-    "no_answers_in_range": "No hay respuestas en este periodo ({{range}}). Prueba un rango más largo."
+    "no_answers_in_range": "No hay respuestas en este periodo ({{range}}). Prueba un rango más largo.",
+    "total_row": "Total",
+    "rate_line": "Tasa de respuesta: {{rate}}. Respondieron {{answered}} de {{total}} pedidos de este periodo.",
+    "other_title": "En palabras de los compradores",
+    "other_subtitle": "Lo que escribieron los compradores cuando ninguno de tus canales encajaba. Lo más reciente primero."
   },
   "settings": {
     "title": "Configuración",
@@ -1003,7 +1008,35 @@
     "unpublished": "{{name}} tiene cambios sin publicar. Revisa y publica.",
     "open_report": "Abrir informe de canales",
     "do_it": "Ir",
-    "see_results": "Mira las últimas respuestas a {{name}}."
+    "see_results": "Mira las últimas respuestas a {{name}}.",
+    "subtitle": "Tu tienda de un vistazo: ingresos por canal, puntuaciones de clientes y todas tus encuestas.",
+    "scores_title": "Puntuaciones de clientes",
+    "scores_subtitle": "Cómo te valoran los compradores, en todas tus encuestas. {{range}}.",
+    "by_question": "Por pregunta",
+    "col_question": "Pregunta",
+    "col_score": "Puntuación",
+    "key_nps": "NPS {{value}}",
+    "key_csat": "CSAT {{value}}",
+    "key_average": "Media {{value}}",
+    "key_top": "{{label}} · {{share}}",
+    "score_pooled_one": "De {{count}} pregunta",
+    "score_pooled_other": "De {{count}} preguntas",
+    "see_answers": "Ver respuestas",
+    "score_no_answers": "Aún no hay respuestas en este periodo. Prueba un periodo más largo.",
+    "nps_none_body": "Pregunta a los compradores con qué probabilidad recomendarían tu tienda, de 0 a 10, y tu Net Promoter Score aparecerá aquí.",
+    "csat_none_body": "Pregunta a los compradores lo satisfechos que están, de 1 a 5, y tu puntuación de satisfacción aparecerá aquí.",
+    "add_score_survey": "Añadir una encuesta",
+    "top_channels_title": "Canales principales",
+    "top_channels_subtitle": "Cómo te conocieron los compradores. {{range}}.",
+    "top_channels_empty": "No hay respuestas de canales en este periodo.",
+    "buyers_subtitle": "Cada pedido se cuenta una vez, en todas tus encuestas.",
+    "col_orders": "Pedidos",
+    "buyers_unknown_one": "{{count}} pedido no indica si era un primer pedido.",
+    "buyers_unknown_other": "{{count}} pedidos no indican si eran un primer pedido.",
+    "surveys_subtitle": "Encuestas activas y cualquier otra que haya recibido respuestas. {{range}}.",
+    "col_key_result": "Resultado clave",
+    "compare_surveys": "Comparar encuestas en Resultados",
+    "capped_note": "Las puntuaciones, compradores y encuestas se basan en las {{limit}} respuestas más recientes de este periodo."
   },
   "support": {
     "button_label": "Escribir al soporte",

@@ -5,10 +5,11 @@ import { effectivePlan, PLAN_FREE } from "~/lib/plans";
 import { OTHER_CHANNEL_VALUE } from "~/lib/settings";
 
 /**
- * The channel report, as both the dashboard and Home render it.
+ * The channel report's numbers, as both the channel report and the Dashboard
+ * render them.
  *
- * One loader for both screens, so the headline numbers on Home can never
- * disagree with the full report a click away. All money is formatted here on
+ * One loader for both screens, so the headline numbers on the Dashboard can
+ * never disagree with the full report a click away. All money is formatted here on
  * the server and shipped as strings: the browser never receives minor-unit
  * integers, so it cannot sum across currencies by accident.
  */
@@ -20,6 +21,9 @@ type ReportShop = Parameters<typeof fetchChannelLabels>[0] & {
 };
 
 export type Money = { currency: string; text: string };
+
+/** Written-in answers listed on the channel report. */
+const OTHER_ANSWER_LIMIT = 20;
 
 export async function loadChannelReport(params: {
   shop: ReportShop;
@@ -114,6 +118,17 @@ export async function loadChannelReport(params: {
       })),
     })),
     trend: trend.map((point) => ({ date: point.date, responses: point.responses })),
+    /**
+     * What buyers typed when none of the listed channels fit, newest first.
+     * These are where a merchant spots a channel they did not know they had.
+     * Trimmed and capped; the Responses page and the CSV have every one.
+     */
+    otherAnswers: data.responses
+      .flatMap((row) => {
+        const text = row.otherText?.trim() ?? "";
+        return text ? [{ id: row.id, text, label: labelFor(row.channel), submittedAt: row.submittedAt.toISOString() }] : [];
+      })
+      .slice(0, OTHER_ANSWER_LIMIT),
   };
 }
 

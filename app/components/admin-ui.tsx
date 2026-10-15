@@ -209,6 +209,32 @@ export function AdvancedDisclosure({
   );
 }
 
+/**
+ * The date-range buttons above a report. Each is a link, so the range survives
+ * a refresh and the back button. An inline stack, not a button group: a group
+ * never wraps, and the ranges in French or German are wider than a phone. The
+ * plain div keeps the group role and its label for screen readers.
+ */
+export function RangeSwitcher({
+  label,
+  options,
+}: {
+  label: string;
+  options: ReadonlyArray<{ key: string; label: string; href: string; current: boolean }>;
+}) {
+  return (
+    <div role="group" aria-label={label}>
+      <s-stack direction="inline" gap="small-200">
+        {options.map((option) => (
+          <s-button key={option.key} href={option.href} variant={option.current ? "primary" : "secondary"}>
+            {option.label}
+          </s-button>
+        ))}
+      </s-stack>
+    </div>
+  );
+}
+
 export function Banner({
   tone,
   heading,

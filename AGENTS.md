@@ -756,7 +756,9 @@ must return the `app-bridge.js` script tag, not the error text.
 - **No in-iframe sidebar.** Shopify renders `<s-app-nav>` in its own sidebar on
   desktop and the app title menu on phones; a second copy inside the frame took
   a column and squeezed every page on a phone. The shell is now a compact
-  toolbar (plan badge + usage, language select) above the page.
+  toolbar (plan badge + usage, language select) above the page. (A horizontal
+  *top* bar was added 2026-10-15; see "Top navigation bar" below. It is one row,
+  not a column, so it does not squeeze the page.)
 - **The dashboard is home.** Its `s-link` in `<s-app-nav>` carries `rel="home"`
   (spread, since Polaris's `s-link` type has no `rel`), so it is the app's
   landing page, not a separate "Dashboard" sub-page. The onboarding page was
@@ -1060,9 +1062,10 @@ Verified 2026-10-12: 624 tests / 50 files green; bundles <= ~11.5 KB compressed.
 
 ## Phase 6 — Overview, Results, Home (2026-10-13)
 
-Home (T16) and the dashboard are two different screens now. `/app` is the minimal
-landing page (three cards); the full channel report moved to `/app/dashboard`.
-Both are in `s-app-nav`. Do not merge them back — the split is the T16 spec.
+Home (T16) and the channel report are two different screens. **Superseded
+2026-10-15** (see "Dashboard, channel report and top navigation" below): `/app`
+is now the full Dashboard, and `/app/dashboard` is the channel-attribution
+deep-dive. They stay separate pages with different jobs; do not merge them.
 
 `buildSurveyInsights` (`app/lib/insights.server.ts`) joins a stored survey to the
 pure aggregation in `shared/templates/stats.ts`. Two silent traps there:
@@ -1236,10 +1239,10 @@ mounted when the root fails.
   old `mailto:` button did nothing inside the admin. Do not pass the
   `noopener` feature to `window.open`: it then returns null even on success.
   `tests/unit/support.test.ts` pins this.
-- **Nav is six items** (Shopify's limit is seven, and no item may repeat the
-  home page): Channel report, Surveys, Responses, Plans, Settings, Help.
-  `/app/results` and `/app/export` still work; they are reached from survey
-  cards and the Responses page.
+- **Shopify's sidebar is seven items** (its limit, and no item may repeat the
+  home page): Surveys, Results, Channel report, Responses, Plans, Settings, Help.
+  Results was added 2026-10-15 because NPS lives there and merchants could not
+  find it. The in-app top bar lists those plus Dashboard and Export.
 - **Page titles come from `export const handle = { titleKey }`**, read by the
   shell's `<s-page heading>`. Child routes must not draw their own title.
 - Home and the channel report share `loadChannelReport`
@@ -1380,3 +1383,54 @@ the CSAT counterpart of `loyalty-pulse`. Tests: `tests/unit/scores.test.ts`.
   takes `all`, `channels` or a survey id; an unknown id means all.
   `app/lib/survey-export.server.ts` builds both the file and the page preview.
 - Tests: `tests/db-survey-stats.test.ts`.
+
+## Dashboard, channel report and top navigation (2026-10-15)
+
+The merchant reported three things: no way to move around the app, NPS and the
+other survey stats nowhere to be found, and Home and the channel report looking
+the same. What changed, and the rules that keep it that way:
+
+- **One nav list, two menus.** `app/lib/nav.ts` `NAV` holds every page (key,
+  icon, `sidebar` flag). `<s-app-nav>` renders the `sidebar` items; `TopNav`
+  (`app/components/top-nav.tsx`) renders all nine at the top of every page,
+  marks the current one (`activeNavPath`, whole-segment prefix match, `/app`
+  exact only) and announces it to screen readers. Items are `s-clickable href`,
+  so navigation goes through App Bridge's `shopify:navigate` and React Router.
+  `i18n-usage.test.ts` reads the keys out of `nav.ts`, not `app.tsx`.
+- **Phone layout of the bar is plain CSS** on our own `.st-topnav-track` div
+  (wraps on wide frames, one sideways-scrolling row under 48rem). Do not set
+  `display` on the `s-clickable` hosts: that overrides Polaris's own `:host`
+  display and can break the element.
+- **`/app` is the Dashboard** (`loadDashboard`, `app/lib/dashboard.server.ts`):
+  the four attribution tiles (from `loadChannelReport`, so they always match the
+  channel report), Customer scores (shop-wide NPS and CSAT), top 5 channels, new
+  vs returning buyers, every live survey's key result, next step, and the trend,
+  all under one 7/30/90-day range.
+- **Shop-wide NPS is pooled over every answer**, not an average of per-question
+  scores (`buildScoreSummary`). CSAT pools `rating_5` and `satisfaction_5`.
+  An answer counts only for a question its own survey asks. No answers means
+  null (an em dash and an explanation), never 0. A shop with no score question
+  at all gets an "Add a survey" button to the loyalty templates instead.
+- **One answer set per order across all surveys.** `submitAnswers` refuses a
+  second survey's answer on an order that already answered (advisory lock +
+  lookup), so a test fixture that answers two surveys on the same order gets
+  `duplicate` for the second. `buyerMix` still de-duplicates by order as a
+  safeguard, because that figure sums revenue across surveys.
+- **The channel report no longer repeats the KPI tiles or the trend.** It is
+  the callout, notes, the full table with a Total row, the response-rate line,
+  and "In buyers' own words" (`otherAnswers`, the newest 20 written-in "Other"
+  answers from `loadChannelReport`).
+- **Results shows NPS / CSAT tiles** beside its other numbers; `ScoreBlock`
+  moved to `app/components/scores.tsx` and is shared with the Dashboard.
+  Dashboard links to Results carry `range=` so the numbers match.
+- **Components must import only types from `.server` modules.** A value import
+  passes `tsc` and every test and fails only `npm run build`, which
+  `npm run check` does not run. That is why the range constants live in
+  `app/lib/dashboard-range.ts`. `tests/unit/top-nav.test.ts` now scans
+  `app/components/` for it; routes are not covered, so run `npm run build`
+  after touching a route's imports.
+
+Tests: `tests/unit/top-nav.test.ts`, `tests/unit/dashboard.test.ts`,
+`tests/db-dashboard.test.ts`. Verified 2026-10-15: `npm run check` green and
+`npm run build` clean. The bar's look on a real admin was not seen: Polaris
+cannot render here (`cdn.shopify.com` is blocked).

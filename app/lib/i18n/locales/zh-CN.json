@@ -16,7 +16,8 @@
     "responses": "回答",
     "home": "首页",
     "channels": "渠道报告",
-    "preferences": "设置"
+    "preferences": "设置",
+    "current": "（当前页面）"
   },
   "common": {
     "cancel": "取消",
@@ -100,7 +101,11 @@
     "note_pending_other": "{{count}} 条回答正在等待 Shopify 的订单信息，通常不到一分钟。之后会显示收入。",
     "note_test_orders_one": "{{count}} 条回答来自 Shopify 测试订单。测试订单从不计入收入；真实订单一到即计入。",
     "note_test_orders_other": "{{count}} 条回答来自 Shopify 测试订单。测试订单从不计入收入；真实订单一到即计入。",
-    "no_answers_in_range": "此期间（{{range}}）没有回答。请尝试更长的时间范围。"
+    "no_answers_in_range": "此期间（{{range}}）没有回答。请尝试更长的时间范围。",
+    "total_row": "合计",
+    "rate_line": "回答率：{{rate}}。此期间 {{total}} 个订单中有 {{answered}} 个作答。",
+    "other_title": "买家的原话",
+    "other_subtitle": "当你列出的渠道都不符合时，买家写下的内容。最新的在前。"
   },
   "settings": {
     "title": "设置",
@@ -1003,7 +1008,35 @@
     "unpublished": "{{name}} 有未发布的更改。查看并发布。",
     "open_report": "打开渠道报告",
     "do_it": "前往",
-    "see_results": "查看 {{name}} 的最新回答。"
+    "see_results": "查看 {{name}} 的最新回答。",
+    "subtitle": "店铺概况一目了然：各渠道收入、客户评分以及所有问卷。",
+    "scores_title": "客户评分",
+    "scores_subtitle": "买家对你的评价，汇总所有问卷。{{range}}。",
+    "by_question": "按问题",
+    "col_question": "问题",
+    "col_score": "得分",
+    "key_nps": "NPS {{value}}",
+    "key_csat": "CSAT {{value}}",
+    "key_average": "平均 {{value}}",
+    "key_top": "{{label}} · {{share}}",
+    "score_pooled_one": "来自 {{count}} 个问题",
+    "score_pooled_other": "来自 {{count}} 个问题",
+    "see_answers": "查看回答",
+    "score_no_answers": "此期间暂无回答。请尝试更长的时间范围。",
+    "nps_none_body": "请买家用 0 到 10 分评价他们向别人推荐你店铺的可能性，你的净推荐值就会显示在这里。",
+    "csat_none_body": "请买家用 1 到 5 分评价他们的满意度，你的客户满意度就会显示在这里。",
+    "add_score_survey": "添加问卷",
+    "top_channels_title": "主要渠道",
+    "top_channels_subtitle": "买家是如何知道你的。{{range}}。",
+    "top_channels_empty": "此期间没有渠道回答。",
+    "buyers_subtitle": "每个订单只计一次，汇总所有问卷。",
+    "col_orders": "订单",
+    "buyers_unknown_one": "{{count}} 个订单未表明是否为首单。",
+    "buyers_unknown_other": "{{count}} 个订单未表明是否为首单。",
+    "surveys_subtitle": "进行中的问卷，以及其他收到回答的问卷。{{range}}。",
+    "col_key_result": "关键结果",
+    "compare_surveys": "在结果中比较问卷",
+    "capped_note": "评分、买家和问卷数据基于此期间最新的 {{limit}} 条回答。"
   },
   "support": {
     "button_label": "邮件联系支持",

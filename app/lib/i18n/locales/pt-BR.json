@@ -16,7 +16,8 @@
     "responses": "Respostas",
     "home": "Início",
     "channels": "Relatório de canais",
-    "preferences": "Configurações"
+    "preferences": "Configurações",
+    "current": "(página atual)"
   },
   "common": {
     "cancel": "Cancelar",
@@ -100,7 +101,11 @@
     "note_pending_other": "{{count}} respostas aguardam os dados dos pedidos da Shopify, normalmente por menos de um minuto. Depois a receita aparece.",
     "note_test_orders_one": "{{count}} resposta é de um pedido de teste da Shopify. Pedidos de teste nunca contam como receita; os reais contam assim que chegam.",
     "note_test_orders_other": "{{count}} respostas são de pedidos de teste da Shopify. Pedidos de teste nunca contam como receita; os reais contam assim que chegam.",
-    "no_answers_in_range": "Nenhuma resposta neste período ({{range}}). Tente um intervalo maior."
+    "no_answers_in_range": "Nenhuma resposta neste período ({{range}}). Tente um intervalo maior.",
+    "total_row": "Total",
+    "rate_line": "Taxa de resposta: {{rate}}. {{answered}} de {{total}} pedidos deste período responderam.",
+    "other_title": "Nas palavras dos compradores",
+    "other_subtitle": "O que os compradores escreveram quando nenhum dos seus canais servia. Mais recentes primeiro."
   },
   "settings": {
     "title": "Configurações",
@@ -1003,7 +1008,35 @@
     "unpublished": "{{name}} tem alterações não publicadas. Revise e publique.",
     "open_report": "Abrir relatório de canais",
     "do_it": "Ir",
-    "see_results": "Veja as respostas mais recentes de {{name}}."
+    "see_results": "Veja as respostas mais recentes de {{name}}.",
+    "subtitle": "Sua loja em um relance: receita por canal, notas dos clientes e todas as suas pesquisas.",
+    "scores_title": "Notas dos clientes",
+    "scores_subtitle": "Como os compradores avaliam você, em todas as suas pesquisas. {{range}}.",
+    "by_question": "Por pergunta",
+    "col_question": "Pergunta",
+    "col_score": "Nota",
+    "key_nps": "NPS {{value}}",
+    "key_csat": "CSAT {{value}}",
+    "key_average": "Média {{value}}",
+    "key_top": "{{label}} · {{share}}",
+    "score_pooled_one": "De {{count}} pergunta",
+    "score_pooled_other": "De {{count}} perguntas",
+    "see_answers": "Ver respostas",
+    "score_no_answers": "Ainda não há respostas neste período. Tente um período maior.",
+    "nps_none_body": "Pergunte aos compradores qual a chance de recomendarem sua loja, de 0 a 10, e seu Net Promoter Score aparece aqui.",
+    "csat_none_body": "Pergunte aos compradores o quanto estão satisfeitos, de 1 a 5, e sua nota de satisfação aparece aqui.",
+    "add_score_survey": "Adicionar uma pesquisa",
+    "top_channels_title": "Principais canais",
+    "top_channels_subtitle": "Como os compradores conheceram você. {{range}}.",
+    "top_channels_empty": "Nenhuma resposta de canal neste período.",
+    "buyers_subtitle": "Cada pedido contado uma vez, em todas as suas pesquisas.",
+    "col_orders": "Pedidos",
+    "buyers_unknown_one": "{{count}} pedido não indicou se foi um primeiro pedido.",
+    "buyers_unknown_other": "{{count}} pedidos não indicaram se foram um primeiro pedido.",
+    "surveys_subtitle": "Pesquisas ativas e qualquer outra que recebeu respostas. {{range}}.",
+    "col_key_result": "Resultado principal",
+    "compare_surveys": "Comparar pesquisas em Resultados",
+    "capped_note": "Notas, compradores e pesquisas se baseiam nas {{limit}} respostas mais recentes deste período."
   },
   "support": {
     "button_label": "Falar com o suporte",

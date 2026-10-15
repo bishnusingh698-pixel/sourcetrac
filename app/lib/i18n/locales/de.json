@@ -16,7 +16,8 @@
     "responses": "Antworten",
     "home": "Startseite",
     "channels": "Kanalbericht",
-    "preferences": "Einstellungen"
+    "preferences": "Einstellungen",
+    "current": "(aktuelle Seite)"
   },
   "common": {
     "cancel": "Abbrechen",
@@ -100,7 +101,11 @@
     "note_pending_other": "{{count}} Antworten warten auf die Bestelldaten von Shopify, meist weniger als eine Minute. Danach erscheint der Umsatz.",
     "note_test_orders_one": "{{count}} Antwort stammt aus einer Shopify-Testbestellung. Testbestellungen zählen nie als Umsatz; echte Bestellungen zählen sofort.",
     "note_test_orders_other": "{{count}} Antworten stammen aus Shopify-Testbestellungen. Testbestellungen zählen nie als Umsatz; echte Bestellungen zählen sofort.",
-    "no_answers_in_range": "Keine Antworten in diesem Zeitraum ({{range}}). Wählen Sie einen längeren Zeitraum."
+    "no_answers_in_range": "Keine Antworten in diesem Zeitraum ({{range}}). Wählen Sie einen längeren Zeitraum.",
+    "total_row": "Gesamt",
+    "rate_line": "Antwortrate: {{rate}}. {{answered}} von {{total}} Bestellungen in diesem Zeitraum haben geantwortet.",
+    "other_title": "In den Worten der Käufer",
+    "other_subtitle": "Was Käufer geschrieben haben, wenn keiner Ihrer Kanäle passte. Neueste zuerst."
   },
   "settings": {
     "title": "Einstellungen",
@@ -1003,7 +1008,35 @@
     "unpublished": "{{name}} hat unveröffentlichte Änderungen. Prüfen und veröffentlichen.",
     "open_report": "Kanalbericht öffnen",
     "do_it": "Los geht's",
-    "see_results": "Sehen Sie die neuesten Antworten auf {{name}}."
+    "see_results": "Sehen Sie die neuesten Antworten auf {{name}}.",
+    "subtitle": "Ihr Shop auf einen Blick: Umsatz nach Kanal, Kundenbewertungen und alle Umfragen.",
+    "scores_title": "Kundenbewertungen",
+    "scores_subtitle": "Wie Käufer Sie bewerten, über alle Ihre Umfragen. {{range}}.",
+    "by_question": "Nach Frage",
+    "col_question": "Frage",
+    "col_score": "Wert",
+    "key_nps": "NPS {{value}}",
+    "key_csat": "CSAT {{value}}",
+    "key_average": "Durchschnitt {{value}}",
+    "key_top": "{{label}} · {{share}}",
+    "score_pooled_one": "Aus {{count}} Frage",
+    "score_pooled_other": "Aus {{count}} Fragen",
+    "see_answers": "Antworten ansehen",
+    "score_no_answers": "In diesem Zeitraum noch keine Antworten. Wählen Sie einen längeren Zeitraum.",
+    "nps_none_body": "Fragen Sie Käufer, wie wahrscheinlich sie Ihren Shop weiterempfehlen (0 bis 10). Ihr Net Promoter Score erscheint dann hier.",
+    "csat_none_body": "Fragen Sie Käufer, wie zufrieden sie sind (1 bis 5). Ihre Kundenzufriedenheit erscheint dann hier.",
+    "add_score_survey": "Umfrage hinzufügen",
+    "top_channels_title": "Stärkste Kanäle",
+    "top_channels_subtitle": "Wie Käufer von Ihnen erfahren haben. {{range}}.",
+    "top_channels_empty": "In diesem Zeitraum keine Kanal-Antworten.",
+    "buyers_subtitle": "Jede Bestellung wird einmal gezählt, über alle Ihre Umfragen.",
+    "col_orders": "Bestellungen",
+    "buyers_unknown_one": "Bei {{count}} Bestellung ist unbekannt, ob es eine erste Bestellung war.",
+    "buyers_unknown_other": "Bei {{count}} Bestellungen ist unbekannt, ob es eine erste Bestellung war.",
+    "surveys_subtitle": "Aktive Umfragen und alle anderen mit Antworten. {{range}}.",
+    "col_key_result": "Wichtigstes Ergebnis",
+    "compare_surveys": "Umfragen in den Ergebnissen vergleichen",
+    "capped_note": "Bewertungen, Käufer und Umfragen beruhen auf den neuesten {{limit}} Antworten in diesem Zeitraum."
   },
   "support": {
     "button_label": "Support per E-Mail",

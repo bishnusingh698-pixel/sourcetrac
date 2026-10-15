@@ -5,15 +5,16 @@ import { intlLocaleFor } from "~/lib/i18n";
 import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 
-import { Banner, Panel } from "~/components/admin-ui";
-import { KpiGrid, TopChannelCallout } from "~/components/channel-report";
-import { ConfidenceBadge } from "~/components/insights";
-import { loadChannelReport } from "~/lib/channel-report.server";
+import { Banner, Panel, PageIntro, RangeSwitcher } from "~/components/admin-ui";
+import { KpiGrid, ReportNotes, Sparkline } from "~/components/channel-report";
+import { BuyerMix, ScoresSection, SurveysOverview, TopChannels } from "~/components/dashboard";
 import { LanguageForm } from "~/components/language-selector";
 import { db } from "~/db.server";
 import { isSupportedLanguage, type LanguageCode } from "~/lib/i18n";
 import { MAX_OPTIONS, MIN_OPTIONS } from "~/lib/settings";
-import { hasAnyResponse, loadHomeSurveys, type HomeSurvey } from "~/lib/home.server";
+import { hasAnyResponse } from "~/lib/home.server";
+import { loadDashboard, type DashboardSurvey } from "~/lib/dashboard.server";
+import { DASHBOARD_RANGE_LABEL_KEYS, DASHBOARD_RANGES, parseDashboardRange } from "~/lib/dashboard-range";
 import { ensureShop } from "~/lib/provision.server";
 import { startOrderBackfill } from "~/lib/order-backfill.server";
 import { maybeMarkUnreconcilable } from "~/lib/responses.server";
@@ -28,24 +29,26 @@ import { getShopLocaleInfo } from "~/lib/studio.server";
 import { authenticate } from "~/shopify.server";
 
 /**
- * Home — the landing page.
+ * Dashboard — the landing page, and the one screen with every important number.
  *
- * Answers "how is it going, and what should I do next?" in one screen: the best
- * channel of the last 30 days in one sentence, the four headline numbers (each a
- * link to the full channel report), the live surveys with one key number each,
- * and exactly one next step. The range switcher, table and trend live on the
- * channel report. Until the first answer arrives this page is the setup guide.
+ * Top to bottom: the four attribution numbers (revenue, answers, response rate,
+ * average order), customer scores (NPS and CSAT across every survey), the top
+ * channels and new vs returning buyers, each survey's key result next to the
+ * one suggested next step, and the daily trend. A range switcher covers all of
+ * it. Each section links to the page with the full story, so this screen
+ * summarises instead of repeating: the channel report has the full table and
+ * buyers' own words, Results has every question.
  *
- * All money is formatted here on the server and shipped as strings, so the
- * browser never sees minor-unit integers.
+ * Until the first answer arrives this page is the setup guide instead.
+ *
+ * All money is formatted on the server and shipped as strings, so the browser
+ * never sees minor-unit integers.
  */
 
-export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "nav.home");
+export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "nav.dashboard");
 
-export const handle = { titleKey: "nav.home" };
+export const handle = { titleKey: "nav.dashboard" };
 
-/** Home's numbers cover the last 30 days, the channel report's default range. */
-const HOME_DAYS = 30;
 
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -73,16 +76,16 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     db.orderCache.findFirst({ where: { shopId: shop.id }, select: { id: true } }),
   ]);
 
-  const [homeSurveys, report] = anyResponse
-    ? await Promise.all([loadHomeSurveys(shop.id, locale), loadChannelReport({ shop, days: HOME_DAYS, locale })])
-    : [[], null];
+  const days = parseDashboardRange(new URL(request.url).searchParams.get("range"));
+  const dashboard = anyResponse ? await loadDashboard({ shop, days, locale }) : null;
+  const surveys = dashboard?.surveys ?? [];
 
   // The seasonal spotlight (T15) is the fallback next step when nothing more
   // urgent applies. Evaluated in the admin from the date and the shop's region:
   // no database, no network.
   const templateLocale = shop.language ?? "en";
   let spotlightTemplateName: string | null = null;
-  if (homeSurveys.length > 0) {
+  if (surveys.length > 0) {
     const { countryCode, timeZone } = await getShopLocaleInfo(shop.id, shop.shopDomain, session.accessToken);
     const spotlight = currentSpotlight({
       locale: templateLocale,
@@ -107,8 +110,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
             hasExplicitLanguage: isSupportedLanguage(shop.language),
           }
         : null,
-    homeSurveys,
-    report,
+    dashboard,
     spotlightTemplateName,
     // Template names live in the shared template bundle, not the admin i18n
     // bundle, so the fallback "Start with Channel Compass" name is resolved here.
@@ -220,81 +222,85 @@ export default function Home() {
   const { t, language, locale } = useAdminI18n();
 
   if (data.setup) return <SetupGuide setup={data.setup} t={t} language={language} />;
+  const dashboard = data.dashboard;
+  if (!dashboard) return null;
 
-  const surveys = data.homeSurveys;
-  const rangeLabel = t("dashboard.last_30");
+  const { report } = dashboard;
+  const rangeLabel = t(DASHBOARD_RANGE_LABEL_KEYS[dashboard.days]);
+  const reportHref = `/app/dashboard?range=${dashboard.days}`;
 
   return (
     <s-stack gap="base">
-      {/* 1. The headline: the best channel, in one sentence. */}
-      {data.report ? (
-        <TopChannelCallout
-          report={data.report}
-          t={t}
-          rangeLabel={rangeLabel}
-          action={{ href: "/app/dashboard", label: t("home.open_report") }}
-        />
-      ) : null}
+      {/* What this page is, and one range for every section on it. */}
+      <PageIntro
+        actions={
+          <RangeSwitcher
+            label={t("dashboard.range_label")}
+            options={DASHBOARD_RANGES.map((days) => ({
+              key: String(days),
+              label: t(DASHBOARD_RANGE_LABEL_KEYS[days]),
+              href: `/app?range=${days}`,
+              current: days === dashboard.days,
+            }))}
+          />
+        }
+      >
+        {t("home.subtitle")}
+      </PageIntro>
 
-      {/* 2. The four numbers behind it; each tile opens the full report. */}
-      {data.report ? (
-        <KpiGrid report={data.report} t={t} locale={locale} rangeLabel={rangeLabel} href="/app/dashboard" />
-      ) : null}
+      {/* 1. The four attribution numbers; each tile opens the channel report. */}
+      <KpiGrid report={report} t={t} locale={locale} rangeLabel={rangeLabel} href={reportHref} />
+      <ReportNotes summary={report.summary} t={t} />
 
-      {/* 3. Next step and live surveys, side by side on desktop. The next step
-          comes first on a phone: it is the one thing to do. */}
+      {/* 2. How buyers rate the store: NPS and CSAT across every survey. */}
+      <ScoresSection scores={dashboard.scores} t={t} locale={locale} rangeLabel={rangeLabel} days={dashboard.days} />
+
+      {/* 3. Where buyers come from, and who they are. */}
       <s-query-container>
-        <s-grid gridTemplateColumns="@container (inline-size > 760px) minmax(0, 1fr) minmax(0, 2fr), minmax(0, 1fr)" gap="base">
+        <s-grid
+          gridTemplateColumns="@container (inline-size > 760px) repeat(2, minmax(0, 1fr)), minmax(0, 1fr)"
+          gap="base"
+        >
+          <TopChannels report={report} t={t} locale={locale} rangeLabel={rangeLabel} reportHref={reportHref} />
+          <BuyerMix buyers={dashboard.buyers} t={t} locale={locale} />
+        </s-grid>
+      </s-query-container>
+
+      {/* 4. Each survey's key result, and the one thing to do next. The next
+          step comes first on a phone: it is the one action on the page. */}
+      <s-query-container>
+        <s-grid
+          gridTemplateColumns="@container (inline-size > 760px) minmax(0, 1fr) minmax(0, 2fr), minmax(0, 1fr)"
+          gap="base"
+        >
           <NextStep
-            surveys={surveys}
+            surveys={dashboard.surveys}
             spotlightTemplateName={data.spotlightTemplateName}
             channelCompassName={data.channelCompassName}
             t={t}
           />
-
-          <s-section heading={t("home.your_surveys")}>
-            {surveys.length === 0 ? (
-              <s-stack gap="base">
-                <s-text color="subdued">{t("surveys.empty_body")}</s-text>
-                <div>
-                  <s-button href="/app/surveys/library">{t("surveys.use_template")}</s-button>
-                </div>
-              </s-stack>
-            ) : (
-              <s-stack gap="small">
-                {surveys.map((survey) => (
-                  <HomeSurveyRow key={survey.id} survey={survey} t={t} />
-                ))}
-                <div>
-                  <s-link href="/app/surveys">{t("home.view_all")}</s-link>
-                </div>
-              </s-stack>
-            )}
-          </s-section>
+          <SurveysOverview
+            surveys={dashboard.surveys}
+            surveyCount={dashboard.surveyCount}
+            t={t}
+            locale={locale}
+            rangeLabel={rangeLabel}
+            days={dashboard.days}
+          />
         </s-grid>
       </s-query-container>
-    </s-stack>
-  );
-}
 
-function HomeSurveyRow({ survey, t }: { survey: HomeSurvey; t: TFunction }) {
-  return (
-    <s-clickable href={`/app/surveys/${survey.id}`} padding="base" border="base" borderRadius="large">
-      {/* Name and key number in a grid whose text column can shrink: a long
-          survey name wraps instead of pushing the number out of the card. */}
-      <s-grid gridTemplateColumns="minmax(0, 1fr) auto" gap="small" alignItems="center">
-        <s-stack gap="small-200">
-          <s-text type="strong">{survey.name}</s-text>
-          <s-stack direction="inline" gap="small" alignItems="center">
-            <s-badge tone="success">{t("surveys.status_active")}</s-badge>
-            <ConfidenceBadge level={survey.confidence} n={survey.responseCount} t={t} />
-          </s-stack>
-        </s-stack>
-        <s-text fontWeight="bold" fontVariantNumeric="tabular-nums">
-          {survey.keyNumber}
+      {/* 5. The daily trend. */}
+      <Panel title={t("dashboard.trend_title")} description={t("dashboard.trend_subtitle", { range: rangeLabel })}>
+        <Sparkline points={report.trend} t={t} locale={locale} />
+      </Panel>
+
+      {dashboard.cappedAt !== null ? (
+        <s-text color="subdued" fontSize="small">
+          {t("home.capped_note", { limit: new Intl.NumberFormat(locale).format(dashboard.cappedAt) })}
         </s-text>
-      </s-grid>
-    </s-clickable>
+      ) : null}
+    </s-stack>
   );
 }
 
@@ -310,7 +316,7 @@ function NextStep({
   channelCompassName,
   t,
 }: {
-  surveys: HomeSurvey[];
+  surveys: DashboardSurvey[];
   spotlightTemplateName: string | null;
   channelCompassName: string;
   t: TFunction;

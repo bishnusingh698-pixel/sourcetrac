@@ -16,7 +16,8 @@
     "responses": "回答",
     "home": "ホーム",
     "channels": "チャネルレポート",
-    "preferences": "設定"
+    "preferences": "設定",
+    "current": "（現在のページ）"
   },
   "common": {
     "cancel": "キャンセル",
@@ -100,7 +101,11 @@
     "note_pending_other": "{{count}} 件の回答が Shopify からの注文情報を待っています（通常 1 分以内）。届き次第、売上が表示されます。",
     "note_test_orders_one": "{{count}} 件の回答は Shopify のテスト注文です。テスト注文は売上に含まれません。実際の注文は届いた時点で集計されます。",
     "note_test_orders_other": "{{count}} 件の回答は Shopify のテスト注文です。テスト注文は売上に含まれません。実際の注文は届いた時点で集計されます。",
-    "no_answers_in_range": "この期間（{{range}}）の回答はありません。期間を広げてみてください。"
+    "no_answers_in_range": "この期間（{{range}}）の回答はありません。期間を広げてみてください。",
+    "total_row": "合計",
+    "rate_line": "回答率：{{rate}}。この期間の注文 {{total}} 件のうち {{answered}} 件が回答しました。",
+    "other_title": "購入者自身の言葉",
+    "other_subtitle": "どのチャネルにも当てはまらなかったときに購入者が書いた内容。新しい順。"
   },
   "settings": {
     "title": "設定",
@@ -1003,7 +1008,35 @@
     "unpublished": "{{name}} に未公開の変更があります。確認して公開してください。",
     "open_report": "チャネルレポートを開く",
     "do_it": "開く",
-    "see_results": "{{name}} の最新の回答を確認します。"
+    "see_results": "{{name}} の最新の回答を確認します。",
+    "subtitle": "ストアの状況をひと目で：チャネル別の売上、顧客スコア、すべてのアンケート。",
+    "scores_title": "顧客スコア",
+    "scores_subtitle": "すべてのアンケートを合わせた購入者からの評価です。{{range}}。",
+    "by_question": "質問別",
+    "col_question": "質問",
+    "col_score": "スコア",
+    "key_nps": "NPS {{value}}",
+    "key_csat": "CSAT {{value}}",
+    "key_average": "平均 {{value}}",
+    "key_top": "{{label}} · {{share}}",
+    "score_pooled_one": "{{count}} 件の質問から算出",
+    "score_pooled_other": "{{count}} 件の質問から算出",
+    "see_answers": "回答を見る",
+    "score_no_answers": "この期間の回答はまだありません。期間を長くしてみてください。",
+    "nps_none_body": "ストアを人に勧める可能性を 0〜10 で購入者に尋ねると、ネットプロモータースコアがここに表示されます。",
+    "csat_none_body": "満足度を 1〜5 で購入者に尋ねると、顧客満足度がここに表示されます。",
+    "add_score_survey": "アンケートを追加",
+    "top_channels_title": "主なチャネル",
+    "top_channels_subtitle": "購入者がストアを知ったきっかけ。{{range}}。",
+    "top_channels_empty": "この期間のチャネル回答はありません。",
+    "buyers_subtitle": "すべてのアンケートを通じて、注文ごとに 1 回だけ数えます。",
+    "col_orders": "注文",
+    "buyers_unknown_one": "{{count}} 件の注文は初回注文かどうか不明です。",
+    "buyers_unknown_other": "{{count}} 件の注文は初回注文かどうか不明です。",
+    "surveys_subtitle": "公開中のアンケートと、回答があったその他のアンケート。{{range}}。",
+    "col_key_result": "主な結果",
+    "compare_surveys": "結果ページでアンケートを比較",
+    "capped_note": "スコア、購入者、アンケートの数値は、この期間の最新 {{limit}} 件の回答に基づいています。"
   },
   "support": {
     "button_label": "メールでサポート",

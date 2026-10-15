@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { Banner, MoneyList, Panel, PageIntro, Metric, BigNumber } from "~/components/admin-ui";
 import { SurveyPicker } from "~/components/survey-picker";
+import { ScoreBlock, scoreValueText } from "~/components/scores";
 import { intlLocaleFor } from "~/lib/i18n";
 import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
@@ -19,8 +20,6 @@ import {
 } from "~/lib/survey-analytics.server";
 import { windowBounds } from "~/lib/analytics";
 import { fixedOptionLabel } from "~/lib/answer-text";
-import type { TFunction } from "~/lib/i18n";
-import type { QuestionScore } from "~/lib/survey-analytics.server";
 import { listSurveys, getSurveyRow } from "~/lib/surveys.server";
 import { formatMoney } from "~/lib/money";
 import { ensureShop } from "~/lib/provision.server";
@@ -273,6 +272,13 @@ export default function Results() {
   const rangeLabel = t(RANGES.find((range) => range.key === data.range)?.labelKey ?? "results.all_time");
   const percent = (value: number) => t("results.cross_percent", { percent: value });
   const knownBuyers = buyers.first.responses + buyers.returning.responses;
+  // The survey's headline scores, as tiles beside its other numbers: the first
+  // NPS question and the first rating / satisfaction question that have
+  // answers. Each question's full split is in its own panel below.
+  const headlineScores = (["nps", "csat"] as const).flatMap((kind) => {
+    const score = data.breakdowns.find((b) => b.kind !== "text" && b.score?.kind === kind);
+    return score && score.kind !== "text" && score.score ? [score.score] : [];
+  });
 
   return (
     <s-stack gap="base">
@@ -378,6 +384,15 @@ export default function Results() {
         <Metric label={t("results.pending")} help={t("results.pending_help")}>
           <BigNumber>{summary.pendingResponses}</BigNumber>
         </Metric>
+        {headlineScores.map((score) => (
+          <Metric
+            key={score.kind}
+            label={t(score.kind === "nps" ? "results.score_nps" : "results.score_csat")}
+            help={t("results.score_based_on", { count: score.total })}
+          >
+            <BigNumber>{scoreValueText(score, locale, t)}</BigNumber>
+          </Metric>
+        ))}
       </s-grid>
 
       <Panel title={t("results.buyers_title")} description={t("results.buyers_description")}>
@@ -510,63 +525,5 @@ export default function Results() {
         );
       })}
     </s-stack>
-  );
-}
-
-/**
- * The headline score for an NPS, rating or satisfaction question, with what it
- * is made of. NPS shows the promoter / passive / detractor split; CSAT shows
- * the satisfied share and the average. Only shown once a question has answers,
- * so there is never a fabricated 0.
- */
-function ScoreBlock({ score, locale, t }: { score: QuestionScore; locale: string; t: TFunction }) {
-  const number = (value: number, digits = 0) =>
-    new Intl.NumberFormat(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
-  const percentOf = (count: number) => (score.total > 0 ? Math.round((count / score.total) * 100) : 0);
-
-  if (score.kind === "nps") {
-    const signed = score.score > 0 ? `+${number(score.score)}` : number(score.score);
-    const rows: Array<{ label: string; count: number; tone: "success" | "neutral" | "critical" }> = [
-      { label: t("results.score_promoters"), count: score.promoters, tone: "success" },
-      { label: t("results.score_passives"), count: score.passives, tone: "neutral" },
-      { label: t("results.score_detractors"), count: score.detractors, tone: "critical" },
-    ];
-    return (
-      <s-box padding="base" background="subdued" borderRadius="base">
-        <s-stack gap="small">
-          <s-stack gap="small-300">
-            <s-text type="strong">{t("results.score_nps")}</s-text>
-            <BigNumber>{signed}</BigNumber>
-            <s-text color="subdued" fontSize="small">
-              {t("results.score_nps_help")} {t("results.score_based_on", { count: score.total })}
-            </s-text>
-          </s-stack>
-          {rows.map((row) => (
-            <s-stack key={row.label} gap="small-300">
-              <s-grid gridTemplateColumns="minmax(0, 1fr) auto" gap="small" alignItems="center">
-                <s-text>{row.label}</s-text>
-                <s-text fontVariantNumeric="tabular-nums">
-                  {t("results.score_share", { percent: number(percentOf(row.count)), count: number(row.count) })}
-                </s-text>
-              </s-grid>
-              <s-progress value={percentOf(row.count)} max={100} tone={row.tone} />
-            </s-stack>
-          ))}
-        </s-stack>
-      </s-box>
-    );
-  }
-
-  return (
-    <s-box padding="base" background="subdued" borderRadius="base">
-      <s-stack gap="small-300">
-        <s-text type="strong">{t("results.score_csat")}</s-text>
-        <BigNumber>{t("results.score_share_percent", { percent: number(score.percent) })}</BigNumber>
-        <s-text>{t("results.score_average", { average: number(score.average, 1) })}</s-text>
-        <s-text color="subdued" fontSize="small">
-          {t("results.score_csat_help")} {t("results.score_based_on", { count: score.total })}
-        </s-text>
-      </s-stack>
-    </s-box>
   );
 }

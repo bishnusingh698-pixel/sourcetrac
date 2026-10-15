@@ -16,7 +16,8 @@
     "responses": "Responses",
     "home": "Home",
     "channels": "Channel report",
-    "preferences": "Settings"
+    "preferences": "Settings",
+    "current": "(current page)"
   },
   "common": {
     "cancel": "Cancel",
@@ -100,7 +101,11 @@
     "note_pending_other": "{{count}} answers are waiting for their order details from Shopify, usually for less than a minute. Their revenue appears then.",
     "note_test_orders_one": "{{count}} answer is from a Shopify test order. Test orders never count as revenue; real orders count as soon as they arrive.",
     "note_test_orders_other": "{{count}} answers are from Shopify test orders. Test orders never count as revenue; real orders count as soon as they arrive.",
-    "no_answers_in_range": "No answers in this period ({{range}}). Try a longer range."
+    "no_answers_in_range": "No answers in this period ({{range}}). Try a longer range.",
+    "total_row": "Total",
+    "rate_line": "Response rate: {{rate}}. {{answered}} of {{total}} orders in this period answered.",
+    "other_title": "In buyers' own words",
+    "other_subtitle": "What buyers wrote when none of your channels fit. Newest first."
   },
   "settings": {
     "title": "Settings",
@@ -1003,7 +1008,35 @@
     "unpublished": "{{name}} has unpublished changes. Review and publish.",
     "open_report": "Open channel report",
     "do_it": "Go",
-    "see_results": "See the latest answers to {{name}}."
+    "see_results": "See the latest answers to {{name}}.",
+    "subtitle": "Your store at a glance: revenue by channel, customer scores and every survey.",
+    "scores_title": "Customer scores",
+    "scores_subtitle": "How buyers rate you, across all your surveys. {{range}}.",
+    "by_question": "By question",
+    "col_question": "Question",
+    "col_score": "Score",
+    "key_nps": "NPS {{value}}",
+    "key_csat": "CSAT {{value}}",
+    "key_average": "Average {{value}}",
+    "key_top": "{{label}} · {{share}}",
+    "score_pooled_one": "From {{count}} question",
+    "score_pooled_other": "From {{count}} questions",
+    "see_answers": "See answers",
+    "score_no_answers": "No answers in this period yet. Try a longer range.",
+    "nps_none_body": "Ask buyers how likely they are to recommend your store, from 0 to 10, and your Net Promoter Score appears here.",
+    "csat_none_body": "Ask buyers how satisfied they are, from 1 to 5, and your customer satisfaction score appears here.",
+    "add_score_survey": "Add a survey",
+    "top_channels_title": "Top channels",
+    "top_channels_subtitle": "Where buyers heard about you. {{range}}.",
+    "top_channels_empty": "No channel answers in this period.",
+    "buyers_subtitle": "Each order counted once, across all your surveys.",
+    "col_orders": "Orders",
+    "buyers_unknown_one": "{{count}} order did not say whether it was a first order.",
+    "buyers_unknown_other": "{{count}} orders did not say whether they were a first order.",
+    "surveys_subtitle": "Live surveys, and any others that got answers. {{range}}.",
+    "col_key_result": "Key result",
+    "compare_surveys": "Compare surveys in Results",
+    "capped_note": "Scores, buyers and surveys are based on the newest {{limit}} answers in this period."
   },
   "support": {
     "button_label": "Email support",
