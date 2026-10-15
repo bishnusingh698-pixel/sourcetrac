@@ -130,7 +130,7 @@ the shop endpoint") is stale.
 
 ## Critical
 
-### [ ] C1. The backfill migration fails as soon as two shops share an option value (GDPR/SYNC) — CONFIRMED
+### [x] C1. The backfill migration fails as soon as two shops share an option value (GDPR/SYNC) — CONFIRMED
 
 - **Where:** `prisma/migrations/20261012095226_multi_question_survey/migration.sql:292-293` (table at `:68-78`).
 - **Defect:** the backfill inserts each legacy option with `"Option"."id" = option_value`. `Option.id` is a primary key that is global across all shops.

@@ -241,8 +241,12 @@ ALTER TABLE "DataRequest" ADD CONSTRAINT "DataRequest_shopId_fkey" FOREIGN KEY (
 --
 -- Converts the existing single-question survey (Shop.questionText + optionsJson)
 -- and every existing SurveyResponse into the new Survey / Question / Option /
--- Response / Answer / SurveyDailyStats model. No existing column is dropped, and
--- option ids are preserved verbatim, so a later read through either model agrees.
+-- Response / Answer / SurveyDailyStats model. No existing column is dropped.
+-- Option ids are 'bf-option-<shop>-<channel>': "Option"."id" is a primary key
+-- across every shop, and every shop was seeded with the same channel values, so
+-- the bare channel value collides on the second shop and aborts the whole block.
+-- Answers map each legacy channel to that id; a channel with no option row (the
+-- synthetic free-text 'other', or a since-removed option) is kept verbatim.
 --
 -- Written as one PL/pgSQL DO block so it can parse the JSON options in a loop.
 -- ---------------------------------------------------------------------------
@@ -262,6 +266,7 @@ DECLARE
   rev DECIMAL(18,3);
   cur TEXT;
   allow_other BOOLEAN;
+  answer_option TEXT;
 BEGIN
   FOR s IN SELECT * FROM "Shop" LOOP
     survey_id := 'bf-survey-' || s.id;
@@ -291,7 +296,8 @@ BEGIN
       option_label := COALESCE(opt->>'label', option_value);
       IF option_value IS NOT NULL AND option_value <> '' THEN
         INSERT INTO "Option" ("id", "questionId", "position", "label", "isOther", "archived")
-        VALUES (option_value, question_id, pos, option_label, (option_value = 'other'), false);
+        VALUES ('bf-option-' || s.id || '-' || option_value, question_id, pos, option_label, (option_value = 'other'), false)
+        ON CONFLICT ("id") DO NOTHING;
         pos := pos + 1;
       END IF;
     END LOOP;
@@ -301,6 +307,10 @@ BEGIN
       SELECT * FROM "SurveyResponse" WHERE "shopId" = s.id ORDER BY "submittedAt" ASC
     LOOP
       new_response_id := 'bf-response-' || resp.id;
+      answer_option := resp.channel;
+      IF EXISTS (SELECT 1 FROM "Option" WHERE "id" = 'bf-option-' || s.id || '-' || resp.channel) THEN
+        answer_option := 'bf-option-' || s.id || '-' || resp.channel;
+      END IF;
 
       INSERT INTO "Response" (
         "id", "shopId", "surveyId", "surveyVersion", "orderId", "orderTotal", "currency",
@@ -313,7 +323,7 @@ BEGIN
       INSERT INTO "Answer" ("id", "shopId", "responseId", "questionId", "optionIds", "otherText")
       VALUES (
         'bf-answer-' || resp.id, s.id, new_response_id, question_id,
-        jsonb_build_array(resp.channel)::text, resp."otherText"
+        jsonb_build_array(answer_option)::text, resp."otherText"
       );
 
       -- Revenue decision for the totals table, matching evaluateResponseRevenue:
@@ -344,7 +354,7 @@ BEGIN
       day_key := to_char(resp."submittedAt" AT TIME ZONE 'UTC', 'YYYY-MM-DD');
 
       INSERT INTO "SurveyDailyStats" ("shopId", "surveyId", "questionId", "day", "bucket", "count", "revenue", "currency")
-      VALUES (s.id, survey_id, question_id, day_key, resp.channel, 1, rev, cur)
+      VALUES (s.id, survey_id, question_id, day_key, answer_option, 1, rev, cur)
       ON CONFLICT ("surveyId", "questionId", "day", "bucket", "currency")
       DO UPDATE SET "count" = "SurveyDailyStats"."count" + 1,
                     "revenue" = "SurveyDailyStats"."revenue" + EXCLUDED."revenue";

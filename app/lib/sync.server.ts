@@ -256,7 +256,7 @@ async function loadSyncContext(shopId: string, responseId: string): Promise<{
     if (reportAnswer.otherText) channelLabel = reportAnswer.otherText;
     if (!channelLabel && channel) {
       const option = await retryDb(() =>
-        db.option.findFirst({ where: { id: channel }, select: { label: true } }),
+        db.option.findFirst({ where: { id: channel, questionId: reportAnswer.questionId }, select: { label: true } }),
       );
       channelLabel = option?.label ?? channel;
     }

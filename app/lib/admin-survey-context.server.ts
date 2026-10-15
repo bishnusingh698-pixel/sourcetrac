@@ -33,15 +33,20 @@ const EMPTY: AdminSurveyContext = {
 
 async function resolveChannelLabel(
   _shopId: string,
-  answer: { optionIds: string; otherText: string | null },
+  answer: { questionId: string; optionIds: string; otherText: string | null },
 ): Promise<string | null> {
   const optionIds = safeArray(answer.optionIds);
   const first = optionIds[0];
   let label = answer.otherText ?? null;
   if (!label && first) {
-    // Option ids are globally unique cuids; the response was already scoped to
-    // the shop, so a lookup by id cannot cross shops. Option has no shopId.
-    const option = await db.option.findUnique({ where: { id: first }, select: { label: true } });
+    // Option has no shopId. Scope the lookup to the answer's own question (the
+    // response was already scoped to the shop), so an id that is not globally
+    // unique - a backfilled channel value, a template key - cannot resolve to
+    // another shop's label.
+    const option = await db.option.findFirst({
+      where: { id: first, questionId: answer.questionId },
+      select: { label: true },
+    });
     label = option?.label ?? first;
   }
   return label;
