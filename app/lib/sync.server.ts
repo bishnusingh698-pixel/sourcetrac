@@ -311,6 +311,10 @@ async function loadSyncContext(shopId: string, responseId: string): Promise<{
   // same `effectivePlan` rule as submit, so a cancelled Scale plan agrees on
   // both sides.
   if (effectivePlan(shopRow) !== PLAN_SCALE) delete options.presets;
+  // Every other Shopify write (order and customer tags, metafields, Flow) is a
+  // Scale feature too. Same reasoning: a shop that downgraded keeps its stored
+  // settings, so an upgrade restores them, but nothing more is written.
+  if (effectivePlan(shopRow) !== PLAN_SCALE) return null;
 
   return {
     options,

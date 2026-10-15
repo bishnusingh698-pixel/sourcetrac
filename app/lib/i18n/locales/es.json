@@ -913,7 +913,7 @@
     "your_surveys": "Tus encuestas",
     "view_all": "Ver todas las encuestas",
     "next_step": "Siguiente paso",
-    "start_with": "Empieza con {{name}}",
+    "start_with": "Empieza con «{{name}}»",
     "view": "Ver",
     "reliable_ideas": "Tus resultados de {{name}} son fiables. Mira las ideas para probar.",
     "unpublished": "{{name}} tiene cambios sin publicar. Revisa y publica.",

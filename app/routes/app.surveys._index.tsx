@@ -7,23 +7,22 @@ import { ensureShop } from "~/lib/provision.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
 import {
-  createSurvey,
   deleteSurvey,
   duplicateSurvey,
   listSurveys,
+  liveSurveyUsage,
   reorderSurveys,
   setSurveyStatus,
   type SurveyListItem,
 } from "~/lib/surveys.server";
-import { findTemplate } from "@shared/survey-templates";
 import { NotFoundError, ValidationError } from "~/lib/errors";
 
 /**
  * Surveys list.
  *
- * One primary action per state: "Use a template" when the list is empty,
- * "Create survey" otherwise. Row actions cover Edit, Duplicate, Pause/Activate
- * and Delete. Priority is edited with up/down controls rather than drag, which
+ * Every new survey starts on the template page, which also offers a blank
+ * survey, so this page has one way in. Row actions cover Edit, Duplicate,
+ * Pause/Activate and Delete. Priority is edited with up/down controls rather than drag, which
  * is keyboard-accessible for free.
  */
 
@@ -40,10 +39,11 @@ function statusTone(status: SurveyListItem["status"]): BadgeTone {
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
-  const surveys = await listSurveys(shop.id);
+  const [surveys, usage] = await Promise.all([listSurveys(shop.id), liveSurveyUsage(shop.id)]);
 
   return {
     surveys,
+    usage,
   };
 });
 
@@ -70,54 +70,6 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
 async function runListAction(shopId: string, intent: string, surveyId: string, form: FormData) {
   const shop = { id: shopId };
   switch (intent) {
-    case "create-from-template": {
-      const template = findTemplate(String(form.get("templateId") ?? ""));
-      if (!template) throw new ValidationError("That template does not exist.", "Pick another template.");
-      const survey = await createSurvey(shop.id, {
-        name: template.survey.name ?? "Untitled survey",
-        status: "draft",
-        placements: ["thank_you", "order_status"],
-        layout: template.survey.layout ?? "all",
-        title: template.survey.title ?? "Quick question",
-        intro: template.survey.intro ?? null,
-        buttonLabel: template.survey.buttonLabel ?? "Submit",
-        thankYouText: template.survey.thankYouText ?? "Thanks for your feedback!",
-        questions: template.survey.questions.map((question) => ({
-          ...question,
-          options: question.options?.map((option) => ({ ...option })),
-        })),
-      });
-      return redirect(`/app/surveys/${survey.id}`);
-    }
-
-    case "create-blank": {
-      const survey = await createSurvey(shop.id, {
-        name: "Untitled survey",
-        status: "draft",
-        placements: ["thank_you"],
-        layout: "all",
-        title: "Quick question",
-        intro: "Your answer helps us improve. It takes 10 seconds.",
-        buttonLabel: "Submit",
-        thankYouText: "Thanks for your feedback!",
-        questions: [
-          {
-            type: "single_choice",
-            text: "How did you hear about us?",
-            required: true,
-            allowOther: true,
-            options: [
-              { label: "Instagram" },
-              { label: "Google search" },
-              { label: "Friend or family" },
-              { label: "Online ad" },
-            ],
-          },
-        ],
-      });
-      return redirect(`/app/surveys/${survey.id}`);
-    }
-
     case "duplicate": {
       const survey = await duplicateSurvey(shop.id, surveyId);
       return redirect(`/app/surveys/${survey.id}`);
@@ -155,34 +107,38 @@ function StatusBadge({ status }: { status: SurveyListItem["status"] }) {
 }
 
 export default function Surveys() {
-  const { surveys } = useLoaderData<typeof loader>();
+  const { surveys, usage } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const { t } = useAdminI18n();
   const failureKey = actionData && actionData.ok === false ? `surveys.validation_${actionData.code}` : null;
   const failureText = failureKey ? (t(failureKey) === failureKey ? actionData!.ok === false && actionData!.message : t(failureKey)) : null;
 
   const createActions = (
-    <>
-      <s-button href="/app/surveys/library" variant="primary">
-        {t("surveys.use_template")}
-      </s-button>
-      <Form method="post">
-        <input type="hidden" name="intent" value="create-blank" />
-        <s-button type="submit">{t("surveys.start_scratch")}</s-button>
-      </Form>
-    </>
+    <s-button href="/app/surveys/library" variant="primary" icon="plus">
+      {t("surveys.new_survey")}
+    </s-button>
   );
 
   return (
     <s-stack gap="base">
       <PageIntro actions={createActions}>{t("surveys.subtitle")}</PageIntro>
       {failureText ? <s-banner tone="critical">{failureText}</s-banner> : null}
+      {usage.live > usage.limit ? (
+        // A downgrade leaves more surveys live than the plan serves. Buyers only
+        // see the first ones in priority order; the rest keep their settings.
+        <s-banner tone="warning" heading={t("surveys.over_limit_title", { count: usage.limit })}>
+          <s-stack gap="small">
+            <s-text>{t("surveys.over_limit_body", { count: usage.limit })}</s-text>
+            <s-stack direction="inline" gap="small">
+              <s-button href="/app/plans">{t("surveys.see_plans")}</s-button>
+            </s-stack>
+          </s-stack>
+        </s-banner>
+      ) : null}
 
       {surveys.length === 0 ? (
         <Panel title={t("surveys.empty_title")} description={t("surveys.empty_body")}>
-          <s-stack direction="inline" gap="small">
-            {createActions}
-          </s-stack>
+          <s-stack direction="inline" gap="small">{createActions}</s-stack>
         </Panel>
       ) : (
         <s-section>
@@ -230,7 +186,7 @@ export default function Surveys() {
                     <s-button href={`/app/surveys/${survey.id}`} icon="edit">
                       {t("common.edit")}
                     </s-button>
-                    <s-button href={`/app/surveys/${survey.id}?tab=results`} variant="tertiary" icon="chart-vertical">
+                    <s-button href={`/app/results?survey=${survey.id}`} variant="tertiary" icon="chart-vertical">
                       {t("surveys.view_results")}
                     </s-button>
                     {survey.status === "active" ? (

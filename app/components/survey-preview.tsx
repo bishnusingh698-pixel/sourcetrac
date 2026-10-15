@@ -1,351 +1,180 @@
-import { useMemo, useState } from "react";
-
-import {
-  isChoiceType,
-  isQuestionVisible,
-  orderOptions,
-  reconcileMultiChoiceSelection,
-  resolveOptions,
-  SATISFACTION_OPTIONS,
-  YES_NO_IDS,
-  type AnswerInput,
-} from "@shared/survey-rules";
+import { describeFollowUp, type FollowUp } from "@shared/survey-summary";
+import { resolveOptions, SATISFACTION_OPTIONS, YES_NO_IDS } from "@shared/survey-rules";
 import type { EditorSurvey } from "~/lib/surveys.server";
 
 type TFn = (key: string, params?: Record<string, unknown>) => string;
 
 /**
- * Live preview of the survey, mimicking the checkout look with neutral styles.
+ * What buyers see, drawn as a still picture.
  *
- * It is clickable: selecting answers applies show-if logic and one-at-a-time
- * navigation, so the merchant sees exactly what a buyer will. It never submits
- * anything. Colors and fonts are intentionally neutral — the real extension
- * inherits the store's checkout branding.
+ * The old preview was an interactive copy of the checkout block, with device,
+ * page and language switches. It disagreed with the real block often enough
+ * that merchants stopped trusting it. This one shows every question at once,
+ * follow-ups included and labelled with when they appear, so the whole survey
+ * can be checked at a glance on any screen. It has no state and nothing to
+ * click, so there is nothing in it that can stop working.
+ *
+ * The real survey takes its fonts and colours from the store's checkout, which
+ * the caption says.
  */
-export function SurveyPreview({
-  survey,
-  languages,
-  t,
-  showChrome = true,
-  showNote = true,
-  previewLocale,
-  onSelectQuestion,
-  highlightQuestionId,
-}: {
-  survey: EditorSurvey;
-  languages: Array<{ code: string; name: string }>;
-  t: TFn;
-  /** Hide the title/device/language controls when embedded in the Studio mock. */
-  showChrome?: boolean;
-  /** Hide the "colors and fonts" note when the Studio renders its own caption. */
-  showNote?: boolean;
-  /** Controlled preview language, so the Studio can drive it from its own state. */
-  previewLocale?: string;
-  /** S6: clicking a question's text selects it in the editor. */
-  onSelectQuestion?: (questionId: string) => void;
-  highlightQuestionId?: string | null;
-}) {
-  const [answers, setAnswers] = useState<Record<string, AnswerInput>>({});
-  const [step, setStep] = useState(0);
-  const [width, setWidth] = useState<"desktop" | "mobile">("desktop");
-  const [locale, setLocale] = useState<string>("");
-
-  const activeLocale = previewLocale !== undefined ? previewLocale : locale;
-
-  const translated = useMemo(() => {
-    if (!activeLocale) return survey;
-    const tr = (survey.translations ?? {}) as Record<string, Record<string, unknown>>;
-    const pack = tr[activeLocale];
-    if (!pack) return survey;
-    return {
-      ...survey,
-      title: String(pack.title ?? survey.title),
-      intro: pack.intro != null ? String(pack.intro) : survey.intro,
-      buttonLabel: String(pack.buttonLabel ?? survey.buttonLabel),
-      thankYouText: String(pack.thankYouText ?? survey.thankYouText),
-      questions: survey.questions.map((question) => {
-        const qtr = (pack.questions as Record<string, Record<string, string>>) ?? {};
-        return { ...question, text: qtr[question.id]?.text ?? question.text };
-      }),
-    };
-  }, [survey, activeLocale]);
-
-  const answersSoFar = useMemo(() => Object.values(answers), [answers]);
-  const visible = translated.questions.filter((q) => isQuestionVisible(q, answersSoFar));
-  const oneByOne = survey.layout === "one_by_one";
-  const current = oneByOne ? visible[Math.min(step, Math.max(visible.length - 1, 0))] : undefined;
-
-  const setAnswer = (questionId: string, patch: Partial<AnswerInput>) =>
-    setAnswers((prev) => ({ ...prev, [questionId]: { questionId, ...prev[questionId], ...patch } }));
-
-  const shown = oneByOne ? (current ? [current] : []) : visible;
+export function SurveyPreview({ survey, t }: { survey: EditorSurvey; t: TFn }) {
+  const questions = survey.questions;
 
   return (
-    <s-stack gap="base">
-      {showChrome ? (
-        <s-stack direction="inline" gap="small" justifyContent="space-between" alignItems="center">
-          <s-text type="strong">{t("surveys.preview_title")}</s-text>
-          <s-stack direction="inline" gap="small">
-            <s-button type="button" onClick={() => setWidth("desktop")} variant={width === "desktop" ? "primary" : "secondary"}>
-              {t("surveys.preview_desktop")}
-            </s-button>
-            <s-button type="button" onClick={() => setWidth("mobile")} variant={width === "mobile" ? "primary" : "secondary"}>
-              {t("surveys.preview_mobile")}
-            </s-button>
-          </s-stack>
-        </s-stack>
-      ) : null}
-
-      {showChrome && languages.length > 1 ? (
-        <s-select
-          label={t("surveys.preview_language")}
-          value={locale}
-          onChange={(e: Event) => setLocale((e.currentTarget as unknown as { value?: string }).value ?? "")}
-        >
-          <s-option value="">{t("surveys.preview_default_language")}</s-option>
-          {languages.map((language) => (
-            <s-option key={language.code} value={language.code}>
-              {language.name}
-            </s-option>
-          ))}
-        </s-select>
-      ) : null}
-
-      <s-box
-        padding={survey.design.spacing === "compact" ? "small" : "base"}
-        border={survey.design.cardBorder === "border" ? "base" : "none"}
-        borderRadius="base"
-        background="subdued"
-      >
+    <s-stack gap="small">
+      <div className="st-preview" aria-label={t("preview.aria")}>
         <s-stack gap="base">
-          {survey.design.showTitle ? <s-heading>{translated.title}</s-heading> : null}
-          {translated.intro ? <s-text color="subdued">{translated.intro}</s-text> : null}
+          {survey.design.showTitle && survey.title ? <s-text type="strong">{survey.title}</s-text> : null}
+          {survey.intro ? <s-text color="subdued">{survey.intro}</s-text> : null}
 
-          {oneByOne && survey.design.showProgress && visible.length > 1 ? (
-            <s-text color="subdued" fontSize="small">
-              {t("surveys.preview_progress", { current: Math.min(step + 1, visible.length), total: visible.length })}
-            </s-text>
+          {questions.length === 0 ? <s-text color="subdued">{t("preview.empty")}</s-text> : null}
+
+          {questions.map((question, index) => {
+            const followUp = describeFollowUp(question, questions);
+            return (
+              <div key={question.id || index} className={followUp ? "st-preview-q st-preview-follow" : "st-preview-q"}>
+                <s-stack gap="small-200">
+                  {followUp ? (
+                    <s-text color="subdued" fontSize="small">
+                      {followUpText(followUp, t)}
+                    </s-text>
+                  ) : null}
+                  <s-text type="strong">
+                    {question.text || t("preview.untitled")}
+                    {question.required ? " *" : ""}
+                  </s-text>
+                  {question.helpText ? (
+                    <s-text color="subdued" fontSize="small">
+                      {question.helpText}
+                    </s-text>
+                  ) : null}
+                  <Answers question={question} design={survey.design} t={t} />
+                </s-stack>
+              </div>
+            );
+          })}
+
+          {questions.length > 0 ? (
+            <span className="st-preview-button">{survey.buttonLabel || t("preview.button")}</span>
           ) : null}
-
-          {shown.map((question) => (
-            <PreviewQuestion
-              key={question.id}
-              question={question}
-              answer={answers[question.id]}
-              orderId="preview"
-              onAnswer={setAnswer}
-              t={t}
-              design={survey.design}
-              onSelect={onSelectQuestion}
-              highlighted={question.id === highlightQuestionId}
-            />
-          ))}
-
-          <s-stack direction="inline" gap="small">
-            {oneByOne && step > 0 ? (
-              <s-button type="button" onClick={() => setStep((s) => Math.max(s - 1, 0))}>
-                {t("surveys.preview_back")}
-              </s-button>
-            ) : null}
-            {oneByOne && step < visible.length - 1 ? (
-              <s-button type="button" variant="primary" onClick={() => setStep((s) => s + 1)}>
-                {t("surveys.preview_next")}
-              </s-button>
-            ) : (
-              <s-button type="button" variant="primary">
-                {translated.buttonLabel}
-              </s-button>
-            )}
-          </s-stack>
         </s-stack>
-      </s-box>
-
-      {showNote ? (
-        <s-text color="subdued" fontSize="small">
-          {t("surveys.preview_note")}
-        </s-text>
-      ) : null}
+      </div>
+      <s-text color="subdued" fontSize="small">
+        {survey.layout === "one_by_one" ? `${t("preview.one_by_one")} ` : ""}
+        {t("preview.caption")}
+      </s-text>
     </s-stack>
   );
 }
 
-function PreviewQuestion({
-  question,
-  answer,
-  orderId,
-  onAnswer,
-  t,
-  design,
-  onSelect,
-  highlighted,
-}: {
-  question: EditorSurvey["questions"][number];
-  answer: AnswerInput | undefined;
-  orderId: string;
-  onAnswer: (questionId: string, patch: Partial<AnswerInput>) => void;
-  t: TFn;
-  design?: EditorSurvey["design"];
-  onSelect?: (questionId: string) => void;
-  highlighted?: boolean;
-}) {
-  const options = orderOptions(resolveOptions(question), question.randomizeOptions ?? false, orderId);
-  const clickable = Boolean(onSelect && question.id);
+function followUpText(followUp: FollowUp, t: TFn): string {
+  if (followUp.parentNumber === 0) return t("preview.follow_up_unknown");
+  const labels = followUp.options.map((o) =>
+    o.label ?? (o.id === YES_NO_IDS.yes ? t("surveys.yes") : o.id === YES_NO_IDS.no ? t("surveys.no") : t(`surveys.satisfaction_${o.id}`)),
+  );
+  if (labels.length > 0) {
+    const shown = labels.slice(0, 3).map((l) => `“${l}”`).join(", ");
+    const extra = labels.length > 3 ? ` +${labels.length - 3}` : "";
+    return t("preview.follow_up_answers", { n: followUp.parentNumber, answers: `${shown}${extra}` });
+  }
+  if (followUp.min !== null || followUp.max !== null) {
+    return t("preview.follow_up_range", { n: followUp.parentNumber, min: followUp.min ?? "…", max: followUp.max ?? "…" });
+  }
+  return t("preview.follow_up_unknown");
+}
 
-  return (
-    <s-stack gap="small">
-      <s-clickable
-        {...(clickable ? { onClick: () => onSelect?.(question.id), padding: "none" } : {})}
-        {...(highlighted ? { background: "strong" } : {})}
-      >
-        <s-stack gap="small-200">
-          <s-text type="strong">{question.text || t("surveys.preview_untitled_question")}</s-text>
-          {question.helpText ? (
-            <s-text color="subdued" fontSize="small">
-              {question.helpText}
-            </s-text>
-          ) : null}
-          {clickable ? (
-            <s-text color="subdued" fontSize="small">
-              {t("studio.click_to_edit")}
-            </s-text>
-          ) : null}
-        </s-stack>
-      </s-clickable>
-
-      {isChoiceType(question.type) && question.type !== "satisfaction_5" ? (
-        <s-choice-list
-          name={question.id}
-          values={answer?.optionIds ?? []}
-          multiple={question.type === "multi_choice" || undefined}
-          onChange={(e: Event) => {
-            const target = e.currentTarget as { values?: string[] };
-            const next = target.values ?? [];
-            if (question.type !== "multi_choice") {
-              onAnswer(question.id, { optionIds: next });
-              return;
-            }
-            // T6: an exclusive option clears the others (and any other clears it).
-            const exclusiveIds = options.filter((o) => o.exclusive).map((o) => o.id);
-            onAnswer(question.id, {
-              optionIds: reconcileMultiChoiceSelection(exclusiveIds, answer?.optionIds ?? [], next),
-            });
-          }}
-        >
+function Answers({ question, design, t }: { question: EditorSurvey["questions"][number]; design: EditorSurvey["design"]; t: TFn }) {
+  switch (question.type) {
+    case "single_choice":
+    case "multi_choice": {
+      const marker = question.type === "multi_choice" ? "st-box" : "st-dot";
+      const options = resolveOptions(question).filter((o) => !o.isOther);
+      return (
+        <ul className="st-preview-options">
           {options.map((option) => (
-            <s-choice key={option.id} value={option.id}>
+            <li key={option.id}>
+              <span className={marker} aria-hidden="true" />
               {option.label}
-            </s-choice>
+            </li>
           ))}
-        </s-choice-list>
-      ) : null}
-
-      {question.type === "satisfaction_5" ? (
-        <s-choice-list
-          name={question.id}
-          values={answer?.optionIds ?? []}
-          onChange={(e: Event) => {
-            const target = e.currentTarget as { values?: string[] };
-            onAnswer(question.id, { optionIds: target.values ?? [] });
-          }}
-        >
+          {question.allowOther || question.options.some((o) => o.isOther) ? (
+            <li>
+              <span className={marker} aria-hidden="true" />
+              {t("preview.other")}
+            </li>
+          ) : null}
+        </ul>
+      );
+    }
+    case "dropdown":
+      return <span className="st-preview-field">{t("preview.dropdown")}</span>;
+    case "yes_no":
+      return (
+        <ul className="st-preview-options">
+          <li>
+            <span className="st-dot" aria-hidden="true" />
+            {t("surveys.yes")}
+          </li>
+          <li>
+            <span className="st-dot" aria-hidden="true" />
+            {t("surveys.no")}
+          </li>
+        </ul>
+      );
+    case "satisfaction_5":
+      return (
+        <ul className="st-preview-options">
           {SATISFACTION_OPTIONS.map((option) => (
-            <s-choice key={option.id} value={option.id}>
+            <li key={option.id}>
+              <span className="st-dot" aria-hidden="true" />
               {t(`surveys.satisfaction_${option.id}`)}
-            </s-choice>
+            </li>
           ))}
-        </s-choice-list>
-      ) : null}
+        </ul>
+      );
+    case "rating_5":
+      return (
+        <Scale
+          values={[1, 2, 3, 4, 5]}
+          stars={design.ratingStyle === "stars"}
+          low={design.scaleLowLabel}
+          high={design.scaleHighLabel}
+        />
+      );
+    case "nps":
+      return (
+        <Scale
+          values={Array.from({ length: 11 }, (_, n) => n)}
+          low={design.scaleLowLabel || t("surveys.nps_low")}
+          high={design.scaleHighLabel || t("surveys.nps_high")}
+        />
+      );
+    default:
+      return (
+        <span className={question.textMultiline ? "st-preview-field st-preview-area" : "st-preview-field"}>
+          {question.placeholder ?? ""}
+        </span>
+      );
+  }
+}
 
-      {question.type === "yes_no" ? (
-        <s-choice-list
-          name={question.id}
-          values={answer?.optionIds ?? []}
-          onChange={(e: Event) => {
-            const target = e.currentTarget as { values?: string[] };
-            const id = target.values?.[0];
-            onAnswer(question.id, {
-              optionIds: id ? [id] : [],
-              numberValue: id === YES_NO_IDS.yes ? 1 : id === YES_NO_IDS.no ? 0 : null,
-            });
-          }}
-        >
-          <s-choice value={YES_NO_IDS.yes}>{t("surveys.yes")}</s-choice>
-          <s-choice value={YES_NO_IDS.no}>{t("surveys.no")}</s-choice>
-        </s-choice-list>
-      ) : null}
-
-      {question.type === "rating_5" ? (
-        <s-stack gap="small">
-          <s-stack direction="inline" gap="small">
-            {[1, 2, 3, 4, 5].map((n) => (
-              <s-button
-                key={n}
-                type="button"
-                variant={answer?.numberValue === n ? "primary" : "secondary"}
-                onClick={() => onAnswer(question.id, { numberValue: n })}
-                accessibilityLabel={t("surveys.rating_aria", { n })}
-              >
-                {design?.ratingStyle === "stars" ? "★" : String(n)}
-              </s-button>
-            ))}
-          </s-stack>
-          <s-stack direction="inline" gap="small" justifyContent="space-between">
-            <s-text color="subdued" fontSize="small">
-              {design?.scaleLowLabel ?? t("surveys.rating_aria", { n: 1 })}
-            </s-text>
-            <s-text color="subdued" fontSize="small">
-              {design?.scaleHighLabel ?? t("surveys.rating_aria", { n: 5 })}
-            </s-text>
-          </s-stack>
-        </s-stack>
-      ) : null}
-
-      {question.type === "nps" ? (
-        <s-stack gap="small">
-          <s-stack direction="inline" gap="small">
-            {Array.from({ length: 11 }, (_, n) => (
-              <s-button
-                key={n}
-                type="button"
-                variant={answer?.numberValue === n ? "primary" : "secondary"}
-                onClick={() => onAnswer(question.id, { numberValue: n })}
-                accessibilityLabel={t("surveys.nps_aria", { n })}
-              >
-                {String(n)}
-              </s-button>
-            ))}
-          </s-stack>
-          <s-stack direction="inline" gap="small" justifyContent="space-between">
-            <s-text color="subdued" fontSize="small">
-              {design?.scaleLowLabel ?? t("surveys.nps_low")}
-            </s-text>
-            <s-text color="subdued" fontSize="small">
-              {design?.scaleHighLabel ?? t("surveys.nps_high")}
-            </s-text>
-          </s-stack>
-        </s-stack>
-      ) : null}
-
-      {question.type === "text" ? (
-        question.textMultiline ? (
-          <s-text-area
-            label={question.text}
-            placeholder={question.placeholder ?? undefined}
-            maxLength={500}
-            onInput={(e: Event) =>
-              onAnswer(question.id, { textValue: (e.currentTarget as { value?: string }).value ?? "" })
-            }
-          />
-        ) : (
-          <s-text-field
-            label={question.text}
-            placeholder={question.placeholder ?? undefined}
-            maxLength={500}
-            onInput={(e: Event) =>
-              onAnswer(question.id, { textValue: (e.currentTarget as { value?: string }).value ?? "" })
-            }
-          />
-        )
+function Scale({ values, stars = false, low, high }: { values: number[]; stars?: boolean; low?: string; high?: string }) {
+  return (
+    <s-stack gap="small-200">
+      <div className="st-preview-scale">
+        {values.map((n) => (
+          <span key={n}>{stars ? "★" : n}</span>
+        ))}
+      </div>
+      {low || high ? (
+        <s-grid gridTemplateColumns="minmax(0, 1fr) minmax(0, 1fr)" gap="small">
+          <s-text color="subdued" fontSize="small">
+            {low ?? ""}
+          </s-text>
+          <s-text color="subdued" fontSize="small">
+            <span className="st-align-end">{high ?? ""}</span>
+          </s-text>
+        </s-grid>
       ) : null}
     </s-stack>
   );

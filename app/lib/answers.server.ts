@@ -371,7 +371,8 @@ async function afterAnswerStored(input: AnswerSubmitInput, responseId: string, t
     if (input.plan !== "scale" && options.presets) {
       delete options.presets;
     }
-    if (hasSyncWork(options)) {
+    // Every Shopify write is a Scale feature, so nothing is queued below it.
+    if (input.plan === "scale" && hasSyncWork(options)) {
       await enqueueSync(input.shopId, responseId, options);
       void processPendingSync(input.shopId, 5, { responseId }).catch((syncError: unknown) => {
         logger.warn("answer_sync_failed", {

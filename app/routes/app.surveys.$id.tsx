@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Form,
   redirect,
   useActionData,
   useLoaderData,
@@ -12,14 +11,11 @@ import {
   type MetaFunction,
 } from "react-router";
 
-import { Banner, Panel } from "~/components/admin-ui";
-import { ConfidenceBadge, ConfidenceHelp, CrossTabView, IdeasList, ProductTable } from "~/components/insights";
-import { SurveyEditor, errorId, type TFn } from "~/components/survey-editor";
+import { Banner } from "~/components/admin-ui";
+import { FrameText, QuestionList, errorId, type TFn } from "~/components/survey-editor";
 import { SurveyPreview } from "~/components/survey-preview";
-import { CheckoutMock, type PreviewPlacement } from "~/components/checkout-mock";
-import { SyncSettings, Targeting, Translations } from "~/components/survey-settings-panels";
+import { AdvancedTargeting, Audience, Automation, Languages, ShopifyActions } from "~/components/survey-settings-panels";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
-import { intlLocaleFor } from "~/lib/i18n";
 import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
 import { ensureShop } from "~/lib/provision.server";
 import { guarded } from "~/lib/admin-errors.server";
@@ -27,9 +23,9 @@ import { authenticate } from "~/shopify.server";
 import { ConflictError, NotFoundError, ValidationError } from "~/lib/errors";
 import {
   discardSurveyDraft,
-  getEditorSurvey,
   getSurveyRow,
   isOverActiveLimit,
+  liveSurveyUsage,
   publishSurveyDraft,
   rowToEditor,
   setSurveyStatus,
@@ -38,33 +34,30 @@ import {
   type SurveyInput,
 } from "~/lib/surveys.server";
 import { getShopDisplay } from "~/lib/studio.server";
-import { getProductTitles } from "~/lib/studio.server";
 import { grantedSyncScopes } from "~/lib/scopes.server";
-import { formatMoney } from "~/lib/money";
-import { DEFAULT_SURVEY_TEXT } from "@shared/survey-config";
+import { effectivePlan } from "~/lib/plans";
 import { LANGUAGES } from "~/lib/i18n";
-import { isEnabled } from "@shared/feature-flags";
 import { LIMITS } from "@shared/survey-rules";
+import { planTier } from "@shared/plan-features";
 import { getReadiness, readinessBlocksGoLive } from "@shared/templates/readiness";
-import { templateById } from "@shared/templates/index";
-import { buildSurveyInsights, type SurveyInsights } from "~/lib/insights.server";
-import { fetchSurveyResponses } from "~/lib/survey-analytics.server";
-import { crossTabRowShares, type CrossTab } from "@shared/templates/stats";
+import { templateById } from "@shared/templates";
 import type { Placement } from "@shared/survey-config";
 
 /**
- * Survey Studio (S1).
+ * The survey editor.
  *
- * A three-panel workspace: edit on the left, a realistic checkout preview in the
- * middle, and "Where & who" plus the ready check on the right. On medium screens
- * the right panel becomes a fourth segment; on phones it is a top-level tab.
+ * One page, top to bottom: the questions, where the survey shows, who sees it,
+ * and a few optional sections. The preview sits beside it on a wide screen and
+ * below it on a phone. One button saves; on a live survey it saves and
+ * publishes in one step, so there is no separate draft to remember.
  *
  * The whole survey is edited in local state and posted as one JSON blob, so
- * reordering and adding options never round-trip. For a live survey, saving
- * writes a DRAFT (S7) that shoppers never see until "Publish changes".
+ * reordering and adding answers never round-trip.
  */
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "surveys.editor_title");
+
+export const handle = { titleKey: "surveys.editor_title" };
 
 export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -74,54 +67,23 @@ export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) =>
   const row = await getSurveyRow(shop.id, id);
   if (!row) throw new NotFoundError("That survey does not exist.", { surveyId: id });
   const survey = rowToEditor(row);
-  // Overview and Results describe what buyers answered: the published survey,
-  // archived questions included for their labels, never the unpublished draft.
-  const published = rowToEditor(row, { view: "published" });
 
   const display = await getShopDisplay(shop.id, shop.shopDomain, session.accessToken);
-  const language = resolveAdminLanguage(request, shop.language, shop.adminLocale);
-  const locale = intlLocaleFor(language);
-  const currency = display.currencyCode ?? "USD";
-  // A believable order total, formatted in the shop's own currency. Never a real
-  // order: the mock always shows "#1001" and "Alex".
-  const sampleTotal = formatMoney(4250, currency, locale);
-
-  // Results/Overview insights (T8/T9/T12/T14). Loaded here so the Overview and
-  // Results tabs share one computation; the pure maths lives in
-  // `shared/templates/stats.ts`. Product titles are only fetched when the
-  // template asks for a product breakdown.
+  const usage = await liveSurveyUsage(shop.id);
   const template = survey.templateId ? templateById(survey.templateId) : undefined;
-  const responses = await fetchSurveyResponses({ shopId: shop.id, surveyId: survey.id, limit: 5000 });
-  const productIds = template?.resultsHints?.byProduct
-    ? [...new Set(responses.flatMap((r) => r.productIds))]
-    : [];
-  const productTitles = productIds.length
-    ? await getProductTitles(shop.id, shop.shopDomain, session.accessToken, productIds)
-    : {};
-  const insights = buildSurveyInsights({
-    responses,
-    questions: published.questions,
-    templateId: survey.templateId,
-    locale,
-    productTitles,
-  });
 
   return {
     survey,
-    shopName: display.name ?? shop.shopDomain.replace(".myshopify.com", ""),
     shopHandle: shop.shopDomain.replace(".myshopify.com", ""),
-    shopCurrency: currency,
-    sampleTotal,
-    product: display.product,
+    shopCurrency: display.currencyCode ?? "USD",
     languages: LANGUAGES.map((l) => ({ code: l.code, name: l.nativeName })),
+    defaultLanguage: resolveAdminLanguage(request, shop.language, shop.adminLocale),
     limits: LIMITS,
-    defaults: DEFAULT_SURVEY_TEXT,
+    plan: planTier(effectivePlan(shop)),
     grantedScopes: grantedSyncScopes(session.scope),
-    onsiteEnabled: isEnabled("ONSITE_SURVEYS"),
-    surveyLinkEnabled: isEnabled("SURVEY_LINK_PAGE"),
-    insights,
-    insightsLocale: locale,
+    templatePresets: template?.smartActions ?? [],
     overActiveLimit: survey.status !== "active" && (await isOverActiveLimit(shop.id, survey.id)),
+    liveLimit: usage.limit,
   };
 });
 
@@ -147,7 +109,7 @@ export const action = guarded(async ({ request, params }: ActionFunctionArgs) =>
   if (!INTENTS.has(intent)) {
     return { ok: false as const, conflict: false, issues: [{ path: "", code: "unknown_intent", message: "That action is not supported." }] };
   }
-  // The concurrency token the editor loaded. Every Studio post carries it; one
+  // The concurrency token the editor loaded. Every post carries it; one
   // without it is refused rather than skipping the check.
   const rawRevision = form.get("revision");
   const expectedRevision = typeof rawRevision === "string" && rawRevision !== "" ? Number(rawRevision) : Number.NaN;
@@ -158,19 +120,19 @@ export const action = guarded(async ({ request, params }: ActionFunctionArgs) =>
   try {
     if (intent === "publish") {
       await publishSurveyDraft(shop.id, id, expectedRevision);
-      return redirect(`/app/surveys/${id}?tab=studio&published=1`);
+      return redirect(`/app/surveys/${id}?published=1`);
     }
     if (intent === "discard") {
       await discardSurveyDraft(shop.id, id, expectedRevision);
-      return redirect(`/app/surveys/${id}?tab=studio&discarded=1`);
+      return redirect(`/app/surveys/${id}?discarded=1`);
     }
     if (intent === "pause") {
       await setSurveyStatus(shop.id, id, "paused");
-      return redirect(`/app/surveys/${id}?tab=studio`);
+      return redirect(`/app/surveys/${id}?paused=1`);
     }
     if (intent === "activate") {
       await setSurveyStatus(shop.id, id, "active");
-      return redirect(`/app/surveys/${id}?tab=studio`);
+      return redirect(`/app/surveys/${id}?launched=1`);
     }
   } catch (error) {
     const result = failure(error);
@@ -192,13 +154,18 @@ export const action = guarded(async ({ request, params }: ActionFunctionArgs) =>
   }
 
   try {
-    await updateSurvey(shop.id, id, input, expectedRevision);
-    // "Go live" saves the survey, then activates it in one round trip. A
-    // live/paused survey's save lands as a draft, so activation is only
-    // meaningful for a draft, which `updateSurvey` writes directly.
+    const saved = await updateSurvey(shop.id, id, input, expectedRevision);
     if (intent === "go-live") {
       await setSurveyStatus(shop.id, id, "active");
-      return redirect(`/app/surveys/${id}?tab=studio&launched=1`);
+      return redirect(`/app/surveys/${id}?launched=1`);
+    }
+    // A live or paused survey's save is held as a draft. Publish it straight
+    // away: one button, and buyers see the change. The draft step still exists
+    // underneath for the concurrency check, it just never waits on a second
+    // click.
+    if (saved.hasDraft) {
+      await publishSurveyDraft(shop.id, id, saved.revision);
+      return redirect(`/app/surveys/${id}?published=1`);
     }
   } catch (error) {
     const result = failure(error);
@@ -206,7 +173,7 @@ export const action = guarded(async ({ request, params }: ActionFunctionArgs) =>
     if (error instanceof NotFoundError) return redirect("/app/surveys");
     throw error;
   }
-  return redirect(`/app/surveys/${id}?tab=studio&saved=1`);
+  return redirect(`/app/surveys/${id}?saved=1`);
 });
 
 /** Validation issues carried on a ValidationError, with a translated message. */
@@ -223,49 +190,30 @@ function extractIssues(error: ValidationError): EditorIssue[] {
   return [{ path: field, code: typeof error.fields.code === "string" ? error.fields.code : "invalid", message: error.message }];
 }
 
-function issueText(t: TFn, issue: EditorIssue): string {
+function issueText(t: TFn, issue: EditorIssue, params: Record<string, unknown> = {}): string {
   const key = `surveys.validation_${issue.code}`;
-  const translated = t(key);
+  const translated = t(key, params);
   return translated === key ? issue.message : translated;
 }
 
-type StudioTab = "overview" | "studio" | "results" | "settings";
-type EditView = "questions" | "design" | "logic";
+/** The success notice for a redirect back to the editor, if any. */
+const NOTICES = ["launched", "published", "saved", "paused", "discarded"] as const;
 
-/** Old tab names that should keep working as bookmarks. */
-const LEGACY_TABS: Record<string, StudioTab> = {
-  questions: "studio",
-  logic: "studio",
-  who: "studio",
-  targeting: "studio",
-  sync: "settings",
-  translations: "settings",
-};
-
-function resolveTab(raw: string | null, survey: EditorSurvey): StudioTab {
-  if (raw && LEGACY_TABS[raw]) return LEGACY_TABS[raw];
-  if (raw === "overview" || raw === "studio" || raw === "results" || raw === "settings") return raw;
-  // Landing tab: a draft with no responses opens the Studio; otherwise Overview.
-  return survey.status === "draft" && survey.responseCount === 0 ? "studio" : "overview";
-}
-
-export default function SurveyStudio() {
+export default function SurveyEditorPage() {
   const data = useLoaderData<typeof loader>();
-  const { survey, limits, grantedScopes, insights } = data;
+  const { survey, limits, plan } = data;
   const { t } = useAdminI18n();
   const navigation = useNavigation();
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
   const submit = useSubmit();
+  const actionData = useActionData<typeof action>();
 
   const [draft, setDraft] = useState<EditorSurvey>(survey);
   const initial = useRef(JSON.stringify(survey));
-  const actionData = useActionData<typeof action>();
 
-  // After a save/publish/pause the loader re-runs and hands back the persisted
-  // survey. Reset the local editor to it, or the form would still show the
-  // pre-save values and read as dirty.
-  // Keyed on the merchant-only revision: `updatedAt` moves on every shopper
-  // answer, which reset (and discarded) unsaved edits on any revalidation.
+  // After a save the loader hands back the stored survey. Reset the editor to
+  // it, keyed on the merchant-only revision: `updatedAt` moves on every
+  // shopper answer and would throw away unsaved edits.
   const dataKey = `${survey.revision}:${survey.hasDraft}:${survey.status}`;
   const lastKey = useRef(dataKey);
   useEffect(() => {
@@ -275,22 +223,13 @@ export default function SurveyStudio() {
     initial.current = JSON.stringify(survey);
   }, [dataKey, survey]);
 
-  const tab = resolveTab(params.get("tab"), survey);
-  const [view, setView] = useState<EditView>("questions");
-  const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
-  const [placement, setPlacement] = useState<PreviewPlacement>("thank_you");
-  const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
-  const [previewLocale, setPreviewLocale] = useState<string>("");
-  const [showRules, setShowRules] = useState(false);
-  const [confirmDiscard, setConfirmDiscard] = useState(false);
-
   const errors = useMemo(() => {
     const map = new Map<string, string>();
     if (actionData && actionData.ok === false) {
-      for (const issue of actionData.issues) map.set(issue.path, issueText(t, issue));
+      for (const issue of actionData.issues) map.set(issue.path, issueText(t, issue, { limit: data.liveLimit }));
     }
     return map;
-  }, [actionData, t]);
+  }, [actionData, t, data.liveLimit]);
 
   const firstErrorPath = actionData && actionData.ok === false ? actionData.issues[0]?.path : undefined;
   useEffect(() => {
@@ -299,16 +238,8 @@ export default function SurveyStudio() {
   }, [firstErrorPath]);
 
   const dirty = JSON.stringify(draft) !== initial.current;
-  const saving = navigation.state === "submitting";
-
-  // App Bridge contextual save bar. Never mixed with `data-save-bar`.
-  useEffect(() => {
-    const bridge = (globalThis as { shopify?: { saveBar?: SaveBarApi } }).shopify;
-    if (!bridge?.saveBar) return;
-    if (dirty) bridge.saveBar.show("survey-editor");
-    else bridge.saveBar.hide("survey-editor");
-  }, [dirty]);
-
+  const busy = navigation.state !== "idle";
+  const pendingIntent = navigation.formData?.get("intent");
   const update = (patch: Partial<EditorSurvey>) => setDraft((d) => ({ ...d, ...patch }));
 
   const readiness = getReadiness({
@@ -330,280 +261,277 @@ export default function SurveyStudio() {
     translationsComplete: null,
   });
   const blocked = readinessBlocksGoLive(readiness);
+  const problems = readiness.filter((item) => !item.ok && item.ok !== null);
 
-  const setTab = (next: StudioTab) => {
-    const search = new URLSearchParams(params);
-    search.set("tab", next);
-    setParams(search, { preventScrollReset: true });
-  };
-
-  // Status actions (publish / pause / activate / discard) are not form saves, so
-  // they post a small intent payload. Pause and Activate are disabled while the
-  // form has unsaved edits, which they would otherwise silently drop.
-  const submitIntent = (intent: string) => {
+  const post = (intent: string) => {
     const body = new FormData();
     body.set("intent", intent);
     body.set("revision", String(draft.revision));
-    // "Go live" saves the survey and activates it, so it carries the survey.
-    if (intent === "go-live") body.set("survey", JSON.stringify(draft));
+    if (intent === "save" || intent === "go-live") body.set("survey", JSON.stringify(draft));
     submit(body, { method: "post" });
   };
 
-  const selectQuestion = (questionId: string) => {
-    setActiveQuestionId(questionId);
-    setView("questions");
-    requestAnimationFrame(() => {
-      document.getElementById(`q-${questionId}`)?.scrollIntoView({ block: "center", behavior: "smooth" });
-    });
-  };
+  const notice = NOTICES.find((key) => params.get(key) === "1");
+  const created = params.get("created") === "1";
+  const freeVersion = params.get("free_version") === "1";
 
-  const previewPlacement = placement as Placement;
-  const placementUsed = draft.placements.includes(previewPlacement);
+  const actions = (
+    <ActionButtons
+      draft={draft}
+      t={t}
+      dirty={dirty}
+      busy={busy}
+      pendingIntent={typeof pendingIntent === "string" ? pendingIntent : null}
+      blocked={blocked}
+      onPost={post}
+    />
+  );
 
   return (
     <s-stack gap="base">
-      <s-stack direction="inline" gap="small" justifyContent="space-between" alignItems="center">
-        <s-link href="/app/surveys">{t("surveys.back_to_list")}</s-link>
-        <StatusBadge status={draft.status} hasDraft={draft.hasDraft} t={t} />
+      <s-link href="/app/surveys">{t("surveys.back_to_list")}</s-link>
+      <s-stack gap="small-200">
+        <s-stack direction="inline" gap="small" alignItems="center">
+          <s-text fontSize="large-100" fontWeight="bold">
+            {draft.name || t("editor.untitled")}
+          </s-text>
+          <StatusBadge status={draft.status} hasDraft={draft.hasDraft} t={t} />
+        </s-stack>
+        <StatusLine draft={draft} t={t} />
       </s-stack>
-
-      <s-section heading={draft.name} subheading={t("studio.right_purpose")} padding="none" />
 
       {actionData && actionData.ok === false ? (
         actionData.conflict ? (
-          <Banner tone="warning" heading={t("studio.conflict")}>
-            {t("studio.conflict")}
-          </Banner>
+          <Banner tone="warning" heading={t("studio.conflict")} />
         ) : (
-          <Banner tone="critical" heading={t("surveys.save_failed_title")}>
-            {t("surveys.save_failed_body", { count: actionData.issues.length })}
+          <Banner tone="critical" heading={t("editor.save_failed")}>
+            <s-stack gap="small-200">
+              {actionData.issues.slice(0, 3).map((issue, i) => (
+                <s-text key={i}>{issueText(t, issue, { limit: data.liveLimit })}</s-text>
+              ))}
+            </s-stack>
           </Banner>
         )
+      ) : created && !dirty ? (
+        <Banner tone="success" heading={t("editor.created_title")}>
+          <s-text>{freeVersion ? t("editor.created_free_version", { plan: t("plans.growth") }) : t("editor.created_body")}</s-text>
+        </Banner>
+      ) : notice && !dirty ? (
+        <Banner tone="success" heading={t(`editor.notice_${notice}`)} />
       ) : null}
 
-      <s-stack direction="inline" gap="small">
-        {(["overview", "studio", "results", "settings"] as StudioTab[]).map((name) => (
-          <s-button key={name} variant={tab === name ? "primary" : "secondary"} onClick={() => setTab(name)}>
-            {t(`studio.tab_${name}`)}
-          </s-button>
-        ))}
-      </s-stack>
+      {actions}
 
-      {tab === "overview" ? <OverviewTab draft={draft} insights={insights} t={t} /> : null}
-
-      {tab === "results" ? <ResultsTab draft={draft} insights={insights} t={t} /> : null}
-
-      {tab === "settings" ? (
-        <SettingsTab
-          draft={draft}
-          update={update}
-          t={t}
-          grantedScopes={grantedScopes}
-          limits={limits}
-          languages={data.languages}
-          shopCurrency={data.shopCurrency}
-        />
-      ) : null}
-
-      {tab === "studio" ? (
-        <Form method="post">
-          <input type="hidden" name="survey" value={JSON.stringify(draft)} />
-          <input type="hidden" name="revision" value={draft.revision} />
-
-          <s-query-container>
-            <s-grid
-              gridTemplateColumns="@container (inline-size > 1200px) minmax(0, 340px) minmax(0, 1fr) minmax(0, 300px), @container (inline-size > 768px) minmax(0, 1fr) minmax(0, 1fr), 1fr"
-              gap="base"
-            >
+      <s-query-container>
+        <s-grid gridTemplateColumns="@container (inline-size > 880px) minmax(0, 1fr) minmax(0, 340px), minmax(0, 1fr)" gap="base">
+          <s-stack gap="base">
+            <s-section heading={t("editor.questions_title")}>
               <s-stack gap="base">
-                <s-section heading={t("studio.name_label")} subheading={t("studio.left_purpose")} padding="none" />
+                <s-text color="subdued">{t("editor.questions_help")}</s-text>
+                <QuestionList draft={draft} update={update} t={t} limits={limits} errors={errors} plan={plan} />
+              </s-stack>
+            </s-section>
+
+            <s-section heading={t("editor.where_title")}>
+              <s-stack gap="small">
+                {(["thank_you", "order_status"] as const).map((p) => (
+                  <s-checkbox
+                    key={p}
+                    label={t(`editor.placement_${p}`)}
+                    details={t(`editor.placement_${p}_details`)}
+                    checked={draft.placements.includes(p) || undefined}
+                    error={p === "thank_you" ? errors.get("placements") : undefined}
+                    onChange={(e: Event) => {
+                      const checked = (e.currentTarget as { checked?: boolean }).checked === true;
+                      const next: Placement[] = checked
+                        ? [...new Set([...draft.placements, p])]
+                        : draft.placements.filter((x) => x !== p);
+                      update({ placements: next });
+                    }}
+                  />
+                ))}
+                <s-text color="subdued" fontSize="small">
+                  {t("editor.placement_once")}
+                </s-text>
+              </s-stack>
+            </s-section>
+
+            <s-section heading={t("editor.who_title")}>
+              <s-stack gap="base">
+                <Audience draft={draft} update={update} t={t} />
+                <details className="st-details">
+                  <summary>{t("editor.more_rules")}</summary>
+                  <AdvancedTargeting draft={draft} update={update} shopCurrency={data.shopCurrency} t={t} plan={plan} />
+                </details>
+              </s-stack>
+            </s-section>
+
+            <s-section heading={t("editor.optional_title")}>
+              <s-stack gap="small">
+                <details className="st-details">
+                  <summary>{t("editor.wording_title")}</summary>
+                  <FrameText draft={draft} update={update} t={t} limits={limits} />
+                </details>
+                <details className="st-details">
+                  <summary>{t("editor.languages_title")}</summary>
+                  <Languages
+                    draft={draft}
+                    update={update}
+                    languages={data.languages}
+                    defaultLanguage={data.defaultLanguage}
+                    t={t}
+                    limits={limits}
+                  />
+                </details>
+                <details className="st-details">
+                  <summary>{t("editor.actions_title")}</summary>
+                  <ShopifyActions
+                    draft={draft}
+                    update={update}
+                    t={t}
+                    grantedScopes={data.grantedScopes}
+                    plan={plan}
+                    templatePresets={data.templatePresets}
+                  />
+                </details>
+                <details className="st-details">
+                  <summary>{t("editor.automation_title")}</summary>
+                  <Automation draft={draft} update={update} t={t} plan={plan} />
+                </details>
                 <s-text-field
-                  label={t("studio.name_label")}
+                  label={t("editor.name")}
+                  details={t("editor.name_details")}
                   value={draft.name}
                   maxLength={limits.MAX_SURVEY_NAME}
                   onInput={(e: Event) => update({ name: (e.currentTarget as { value?: string }).value ?? "" })}
                 />
-                <SurveyEditor
-                  draft={draft}
-                  update={update}
-                  t={t}
-                  errors={errors}
-                  view={view}
-                  setView={setView}
-                  activeQuestionId={activeQuestionId}
-                />
               </s-stack>
+            </s-section>
+          </s-stack>
 
-              <s-stack gap="base">
-                <s-section heading={t("surveys.preview_title")} subheading={t("studio.center_purpose")} padding="none" />
-                <s-stack direction="inline" gap="small">
-                  {placementTabs(data).map((p) => (
-                    <s-button
-                      key={p.value}
-                      variant={placement === p.value ? "primary" : "secondary"}
-                      onClick={() => setPlacement(p.value)}
-                    >
-                      {t(p.labelKey)}
-                    </s-button>
+          <s-stack gap="base">
+            <s-section heading={t("preview.title")}>
+              <SurveyPreview survey={draft} t={t} />
+            </s-section>
+
+            {problems.length > 0 ? (
+              <s-section heading={t("editor.fix_title")}>
+                <s-stack gap="small">
+                  {problems.map((item) => (
+                    <s-stack key={item.id} direction="inline" gap="small" alignItems="center">
+                      <s-icon type="alert-circle" tone={item.blocking ? "critical" : "caution"} />
+                      <s-text>{t(`editor.ready_${item.id}`, { limit: data.liveLimit })}</s-text>
+                    </s-stack>
                   ))}
-                  <s-button
-                    variant={device === "desktop" ? "primary" : "secondary"}
-                    accessibilityLabel={t("studio.device_desktop")}
-                    onClick={() => setDevice("desktop")}
-                  >
-                    {t("studio.device_desktop")}
-                  </s-button>
-                  <s-button
-                    variant={device === "mobile" ? "primary" : "secondary"}
-                    accessibilityLabel={t("studio.device_mobile")}
-                    onClick={() => setDevice("mobile")}
-                  >
-                    {t("studio.device_mobile")}
-                  </s-button>
                 </s-stack>
+              </s-section>
+            ) : null}
 
-                {!placementUsed ? <Banner tone="info" heading={t("studio.where_title")}>{t("studio.placement_not_used")}</Banner> : null}
-
-                <CheckoutMock
-                  placement={placement}
-                  device={device}
-                  shopName={data.shopName}
-                  total={data.sampleTotal}
-                  product={data.product}
-                  labels={{
-                    orderSummary: t("studio.order_summary"),
-                    orderNumber: "#1001",
-                    thankYou: t("studio.thank_you_sample"),
-                    confirmed: t("studio.confirmed_sample"),
-                    orderStatus: t("studio.placement_order_status"),
-                    fulfillment: t("studio.fulfillment_sample"),
-                    surveyLink: t("studio.placement_link"),
-                    onSite: t("studio.placement_onsite"),
-                  }}
-                >
-                  <SurveyPreview
-                    survey={draft}
-                    languages={data.languages}
-                    t={t}
-                    showChrome={false}
-                    showNote={false}
-                    previewLocale={previewLocale}
-                    onSelectQuestion={selectQuestion}
-                    highlightQuestionId={activeQuestionId}
-                  />
-                </CheckoutMock>
-
-                <s-text color="subdued" fontSize="small">
-                  {t("studio.preview_caption")}
-                </s-text>
-
-                {/*
-                  S10 fallback. This app serves the compiled config over HTTP, not
-                  from a metafield, and the checkout editor has no real order, so a
-                  draft cannot be rendered inside Shopify's editor. Offer the plain
-                  link instead of pretending otherwise.
-                */}
-                <s-link
+            <s-section heading={t("editor.store_title")}>
+              <s-stack gap="small">
+                <s-ordered-list>
+                  <s-list-item>{t("editor.store_step_block")}</s-list-item>
+                  <s-list-item>{t("editor.store_step_live")}</s-list-item>
+                  <s-list-item>{t("editor.store_step_test")}</s-list-item>
+                </s-ordered-list>
+                <s-button
                   href={`https://admin.shopify.com/store/${data.shopHandle}/settings/checkout/editor?page=thank-you`}
                   target="_top"
+                  icon="external"
                 >
-                  {t("studio.open_editor")}
-                </s-link>
-                <s-text color="subdued" fontSize="small">
-                  {t("studio.open_editor_note")}
-                </s-text>
-
-                <s-select
-                  label={t("studio.preview_language")}
-                  value={previewLocale}
-                  onChange={(e: Event) => setPreviewLocale((e.currentTarget as { value?: string }).value ?? "")}
-                >
-                  <s-option value="">{t("studio.preview_default_language")}</s-option>
-                  {data.languages.map((l) => (
-                    <s-option key={l.code} value={l.code}>
-                      {l.name}
-                    </s-option>
-                  ))}
-                </s-select>
+                  {t("editor.open_checkout_editor")}
+                </s-button>
               </s-stack>
+            </s-section>
 
-              <s-stack gap="base">
-                <GoLivePanel
-                  draft={draft}
-                  update={update}
-                  t={t}
-                  readiness={readiness}
-                  blocked={blocked}
-                  dirty={dirty}
-                  onEditRules={() => setShowRules(true)}
-                  onGoLive={() => submitIntent("go-live")}
-                  onPause={() => submitIntent("pause")}
-                  onActivate={() => submitIntent("activate")}
-                  onPublish={() => submitIntent("publish")}
-                />
-              </s-stack>
-            </s-grid>
-          </s-query-container>
-
-          <s-box paddingBlockStart="base">
-            <s-stack direction="inline" gap="small">
-              <s-button variant="primary" type="submit" loading={saving || undefined}>
-                {saving ? t("common.saving") : t("surveys.save")}
+            {survey.responseCount > 0 ? (
+              <s-button href={`/app/results?survey=${survey.id}`} icon="chart-vertical">
+                {t("editor.see_answers", { count: survey.responseCount })}
               </s-button>
-              {draft.hasDraft ? (
-                <>
-                  <s-button
-                    type="button"
-                    disabled={blocked || dirty || undefined}
-                    onClick={() => submitIntent("publish")}
-                  >
-                    {t("studio.publish")}
-                  </s-button>
-                  <s-button type="button" tone="critical" onClick={() => setConfirmDiscard(true)}>
-                    {t("studio.discard")}
-                  </s-button>
-                </>
-              ) : null}
-            </s-stack>
-          </s-box>
-        </Form>
-      ) : null}
-
-      {showRules ? (
-        <WhoSeesModal
-          draft={draft}
-          update={update}
-          t={t}
-          limits={limits}
-          shopCurrency={data.shopCurrency}
-          onClose={() => setShowRules(false)}
-        />
-      ) : null}
-
-      {confirmDiscard ? (
-        <s-modal heading={t("studio.discard_title")} onHide={() => setConfirmDiscard(false)}>
-          <s-stack gap="base">
-            <s-button type="button" tone="critical" onClick={() => { setConfirmDiscard(false); submitIntent("discard"); }}>
-              {t("studio.discard")}
-            </s-button>
-            <s-button type="button" onClick={() => setConfirmDiscard(false)}>
-              {t("studio.cancel")}
-            </s-button>
+            ) : null}
           </s-stack>
-        </s-modal>
-      ) : null}
+        </s-grid>
+      </s-query-container>
+
+      {actions}
     </s-stack>
   );
 }
 
-function placementTabs(data: { onsiteEnabled: boolean; surveyLinkEnabled: boolean }) {
-  const tabs: Array<{ value: PreviewPlacement; labelKey: string }> = [
-    { value: "thank_you", labelKey: "studio.placement_thank_you" },
-    { value: "order_status", labelKey: "studio.placement_order_status" },
-  ];
-  if (data.surveyLinkEnabled) tabs.push({ value: "link", labelKey: "studio.placement_link" });
-  if (data.onsiteEnabled) tabs.push({ value: "onsite", labelKey: "studio.placement_onsite" });
-  return tabs;
+function StatusLine({ draft, t }: { draft: EditorSurvey; t: TFn }) {
+  const places = draft.placements.map((p) => t(`editor.placement_${p}`)).join(", ");
+  const text =
+    draft.status === "active"
+      ? draft.hasDraft
+        ? t("editor.status_live_draft")
+        : t("editor.status_live", { places: places || t("editor.placement_none") })
+      : draft.status === "paused"
+        ? t("editor.status_paused")
+        : t("editor.status_draft");
+  return <s-text color="subdued">{text}</s-text>;
+}
+
+function ActionButtons({
+  draft,
+  t,
+  dirty,
+  busy,
+  pendingIntent,
+  blocked,
+  onPost,
+}: {
+  draft: EditorSurvey;
+  t: TFn;
+  dirty: boolean;
+  busy: boolean;
+  pendingIntent: string | null;
+  blocked: boolean;
+  onPost: (intent: string) => void;
+}) {
+  const loading = (intent: string) => (busy && pendingIntent === intent) || undefined;
+  return (
+    <s-stack direction="inline" gap="small" alignItems="center">
+      {draft.status === "draft" ? (
+        <>
+          <s-button variant="primary" disabled={blocked || busy || undefined} loading={loading("go-live")} onClick={() => onPost("go-live")}>
+            {t("editor.go_live")}
+          </s-button>
+          <s-button disabled={!dirty || busy || undefined} loading={loading("save")} onClick={() => onPost("save")}>
+            {t("editor.save_draft")}
+          </s-button>
+        </>
+      ) : (
+        <s-button variant="primary" disabled={!dirty || blocked || busy || undefined} loading={loading("save")} onClick={() => onPost("save")}>
+          {t("editor.save_publish")}
+        </s-button>
+      )}
+      {draft.status === "active" ? (
+        <s-button disabled={dirty || busy || undefined} loading={loading("pause")} onClick={() => onPost("pause")}>
+          {t("surveys.pause")}
+        </s-button>
+      ) : null}
+      {draft.status === "paused" ? (
+        <s-button disabled={dirty || blocked || busy || undefined} loading={loading("activate")} onClick={() => onPost("activate")}>
+          {t("surveys.activate")}
+        </s-button>
+      ) : null}
+      {draft.hasDraft && !dirty ? (
+        <>
+          <s-button disabled={blocked || busy || undefined} onClick={() => onPost("publish")}>
+            {t("studio.publish")}
+          </s-button>
+          <s-button tone="critical" variant="tertiary" disabled={busy || undefined} onClick={() => onPost("discard")}>
+            {t("studio.discard")}
+          </s-button>
+        </>
+      ) : null}
+      {dirty ? (
+        <s-text color="subdued" fontSize="small">
+          {t("editor.unsaved")}
+        </s-text>
+      ) : null}
+    </s-stack>
+  );
 }
 
 function StatusBadge({ status, hasDraft, t }: { status: EditorSurvey["status"]; hasDraft: boolean; t: TFn }) {
@@ -612,316 +540,3 @@ function StatusBadge({ status, hasDraft, t }: { status: EditorSurvey["status"]; 
   if (status === "paused") return <s-badge tone="warning">{t("surveys.status_paused")}</s-badge>;
   return <s-badge tone="neutral">{t("surveys.status_draft")}</s-badge>;
 }
-
-function audienceLabel(draft: EditorSurvey, t: TFn): string {
-  const type = draft.targeting.customerType ?? "everyone";
-  return t(`surveys.customer_${type === "first_order" ? "first" : type === "returning" ? "returning" : "everyone"}`);
-}
-
-function OverviewTab({ draft, insights, t }: { draft: EditorSurvey; insights: SurveyInsights; t: TFn }) {
-  const statusLine =
-    draft.status === "active"
-      ? draft.hasDraft
-        ? t("studio.status_live_draft")
-        : t("studio.status_live", { places: draft.placements.map((p) => t(`studio.placement_${p}`)).join(", ") })
-      : draft.status === "paused"
-        ? t("studio.status_paused")
-        : t("studio.status_draft");
-
-  // The main question's top answer, or the numeric mean. This is the one key
-  // number the Overview leads with.
-  const main = insights.main;
-  const keyNumber = main
-    ? main.average !== null
-      ? String(main.average)
-      : main.topOptionKey
-        ? `${labelFor(insights, main.topOptionKey)} · ${Math.round(main.topShare * 100)}%`
-        : "—"
-    : null;
-
-  return (
-    <s-stack gap="base">
-      <Panel title={t("surveys.status_active")} description={statusLine}>
-        <s-stack direction="inline" gap="base">
-          <s-stack gap="small-200">
-            <s-text type="strong" fontSize="small">
-              {t("surveys.col_responses")}
-            </s-text>
-            <s-heading>{String(draft.responseCount)}</s-heading>
-          </s-stack>
-          <s-stack gap="small-200">
-            <s-text type="strong" fontSize="small">
-              {t("studio.who_title")}
-            </s-text>
-            <s-text>{audienceLabel(draft, t)}</s-text>
-          </s-stack>
-        </s-stack>
-      </Panel>
-
-      {main ? (
-        <Panel title={insights.mainQuestionText ?? t("results.summary_title")}>
-          <s-stack gap="small">
-            <s-heading>{keyNumber}</s-heading>
-            <ConfidenceBadge level={main.confidence} n={main.n} t={t} />
-            <ConfidenceHelp level={main.confidence} t={t} />
-          </s-stack>
-        </Panel>
-      ) : null}
-
-      {insights.ideas.length > 0 ? (
-        <Panel title={t("results.ideas_title")} description={t("studio.right_purpose")}>
-          <IdeasList ideas={insights.ideas.slice(0, 2)} t={t} />
-        </Panel>
-      ) : null}
-
-      <Panel title={t("studio.ready_title")} description={t("studio.right_purpose")}>
-        <s-link href={`/app/surveys/${draft.id}?tab=studio`}>{t("studio.tab_golive")}</s-link>
-      </Panel>
-    </s-stack>
-  );
-}
-
-/** The label for one option id, from the insights' option map. */
-function labelFor(insights: SurveyInsights, optionId: string | null): string {
-  if (!optionId) return "—";
-  return insights.optionLabels[optionId] ?? optionId;
-}
-
-/**
- * Results tab (T8 by product, T14 cross-question, T12 ideas).
- *
- * The full breakdown lives on the main Results page; this is the survey-scoped
- * view, so it reuses the same shapes the Overview reads.
- */
-function ResultsTab({ draft, insights, t }: { draft: EditorSurvey; insights: SurveyInsights; t: TFn }) {
-  const main = insights.main;
-
-  return (
-    <s-stack gap="base">
-      <Panel title={t("results.summary_title")} description={t("results.subtitle")}>
-        {main ? (
-          <s-stack gap="small">
-            <s-heading>{main.average !== null ? String(main.average) : `${labelFor(insights, main.topOptionKey)} · ${Math.round(main.topShare * 100)}%`}</s-heading>
-            <ConfidenceBadge level={main.confidence} n={main.n} t={t} />
-            <ConfidenceHelp level={main.confidence} t={t} />
-          </s-stack>
-        ) : (
-          <s-text color="subdued">{t("results.empty_body")}</s-text>
-        )}
-      </Panel>
-
-      {insights.byProduct.length > 0 ? (
-        <Panel title={t("results.by_product_title")} description={t("studio.right_purpose")}>
-          <ProductTable rows={insights.byProduct} t={t} topOptionLabel={(key) => labelFor(insights, key)} />
-        </Panel>
-      ) : null}
-
-      {insights.crossTab ? (
-        <Panel title={t("results.cross_title")} description={t("studio.right_purpose")}>
-          <CrossTabView
-            tab={insights.crossTab}
-            t={t}
-            label={(id) => labelFor(insights, id)}
-            rowLabel={draft.questions.find((q) => q.id === insights.crossRowQuestionId)?.text ?? ""}
-            colLabel={draft.questions.find((q) => q.id === insights.crossColQuestionId)?.text ?? ""}
-            shares={(rowKey) => crossTabRowShares(insights.crossTab as CrossTab, rowKey)}
-          />
-        </Panel>
-      ) : null}
-
-      <Panel title={t("results.ideas_title")} description={t("studio.right_purpose")}>
-        <IdeasList ideas={insights.ideas} t={t} emptyText={t("ideas.empty")} />
-      </Panel>
-
-      <s-link href="/app/results">{t("results.title")}</s-link>
-    </s-stack>
-  );
-}
-
-function SettingsTab({
-  draft,
-  update,
-  t,
-  grantedScopes,
-  limits,
-  languages,
-  shopCurrency,
-}: {
-  draft: EditorSurvey;
-  update: (patch: Partial<EditorSurvey>) => void;
-  t: TFn;
-  grantedScopes: string[];
-  limits: typeof LIMITS;
-  languages: Array<{ code: string; name: string }>;
-  shopCurrency: string;
-}) {
-  return (
-    <s-stack gap="base">
-      <Panel title={t("surveys.section_sync")}>
-        <SyncSettings draft={draft} update={update} t={t} grantedScopes={grantedScopes} />
-      </Panel>
-      <Panel title={t("surveys.section_translations")}>
-        <Translations draft={draft} update={update} languages={languages} t={t} />
-      </Panel>
-      <Panel title={t("surveys.section_targeting")}>
-        <Targeting draft={draft} update={update} shopCurrency={shopCurrency} t={t} limits={limits} />
-      </Panel>
-      {draft.templateId ? (
-        <Panel title={t("surveys.templates_title")}>
-          <s-text color="subdued">
-            {t("studio.template_info", { count: draft.questions.length })} · v{draft.templateVersion ?? 1}
-          </s-text>
-        </Panel>
-      ) : null}
-    </s-stack>
-  );
-}
-
-function GoLivePanel({
-  draft,
-  update,
-  t,
-  readiness,
-  blocked,
-  dirty,
-  onEditRules,
-  onGoLive,
-  onPause,
-  onActivate,
-  onPublish,
-}: {
-  draft: EditorSurvey;
-  update: (patch: Partial<EditorSurvey>) => void;
-  t: TFn;
-  readiness: ReturnType<typeof getReadiness>;
-  blocked: boolean;
-  dirty: boolean;
-  onEditRules: () => void;
-  onGoLive: () => void;
-  onPause: () => void;
-  onActivate: () => void;
-  onPublish: () => void;
-}) {
-  return (
-    <s-stack gap="base">
-      <s-section heading={t("studio.tab_golive")} subheading={t("studio.right_purpose")} padding="none" />
-
-      <s-stack gap="small">
-        <s-text type="strong">{t("studio.where_title")}</s-text>
-        {(["thank_you", "order_status"] as const).map((p) => (
-          <s-checkbox
-            key={p}
-            name={`placement-${p}`}
-            label={t(`studio.placement_${p}`)}
-            checked={draft.placements.includes(p) || undefined}
-            onChange={(e: Event) => {
-              const checked = (e.currentTarget as { checked?: boolean }).checked === true;
-              const next = checked ? [...new Set([...draft.placements, p])] : draft.placements.filter((x) => x !== p);
-              update({ placements: next });
-            }}
-          />
-        ))}
-        <s-text color="subdued" fontSize="small">
-          {t("surveys.placement_help")}
-        </s-text>
-      </s-stack>
-
-      <s-stack gap="small">
-        <s-stack direction="inline" gap="small" justifyContent="space-between" alignItems="center">
-          <s-text type="strong">{t("studio.who_title")}</s-text>
-          <s-badge tone="neutral">{audienceLabel(draft, t)}</s-badge>
-        </s-stack>
-        <s-button type="button" onClick={onEditRules}>
-          {t("studio.edit_rules")}
-        </s-button>
-      </s-stack>
-
-      <s-stack gap="small">
-        <s-text type="strong">{t("studio.ready_title")}</s-text>
-        {readiness.map((item) => (
-          <s-stack key={item.id} direction="inline" gap="small" alignItems="center">
-            <s-badge tone={item.ok ? "success" : item.blocking ? "critical" : "warning"}>{item.ok ? "✓" : "!"}</s-badge>
-            <s-text>{t(`ready.${item.id}`)}</s-text>
-          </s-stack>
-        ))}
-        {!blocked ? (
-          <s-text color="subdued" fontSize="small">
-            {t("studio.ready_pass")}
-          </s-text>
-        ) : null}
-      </s-stack>
-
-      <s-stack gap="small">
-        {draft.status === "draft" ? (
-          <s-button type="button" variant="primary" disabled={blocked || undefined} onClick={onGoLive}>
-            {t("studio.go_live")}
-          </s-button>
-        ) : null}
-        {draft.status === "active" && !draft.hasDraft ? (
-          <s-button type="button" disabled={dirty || undefined} onClick={onPause}>
-            {t("surveys.pause")}
-          </s-button>
-        ) : null}
-        {draft.status === "active" && draft.hasDraft ? (
-          <s-button type="button" disabled={blocked || dirty || undefined} onClick={onPublish}>
-            {t("studio.publish")}
-          </s-button>
-        ) : null}
-        {draft.status === "paused" ? (
-          <s-button type="button" disabled={dirty || blocked || undefined} onClick={onActivate}>
-            {t("surveys.activate")}
-          </s-button>
-        ) : null}
-      </s-stack>
-    </s-stack>
-  );
-}
-
-function WhoSeesModal({
-  draft,
-  update,
-  t,
-  limits,
-  shopCurrency,
-  onClose,
-}: {
-  draft: EditorSurvey;
-  update: (patch: Partial<EditorSurvey>) => void;
-  t: TFn;
-  limits: typeof LIMITS;
-  shopCurrency: string;
-  onClose: () => void;
-}) {
-  return (
-    <s-modal heading={t("studio.rules_title")} onHide={onClose}>
-      <s-stack gap="base">
-        <Targeting draft={draft} update={update} shopCurrency={shopCurrency} t={t} limits={limits} hideAdvanced />
-        <s-switch
-          label={t("setup.learn_stop")}
-          details={t("setup.learn_stop_help")}
-          checked={draft.learnAndStop || undefined}
-          onChange={(e: Event) => update({ learnAndStop: (e.currentTarget as { checked?: boolean }).checked === true })}
-        />
-        <s-switch
-          label={t("setup.rotation")}
-          details={t("setup.rotation_help")}
-          checked={draft.rotation || undefined}
-          onChange={(e: Event) => update({ rotation: (e.currentTarget as { checked?: boolean }).checked === true })}
-        />
-        <s-stack direction="inline" gap="small">
-          <s-button type="button" variant="primary" onClick={onClose}>
-            {t("studio.apply")}
-          </s-button>
-          <s-button type="button" onClick={onClose}>
-            {t("studio.cancel")}
-          </s-button>
-        </s-stack>
-      </s-stack>
-    </s-modal>
-  );
-}
-
-type SaveBarApi = {
-  show: (id: string) => void;
-  hide: (id: string) => void;
-};

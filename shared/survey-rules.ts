@@ -43,7 +43,9 @@ export const LIMITS = {
   MAX_SURVEYS_TOTAL: 50,
   MAX_TARGET_PRODUCTS: 50,
   MAX_TARGET_COLLECTIONS: 10,
-  MAX_COMPILED_CONFIG_BYTES: 16_000, // the compiled config written to the store
+  // One survey as the checkout block downloads it. Raised from 16 KB when
+  // templates began shipping their wording in all ten languages.
+  MAX_COMPILED_CONFIG_BYTES: 32_000,
   /** S12: a scale label's character limit. */
   MAX_SCALE_LABEL: 30,
 } as const;

@@ -1,78 +1,79 @@
-import { redirect, useLoaderData, useSearchParams, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from "react-router";
-import type { BadgeTone } from "~/components/admin-ui";
+import { Form, redirect, useActionData, useLoaderData, useNavigation, useSearchParams, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 
-import { Panel, PageIntro } from "~/components/admin-ui";
+import { Banner, PageIntro } from "~/components/admin-ui";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
+import { createTranslator } from "~/lib/i18n";
+import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
 import { ensureShop } from "~/lib/provision.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
-import { createSurvey, type SurveyInput } from "~/lib/surveys.server";
-import { ValidationError } from "~/lib/errors";
-import { isEnabled } from "@shared/feature-flags";
-import {
-  CATEGORY_ORDER,
-  catalogCards,
-  catalogPlanFromKey,
-  currentSpotlight,
-  filterCards,
-  templatePlacements,
-  type CatalogCard,
-  type CatalogPlan,
-} from "@shared/templates/catalog";
-import { buildSurveyDefinition } from "@shared/templates/resolve";
-import { regionPackFor } from "@shared/templates/packs";
-import { templateById } from "@shared/templates";
+import { createSurvey } from "~/lib/surveys.server";
+import { templateSurveyInput } from "~/lib/template-survey";
+import { NotFoundError, ValidationError } from "~/lib/errors";
 import { effectivePlan } from "~/lib/plans";
 import { fetchShopLocaleInfo } from "~/lib/shopify-graphql.server";
+import { isEnabled } from "@shared/feature-flags";
+import { CATEGORY_ORDER, catalogPlanFromKey, templateHasFreeVersion, templateLockedForPlan } from "@shared/templates/catalog";
+import { buildSurveyDefinition } from "@shared/templates/resolve";
+import { regionPackFor } from "@shared/templates/packs";
+import { templateText } from "@shared/templates/locales";
+import { templateById, TEMPLATES } from "@shared/templates";
+import { describeFollowUp } from "@shared/survey-summary";
 import type { TemplateCategory } from "@shared/templates/types";
 
 /**
- * Template library (T1).
+ * Choose a template.
  *
- * The gallery is goal-first: search, category tabs, combinable filters, outcome
- * tags and a single seasonal spotlight. No card carries more than two green tags
- * plus a "+N"; meta and plan info never use the success tone.
- *
- * "Use today" creates a real draft survey from the template and redirects into
- * Quick setup (`/app/surveys/<id>/setup`), so the merchant lands editing a copy,
- * not the template.
+ * One screen, one decision. Every card says in plain words what the merchant
+ * learns, shows the exact questions buyers will see, and has one button. That
+ * button creates the survey straight away and opens it in the editor; there is
+ * no separate detail page or setup wizard to get lost in.
  */
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "library.title");
 
 export const handle = { titleKey: "library.title" };
 
-type CatalogSource = "survey_link";
+/** The template most stores should start with, shown on its own at the top. */
+const RECOMMENDED_ID = "channel-compass";
 
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
-
-  const { countryCode, timeZone } = await fetchShopLocaleInfo(shop.shopDomain, session.accessToken);
+  const { countryCode } = await fetchShopLocaleInfo(shop.shopDomain, session.accessToken);
+  const locale = resolveAdminLanguage(request, shop.language, shop.adminLocale);
+  const region = regionPackFor(countryCode);
   const plan = catalogPlanFromKey(effectivePlan(shop));
   const surveyLinkEnabled = isEnabled("SURVEY_LINK_PAGE");
 
-  const options = {
-    locale: shop.language ?? "en",
-    plan,
-    country: countryCode,
-    surveyLinkEnabled,
-  };
-
-  const cards = catalogCards(options);
-  const spotlight = currentSpotlight({
-    locale: shop.language ?? "en",
-    region: regionPackFor(countryCode),
-    now: new Date(),
-    timeZone: timeZone ?? "UTC",
+  const cards = TEMPLATES.filter((t) => t.category !== "after_delivery" || surveyLinkEnabled).map((template) => {
+    const locked = templateLockedForPlan(template, plan);
+    const hasFree = templateHasFreeVersion(template);
+    // The questions the merchant would actually get on their plan, in their
+    // language: the Free version when the full one needs Growth.
+    const fullCount = buildSurveyDefinition({ template, locale, region }).questions.length;
+    const definition = buildSurveyDefinition({ template, locale, region, lite: locked && hasFree });
+    const questions = definition.questions.map((question) => ({
+      text: question.text,
+      followUp: describeFollowUp(question, definition.questions),
+    }));
+    return {
+      id: template.id,
+      category: template.category,
+      name: templateText(locale, template.nameKey),
+      oneLiner: templateText(locale, template.oneLinerKey),
+      questions,
+      fullCount,
+      // "full": everything included. "free_version": the plan gets fewer
+      // questions. "paid": the plan cannot use this template.
+      access: !locked ? "full" : hasFree ? "free_version" : "paid",
+    } as const;
   });
 
   return {
     cards,
-    spotlight,
-    surveyLinkEnabled,
-    categories: CATEGORY_ORDER.filter((c) => c !== "after_delivery" || surveyLinkEnabled),
-    country: countryCode,
+    recommendedId: RECOMMENDED_ID,
+    categories: CATEGORY_ORDER.filter((c) => cards.some((card) => card.category === c)),
   };
 });
 
@@ -81,192 +82,211 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
   const shop = await ensureShop(session);
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
-  const templateId = String(form.get("templateId") ?? "");
-  const lite = form.get("lite") === "1";
+  const locale = resolveAdminLanguage(request, shop.language, shop.adminLocale);
 
-  if (intent !== "use-template") {
-    throw new ValidationError("Unknown action.", "Reload the page and try again.");
+  try {
+    if (intent === "blank") {
+      const t = createTranslator(locale);
+      const survey = await createSurvey(shop.id, {
+        name: t("library.blank_name"),
+        status: "draft",
+        placements: ["thank_you", "order_status"],
+        layout: "all",
+        title: t("library.blank_title"),
+        intro: null,
+        buttonLabel: t("library.blank_button"),
+        thankYouText: t("library.blank_thanks"),
+        questions: [
+          {
+            type: "single_choice",
+            text: t("survey_defaults.question"),
+            required: true,
+            allowOther: true,
+            randomizeOptions: true,
+            options: [
+              { label: t("survey_defaults.instagram") },
+              { label: t("survey_defaults.google") },
+              { label: t("survey_defaults.friend-or-family") },
+              { label: t("survey_defaults.tiktok") },
+            ],
+          },
+        ],
+      });
+      return redirect(`/app/surveys/${survey.id}?created=1`);
+    }
+
+    if (intent !== "use-template") {
+      throw new ValidationError("Unknown action.", "Reload the page and try again.");
+    }
+
+    const template = templateById(String(form.get("templateId") ?? ""));
+    if (!template) throw new NotFoundError("That template does not exist.");
+    const { countryCode } = await fetchShopLocaleInfo(shop.shopDomain, session.accessToken);
+    const built = templateSurveyInput({
+      template,
+      locale,
+      region: regionPackFor(countryCode),
+      plan: effectivePlan(shop),
+    });
+    if (!built.ok) return { ok: false as const, code: "template_plan_locked" };
+    const survey = await createSurvey(shop.id, built.input);
+    return redirect(`/app/surveys/${survey.id}?created=1${built.lite ? "&free_version=1" : ""}`);
+  } catch (error) {
+    // A full account (too many surveys) or a stale template id is shown on the
+    // page, not as the generic error screen.
+    if (error instanceof ValidationError || error instanceof NotFoundError) {
+      const code = typeof error.fields.code === "string" ? error.fields.code : error.code;
+      return { ok: false as const, code };
+    }
+    throw error;
   }
-
-  const template = templateById(templateId);
-  if (!template) throw new ValidationError("That template does not exist.", "Pick another template.");
-
-  // Quick setup (T3) owns creation: it walks the merchant through customize →
-  // who sees it → review, then creates the survey. The setup route is keyed on
-  // the TEMPLATE id; creating a survey here and redirecting with its id left an
-  // orphan draft and a 404/500 in the wizard.
-  return redirect(`/app/surveys/library/${template.id}/setup?lite=${lite ? "1" : "0"}`);
 });
 
-/** Optional questions start ON unless the Lite version excludes them. */
-function buildDefaultToggles(questions: { key?: string; required: boolean; optionalInSetup?: boolean }[]): Record<string, boolean> {
-  const toggles: Record<string, boolean> = {};
-  for (const q of questions) {
-    if (!q.required && q.optionalInSetup && q.key) toggles[q.key] = true;
-  }
-  return toggles;
-}
-
-function planTone(locked: boolean): BadgeTone {
-  return locked ? "info" : "neutral";
-}
-
-function Card({ card }: { card: CatalogCard }) {
-  const { t } = useAdminI18n();
-  const shown = card.tags.slice(0, 2);
-  return (
-    <s-box padding="base" border="base" borderRadius="base">
-      <s-stack gap="small">
-        <s-link href={`/app/surveys/library/${card.id}`}>
-          <s-heading>{card.name}</s-heading>
-        </s-link>
-        <s-text color="subdued">{card.oneLiner}</s-text>
-        <s-stack direction="inline" gap="small">
-          {shown.map((tag) => (
-            <span key={tag.id} title={tag.tip}>
-              <s-badge tone="success">{tag.text}</s-badge>
-            </span>
-          ))}
-          {card.extraTagCount > 0 ? (
-            <s-badge tone="neutral">{`+${card.extraTagCount}`}</s-badge>
-          ) : null}
-        </s-stack>
-        <s-text color="subdued" fontSize="small">
-          {t("library.meta", { count: card.questionCount, seconds: card.seconds })}
-        </s-text>
-        {card.planLocked ? (
-          <s-badge tone={planTone(true)}>
-            {t("library.available_on", { plan: t(`library.plan_${card.requiredPlan}`) })}
-          </s-badge>
-        ) : null}
-      </s-stack>
-    </s-box>
-  );
-}
+type Card = Awaited<ReturnType<typeof loader>>["cards"][number];
 
 export default function TemplateLibrary() {
-  const { cards, spotlight, surveyLinkEnabled, categories, country } = useLoaderData<typeof loader>();
+  const { cards, recommendedId, categories } = useLoaderData<typeof loader>();
+  const actionData = useActionData<typeof action>();
   const { t } = useAdminI18n();
   const [params, setParams] = useSearchParams();
+  const category = (params.get("category") as TemplateCategory | null) ?? null;
 
-  const q = params.get("q") ?? "";
-  const category = (params.get("category") as TemplateCategory | "all" | null) ?? "all";
-  const shortOnly = params.get("short") === "1";
-  const freeOnly = params.get("free") === "1";
-  const popularHere = params.get("popular") === "1";
-  const thankYou = params.get("thank_you") === "1";
-  const surveyLink = params.get("survey_link") === "1";
+  const recommended = cards.find((card) => card.id === recommendedId);
+  const rest = cards.filter((card) => card.id !== recommendedId && (!category || card.category === category));
 
-  const visible = filterCards(cards, {
-    q,
-    category,
-    shortOnly,
-    freeOnly,
-    popularHere,
-    country,
-    thankYou,
-    surveyLink,
-  });
+  const failureKey = actionData?.ok === false ? `surveys.validation_${actionData.code}` : null;
+  const failure = failureKey ? (t(failureKey) === failureKey ? t("library.create_failed") : t(failureKey)) : null;
 
-  const dismissSpotlight = params.get("spotlight") !== "off";
-
-  function setParam(key: string, value: string | null) {
-    const next = new URLSearchParams(params);
-    if (value === null) next.delete(key);
-    else next.set(key, value);
-    setParams(next, { replace: true, preventScrollReset: true });
-  }
-
-  function toggle(key: string, on: boolean) {
-    setParam(key, on ? "1" : null);
-  }
-
-  const filters: Array<{ key: string; label: string; on: boolean }> = [
-    { key: "short", label: t("library.filter_short"), on: shortOnly },
-    { key: "free", label: t("library.filter_free"), on: freeOnly },
-    ...(country ? [{ key: "popular", label: t("library.filter_popular"), on: popularHere }] : []),
-    { key: "thank_you", label: t("library.filter_thank_you"), on: thankYou },
-    ...(surveyLinkEnabled ? [{ key: "survey_link", label: t("library.filter_survey_link"), on: surveyLink }] : []),
-  ];
+  const setCategory = (next: string | null) => {
+    const search = new URLSearchParams(params);
+    if (next) search.set("category", next);
+    else search.delete("category");
+    setParams(search, { replace: true, preventScrollReset: true });
+  };
 
   return (
     <s-stack gap="base">
       <s-link href="/app/surveys">{t("library.back")}</s-link>
-      <PageIntro>{t("library.subtitle")}</PageIntro>
+      <PageIntro
+        actions={
+          <Form method="post">
+            <input type="hidden" name="intent" value="blank" />
+            <s-button type="submit">{t("library.start_blank")}</s-button>
+          </Form>
+        }
+      >
+        {t("library.subtitle")}
+      </PageIntro>
 
-      {spotlight && dismissSpotlight ? (
-        <s-banner tone="info" heading={spotlight.banner}>
-          <s-stack direction="inline" gap="small">
-            <s-link href={`/app/surveys/library/${spotlight.templateId}`}>
-              {t("library.use_template")}
-            </s-link>
-            <s-button type="button" onClick={() => setParam("spotlight", "off")}>
-              {t("library.spotlight_dismiss")}
-            </s-button>
+      {failure ? <Banner tone="critical" heading={failure} /> : null}
+
+      {recommended && !category ? (
+        <s-section>
+          <s-stack gap="small">
+            <s-stack direction="inline" gap="small" alignItems="center">
+              <s-badge tone="success" icon="star">
+                {t("library.recommended")}
+              </s-badge>
+              <s-text color="subdued" fontSize="small">
+                {t("library.recommended_why")}
+              </s-text>
+            </s-stack>
+            <TemplateCard card={recommended} primary />
           </s-stack>
-        </s-banner>
+        </s-section>
       ) : null}
 
-      <s-text-field
-        label={t("library.search_placeholder")}
-        labelAccessibilityVisibility="exclusive"
-        placeholder={t("library.search_placeholder")}
-        value={q}
-        onInput={(event: Event) => {
-          const value = (event.target as HTMLInputElement).value;
-          setParam("q", value.length > 0 ? value : null);
-        }}
-      />
+      <s-section heading={t("library.more_title")}>
+        <s-stack gap="base">
+          <s-stack direction="inline" gap="small">
+            <s-button type="button" variant={!category ? "primary" : "secondary"} onClick={() => setCategory(null)}>
+              {t("library.category_all")}
+            </s-button>
+            {categories.map((c) => (
+              <s-button key={c} type="button" variant={category === c ? "primary" : "secondary"} onClick={() => setCategory(c)}>
+                {t(`library.category_${c}`)}
+              </s-button>
+            ))}
+          </s-stack>
 
-      <s-stack direction="inline" gap="small">
-        <s-button
-          type="button"
-          variant={category === "all" ? "primary" : undefined}
-          onClick={() => setParam("category", null)}
-        >
-          {t("library.category_all")}
-        </s-button>
-        {categories.map((c) => (
-          <s-button
-            key={c}
-            type="button"
-            variant={category === c ? "primary" : undefined}
-            onClick={() => setParam("category", c)}
-          >
-            {t(`library.category_${c}`)}
-          </s-button>
-        ))}
-      </s-stack>
-
-      <s-stack direction="inline" gap="small">
-        {filters.map((filter) => (
-          <s-button
-            key={filter.key}
-            type="button"
-            variant={filter.on ? "primary" : undefined}
-            onClick={() => toggle(filter.key, !filter.on)}
-          >
-            {filter.label}
-          </s-button>
-        ))}
-      </s-stack>
-
-      {visible.length === 0 ? (
-        <Panel title={t("library.empty")}>
-          <s-button type="button" onClick={() => setParams(new URLSearchParams(), { replace: true })}>
-            {t("library.clear_filters")}
-          </s-button>
-        </Panel>
-      ) : (
-        <s-grid
-          gridTemplateColumns="@container (inline-size > 760px) repeat(3, minmax(0, 1fr)), 1fr"
-          gap="base"
-        >
-          {visible.map((card) => (
-            <Card key={card.id} card={card} />
-          ))}
-        </s-grid>
-      )}
+          <s-query-container>
+            <s-grid
+              gridTemplateColumns="@container (inline-size > 820px) repeat(3, minmax(0, 1fr)), @container (inline-size > 520px) repeat(2, minmax(0, 1fr)), minmax(0, 1fr)"
+              gap="base"
+            >
+              {rest.map((card) => (
+                <TemplateCard key={card.id} card={card} />
+              ))}
+            </s-grid>
+          </s-query-container>
+        </s-stack>
+      </s-section>
     </s-stack>
+  );
+}
+
+function TemplateCard({ card, primary = false }: { card: Card; primary?: boolean }) {
+  const { t } = useAdminI18n();
+  const navigation = useNavigation();
+  const creating = navigation.state !== "idle" && navigation.formData?.get("templateId") === card.id;
+  const [first, ...more] = card.questions;
+
+  return (
+    <s-box padding="base" border="base" borderRadius="large" background={primary ? "subdued" : undefined}>
+      <s-stack gap="small">
+        <s-stack direction="inline" gap="small" alignItems="center">
+          <s-heading>{card.name}</s-heading>
+          {card.access === "paid" ? <s-badge tone="info">{t("library.needs_plan", { plan: t("plans.growth") })}</s-badge> : null}
+        </s-stack>
+        <s-text color="subdued">{card.oneLiner}</s-text>
+
+        {first ? (
+          <s-box padding="small" borderRadius="base" background="base" border="base">
+            <s-stack gap="small-200">
+              <s-text type="strong">{`“${first.text}”`}</s-text>
+              {more.length > 0 ? (
+                <details className="st-details">
+                  <summary>{t("library.more_questions", { count: more.length })}</summary>
+                  <ol className="st-question-list" start={2}>
+                    {more.map((q, i) => (
+                      <li key={i}>
+                        <s-text>{q.text}</s-text>
+                        {q.followUp ? (
+                          <s-text color="subdued" fontSize="small">
+                            {" "}
+                            {t("library.follow_up", { n: q.followUp.parentNumber })}
+                          </s-text>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ol>
+                </details>
+              ) : null}
+            </s-stack>
+          </s-box>
+        ) : null}
+
+        <s-text color="subdued" fontSize="small">
+          {t("library.meta", { count: card.questions.length, seconds: card.questions.length * 8 })}
+        </s-text>
+        {card.access === "free_version" ? (
+          <s-text color="subdued" fontSize="small">
+            {t("library.free_version_note", { n: card.questions.length, total: card.fullCount, plan: t("plans.growth") })}
+          </s-text>
+        ) : null}
+
+        {card.access === "paid" ? (
+          <s-button href="/app/plans">{t("library.see_plans")}</s-button>
+        ) : (
+          <Form method="post">
+            <input type="hidden" name="intent" value="use-template" />
+            <input type="hidden" name="templateId" value={card.id} />
+            <s-button type="submit" variant={primary ? "primary" : "secondary"} loading={creating || undefined}>
+              {t("library.use_template")}
+            </s-button>
+          </Form>
+        )}
+      </s-stack>
+    </s-box>
   );
 }

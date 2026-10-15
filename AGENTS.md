@@ -1245,3 +1245,51 @@ mounted when the root fails.
 - Home and the channel report share `loadChannelReport`
   (`app/lib/channel-report.server.ts`) and the components in
   `app/components/channel-report.tsx`, so their numbers cannot disagree.
+
+## Simplified survey setup and plan gating (2026-10-15)
+
+The three-step Quick setup wizard, the template detail page, the interactive
+checkout mock and the Logic map are gone (`checkout-mock.tsx`, `logic-map.tsx`,
+`shared/logic-tree.ts`, `preview-model.ts`, `shared/survey-templates.ts`). They
+were where merchants got lost, and the mock's device and language switches
+disagreed with the real block. Setup is now two screens:
+
+- **Templates** (`app.surveys.library._index.tsx`): plain-named cards showing the
+  real questions, "Use template" creates a draft in one step and opens the
+  editor. "Start from scratch" is on the same page; the Surveys list has one
+  "New survey" button pointing here.
+- **Editor** (`app.surveys.$id.tsx`): Questions, Where it shows, Who sees it,
+  then folded Optional sections. Go live / Save and publish. A live survey's
+  save publishes at once (draft then publish with the new revision).
+- **Preview** (`survey-preview.tsx`) is a still picture with every question
+  and its follow-up rule. No state, nothing to break.
+
+**Template translations are stored on the survey.** `app/lib/template-survey.ts`
+builds the template in every `TEMPLATE_LOCALES` language and stores them as
+survey / question / option `translations`. The extension's `localizeSurvey`
+reads question- and option-level translations too, and `matchLocale` maps
+`de-AT` to `de` and `pt-PT` to `pt-BR`. That is an **extension change**: it
+needs `shopify app deploy`, not just a Render redeploy. Option labels identical
+to the default ("Instagram") are not stored. Editing a text drops its
+translations so buyers never see a stale one. `MAX_COMPILED_CONFIG_BYTES` is now
+32 KB per survey (the largest template is ~9 KB with all languages).
+
+**Plan gating lives in `shared/plan-features.ts`** (one table; the Plans page,
+editor locks and server checks all read it):
+
+- Free: 1 live survey, 50 answers/month, follow-ups, new vs returning buyers,
+  every template's short version, the full "How did you hear about us?".
+- Growth: 3 live surveys, unlimited answers, full templates (questions beyond
+  `liteQuestionKeys`, "None of these", per-product results), advanced
+  targeting (order value, countries, sampling, dates, answer cap).
+- Scale: 10 live surveys, Shopify actions (tags, metafields, presets, Flow),
+  auto-stop, rotation.
+
+Server enforcement is in `surveys.server.ts` (`plan_live_limit`,
+`plan_advanced_targeting`, `plan_shopify_actions`, `plan_auto_stop`,
+`plan_rotation`), grandfathering settings a survey already had. A downgraded
+shop keeps every survey live but `getCompiledConfig` serves only the plan's
+share by priority; nothing is paused. Sync is skipped below Scale in both
+`submitAnswer` and `loadSyncContext`. `tests/db-plan-gates.test.ts` and
+`tests/unit/survey-setup.test.ts` cover it. DB tests that need several live
+surveys put their shop on Scale first.
