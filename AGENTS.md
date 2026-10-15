@@ -1359,3 +1359,24 @@ surveys put their shop on Scale first.
 the share of 4–5 answers. Values outside the scale are ignored, and no answers
 means `null` (no score shown), never 0. The `customer-satisfaction` template is
 the CSAT counterpart of `loyalty-pulse`. Tests: `tests/unit/scores.test.ts`.
+
+## Per-survey statistics and choosing what to export (2026-10-15)
+
+- **Results** has a date range (7 / 30 / 90 days / all time), an "All surveys"
+  comparison table (answers, answer rate, revenue, AOV per survey), six KPI
+  tiles for the selected survey, a first-order vs returning table, and per
+  answer the share, revenue and AOV. Metrics follow what Fairing documents for
+  its analytics (count, percent, revenue, AOV per answer, response rate).
+- **AOV is per currency**: `CurrencyTotal = { currency, minor, orders }` from
+  `rollup`, `aovMinor` divides within one currency. Never add currencies.
+- **Answer rate** (`surveyAnswerRates`) = real orders (no test, no cancelled)
+  placed since the survey was created, inside the window, that answered it.
+  We do not record views, so it is not Fairing's views-based rate, and it
+  reads lower for targeted or sampled surveys; the tile's help says so. No
+  orders means `null`, never 0%.
+- **Export** offers All surveys (default, one row per answer:
+  `ALL_SURVEYS_HEADERS`), any single survey (the wide file, identical to the
+  Results download) or the original channel file. `/app/export/csv?survey=`
+  takes `all`, `channels` or a survey id; an unknown id means all.
+  `app/lib/survey-export.server.ts` builds both the file and the page preview.
+- Tests: `tests/db-survey-stats.test.ts`.

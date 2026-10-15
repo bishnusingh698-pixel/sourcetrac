@@ -130,7 +130,7 @@ describe("pending means still waiting (L71, M32)", () => {
 
   it("does not count order-less or written-off answers as pending in Results", () => {
     const base: SurveyResponseRow = {
-      id: "r", orderId: "1", orderNumber: null, orderTotal: null, currency: null, placement: "thank_you",
+      id: "r", surveyId: "s", isFirstOrder: null, orderId: "1", orderNumber: null, orderTotal: null, currency: null, placement: "thank_you",
       flagged: false, verified: false, unverifiedFailed: false, createdAt: new Date(), productIds: [], answers: [], order: null,
     };
     const summary = summariseSurvey([base, { ...base, orderId: null }, { ...base, unverifiedFailed: true }]);
@@ -143,7 +143,7 @@ describe("pending means still waiting (L71, M32)", () => {
 
 describe("order totals and fixed-option results (M9, H7, H8)", () => {
   const row = (over: Partial<SurveyResponseRow>): SurveyResponseRow => ({
-    id: "r", orderId: "1", orderNumber: null, orderTotal: "100.000", currency: "USD", placement: "thank_you",
+    id: "r", surveyId: "s", isFirstOrder: null, orderId: "1", orderNumber: null, orderTotal: "100.000", currency: "USD", placement: "thank_you",
     flagged: false, verified: true, unverifiedFailed: false, createdAt: new Date(), productIds: [], answers: [], order: null,
     ...over,
   });

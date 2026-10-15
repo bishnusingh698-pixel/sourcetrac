@@ -12,11 +12,14 @@ export function SurveyPicker({
   selected,
   basePath,
   label,
+  query = {},
 }: {
   surveys: ReadonlyArray<{ id: string; name: string }>;
   selected: string | null;
   basePath: string;
   label: string;
+  /** Other parameters to keep when switching survey, such as the date range. */
+  query?: Record<string, string>;
 }) {
   const navigate = useNavigate();
   if (surveys.length < 2) return null;
@@ -29,7 +32,8 @@ export function SurveyPicker({
         onChange={(event) => {
           const next = (event.currentTarget as { value?: unknown }).value;
           if (typeof next === "string" && next !== selected) {
-            navigate(`${basePath}?survey=${encodeURIComponent(next)}`);
+            const params = new URLSearchParams({ ...query, survey: next });
+            navigate(`${basePath}?${params.toString()}`);
           }
         }}
       >
