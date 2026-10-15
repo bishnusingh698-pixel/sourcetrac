@@ -544,9 +544,36 @@ export async function reconcileOrderForResponses(params: {
  */
 export async function markUnverifiedFailedResponses(olderThanHours = 24, now = new Date()): Promise<number> {
   const cutoff = new Date(now.getTime() - olderThanHours * 60 * 60 * 1000);
+
+  // First recover answers whose order IS cached: the webhook's reconcile can
+  // miss a row inserted a moment later, and writing those off would exclude an
+  // order we hold.
+  const recovered = await retryDb(() =>
+    db.$executeRaw`
+      UPDATE "Response" r
+      SET "orderTotal" = o."totalPrice",
+          "currency" = o.currency,
+          "verified" = (NOT o."isTest" AND NOT o."isCancelled"),
+          "unverifiedFailed" = false
+      FROM "OrderCache" o
+      WHERE o."shopId" = r."shopId" AND o."orderId" = r."orderId"
+        AND r."orderTotal" IS NULL
+        AND o."totalPrice" IS NOT NULL
+    `,
+  );
+  if (recovered > 0) logger.info("responses_reconciled_late_v2", { count: recovered });
+
+  // Only answers that HAVE an order can wait for one: an on-site or link answer
+  // has no order to arrive and is never "unverified failed".
   const result = await retryDb(() =>
     db.response.updateMany({
-      where: { orderTotal: null, verified: { not: true }, unverifiedFailed: false, createdAt: { lt: cutoff } },
+      where: {
+        orderId: { not: null },
+        orderTotal: null,
+        verified: { not: true },
+        unverifiedFailed: false,
+        createdAt: { lt: cutoff },
+      },
       data: { unverifiedFailed: true },
     }),
   );

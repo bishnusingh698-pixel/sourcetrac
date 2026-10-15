@@ -9,7 +9,7 @@ import { currentOrderTotal, fetchSurveyResponses, surveyRevenueStatus } from "~/
 import { getShopLocaleInfo } from "~/lib/studio.server";
 import { getSurveyRow, listSurveys } from "~/lib/surveys.server";
 import { ensureShop } from "~/lib/provision.server";
-import { backfillMissingOrders } from "~/lib/order-backfill.server";
+import { startOrderBackfill } from "~/lib/order-backfill.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
 
@@ -31,7 +31,7 @@ const MAX_PAGE = 10_000;
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
-  await backfillMissingOrders({ shopId: shop.id, shopDomain: shop.shopDomain, accessToken: session.accessToken });
+  startOrderBackfill({ shopId: shop.id, shopDomain: shop.shopDomain, accessToken: session.accessToken });
 
   const url = new URL(request.url);
   const surveys = await listSurveys(shop.id);

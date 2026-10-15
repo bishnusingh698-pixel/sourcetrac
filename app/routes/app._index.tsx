@@ -13,7 +13,8 @@ import { isSupportedLanguage, type LanguageCode } from "~/lib/i18n";
 import { MAX_OPTIONS, MIN_OPTIONS } from "~/lib/settings";
 import { hasAnyResponse, loadHomeSurveys, type HomeSurvey } from "~/lib/home.server";
 import { ensureShop } from "~/lib/provision.server";
-import { backfillMissingOrders } from "~/lib/order-backfill.server";
+import { startOrderBackfill } from "~/lib/order-backfill.server";
+import { maybeMarkUnreconcilable } from "~/lib/responses.server";
 import { maybeRunPendingSync } from "~/lib/sync.server";
 import { maybeRunPendingDeletions } from "~/lib/compliance.server";
 import { guarded } from "~/lib/admin-errors.server";
@@ -42,13 +43,17 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
   // Orders the webhooks never delivered (placed before install, for one) are
-  // fetched now, so their answers stop reading "Pending". Bounded and never throws.
-  await backfillMissingOrders({ shopId: shop.id, shopDomain: shop.shopDomain, accessToken: session.accessToken });
+  // fetched in the background (never blocking this page), so their answers stop
+  // reading "Pending" on the next load. Bounded and never throws.
+  startOrderBackfill({ shopId: shop.id, shopDomain: shop.shopDomain, accessToken: session.accessToken });
 
   // Retry any deferred Shopify write-back (Phase 7) and drain any redact that
   // was too large for the webhook budget (Phase 8). Throttled to once per few
   // minutes per process, and never throws, so neither can break the page.
   void maybeRunPendingSync(shop.id);
+  // Age out answers whose order never arrived (hourly, process-wide). It used
+  // to run only from the legacy extension's config route.
+  void maybeMarkUnreconcilable();
   void maybeRunPendingDeletions(shop.id);
 
   const locale = intlLocaleFor(resolveAdminLanguage(request, shop.language, shop.adminLocale));

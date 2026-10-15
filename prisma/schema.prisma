@@ -184,6 +184,9 @@ model OrderCache {
   cancelledAt     DateTime?
   createdAtShop   DateTime
   updatedAtShop   DateTime
+  /// X-Shopify-Triggered-At of the delivery that wrote this row. Breaks ties
+  /// between two updates in the same second of `updated_at`.
+  triggeredAt     DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 

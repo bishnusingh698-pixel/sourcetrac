@@ -45,11 +45,33 @@ export const action = async ({ request }: { request: Request }) => {
     has_session: Boolean(session),
   });
 
-  const claim = await claimWebhook({
-    webhookId,
-    topic,
-    apiVersion: verified.apiVersion ?? null,
-  });
+  // Shopify's delivery time, to order two updates within one second of
+  // `updated_at` (and to tell a late uninstall from a reinstall).
+  const triggeredHeader = request.headers.get("X-Shopify-Triggered-At");
+  const triggeredAtParsed = triggeredHeader ? new Date(triggeredHeader) : null;
+  const triggeredAt = triggeredAtParsed && !Number.isNaN(triggeredAtParsed.getTime()) ? triggeredAtParsed : null;
+
+  let claim: Awaited<ReturnType<typeof claimWebhook>>;
+  try {
+    claim = await claimWebhook({
+      webhookId,
+      topic,
+      apiVersion: verified.apiVersion ?? null,
+    });
+  } catch (error) {
+    // The ledger is unreachable (typically Neon waking). Nothing was done, so
+    // a logged 500 lets Shopify retry the whole delivery.
+    logger.error("webhook_claim_failed", {
+      request_id: requestId,
+      topic,
+      webhook_id: webhookId,
+      error_message: error instanceof Error ? error.message : String(error),
+    });
+    return new Response(JSON.stringify({ error: "processing_failed" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
   if (!claim.claimed && claim.inFlight) {
     // Another request is still working on this delivery (typically Shopify's
@@ -87,7 +109,7 @@ export const action = async ({ request }: { request: Request }) => {
     // session row is loaded but we still hold a valid credential.
     const accessToken = session?.accessToken ?? (await getAccessTokenForShop(shop));
 
-    const result = await processWebhook({ topic, shopDomain: shop, payload, accessToken });
+    const result = await processWebhook({ topic, shopDomain: shop, payload, accessToken, triggeredAt });
 
     const shopInternalId = "shopInternalId" in result ? result.shopInternalId : null;
     await markWebhookProcessed(webhookId, shopInternalId || null);
@@ -110,9 +132,17 @@ export const action = async ({ request }: { request: Request }) => {
       error_message: error instanceof Error ? error.message : String(error),
     });
 
-    await markWebhookFailed(webhookId, error instanceof Error ? error.message : String(error)).catch(() => {
-      // Never let a bookkeeping failure mask the original error.
-    });
+    await markWebhookFailed(webhookId, error instanceof Error ? error.message : String(error)).catch(
+      (markError: unknown) => {
+        // Never let a bookkeeping failure mask the original error, but do not
+        // lose it either: an unmarked row is only re-claimed once it is stale.
+        logger.warn("webhook_mark_failed_failed", {
+          request_id: requestId,
+          webhook_id: webhookId,
+          error_message: markError instanceof Error ? markError.message : String(markError),
+        });
+      },
+    );
 
     return new Response(JSON.stringify({ error: "processing_failed" }), {
       status: 500,

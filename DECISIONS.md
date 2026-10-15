@@ -26,6 +26,10 @@ first; otherwise the option safest for merchants and their data.
 - **M34** (multi-choice revenue): kept full credit per chosen option (splitting an order's value would invent a model the merchant never chose) and added a note under every multiple-choice breakdown saying the amounts can exceed the total.
 - **M30/L69** (large result sets): Results aggregates the newest 5,000 answers and says so when capped; both CSVs cap at 50,000 newest rows, read one extra row to detect truncation exactly, send `X-SourceTrac-Truncated`, and the Export page now warns.
 - **L73** (Home numbers): an NPS question shows its NPS score; the confidence badge shows the number of answers the label was computed from.
+- **L21** (same-second updates): added a nullable `OrderCache.triggeredAt` (additive migration) holding the delivery's `X-Shopify-Triggered-At`; within one second of `updated_at` the later delivery wins. The API backfill, which reads the order's current state, keeps the old "same second applies" rule.
+- **L23** (fractional zero-decimal totals): up to two fractional digits on a zero-decimal currency (e.g. ISK "1990.50") are rounded half-up to the whole unit instead of rejecting the order, which left its revenue Pending forever. Other over-precise values are still rejected.
+- **M31** (admin pages wait on Shopify): the order backfill now runs in the background with one run per shop at a time; an answer it resolves shows on the next page load instead of the page waiting up to minutes.
+- **L24** (backfill retries forever): an order Shopify reports as missing or out of the `read_orders` window waits a week before the next attempt (in memory); throttles and 5xx still retry hourly.
 
 ## Steps for the repository owner (not done here: deploys or touching real data)
 
@@ -33,3 +37,4 @@ first; otherwise the option safest for merchants and their data.
 
 2. **C5 — existing template surveys created before this fix** have show-if conditions pointing at ids that were never stored (follow-ups never show; the Studio refuses to save with `show_if_unknown`). They are not rewritten automatically because that would change merchant data. To repair one, open it in the Studio and re-pick the follow-up's condition (or delete and recreate it from the template). A query to find them: `SELECT q."surveyId" FROM "Question" q WHERE q."showIf" IS NOT NULL AND NOT EXISTS (SELECT 1 FROM "Question" p WHERE p.id = (q."showIf"::jsonb->>'questionId'));`
 3. **Deploy note:** this branch adds migration `20261015090000_template_keys` (two nullable columns, additive). `npm run start` applies it.
+4. **Deploy note:** migration `20261015100000_order_triggered_at` adds one nullable column to `OrderCache` (additive). `npm run start` applies it.

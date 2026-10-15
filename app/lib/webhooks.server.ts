@@ -55,9 +55,11 @@ export async function resolveInstalledShop(shopDomain: string, accessToken: stri
     await upsertShop({ shopDomain, shopId: existing.shopId, accessToken });
   }
 
-  // Only probe the Admin API while the plan check is unresolved or failed, so we
-  // do not hit it on every healthy webhook.
-  if (!existing.checkoutSupported) {
+  // Only probe the Admin API while the plan check is unresolved or failed, and
+  // at most once per CHECKOUT_RECHECK_MS: a shop on an unsupported plan used to
+  // trigger a plan query on every single order webhook.
+  const checkedAt = existing.checkoutCheckedAt?.getTime() ?? 0;
+  if (!existing.checkoutSupported && Date.now() - checkedAt > CHECKOUT_RECHECK_MS) {
     void refreshCheckoutSupport(existing.id).catch((error: unknown) => {
       logger.warn("checkout_support_refresh_failed", {
         shop_id: existing.id,
@@ -68,6 +70,9 @@ export async function resolveInstalledShop(shopDomain: string, accessToken: stri
 
   return existing.id;
 }
+
+/** How often an unsupported or unknown plan is asked about again. */
+const CHECKOUT_RECHECK_MS = 6 * 60 * 60 * 1000;
 
 export async function refreshCheckoutSupport(internalShopId: string): Promise<void> {
   const shop = await findShopById(internalShopId);
@@ -143,7 +148,7 @@ export async function claimWebhook(params: {
   apiVersion: string | null;
 }): Promise<ClaimResult> {
   try {
-    await db.webhookEvent.create({
+    await retryDb(() => db.webhookEvent.create({
       data: {
         webhookId: params.webhookId,
         topic: params.topic,
@@ -155,7 +160,7 @@ export async function claimWebhook(params: {
         // (name, email, phone, address) that this app has no use for.
         payloadJson: null,
       },
-    });
+    }));
     return { claimed: true };
   } catch (error) {
     if (!isUniqueViolation(error)) throw error;
@@ -176,6 +181,25 @@ export async function claimWebhook(params: {
     if (!existing.error && !abandoned) {
       // Still being worked on by another request. Re-claiming would run the
       // handler twice in parallel, which is what insert-first exists to prevent.
+      logger.info("webhook_duplicate_in_flight", { webhook_id: params.webhookId, topic: params.topic });
+      return { claimed: false, inFlight: true };
+    }
+
+    // Re-claim atomically and restart the row's clock: the conditional update
+    // matches only while the row is still failed/abandoned, so of two
+    // concurrent retries exactly one wins, and the winner's attempt is not
+    // itself treated as abandoned five minutes after the ORIGINAL delivery.
+    const reclaimed = await retryDb(() =>
+      db.webhookEvent.updateMany({
+        where: {
+          webhookId: params.webhookId,
+          processedAt: null,
+          OR: [{ error: { not: null } }, { createdAt: { lt: new Date(Date.now() - INFLIGHT_STALE_MS) } }],
+        },
+        data: { error: null, createdAt: new Date() },
+      }),
+    );
+    if (reclaimed.count === 0) {
       logger.info("webhook_duplicate_in_flight", { webhook_id: params.webhookId, topic: params.topic });
       return { claimed: false, inFlight: true };
     }
@@ -256,8 +280,11 @@ export async function processWebhook(params: {
   shopDomain: string;
   payload: Record<string, unknown>;
   accessToken: string | null;
+  /** X-Shopify-Triggered-At, when the route has it. */
+  triggeredAt?: Date | null;
 }): Promise<OrderWebhookResult> {
   const { topic, shopDomain, payload, accessToken } = params;
+  const triggeredAt = params.triggeredAt ?? null;
 
   switch (topic) {
     case "orders/create":
@@ -275,6 +302,7 @@ export async function processWebhook(params: {
         shopInternalId,
         payload as unknown as ShopifyOrder,
         topic === "orders/cancelled",
+        triggeredAt,
       );
 
       if (!outcome) {
@@ -390,6 +418,7 @@ export async function upsertOrderCache(
   shopInternalId: string,
   order: ShopifyOrder,
   forceCancelled: boolean,
+  triggeredAt: Date | null = null,
 ): Promise<OrderOutcome | null> {
   const valid = readOrder(order);
   if (!valid) return null;
@@ -417,6 +446,7 @@ export async function upsertOrderCache(
     isCancelled: cancelledAt !== null,
     cancelledAt,
     updatedAtShop: updatedAt,
+    triggeredAt,
   };
 
   // Shopify cannot un-cancel an order, so an update never clears cancellation.
@@ -427,14 +457,31 @@ export async function upsertOrderCache(
   const { isCancelled: _isCancelled, cancelledAt: _cancelledAt, ...withoutCancellation } = common;
   const updateData = cancelledAt === null ? withoutCancellation : common;
 
-  const updated = await retryDb(() =>
-    db.orderCache.updateMany({
-      where: { shopId: shopInternalId, orderId, updatedAtShop: { lte: updatedAt } },
-      data: totalDecimal === null ? updateData : { ...updateData, totalPrice: totalDecimal },
-    }),
-  );
+  // Newer `updated_at` wins. Within the same second (its precision), the later
+  // delivery by X-Shopify-Triggered-At wins; a write without one (the API
+  // backfill, which reads the order's current state) or a row without one keeps
+  // the old "same second applies" rule.
+  const notNewer =
+    triggeredAt === null
+      ? { updatedAtShop: { lte: updatedAt } }
+      : {
+          OR: [
+            { updatedAtShop: { lt: updatedAt } },
+            {
+              updatedAtShop: updatedAt,
+              OR: [{ triggeredAt: null }, { triggeredAt: { lte: triggeredAt } }],
+            },
+          ],
+        };
+  const guardedUpdate = () =>
+    retryDb(() =>
+      db.orderCache.updateMany({
+        where: { shopId: shopInternalId, orderId, ...notNewer },
+        data: totalDecimal === null ? updateData : { ...updateData, totalPrice: totalDecimal },
+      }),
+    );
 
-  let applied = updated.count > 0;
+  let applied = (await guardedUpdate()).count > 0;
 
   if (!applied) {
     try {
@@ -445,8 +492,11 @@ export async function upsertOrderCache(
       );
       applied = true;
     } catch (error) {
-      // The row exists with a newer updatedAtShop: this delivery is stale.
       if (!isUniqueViolation(error)) throw error;
+      // Another delivery created the row between our update and our create (an
+      // orders/create and orders/cancelled milliseconds apart). It is not
+      // necessarily newer: run the guarded update once more against it.
+      applied = (await guardedUpdate()).count > 0;
     }
   }
 
@@ -465,26 +515,17 @@ export async function upsertOrderCache(
 
   // The v2 model too: an answer stored before the order landed has a null total
   // and must be filled in here, or it stays Pending forever. Idempotent (only
-  // null-total rows change), and never throws out of the webhook for a bookkeeping
-  // miss.
-  let reconciledV2 = 0;
-  try {
-    const v2 = await reconcileOrderForResponses({
-      shopId: shopInternalId,
-      orderId,
-      currency: order.currency,
-      totalPrice: totalDecimal,
-    });
-    reconciledV2 = v2.reconciled;
-  } catch (error) {
-    logger.warn("reconcile_v2_failed", {
-      shop_id: shopInternalId,
-      order_id: orderId,
-      error_message: error instanceof Error ? error.message : String(error),
-    });
-  }
+  // null-total rows change). A failure throws, like the legacy reconcile above,
+  // so the route answers 500 and Shopify retries: swallowing it acknowledged the
+  // delivery and the answer was later written off as "order not received".
+  const v2 = await reconcileOrderForResponses({
+    shopId: shopInternalId,
+    orderId,
+    currency: order.currency,
+    totalPrice: totalDecimal,
+  });
 
-  return { orderId, applied: true, reconciled: reconciled + reconciledV2 };
+  return { orderId, applied: true, reconciled: reconciled + v2.reconciled };
 }
 
 type SubscriptionPayload = {

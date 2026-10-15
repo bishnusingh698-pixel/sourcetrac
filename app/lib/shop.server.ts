@@ -27,6 +27,8 @@ export type ShopRecord = {
   /// Shopify admin locale last seen on a document load. Fallback only.
   adminLocale: string | null;
   checkoutSupported: boolean | null;
+  /// When the checkout-support plan check last ran.
+  checkoutCheckedAt: Date | null;
   installState: "installed" | "uninstalled";
 };
 
@@ -109,6 +111,7 @@ export async function findShopByDomain(shopDomain: string): Promise<ShopRecord |
         language: true,
         adminLocale: true,
         checkoutSupported: true,
+        checkoutCheckedAt: true,
         installState: true,
       },
     }),
@@ -140,6 +143,7 @@ export async function findShopById(shopId: string): Promise<ShopRecord | null> {
         language: true,
         adminLocale: true,
         checkoutSupported: true,
+        checkoutCheckedAt: true,
         installState: true,
       },
     }),

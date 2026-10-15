@@ -6,7 +6,7 @@ import { countChannelAnswers, fetchResponsesInWindow, toExportRows } from "~/lib
 import { CSV_HEADERS } from "~/lib/csv";
 import { loadExportContext } from "~/lib/export.server";
 import { ensureShop } from "~/lib/provision.server";
-import { backfillMissingOrders } from "~/lib/order-backfill.server";
+import { startOrderBackfill } from "~/lib/order-backfill.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import { authenticate } from "~/shopify.server";
@@ -28,8 +28,9 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
   // Orders the webhooks never delivered (placed before install, for one) are
-  // fetched now, so their answers stop reading "Pending". Bounded and never throws.
-  await backfillMissingOrders({ shopId: shop.id, shopDomain: shop.shopDomain, accessToken: session.accessToken });
+  // fetched in the background (never blocking this page), so their answers stop
+  // reading "Pending" on the next load. Bounded and never throws.
+  startOrderBackfill({ shopId: shop.id, shopDomain: shop.shopDomain, accessToken: session.accessToken });
 
   const count = await countChannelAnswers(shop.id);
 

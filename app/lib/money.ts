@@ -43,7 +43,8 @@ export type ParseResult =
  *
  * Rejects rather than rounds when the value has more precision than the
  * currency allows, so a malformed payload surfaces instead of quietly
- * losing a fraction of a cent.
+ * losing a fraction of a cent. The one exception is up to two fractional
+ * digits on a zero-decimal currency, which is rounded to the whole unit.
  */
 export function parseMoneyToMinor(value: string | number | null | undefined, currency: CurrencyCode): ParseResult {
   if (value === null || value === undefined || value === "") {
@@ -75,7 +76,17 @@ export function parseMoneyToMinor(value: string | number | null | undefined, cur
   // comes back as "42.500" — rejecting that would drop every two-decimal order's
   // revenue from the dashboard. Only genuinely significant digits past the
   // currency's precision are an error.
-  const significant = fraction.replace(/0+$/, "");
+  let significant = fraction.replace(/0+$/, "");
+  let wholeDigits = whole;
+  if (significant.length > decimals && decimals === 0 && significant.length <= 2) {
+    // A currency listed here as zero-decimal (ISO 4217) can still arrive with
+    // cents, e.g. ISK "1990.50". Rejecting it left that order's revenue Pending
+    // forever; rounding to the whole unit (half up) is off by under one unit.
+    if (Number.parseInt(significant.padEnd(2, "0"), 10) >= 50) {
+      wholeDigits = (BigInt(whole || "0") + 1n).toString();
+    }
+    significant = "";
+  }
   if (significant.length > decimals) {
     return { ok: false, reason: `too_many_decimals:${significant.length}>${decimals}` };
   }
@@ -83,7 +94,7 @@ export function parseMoneyToMinor(value: string | number | null | undefined, cur
   // Pad from the trimmed fraction. Padding the untrimmed one would inflate the
   // value: "42.500" would become 42.5 * 1000 minor units instead of * 100.
   const padded = significant.padEnd(decimals, "0");
-  const minor = Number.parseInt(`${whole}${padded}` || "0", 10);
+  const minor = Number.parseInt(`${wholeDigits}${padded}` || "0", 10);
   if (!Number.isSafeInteger(minor)) {
     return { ok: false, reason: "out_of_safe_range" };
   }

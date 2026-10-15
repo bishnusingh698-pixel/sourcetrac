@@ -2,7 +2,9 @@
 
 Read-only audit. Fixed items are ticked `[x]`; ambiguous fixes are recorded in
 `DECISIONS.md`. Findings that turned out not to be real bugs on closer
-inspection were removed (S1-3, I1, I3, I4, I10, I12, I13, I23, I26, I27).
+inspection were removed (S1-3, I1, I3, I4, I10, I12, I13, I23, I26, I27; and I16,
+which the installed `@shopify/ui-extensions` 2026.7 types settle: the
+thank-you `order.id` "becomes the Order object ID in the GraphQL Admin API").
 
 Original note: no application code was changed by the audit. Every finding names a file and
 line, and gives a concrete scenario that triggers it.
@@ -209,11 +211,11 @@ the shop endpoint") is stale.
     2. `orders/create` writes `OrderCache`, and its `updateMany` finds no Response yet.
     3. The submit then inserts with `orderTotal = NULL`.
   - Result: the answer stays Pending. After 24h `markUnverifiedFailedResponses` sets `unverifiedFailed`, and that revenue is permanently excluded.
-- [ ] **H3 (CONFIRMED): a failed v2 reconcile is swallowed and the webhook returns 200.**
+- [x] **H3 (CONFIRMED): a failed v2 reconcile is swallowed and the webhook returns 200.**
   - Where: `app/lib/webhooks.server.ts:479-485`.
   - Defect: a DB error in `reconcileOrderForResponses` is logged as a warning, and the route still answers 200.
   - Scenario: a transient DB error after the order row is written. Shopify stops retrying, and with H2 the answer becomes `unverifiedFailed`. The legacy reconcile at `:459` is not wrapped and correctly returns 500.
-- [ ] **H4 (CONFIRMED): orders missed by webhooks are never backfilled for v2 answers.**
+- [x] **H4 (CONFIRMED): orders missed by webhooks are never backfilled for v2 answers.**
   - Where: `app/lib/order-backfill.server.ts:106` (`FROM "SurveyResponse" r`).
   - Defect: `backfillMissingOrders` only looks for missing orders behind legacy rows. Its v2 callers (`app.results.tsx:32`, `app.responses.tsx:33`, `app.results_.csv.tsx:42`) expect it to cover them.
   - Scenario: an order placed before install or during an uninstall gap (webhooks dropped at `webhooks.server.ts:267-271`). The v2 answer never gets an `OrderCache` row and becomes `unverifiedFailed`.
@@ -352,7 +354,7 @@ the shop endpoint") is stale.
 
 ### Order webhooks
 
-- [ ] **M8 (CONFIRMED): a near-simultaneous newer update can be dropped as stale.**
+- [x] **M8 (CONFIRMED): a near-simultaneous newer update can be dropped as stale.**
   - Where: `app/lib/webhooks.server.ts:447-449` and `:453`.
   - Defect: when the guarded `updateMany` matches nothing and `create` hits P2002, the code assumes a newer row exists and returns `order_stale_ignored` with 200, without re-running the guarded update.
   - Scenario: `orders/create` (T1) and `orders/cancelled` (T2 > T1) arrive within milliseconds. The cancellation is lost, and the cancelled order counts as revenue. The same race exists between backfill and a webhook.
@@ -468,7 +470,7 @@ the shop endpoint") is stale.
   - Where: `app/routes/app.results.tsx:47`, `app/routes/app.results_.csv.tsx:74` and `app/lib/survey-analytics.server.ts:88`.
   - Defect: all responses and answers are loaded with no limit, and the order lookup uses an unbounded `IN (...)`.
   - Scenario: about 48k responses on a 512 MB instance makes the loader slow or OOM.
-- [ ] **M31 (CONFIRMED): admin pages block on inline Shopify calls.**
+- [x] **M31 (CONFIRMED): admin pages block on inline Shopify calls.**
   - Where: `app/lib/order-backfill.server.ts:132-137` and `app/lib/shopify-graphql.server.ts:82`.
   - Defect: backfill runs inline in five loaders: up to 10 sequential calls with a 20s timeout and 4 retries on 429/5xx.
   - Scenario: when Shopify is slow, admin pages block for minutes.
@@ -565,25 +567,25 @@ the shop endpoint") is stale.
 
 ### Order webhooks
 
-- [ ] **L19 (CONFIRMED): the ledger re-claim does not refresh `error` or `createdAt`.**
+- [x] **L19 (CONFIRMED): the ledger re-claim does not refresh `error` or `createdAt`.**
   - Where: `app/lib/webhooks.server.ts:175-188`.
   - Scenario: two concurrent retries of a failed delivery both re-claim, and after 5 minutes every duplicate counts as abandoned.
-- [ ] **L20 (CONFIRMED): ledger claim errors escape the route's handling.**
+- [x] **L20 (CONFIRMED): ledger claim errors escape the route's handling.**
   - Where: `app/lib/webhooks.server.ts:146` and `app/routes/webhooks.tsx:48`.
   - Defect: `claimWebhook`'s insert has no `retryDb` and sits outside the route's try.
   - Scenario: a Neon wake produces an unlogged framework 500.
-- [ ] **L21 (PLAUSIBLE): two updates within the same second can apply out of order.**
+- [x] **L21 (PLAUSIBLE): two updates within the same second can apply out of order.**
   - Where: `app/lib/webhooks.server.ts:432`.
   - Defect: the guard is `updatedAtShop lte updatedAt`, and Shopify's `updated_at` has one-second precision.
   - Scenario: two updates in the same second arrive reversed, and the older one wins.
-- [ ] **L22 (CONFIRMED): unsupported-plan shops trigger a plan query on every order webhook.**
+- [x] **L22 (CONFIRMED): unsupported-plan shops trigger a plan query on every order webhook.**
   - Where: `app/lib/webhooks.server.ts:60`.
   - Defect: `refreshCheckoutSupport` fires a GraphQL plan query on every order webhook for shops whose support is false or unknown.
-- [ ] **L23 (PLAUSIBLE): money parsing rejects rather than rounds.**
+- [x] **L23 (PLAUSIBLE): money parsing rejects rather than rounds.**
   - Where: `app/lib/money.ts:79` (table at `:23-26`).
   - Defect: a fractional amount for a currency listed as zero-decimal (e.g. ISK "1990.50") is rejected.
   - Scenario: `totalPrice` is NULL and every answer for that shop stays Pending.
-- [ ] **L24 (CONFIRMED): the backfill selects by answer date, not order date.**
+- [x] **L24 (CONFIRMED): the backfill selects by answer date, not order date.**
   - Where: `app/lib/order-backfill.server.ts:113`.
   - Defect: the age window uses the answer date.
   - Scenario: an order outside `read_orders`' 60-day window is retried every hour and fails each time.
@@ -780,16 +782,15 @@ the shop endpoint") is stale.
 
 ## Info
 
-- [ ] **I2:** `markUnverifiedFailedResponses` (`app/lib/answers.server.ts:480-486`) has no `shopId` filter and no `orderId IS NOT NULL` filter. It runs only from `api.survey-config.tsx:84` (the legacy route), not on a dashboard visit as the project notes claim. It also flags order-less on-site/link answers. (CONFIRMED)
+- [x] **I2:** `markUnverifiedFailedResponses` (`app/lib/answers.server.ts:480-486`) has no `shopId` filter and no `orderId IS NOT NULL` filter. It runs only from `api.survey-config.tsx:84` (the legacy route), not on a dashboard visit as the project notes claim. It also flags order-less on-site/link answers. (CONFIRMED)
 - [x] **I5:** `app/routes/app.dashboard.tsx:79` vs `:87`: two `new Date()` calls can straddle UTC midnight and shift the trend by a day. (PLAUSIBLE)
 - [ ] **I6:** `app/lib/compliance.server.ts:73-79`: the data-request channel breakdown reads only legacy `SurveyResponse`, while the total includes v2. (CONFIRMED)
 - [ ] **I7:** Compliance, failed and ignored webhook ledger rows have `shopId = null` (`app/routes/webhooks.tsx:78`, `app/lib/webhooks.server.ts:152`), so they survive `shop/redact` until the 30-day purge. They hold no PII. (CONFIRMED)
 - [ ] **I8:** `app/lib/crypto.server.ts:72`: `safeEqual` leaks the secret length. Also, `/readyz` (`app/routes/readyz.tsx:23`) shares `RETENTION_JOB_SECRET` with the data-deleting `/jobs/retention`. (CONFIRMED)
 - [ ] **I9:** `app/routes/jobs.retention.ts:20-28`: an unset secret returns a distinctive `503 not_configured`, not the 404 its comment promises. (CONFIRMED)
-- [ ] **I11:** `app/lib/order-backfill.server.ts:83`: the `lastAttempt` map is never pruned. (CONFIRMED)
+- [x] **I11:** `app/lib/order-backfill.server.ts:83`: the `lastAttempt` map is never pruned. (CONFIRMED)
 - [ ] **I14:** `app/routes/api.survey-responses.tsx:139`: `surveyVersion` stores the current version, not the one the buyer answered. `productIds`, `country`, `isFirstOrder` and `customerId` are never sent or stored, so "results by product" is always empty. (CONFIRMED)
 - [x] **I15:** `extensions/shared/src/survey-logic.ts:365` and `:394`: retry logs say "thank-you" on order-status, and `randomizeOptions` is never applied by the extension. (CONFIRMED)
-- [ ] **I16:** `app/lib/settings.ts:339` assumes the number in `gid://shopify/OrderIdentity/<n>` equals the order id. If it does not, no thank-you answer reconciles. (PLAUSIBLE)
 - [ ] **I17:** `app/routes/api.survey.tsx:84`: `alreadyAnswered` checks only v2. A stale v1 client can answer the same order on both paths and count usage twice. (CONFIRMED)
 - [ ] **I18:** `shared/templates/smart-actions.ts:97-105`: the "first-order low rating" preset is not gated on first orders. (CONFIRMED)
 - [ ] **I19:** `app/lib/sync.server.ts:507-528`: Flow can fire before the order exists, so `order_reference` may not resolve. (PLAUSIBLE)

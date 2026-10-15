@@ -45,7 +45,7 @@ export class ShopifyThrottledError extends ShopifyGraphQLError {
 /** Throttle codes Shopify returns for rate limiting and token-bucket depletion. */
 const THROTTLE_CODES = new Set(["THROTTLED", "INTERNAL_SERVER_ERROR"]);
 
-function isThrottle(error: unknown): boolean {
+export function isThrottle(error: unknown): boolean {
   if (error instanceof ShopifyThrottledError) return true;
   return error instanceof ShopifyGraphQLError && error.errors.some((e) => e.extensions?.code && THROTTLE_CODES.has(e.extensions.code));
 }

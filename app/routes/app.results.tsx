@@ -15,7 +15,7 @@ import { SATISFACTION_OPTIONS } from "@shared/survey-rules";
 import { listSurveys, getSurveyRow } from "~/lib/surveys.server";
 import { formatMoney } from "~/lib/money";
 import { ensureShop } from "~/lib/provision.server";
-import { backfillMissingOrders } from "~/lib/order-backfill.server";
+import { startOrderBackfill } from "~/lib/order-backfill.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
 
@@ -35,7 +35,7 @@ export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "results.
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
-  await backfillMissingOrders({ shopId: shop.id, shopDomain: shop.shopDomain, accessToken: session.accessToken });
+  startOrderBackfill({ shopId: shop.id, shopDomain: shop.shopDomain, accessToken: session.accessToken });
 
   const url = new URL(request.url);
   const surveys = await listSurveys(shop.id);
