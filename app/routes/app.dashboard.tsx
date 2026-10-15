@@ -99,7 +99,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     range,
     // Any answer ever, not just in this window: an established shop with a
     // quiet month is not shown the brand-new "no answers yet" state.
-    hasAnyResponse: data.totalCount > 0,
+    hasAnyResponse: data.anyAnswer,
     ordersInWindow: data.ordersInWindow,
     summary: {
       totalResponses: summary.totalResponses,

@@ -224,17 +224,19 @@ describe("buyer submit", () => {
     expect(await prisma.answer.count({ where: { shopId, questionId: q2 } })).toBe(0);
   });
 
-  it("does not let failed attempts burn the per-token cap (M3)", async () => {
-    // The token cap is per jti; every call here mints a new token, so this pins
-    // that a refused attempt no longer counts by reusing one token directly.
-    const { checkTokenSubmission, recordTokenSubmission } = await import("~/lib/rate-limit.server");
+  it("does not let failed attempts burn the per-token cap, and reserves before any await (M3)", async () => {
+    const { releaseTokenSubmission, reserveTokenSubmission } = await import("~/lib/rate-limit.server");
     const key = "token:test:jti";
     const exp = Date.now() + 60_000;
-    checkTokenSubmission(key);
-    checkTokenSubmission(key);
-    checkTokenSubmission(key);
-    recordTokenSubmission(key, exp);
-    recordTokenSubmission(key, exp);
-    expect(() => checkTokenSubmission(key)).toThrow();
+    // Two attempts that stored nothing give their slot back.
+    reserveTokenSubmission(key, exp);
+    releaseTokenSubmission(key);
+    reserveTokenSubmission(key, exp);
+    releaseTokenSubmission(key);
+    // Two stored answers use the allowance; a third is refused at once, even
+    // while the first two are still in flight.
+    reserveTokenSubmission(key, exp);
+    reserveTokenSubmission(key, exp);
+    expect(() => reserveTokenSubmission(key, exp)).toThrow();
   });
 });

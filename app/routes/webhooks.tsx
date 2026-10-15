@@ -101,7 +101,7 @@ export const action = async ({ request }: { request: Request }) => {
 
   try {
     if (COMPLIANCE_TOPICS.has(topic)) {
-      await handleCompliance(topic, shop, payload, webhookId);
+      await handleCompliance(topic, shop, payload, webhookId, triggeredAt);
       await markWebhookProcessed(webhookId, null);
       return new Response(JSON.stringify({ received: true }), {
         status: 200,
@@ -174,6 +174,7 @@ async function handleCompliance(
   shopDomain: string,
   payload: Record<string, unknown>,
   webhookId: string,
+  triggeredAt: Date | null,
 ): Promise<void> {
   if (topic === "customers/data_request") {
     const customer = (payload.customer ?? {}) as Record<string, unknown>;
@@ -196,7 +197,7 @@ async function handleCompliance(
     return;
   }
 
-  await handleShopRedact({ shopDomain });
+  await handleShopRedact({ shopDomain, triggeredAt });
 }
 
 /** A payload array of numeric order ids, as strings. */

@@ -299,9 +299,15 @@ async function deleteOrdersForShop(
   if (orderIds.length === 0) return { deletedResponses: 0, deletedOrders: 0, deletedV2Responses: 0 };
   const scope = { shopId, orderId: { in: orderIds } };
 
-  const v2ResponseIds = (
-    await retryDb(() => db.response.findMany({ where: scope, select: { id: true } }))
-  ).map((row) => row.id);
+  const v2Rows = await retryDb(() => db.response.findMany({ where: scope, select: { id: true, createdAt: true } }));
+  const legacyRows = await retryDb(() => db.surveyResponse.findMany({ where: scope, select: { submittedAt: true } }));
+  const v2ResponseIds = v2Rows.map((row) => row.id);
+  const redactedDays = [
+    ...new Set([
+      ...v2Rows.map((row) => row.createdAt.toISOString().slice(0, 10)),
+      ...legacyRows.map((row) => row.submittedAt.toISOString().slice(0, 10)),
+    ]),
+  ];
   if (v2ResponseIds.length > 0) {
     await retryDb(() => db.pendingSync.deleteMany({ where: { shopId, responseId: { in: v2ResponseIds } } }));
   }
@@ -318,10 +324,12 @@ async function deleteOrdersForShop(
         AND NOT EXISTS (SELECT 1 FROM "Response" r WHERE r.id = p."responseId")
     `,
   );
-  // SurveyDailyStats aggregates per day and channel; a bucket can describe a
-  // single order. Nothing reads the table, so it is cleared for the shop rather
-  // than left holding redacted orders' channel and total.
-  await retryDb(() => db.surveyDailyStats.deleteMany({ where: { shopId } }));
+  // SurveyDailyStats aggregates per day and channel, so a day's bucket can
+  // describe a single order. Remove the buckets of the days the redacted
+  // answers were given on; other days are untouched.
+  if (redactedDays.length > 0) {
+    await retryDb(() => db.surveyDailyStats.deleteMany({ where: { shopId, day: { in: redactedDays } } }));
+  }
 
   logger.info("compliance_customer_redact", {
     shop_id: shopId,
@@ -349,11 +357,13 @@ export async function processPendingDeletions(shopId: string, maxBatches = 5): P
 
   for (const row of pending) {
     let orderIds: string[] = [];
+    let webhookId: unknown = null;
     try {
-      const parsed = JSON.parse(row.payload) as { orderIds?: unknown };
+      const parsed = JSON.parse(row.payload) as { orderIds?: unknown; webhookId?: unknown };
       orderIds = Array.isArray(parsed.orderIds)
         ? parsed.orderIds.filter((id): id is string => typeof id === "string")
         : [];
+      webhookId = parsed.webhookId ?? null;
     } catch {
       orderIds = [];
     }
@@ -371,7 +381,8 @@ export async function processPendingDeletions(shopId: string, maxBatches = 5): P
       await retryDb(() => db.pendingDeletion.deleteMany({ where: { id: row.id } }));
     } else {
       await retryDb(() =>
-        db.pendingDeletion.updateMany({ where: { id: row.id }, data: { payload: JSON.stringify({ orderIds }) } }),
+        // Keep the delivery id: a retried webhook must still find this row.
+        db.pendingDeletion.updateMany({ where: { id: row.id }, data: { payload: JSON.stringify({ orderIds, webhookId }) } }),
       );
       remaining += orderIds.length;
     }
@@ -461,14 +472,18 @@ export async function maybeRunPendingDeletions(shopId: string): Promise<void> {
 export async function handleShopRedact(params: {
   shopDomain: string;
   shopId?: string;
+  /** X-Shopify-Triggered-At of the delivery. */
+  triggeredAt?: Date | null;
 }): Promise<{ shopFound: boolean; deleted: boolean }> {
   const shop = await findShopByDomain(params.shopDomain);
 
-  // shop/redact follows an uninstall by 48 hours. A shop that is installed now
-  // has reinstalled since: the request belongs to the previous installation,
-  // and deleting would wipe the merchant's current surveys, answers and live
-  // session. See DECISIONS.md (H20).
-  if (shop && shop.installState === "installed") {
+  // shop/redact is sent 48 hours after an uninstall. When the shop's current
+  // installation began AFTER that uninstall, the merchant has reinstalled and
+  // the request belongs to the previous installation: deleting would wipe their
+  // current surveys, answers and live session. A shop still marked installed
+  // because our own uninstall handling never ran is redacted as asked. See
+  // DECISIONS.md (H20).
+  if (shop && shop.installState === "installed" && isLaterInstallation(shop.installedAt, params.triggeredAt ?? null)) {
     logger.warn("compliance_shop_redact_skipped_reinstalled", { shop_id: shop.id, shop_domain: params.shopDomain });
     return { shopFound: true, deleted: false };
   }
@@ -488,6 +503,14 @@ export async function handleShopRedact(params: {
 
   logger.info("compliance_shop_redact", { shop_id: shop.id, shop_domain: params.shopDomain });
   return { shopFound: true, deleted: true };
+}
+
+/** shop/redact follows the uninstall by 48 hours; an hour of slack either way. */
+const SHOP_REDACT_DELAY_MS = 49 * 60 * 60 * 1000;
+
+function isLaterInstallation(installedAt: Date | null, triggeredAt: Date | null): boolean {
+  if (!installedAt || !triggeredAt) return false;
+  return installedAt.getTime() > triggeredAt.getTime() - SHOP_REDACT_DELAY_MS;
 }
 
 /** Whether customers/redact named this order (see `RedactedOrder`). */

@@ -122,6 +122,28 @@ describe("sync", () => {
     expect(row.attempts).toBe(1);
   });
 
+  it("fires Flow as soon as the order arrives, without an admin visit (review)", async () => {
+    await prisma.orderCache.deleteMany({ where: { shopId } });
+    await seed({ flowTrigger: true });
+    const calls = stubShopify(() => ({ flowTriggerReceive: { userErrors: [] } }));
+    await processPendingSync(shopId);
+    expect(calls.filter((c) => c.query.includes("flowTriggerReceive"))).toHaveLength(0);
+
+    await processWebhook({
+      topic: "orders/create",
+      shopDomain: DOMAIN,
+      payload: {
+        id: 940001, currency: "USD", current_total_price: "10.00", financial_status: "paid", test: false,
+        cancelled_at: null, created_at: "2026-10-01T09:00:00Z", updated_at: "2026-10-01T09:00:00Z",
+      },
+      accessToken: null,
+    });
+    for (let i = 0; i < 100 && calls.filter((c) => c.query.includes("flowTriggerReceive")).length === 0; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    expect(calls.filter((c) => c.query.includes("flowTriggerReceive"))).toHaveLength(1);
+  });
+
   it("stores the granted scopes from app/scopes_update (H17)", async () => {
     await processWebhook({
       topic: "app/scopes_update",

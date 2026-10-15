@@ -782,6 +782,36 @@ export function requiredScopes(options: SurveySyncOptions): SyncScope[] {
   return scopes;
 }
 
+/**
+ * Run the sync work waiting on one order, in the background, as soon as the
+ * order arrives. Flow and the customer lookup need the order to exist, and the
+ * Thank-you answer usually comes first; without this the work waited for its
+ * backoff and a merchant's admin visit (and was dropped after a week).
+ */
+export function startSyncForOrder(shopId: string, orderId: string): void {
+  void (async () => {
+    const responses = await retryDb(() =>
+      db.response.findMany({ where: { shopId, orderId }, select: { id: true } }),
+    );
+    for (const { id } of responses) {
+      const due = await retryDb(() =>
+        db.pendingSync.updateMany({
+          where: { shopId, responseId: id, attempts: { lt: MAX_SYNC_ATTEMPTS }, nextAttemptAt: { gt: new Date() } },
+          data: { nextAttemptAt: new Date() },
+        }),
+      );
+      const pending = due.count > 0 || (await retryDb(() => db.pendingSync.count({ where: { shopId, responseId: id } }))) > 0;
+      if (pending) await processPendingSync(shopId, 10, { responseId: id });
+    }
+  })().catch((error: unknown) => {
+    logger.warn("sync_for_order_failed", {
+      shop_id: shopId,
+      order_id: orderId,
+      error_message: error instanceof Error ? error.message : String(error),
+    });
+  });
+}
+
 /** Sync work that gave up after every retry, for the Settings page. */
 export async function countFailedSync(shopId: string): Promise<{ count: number; lastError: string | null }> {
   const [count, latest] = await Promise.all([

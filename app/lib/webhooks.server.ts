@@ -7,6 +7,7 @@ import { withRetry } from "~/lib/retry.server";
 import { reconcileOrderForResponses } from "~/lib/answers.server";
 import { reconcileResponsesForOrder } from "~/lib/responses.server";
 import { isRedactedOrder } from "~/lib/compliance.server";
+import { startSyncForOrder } from "~/lib/sync.server";
 import {
   clearAccessToken,
   findShopByDomain,
@@ -322,6 +323,9 @@ export async function processWebhook(params: {
         return { action: "order_stale_ignored", shopInternalId, orderId: outcome.orderId };
       }
 
+      // Sync work (tags, Flow) that was waiting for this order can run now.
+      startSyncForOrder(shopInternalId, outcome.orderId);
+
       if (topic === "orders/cancelled") {
         return { action: "order_cancelled", shopInternalId, orderId: outcome.orderId };
       }
@@ -596,13 +600,6 @@ async function applySubscription(
     return;
   }
 
-  // A test charge costs the merchant nothing, so in production it must not
-  // grant a paid plan, matching `paidPlanFromSubscriptions` on the Plans page.
-  if (isIgnoredTestCharge(payload)) {
-    logger.info("subscription_test_charge_ignored", { shop_id: shopInternalId, name: displayName, status });
-    return;
-  }
-
   const planStatus = normaliseSubscriptionStatus(status);
 
   // Notices can arrive late, retried or out of order (an old plan's ACTIVE
@@ -628,6 +625,12 @@ async function applySubscription(
       logger.info("subscription_stale_status_ignored", { shop_id: shopInternalId, status: planStatus });
       return;
     }
+  } else if (isIgnoredTestCharge(payload)) {
+    // No way to ask Shopify: fall back to the payload's own test flag, if any.
+    // (With a token, the live lookup above decides, including for a
+    // development store, whose test charges count.)
+    logger.info("subscription_test_charge_ignored", { shop_id: shopInternalId, name: displayName, status });
+    return;
   }
 
   const data = { plan: matched.key, planStatus, subscriptionGid: gid, planDisplayName: displayName };

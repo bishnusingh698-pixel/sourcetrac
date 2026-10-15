@@ -225,14 +225,18 @@ describe("shop/redact removes the whole shop", () => {
       },
     });
 
-    // shop/redact follows an uninstall. While the shop is installed (it has
-    // reinstalled since), the request is stale and nothing is deleted (H20).
-    const stale = await handleShopRedact({ shopDomain: DOMAIN_B });
+    // shop/redact comes 48 hours after an uninstall. A shop whose current
+    // installation began after that uninstall has reinstalled: nothing is
+    // deleted (H20).
+    await prisma.shop.update({ where: { id: shop.id }, data: { installedAt: new Date() } });
+    const stale = await handleShopRedact({ shopDomain: DOMAIN_B, triggeredAt: new Date() });
     expect(stale.deleted).toBe(false);
     expect(await prisma.surveyResponse.count({ where: { shopId: shop.id } })).toBe(1);
 
-    await prisma.shop.update({ where: { id: shop.id }, data: { installState: "uninstalled" } });
-    const result = await handleShopRedact({ shopDomain: DOMAIN_B });
+    // Still marked installed only because the uninstall was never processed:
+    // the installation predates the uninstall, so the redact proceeds.
+    await prisma.shop.update({ where: { id: shop.id }, data: { installedAt: new Date(Date.now() - 10 * 24 * 3600 * 1000) } });
+    const result = await handleShopRedact({ shopDomain: DOMAIN_B, triggeredAt: new Date() });
 
     expect(result.deleted).toBe(true);
     expect(await prisma.shop.count({ where: { id: shop.id } })).toBe(0);

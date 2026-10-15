@@ -8,10 +8,10 @@ import { logger } from "~/lib/logger";
 import { effectivePlan } from "~/lib/plans";
 import {
   BUCKETS,
-  checkTokenSubmission,
   consumeShopBackstop,
   consumeToken,
-  recordTokenSubmission,
+  releaseTokenSubmission,
+  reserveTokenSubmission,
 } from "~/lib/rate-limit.server";
 import { submitAnswers } from "~/lib/answers.server";
 import { findShopByDomain, isKnownOrder } from "~/lib/shop.server";
@@ -85,6 +85,10 @@ export const action = async ({ request }: { request: Request }) => {
   const { sessionToken, cors } = await authenticate.public.checkout(request);
   const shopDomain = sessionToken.dest.toLowerCase();
 
+  // Set once a submission slot is reserved; released unless an answer is stored.
+  let reservedToken: string | null = null;
+  let stored = false;
+
   try {
     const text = await readBodyText(request, MAX_BODY_BYTES);
     if (text === null) {
@@ -119,7 +123,8 @@ export const action = async ({ request }: { request: Request }) => {
     // lifted checkout token cannot be reused to write many forged orders. Only
     // stored answers count (recorded below), so failed attempts never burn it.
     const tokenKey = `token:${shopDomain}:${sessionToken.jti ?? sessionToken.sub ?? "anon"}`;
-    checkTokenSubmission(tokenKey);
+    reserveTokenSubmission(tokenKey, (sessionToken.exp ?? 0) * 1000);
+    reservedToken = tokenKey;
     consumeToken(`answer:${shopDomain}:${orderId ?? "none"}`, BUCKETS.response);
     // The shop-wide backstop applies to every submission. Only a real order
     // Shopify told us about is exempt; an id-less one never is.
@@ -191,9 +196,7 @@ export const action = async ({ request }: { request: Request }) => {
       });
     }
 
-    if (result.outcome === "created") {
-      recordTokenSubmission(tokenKey, (sessionToken.exp ?? 0) * 1000);
-    }
+    stored = result.outcome === "created";
 
     logger.info("answer_accepted", {
       request_id: requestId,
@@ -213,5 +216,7 @@ export const action = async ({ request }: { request: Request }) => {
       route: "api_survey_responses",
     });
     return cors(toResponse(body, { status }));
+  } finally {
+    if (reservedToken && !stored) releaseTokenSubmission(reservedToken);
   }
 };

@@ -164,6 +164,15 @@ export async function channelCountsForShop(shopId: string): Promise<Array<{ chan
   return rows.map((row) => ({ channel: row.channel, label: channelLabel(row.channel, labels), count: Number(row.count) }));
 }
 
+/** Whether the shop has any answer at all, in either store. Two indexed lookups. */
+export async function hasAnyAnswer(shopId: string): Promise<boolean> {
+  const [legacy, v2] = await Promise.all([
+    retryDb(() => db.surveyResponse.findFirst({ where: { shopId }, select: { id: true } })),
+    retryDb(() => db.response.findFirst({ where: { shopId }, select: { id: true } })),
+  ]);
+  return legacy !== null || v2 !== null;
+}
+
 /** How many channel answers the shop has in total (the Export page count). */
 export async function countChannelAnswers(shopId: string): Promise<number> {
   const rows = await retryDb(() =>
@@ -264,7 +273,9 @@ export async function countAnsweredEligibleOrdersInWindow(params: {
       WHERE o."shopId" = ${params.shopId}
         AND o."createdAtShop" >= ${params.start} AND o."createdAtShop" < ${params.end}
         AND o."isTest" = false AND o."isCancelled" = false
-        AND EXISTS (SELECT 1 FROM (${channelAnswersSql(params.shopId)}) r WHERE r."orderId" = o."orderId")
+        -- A semi-join on the answers' order ids, evaluated once, not a
+        -- correlated subquery over the whole union per order.
+        AND o."orderId" IN (SELECT r."orderId" FROM (${channelAnswersSql(params.shopId)}) r)
     `,
   );
   return Number(rows[0]?.count ?? 0);
@@ -437,12 +448,12 @@ export async function fetchDashboardData(params: { shopId: string; days: number;
   const { start, end } = windowBounds(params.days, now);
   const previous = previousWindowBounds(params.days, now);
 
-  const [responses, ordersInWindow, previousCount, rateResponses, totalCount] = await Promise.all([
+  const [responses, ordersInWindow, previousCount, rateResponses, anyAnswer] = await Promise.all([
     fetchResponsesInWindow({ shopId: params.shopId, start, end }),
     countEligibleOrdersInWindow({ shopId: params.shopId, start, end }),
     countResponsesInWindow({ shopId: params.shopId, start: previous.start, end: previous.end }),
     countAnsweredEligibleOrdersInWindow({ shopId: params.shopId, start, end }),
-    countChannelAnswers(params.shopId),
+    hasAnyAnswer(params.shopId),
   ]);
 
   return {
@@ -453,7 +464,7 @@ export async function fetchDashboardData(params: { shopId: string; days: number;
     decidedAmounts: toDecidedAmounts(responses),
     // Answered orders among the same eligible orders as the denominator.
     rateResponses,
-    /** Answers ever, so a shop with none in this window is not shown as brand-new. */
-    totalCount,
+    /** Any answer ever, so a shop with none in this window is not shown as brand-new. */
+    anyAnswer,
   };
 }

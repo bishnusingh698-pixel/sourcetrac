@@ -3,6 +3,7 @@ import { serialiseError } from "~/lib/errors";
 import { logger } from "~/lib/logger";
 import { minorToDecimalString, parseMoneyToMinor } from "~/lib/money";
 import { markUnverifiedFailedResponses } from "~/lib/answers.server";
+import { isRedactedOrder } from "~/lib/compliance.server";
 import { currentUtcPeriod, evaluateCap, type PlanKey } from "~/lib/plans";
 import { withRetry } from "~/lib/retry.server";
 
@@ -80,6 +81,12 @@ export async function submitResponse(input: SubmitInput): Promise<SubmitResult> 
   // At cap we still store the answer — losing a buyer's answer to a billing
   // state would be worse than free overage — but flag it for the merchant.
   const shouldLock = capStatus.shouldFlag;
+
+  // An order a customer asked to have redacted is never stored again.
+  if (await isRedactedOrder(input.shopId, input.orderId)) {
+    logger.info("response_redacted_order_ignored", { shop_id: input.shopId });
+    return { outcome: "duplicate", id: "", isLocked: false };
+  }
 
   // The multi-question blocks answer into `Response`. An order already
   // answered there must not be answered again (and counted twice) by a stale
