@@ -246,6 +246,38 @@
   min-inline-size: 0;
 }
 
+/* --- Top navigation ------------------------------------------------------ */
+
+/*
+ * The row of page links in `TopNav`. The links themselves are Polaris
+ * `s-clickable`s; only their arrangement lives here, because no Polaris layout
+ * element can scroll one row sideways.
+ *
+ * Wide frame: the links wrap onto a second row if a translation is long.
+ * Phone: one row that scrolls sideways, so the menu never takes three rows of
+ * the first screen. The cut-off link at the edge is the cue that it scrolls.
+ */
+.st-topnav-track {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+@media (max-width: 47.99rem) {
+  .st-topnav-track {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .st-topnav-track > * {
+    flex: none;
+  }
+}
+
 /* --- Charts ---------------------------------------------------------------- */
 
 /*

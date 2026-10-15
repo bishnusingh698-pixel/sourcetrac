@@ -4,14 +4,8 @@ import { intlLocaleFor } from "~/lib/i18n";
 import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 
-import { Panel } from "~/components/admin-ui";
-import {
-  ChannelTable,
-  KpiGrid,
-  ReportNotes,
-  Sparkline,
-  TopChannelCallout,
-} from "~/components/channel-report";
+import { Panel, PageIntro, RangeSwitcher } from "~/components/admin-ui";
+import { ChannelTable, OtherAnswers, ReportNotes, TopChannelCallout, formatPercent } from "~/components/channel-report";
 import { loadChannelReport } from "~/lib/channel-report.server";
 import { ensureShop } from "~/lib/provision.server";
 import { startOrderBackfill } from "~/lib/order-backfill.server";
@@ -22,14 +16,17 @@ import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
 
 /**
- * Channel report — which channels bring buyers, and what they are worth.
+ * Channel report — which channels bring buyers, and what each one is worth.
  *
- * Read top to bottom: the best channel in one sentence, the four headline
- * numbers, one note explaining anything that is not counted yet, the full
- * table, then the trend. Range is a link so it survives a refresh.
+ * The Dashboard shows the headline numbers and the top five channels; this page
+ * is the full attribution story behind them: the best channel in one sentence,
+ * one note on anything not counted yet, every channel with its share, revenue
+ * and average order (and a total row), the response rate, and what buyers wrote
+ * when none of the listed channels fit. Range is a link so it survives a
+ * refresh.
  *
- * The data is built by `loadChannelReport`, which Home shares, so the numbers
- * on both screens always agree.
+ * The data is built by `loadChannelReport`, which the Dashboard shares, so the
+ * numbers on both screens always agree.
  */
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "nav.channels");
@@ -75,60 +72,62 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   return { range, ...report };
 });
 
-export default function Dashboard() {
+export default function ChannelReportPage() {
   const data = useLoaderData<typeof loader>();
   const { t, locale } = useAdminI18n();
   const rangeLabel = t(data.range.labelKey);
+  const { summary } = data;
 
   return (
     <s-stack gap="base">
-      {/* What the page answers, and the range switcher on the same row on
-          desktop; stacked on a phone. */}
-      <s-query-container>
-        <s-grid
-          gridTemplateColumns="@container (inline-size > 640px) minmax(0, 1fr) auto, minmax(0, 1fr)"
-          gap="small"
-          alignItems="center"
-        >
-          <s-text color="subdued">{t("dashboard.subtitle")}</s-text>
-          {/* An inline stack, not a button group: a group never wraps, and the
-              three ranges in French or German are wider than a phone. The
-              plain div keeps the group role and its label for screen readers. */}
-          <div role="group" aria-label={t("dashboard.range_label")}>
-          <s-stack direction="inline" gap="small-200">
-            {RANGES.map((range) => (
-              <s-button
-                key={range.days}
-                href={`/app/dashboard?range=${range.days}`}
-                variant={range.days === data.range.days ? "primary" : "secondary"}
-              >
-                {t(range.labelKey)}
-              </s-button>
-            ))}
-          </s-stack>
-          </div>
-        </s-grid>
-      </s-query-container>
+      <PageIntro
+        actions={
+          <RangeSwitcher
+            label={t("dashboard.range_label")}
+            options={RANGES.map((range) => ({
+              key: String(range.days),
+              label: t(range.labelKey),
+              href: `/app/dashboard?range=${range.days}`,
+              current: range.days === data.range.days,
+            }))}
+          />
+        }
+      >
+        {t("dashboard.subtitle")}
+      </PageIntro>
 
       {data.hasAnyResponse ? (
         <>
           <TopChannelCallout report={data} t={t} rangeLabel={rangeLabel} />
 
-          <KpiGrid report={data} t={t} locale={locale} rangeLabel={rangeLabel} />
-
-          <ReportNotes summary={data.summary} t={t} />
+          <ReportNotes summary={summary} t={t} />
 
           <Panel title={t("dashboard.channels_title")} description={t("dashboard.channels_subtitle")}>
             {data.channels.length === 0 ? (
               <s-text color="subdued">{t("dashboard.no_answers_in_range", { range: rangeLabel })}</s-text>
             ) : (
-              <ChannelTable channels={data.channels} t={t} locale={locale} />
+              <s-stack gap="base">
+                <ChannelTable channels={data.channels} t={t} locale={locale} totals={summary} />
+                {/* The one number the table cannot show: how many orders
+                    answered at all. null is "no orders yet", never 0%. */}
+                <s-text color="subdued" fontSize="small">
+                  {summary.responseRate === null
+                    ? t("dashboard.response_rate_no_orders")
+                    : t("dashboard.rate_line", {
+                        rate: formatPercent(summary.responseRate, locale),
+                        answered: summary.rateResponses,
+                        total: data.ordersInWindow,
+                      })}
+                </s-text>
+              </s-stack>
             )}
           </Panel>
 
-          <Panel title={t("dashboard.trend_title")} description={t("dashboard.trend_subtitle", { range: rangeLabel })}>
-            <Sparkline points={data.trend} t={t} locale={locale} />
-          </Panel>
+          {data.otherAnswers.length > 0 ? (
+            <Panel title={t("dashboard.other_title")} description={t("dashboard.other_subtitle")}>
+              <OtherAnswers answers={data.otherAnswers} t={t} locale={locale} />
+            </Panel>
+          ) : null}
         </>
       ) : (
         <s-section heading={t("dashboard.empty_title")}>

@@ -27,6 +27,8 @@ import type { loader as rootLoader } from "~/root";
 import { Banner } from "~/components/admin-ui";
 import { SupportIconButton } from "~/components/support-button";
 import { DataNotice } from "~/components/data-notice";
+import { TopNav } from "~/components/top-nav";
+import { NAV } from "~/lib/nav";
 import {
   createTranslator,
   DEFAULT_LANGUAGE,
@@ -56,32 +58,10 @@ import { APP_VERSION } from "@shared/support";
  */
 
 /**
- * Pages registered in the Shopify admin's own navigation via `<s-app-nav>`.
- *
- * The label is an i18next key, not display text: this array is a module-level
- * constant shared by every request, so a translated string could never be
- * stored here without leaking one merchant's language into the next tenant's
- * page. Keys are resolved per render.
- *
- * Shopify's navigation guidelines: at most seven items (the rest collapse into
- * "View more"), short nouns, and no entry that repeats the home page, which
- * is the app name itself (`rel="home"` below). So the list is the six places a
- * merchant actually goes. Per-survey results live on each survey's Results tab,
- * and the CSV export is a button on Responses; both old URLs still work.
- *
- * There is deliberately no in-frame sidebar any more. Shopify already renders
- * these links in its admin sidebar on desktop and in the app title menu on
- * phones; a second copy inside the iframe took a whole column, which on a
- * phone left the dashboard squeezed into the remaining sliver.
+ * The pages themselves are listed once, in `~/lib/nav`, and read by both menus:
+ * Shopify's own admin navigation (`<s-app-nav>`, the `sidebar` items) and the
+ * in-app top bar (`TopNav`, every item).
  */
-const NAV = [
-  { to: "/app/dashboard", key: "nav.channels" },
-  { to: "/app/surveys", key: "nav.surveys" },
-  { to: "/app/responses", key: "nav.responses" },
-  { to: "/app/plans", key: "nav.plans" },
-  { to: "/app/settings", key: "nav.preferences" },
-  { to: "/app/help", key: "nav.help" },
-] as const;
 
 /**
  * The page title shown in the page header, from the deepest route that
@@ -166,13 +146,13 @@ export default function AdminLayout() {
   return (
     <AppProvider apiKey={apiKey}>
       {/* Shopify admin's own sidebar entries for this app. Without this the
-          app shows no pages under its name in the admin navigation, so the
-          survey editor is only reachable through the in-page menu below. */}
+          app shows no pages under its name in the admin navigation. The
+          in-app top bar below lists the same pages plus Dashboard and Export. */}
       <s-app-nav>
         <s-link href="/app" {...HOME_LINK}>
           {t("nav.home")}
         </s-link>
-        {NAV.map((item) => (
+        {NAV.filter((item) => item.sidebar).map((item) => (
           <s-link key={item.to} href={item.to}>
             {t(item.key)}
           </s-link>
@@ -193,6 +173,9 @@ export default function AdminLayout() {
             inside their card instead of running past its edge. */}
         <div className="st-page">
         <s-stack gap="base">
+          {/* The app's own menu, on every page. */}
+          <TopNav t={t} />
+
           {/* Plan strip: only on the Free plan, where the monthly limit is
               something to watch. A paid merchant has nothing to act on here,
               and an always-on toolbar was clutter on every page. */}

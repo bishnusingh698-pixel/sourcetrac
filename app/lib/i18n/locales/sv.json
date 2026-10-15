@@ -16,7 +16,8 @@
     "responses": "Svar",
     "home": "Hem",
     "channels": "Kanalrapport",
-    "preferences": "Inställningar"
+    "preferences": "Inställningar",
+    "current": "(aktuell sida)"
   },
   "common": {
     "cancel": "Avbryt",
@@ -100,7 +101,11 @@
     "note_pending_other": "{{count}} svar väntar på orderuppgifter från Shopify, oftast i mindre än en minut. Sedan visas intäkterna.",
     "note_test_orders_one": "{{count}} svar kommer från en testorder i Shopify. Testordrar räknas aldrig som intäkter; riktiga ordrar räknas så fort de kommer in.",
     "note_test_orders_other": "{{count}} svar kommer från testordrar i Shopify. Testordrar räknas aldrig som intäkter; riktiga ordrar räknas så fort de kommer in.",
-    "no_answers_in_range": "Inga svar under den här perioden ({{range}}). Prova en längre period."
+    "no_answers_in_range": "Inga svar under den här perioden ({{range}}). Prova en längre period.",
+    "total_row": "Totalt",
+    "rate_line": "Svarsfrekvens: {{rate}}. {{answered}} av {{total}} ordrar under perioden svarade.",
+    "other_title": "Med köparnas egna ord",
+    "other_subtitle": "Vad köpare skrev när ingen av dina kanaler passade. Senaste först."
   },
   "settings": {
     "title": "Inställningar",
@@ -1003,7 +1008,35 @@
     "unpublished": "{{name}} har opublicerade ändringar. Granska och publicera.",
     "open_report": "Öppna kanalrapporten",
     "do_it": "Gå dit",
-    "see_results": "Se de senaste svaren på {{name}}."
+    "see_results": "Se de senaste svaren på {{name}}.",
+    "subtitle": "Din butik i korthet: intäkter per kanal, kundbetyg och alla enkäter.",
+    "scores_title": "Kundbetyg",
+    "scores_subtitle": "Hur köpare betygsätter dig, i alla dina enkäter. {{range}}.",
+    "by_question": "Per fråga",
+    "col_question": "Fråga",
+    "col_score": "Betyg",
+    "key_nps": "NPS {{value}}",
+    "key_csat": "CSAT {{value}}",
+    "key_average": "Snitt {{value}}",
+    "key_top": "{{label}} · {{share}}",
+    "score_pooled_one": "Från {{count}} fråga",
+    "score_pooled_other": "Från {{count}} frågor",
+    "see_answers": "Visa svar",
+    "score_no_answers": "Inga svar under den här perioden ännu. Prova en längre period.",
+    "nps_none_body": "Fråga köpare hur troligt det är att de rekommenderar din butik, från 0 till 10, så visas ditt Net Promoter Score här.",
+    "csat_none_body": "Fråga köpare hur nöjda de är, från 1 till 5, så visas ditt kundnöjdhetsbetyg här.",
+    "add_score_survey": "Lägg till en enkät",
+    "top_channels_title": "Bästa kanaler",
+    "top_channels_subtitle": "Hur köpare hörde talas om dig. {{range}}.",
+    "top_channels_empty": "Inga kanalsvar under den här perioden.",
+    "buyers_subtitle": "Varje order räknas en gång, i alla dina enkäter.",
+    "col_orders": "Ordrar",
+    "buyers_unknown_one": "{{count}} order visar inte om det var en första beställning.",
+    "buyers_unknown_other": "{{count}} ordrar visar inte om det var en första beställning.",
+    "surveys_subtitle": "Aktiva enkäter och alla andra som fått svar. {{range}}.",
+    "col_key_result": "Viktigaste resultat",
+    "compare_surveys": "Jämför enkäter i Resultat",
+    "capped_note": "Betyg, köpare och enkäter bygger på de senaste {{limit}} svaren under perioden."
   },
   "support": {
     "button_label": "E-posta supporten",

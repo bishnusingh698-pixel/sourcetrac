@@ -2,10 +2,11 @@ import type { TFunction } from "~/lib/i18n";
 import type { ChannelReport } from "~/lib/channel-report.server";
 
 import { Banner, BigNumber, Metric, MoneyList, type BadgeTone } from "~/components/admin-ui";
+import { formatDay } from "~/lib/format-day";
 
 /**
- * The channel report's building blocks, shared by the dashboard and Home so a
- * number looks the same on both. Pure presentation: everything arrives already
+ * The channel report's building blocks, shared by the channel report and the
+ * Dashboard so a number looks the same on both. Pure presentation: everything arrives already
  * computed and formatted by `loadChannelReport`.
  *
  * Layout follows the usual dashboard order: the one insight that matters most,
@@ -235,12 +236,10 @@ export function TopChannelCallout({
   report,
   t,
   rangeLabel,
-  action,
 }: {
   report: Pick<ChannelReport, "topChannel" | "channels">;
   t: TFunction;
   rangeLabel: string;
-  action?: { href: string; label: string };
 }) {
   const top = report.topChannel;
   if (!top) return null;
@@ -248,44 +247,31 @@ export function TopChannelCallout({
 
   return (
     <s-section>
-      <s-query-container>
-        <s-grid
-          gridTemplateColumns={action ? "@container (inline-size > 560px) minmax(0, 1fr) auto, minmax(0, 1fr)" : "minmax(0, 1fr)"}
-          gap="base"
-          alignItems="center"
-        >
-          <s-grid gridTemplateColumns="auto minmax(0, 1fr)" gap="base" alignItems="start">
-            <s-box padding="small" borderRadius="large" background="subdued">
-              <s-icon type="chart-popular" tone="success" />
-            </s-box>
-            <s-stack gap="small-200">
-              <s-stack direction="inline" gap="small" alignItems="center">
-                <s-badge tone="success">{t("dashboard.top_channel")}</s-badge>
-                <s-text color="subdued" fontSize="small">
-                  {rangeLabel}
-                </s-text>
-              </s-stack>
-              <s-text fontSize="large" fontWeight="bold">
-                {name}
-              </s-text>
-              <s-text>
-                {top.byRevenue && top.revenue
-                  ? t("dashboard.top_channel_revenue", {
-                      count: top.responses,
-                      revenue: top.revenue,
-                      share: top.sharePercent,
-                    })
-                  : t("dashboard.top_channel_answers", { count: top.responses, share: top.sharePercent })}
-              </s-text>
-            </s-stack>
-          </s-grid>
-          {action ? (
-            <s-button href={action.href} variant="secondary">
-              {action.label}
-            </s-button>
-          ) : null}
-        </s-grid>
-      </s-query-container>
+      <s-grid gridTemplateColumns="auto minmax(0, 1fr)" gap="base" alignItems="start">
+        <s-box padding="small" borderRadius="large" background="subdued">
+          <s-icon type="chart-popular" tone="success" />
+        </s-box>
+        <s-stack gap="small-200">
+          <s-stack direction="inline" gap="small" alignItems="center">
+            <s-badge tone="success">{t("dashboard.top_channel")}</s-badge>
+            <s-text color="subdued" fontSize="small">
+              {rangeLabel}
+            </s-text>
+          </s-stack>
+          <s-text fontSize="large" fontWeight="bold">
+            {name}
+          </s-text>
+          <s-text>
+            {top.byRevenue && top.revenue
+              ? t("dashboard.top_channel_revenue", {
+                  count: top.responses,
+                  revenue: top.revenue,
+                  share: top.sharePercent,
+                })
+              : t("dashboard.top_channel_answers", { count: top.responses, share: top.sharePercent })}
+          </s-text>
+        </s-stack>
+      </s-grid>
     </s-section>
   );
 }
@@ -305,7 +291,7 @@ export function KpiGrid({
   t: TFunction;
   locale: string;
   rangeLabel: string;
-  /** Makes every tile a link, e.g. from Home to the full report. */
+  /** Makes every tile a link, e.g. from the Dashboard to the full report. */
   href?: string;
 }) {
   const { summary } = report;
@@ -403,11 +389,14 @@ export function ChannelTable({
   t,
   locale,
   limit,
+  totals,
 }: {
   channels: ChannelReport["channels"];
   t: TFunction;
   locale: string;
   limit?: number;
+  /** A last "Total" row: every answer, and revenue and AOV per currency. */
+  totals?: Pick<ChannelReport["summary"], "totalResponses" | "revenue" | "aov">;
 }) {
   const percent = new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 0 });
   // Denominator for the share bars: the busiest channel, so a flat
@@ -488,8 +477,66 @@ export function ChannelTable({
             </s-table-row>
           );
         })}
+        {totals ? (
+          <s-table-row>
+            <s-table-cell>
+              <s-text type="strong">{t("dashboard.total_row")}</s-text>
+            </s-table-cell>
+            <s-table-cell>
+              <s-text type="strong" fontVariantNumeric="tabular-nums">
+                {totals.totalResponses}
+              </s-text>
+            </s-table-cell>
+            <s-table-cell>
+              <s-text color="subdued" fontSize="small" fontVariantNumeric="tabular-nums">
+                {percent.format(totals.totalResponses > 0 ? 1 : 0)}
+              </s-text>
+            </s-table-cell>
+            <s-table-cell>
+              <MoneyList amounts={totals.revenue} tone="success" />
+            </s-table-cell>
+            <s-table-cell>
+              <MoneyList amounts={totals.aov} />
+            </s-table-cell>
+          </s-table-row>
+        ) : null}
       </s-table-body>
     </s-table>
+  );
+}
+
+/**
+ * What buyers wrote when they picked "Other", newest first. This is where a
+ * merchant spots a channel they did not list (a podcast, a newsletter), so it
+ * sits on the channel report rather than hidden in the Responses list.
+ */
+export function OtherAnswers({
+  answers,
+  t,
+  locale,
+}: {
+  answers: ChannelReport["otherAnswers"];
+  t: TFunction;
+  locale: string;
+}) {
+  return (
+    <s-stack gap="small">
+      {answers.map((answer) => (
+        <s-box key={answer.id} padding="small" border="base" borderRadius="base">
+          <s-grid gridTemplateColumns="minmax(0, 1fr) auto" gap="small" alignItems="start">
+            <s-stack gap="small-300">
+              <s-text>{`“${answer.text}”`}</s-text>
+              <s-text color="subdued" fontSize="small">
+                {channelName(answer.label, t)}
+              </s-text>
+            </s-stack>
+            <s-text color="subdued" fontSize="small">
+              {formatDay(answer.submittedAt, locale)}
+            </s-text>
+          </s-grid>
+        </s-box>
+      ))}
+    </s-stack>
   );
 }
 

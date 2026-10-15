@@ -16,7 +16,8 @@
     "responses": "Réponses",
     "home": "Accueil",
     "channels": "Rapport par canal",
-    "preferences": "Paramètres"
+    "preferences": "Paramètres",
+    "current": "(page actuelle)"
   },
   "common": {
     "cancel": "Annuler",
@@ -100,7 +101,11 @@
     "note_pending_other": "{{count}} réponses attendent les détails de leur commande de la part de Shopify, généralement moins d'une minute. Leur chiffre d'affaires apparaîtra ensuite.",
     "note_test_orders_one": "{{count}} réponse provient d'une commande test Shopify. Les commandes test ne comptent jamais dans le chiffre d'affaires ; les vraies commandes comptent dès leur arrivée.",
     "note_test_orders_other": "{{count}} réponses proviennent de commandes test Shopify. Les commandes test ne comptent jamais dans le chiffre d'affaires ; les vraies commandes comptent dès leur arrivée.",
-    "no_answers_in_range": "Aucune réponse sur cette période ({{range}}). Essayez une période plus longue."
+    "no_answers_in_range": "Aucune réponse sur cette période ({{range}}). Essayez une période plus longue.",
+    "total_row": "Total",
+    "rate_line": "Taux de réponse : {{rate}}. {{answered}} commandes sur {{total}} de cette période ont répondu.",
+    "other_title": "Dans les mots des acheteurs",
+    "other_subtitle": "Ce que les acheteurs ont écrit quand aucun de vos canaux ne convenait. Les plus récents d’abord."
   },
   "settings": {
     "title": "Paramètres",
@@ -1003,7 +1008,35 @@
     "unpublished": "{{name}} a des modifications non publiées. Vérifier et publier.",
     "open_report": "Ouvrir le rapport par canal",
     "do_it": "Y aller",
-    "see_results": "Consultez les dernières réponses à {{name}}."
+    "see_results": "Consultez les dernières réponses à {{name}}.",
+    "subtitle": "Votre boutique en un coup d’œil : chiffre d’affaires par canal, scores clients et tous vos sondages.",
+    "scores_title": "Scores clients",
+    "scores_subtitle": "Comment les acheteurs vous notent, sur tous vos sondages. {{range}}.",
+    "by_question": "Par question",
+    "col_question": "Question",
+    "col_score": "Score",
+    "key_nps": "NPS {{value}}",
+    "key_csat": "CSAT {{value}}",
+    "key_average": "Moyenne {{value}}",
+    "key_top": "{{label}} · {{share}}",
+    "score_pooled_one": "Sur {{count}} question",
+    "score_pooled_other": "Sur {{count}} questions",
+    "see_answers": "Voir les réponses",
+    "score_no_answers": "Aucune réponse sur cette période pour l’instant. Essayez une période plus longue.",
+    "nps_none_body": "Demandez aux acheteurs s’ils recommanderaient votre boutique, de 0 à 10, et votre Net Promoter Score apparaîtra ici.",
+    "csat_none_body": "Demandez aux acheteurs s’ils sont satisfaits, de 1 à 5, et votre score de satisfaction client apparaîtra ici.",
+    "add_score_survey": "Ajouter un sondage",
+    "top_channels_title": "Meilleurs canaux",
+    "top_channels_subtitle": "Comment les acheteurs vous ont connu. {{range}}.",
+    "top_channels_empty": "Aucune réponse sur les canaux sur cette période.",
+    "buyers_subtitle": "Chaque commande comptée une seule fois, sur tous vos sondages.",
+    "col_orders": "Commandes",
+    "buyers_unknown_one": "{{count}} commande n’indique pas s’il s’agissait d’une première commande.",
+    "buyers_unknown_other": "{{count}} commandes n’indiquent pas s’il s’agissait d’une première commande.",
+    "surveys_subtitle": "Sondages actifs, et tous ceux qui ont reçu des réponses. {{range}}.",
+    "col_key_result": "Résultat clé",
+    "compare_surveys": "Comparer les sondages dans Résultats",
+    "capped_note": "Les scores, acheteurs et sondages reposent sur les {{limit}} réponses les plus récentes de cette période."
   },
   "support": {
     "button_label": "Contacter le support",

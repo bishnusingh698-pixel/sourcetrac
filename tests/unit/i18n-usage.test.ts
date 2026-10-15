@@ -55,20 +55,20 @@ function collectUsedKeys(): Map<string, string[]> {
 /**
  * Keys referenced from module-level constants rather than inline in `t()`.
  *
- * The nav array in `app.tsx` holds keys as data because it is a shared module
- * constant — storing a translated string there would leak one merchant's
- * language into the next tenant's page. That makes those keys invisible to the
- * `t(` pattern above, so they are asserted explicitly.
+ * The nav list in `app/lib/nav.ts` holds keys as data because it is a shared
+ * module constant — storing a translated string there would leak one
+ * merchant's language into the next tenant's page. That makes those keys
+ * invisible to the `t(` pattern above, so they are asserted explicitly.
  */
 function declarativeKeys(): Map<string, string[]> {
-  const navSource = readFileSync(join(APP_DIR, "routes/app.tsx"), "utf8");
-  const navBlock = /const NAV = \[([\s\S]*?)\] as const;/.exec(navSource);
+  const navSource = readFileSync(join(APP_DIR, "lib/nav.ts"), "utf8");
+  const navBlock = /export const NAV = \[([\s\S]*?)\] as const/.exec(navSource);
   const keys = new Map<string, string[]>();
 
   if (navBlock?.[1]) {
     for (const match of navBlock[1].matchAll(/key:\s*["'`]([a-z0-9_.]+)["'`]/g)) {
       const key = match[1];
-      if (key) keys.set(key, ["app/routes/app.tsx (NAV)"]);
+      if (key) keys.set(key, ["app/lib/nav.ts (NAV)"]);
     }
   }
 
@@ -104,6 +104,12 @@ describe("i18n key usage", () => {
   const definedBases = new Set([...defined].map(baseOf));
 
   const used = new Map([...collectUsedKeys(), ...declarativeKeys()]);
+
+  it("reads every nav item's key", () => {
+    // The nav list is the one place these keys live; a regex that silently
+    // stopped matching it would let a renamed key ship as a raw string.
+    expect(declarativeKeys().size).toBe(9);
+  });
 
   it("finds keys in source", () => {
     // Guards the regex itself: if this ever returns nothing the tests below

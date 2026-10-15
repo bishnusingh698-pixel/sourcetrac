@@ -16,7 +16,8 @@
     "responses": "Antwoorden",
     "home": "Start",
     "channels": "Kanaalrapport",
-    "preferences": "Instellingen"
+    "preferences": "Instellingen",
+    "current": "(huidige pagina)"
   },
   "common": {
     "cancel": "Annuleren",
@@ -100,7 +101,11 @@
     "note_pending_other": "{{count}} antwoorden wachten op de bestelgegevens van Shopify, meestal minder dan een minuut. Daarna verschijnt de omzet.",
     "note_test_orders_one": "{{count}} antwoord komt van een Shopify-testbestelling. Testbestellingen tellen nooit als omzet; echte bestellingen tellen zodra ze binnenkomen.",
     "note_test_orders_other": "{{count}} antwoorden komen van Shopify-testbestellingen. Testbestellingen tellen nooit als omzet; echte bestellingen tellen zodra ze binnenkomen.",
-    "no_answers_in_range": "Geen antwoorden in deze periode ({{range}}). Probeer een langere periode."
+    "no_answers_in_range": "Geen antwoorden in deze periode ({{range}}). Probeer een langere periode.",
+    "total_row": "Totaal",
+    "rate_line": "Responspercentage: {{rate}}. {{answered}} van {{total}} bestellingen in deze periode gaven antwoord.",
+    "other_title": "In de woorden van kopers",
+    "other_subtitle": "Wat kopers schreven toen geen van je kanalen paste. Nieuwste eerst."
   },
   "settings": {
     "title": "Instellingen",
@@ -1003,7 +1008,35 @@
     "unpublished": "{{name}} heeft niet-gepubliceerde wijzigingen. Bekijk en publiceer.",
     "open_report": "Kanaalrapport openen",
     "do_it": "Ga",
-    "see_results": "Bekijk de nieuwste antwoorden op {{name}}."
+    "see_results": "Bekijk de nieuwste antwoorden op {{name}}.",
+    "subtitle": "Je winkel in één oogopslag: omzet per kanaal, klantscores en al je enquêtes.",
+    "scores_title": "Klantscores",
+    "scores_subtitle": "Hoe kopers je beoordelen, over al je enquêtes. {{range}}.",
+    "by_question": "Per vraag",
+    "col_question": "Vraag",
+    "col_score": "Score",
+    "key_nps": "NPS {{value}}",
+    "key_csat": "CSAT {{value}}",
+    "key_average": "Gemiddeld {{value}}",
+    "key_top": "{{label}} · {{share}}",
+    "score_pooled_one": "Uit {{count}} vraag",
+    "score_pooled_other": "Uit {{count}} vragen",
+    "see_answers": "Antwoorden bekijken",
+    "score_no_answers": "Nog geen antwoorden in deze periode. Probeer een langere periode.",
+    "nps_none_body": "Vraag kopers hoe waarschijnlijk het is dat ze je winkel aanbevelen, van 0 tot 10, en je Net Promoter Score verschijnt hier.",
+    "csat_none_body": "Vraag kopers hoe tevreden ze zijn, van 1 tot 5, en je klanttevredenheidsscore verschijnt hier.",
+    "add_score_survey": "Enquête toevoegen",
+    "top_channels_title": "Beste kanalen",
+    "top_channels_subtitle": "Hoe kopers over je hoorden. {{range}}.",
+    "top_channels_empty": "Geen kanaalantwoorden in deze periode.",
+    "buyers_subtitle": "Elke bestelling één keer geteld, over al je enquêtes.",
+    "col_orders": "Bestellingen",
+    "buyers_unknown_one": "Van {{count}} bestelling is niet bekend of het een eerste bestelling was.",
+    "buyers_unknown_other": "Van {{count}} bestellingen is niet bekend of het een eerste bestelling was.",
+    "surveys_subtitle": "Actieve enquêtes, en alle andere die antwoorden kregen. {{range}}.",
+    "col_key_result": "Belangrijkste resultaat",
+    "compare_surveys": "Enquêtes vergelijken in Resultaten",
+    "capped_note": "Scores, kopers en enquêtes zijn gebaseerd op de nieuwste {{limit}} antwoorden in deze periode."
   },
   "support": {
     "button_label": "E-mail support",
