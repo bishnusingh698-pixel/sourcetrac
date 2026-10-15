@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLoaderData, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 
 import { Panel, PageIntro } from "~/components/admin-ui";
+import { JustInTimeNotice } from "~/components/data-notice";
 import { countChannelAnswers, fetchResponsesInWindow, toExportRows } from "~/lib/analytics-queries.server";
 import { CSV_HEADERS } from "~/lib/csv";
 import { loadExportContext } from "~/lib/export.server";
@@ -116,6 +117,9 @@ export default function Export() {
             {/* Column names are the file's literal headers, so they stay as-is. */}
             {t("export.columns_note", { columns: data.headers.join(", ") })}
           </s-text>
+
+          {/* The file leaves SourceTrac with the merchant, so say what is in it. */}
+          <JustInTimeNotice>{t("privacy.export_notice")}</JustInTimeNotice>
 
           <div>
             <s-button variant="primary" icon="download" loading={downloading} onClick={download}>

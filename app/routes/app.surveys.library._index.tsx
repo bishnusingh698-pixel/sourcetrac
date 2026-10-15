@@ -152,7 +152,10 @@ export default function TemplateLibrary() {
   const category = (params.get("category") as TemplateCategory | null) ?? null;
 
   const recommended = cards.find((card) => card.id === recommendedId);
-  const rest = cards.filter((card) => card.id !== recommendedId && (!category || card.category === category));
+  // The recommended card has its own spot above the list, so it is left out
+  // of "All"; once a category is picked it is listed with the others again,
+  // or picking its own category would hide it.
+  const rest = cards.filter((card) => (category ? card.category === category : card.id !== recommendedId));
 
   const failureKey = actionData?.ok === false ? `surveys.validation_${actionData.code}` : null;
   const failure = failureKey ? (t(failureKey) === failureKey ? t("library.create_failed") : t(failureKey)) : null;
@@ -211,7 +214,7 @@ export default function TemplateLibrary() {
 
           <s-query-container>
             <s-grid
-              gridTemplateColumns="@container (inline-size > 820px) repeat(3, minmax(0, 1fr)), @container (inline-size > 520px) repeat(2, minmax(0, 1fr)), minmax(0, 1fr)"
+              gridTemplateColumns="repeat(auto-fill, minmax(min(100%, 16rem), 1fr))"
               gap="base"
             >
               {rest.map((card) => (

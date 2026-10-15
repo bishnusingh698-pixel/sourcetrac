@@ -322,10 +322,10 @@ function NextStep({
   let href = "/app/surveys";
   if (draft) {
     body = t("home.unpublished", { name: draft.name });
-    href = `/app/surveys/${draft.id}?tab=studio`;
+    href = `/app/surveys/${draft.id}`;
   } else if (reliable) {
     body = t("home.reliable_ideas", { name: reliable.name });
-    href = `/app/surveys/${reliable.id}?tab=results`;
+    href = `/app/results?survey=${reliable.id}`;
   } else if (spotlightTemplateName) {
     body = t("home.start_with", { name: spotlightTemplateName });
     href = "/app/surveys/library";
@@ -333,8 +333,9 @@ function NextStep({
     body = t("home.start_with", { name: channelCompassName });
     href = "/app/surveys/library";
   } else {
-    body = t("home.reliable_ideas", { name: surveys[0]?.name ?? "" });
-    href = `/app/surveys/${surveys[0]?.id ?? ""}?tab=results`;
+    // Not yet reliable, so it must not say so.
+    body = t("home.see_results", { name: surveys[0]?.name ?? "" });
+    href = `/app/results?survey=${surveys[0]?.id ?? ""}`;
   }
 
   return (

@@ -314,7 +314,7 @@ export function KpiGrid({
     // four headline numbers a long scroll on a phone.
     <s-query-container>
       <s-grid
-        gridTemplateColumns="@container (inline-size > 760px) repeat(4, minmax(0, 1fr)), (inline-size > 300px) repeat(2, minmax(0, 1fr)), minmax(0, 1fr)"
+        gridTemplateColumns="@container (inline-size > 640px) repeat(4, minmax(0, 1fr)), repeat(2, minmax(0, 1fr))"
         gap="base"
       >
         <Metric label={t("dashboard.metric_revenue")} help={t("dashboard.metric_revenue_help")} href={href}>

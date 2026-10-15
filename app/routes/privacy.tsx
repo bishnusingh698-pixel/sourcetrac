@@ -24,23 +24,23 @@ export default function PrivacyPolicy() {
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "2rem 1rem", lineHeight: 1.6 }}>
       <h1>SourceTrac privacy policy</h1>
-      <p>Last updated: 13 October 2026</p>
+      <p>Last updated: 15 October 2026</p>
 
       <p>
-        SourceTrac is a survey app for Shopify. It asks your buyers one question at
-        checkout and shows you which channels bring in revenue. This page explains
+        SourceTrac is a survey app for Shopify. It asks your buyers a short survey
+        after checkout and shows you which channels bring in revenue. This page explains
         what we store and how to have it removed.
       </p>
 
       <h2>What we store</h2>
       <p>We keep the smallest set of data needed to attribute an order to a channel:</p>
       <ul>
-        <li>the Shopify order ID</li>
-        <li>the answer the buyer gave, or free text they typed</li>
-        <li>the time of the answer</li>
-        <li>the order total and currency, read from the order</li>
-        <li>the order&apos;s country and the buyer&apos;s language, when the survey uses them</li>
-        <li>the customer ID, only when the buyer is logged in and the survey targets returning buyers</li>
+        <li>the Shopify order ID and order number</li>
+        <li>the answers the buyer gave, including any text they typed</li>
+        <li>the time of the answer and the page it was given on</li>
+        <li>the order total, currency and status (paid, refunded, cancelled or test), read from the order</li>
+        <li>the buyer&apos;s checkout country and language</li>
+        <li>the products in the order, and whether it was the buyer&apos;s first order</li>
       </ul>
 
       <h2>What we do not store</h2>
@@ -66,8 +66,8 @@ export default function PrivacyPolicy() {
       <h2>Deletion</h2>
       <p>
         When you uninstall SourceTrac we delete your access tokens immediately.
-        Shopify then sends a redaction request, and we delete your shop&apos;s
-        stored data in response — within 48 hours of uninstall.
+        Shopify sends a redaction request 48 hours after uninstall, and we delete
+        your shop&apos;s stored data when it arrives.
       </p>
       <p>
         A buyer can ask for their data to be removed through you, the merchant. We

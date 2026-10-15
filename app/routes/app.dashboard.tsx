@@ -91,7 +91,9 @@ export default function Dashboard() {
           alignItems="center"
         >
           <s-text color="subdued">{t("dashboard.subtitle")}</s-text>
-          <s-button-group accessibilityLabel={t("dashboard.range_label")}>
+          {/* An inline stack, not a button group: a group never wraps, and the
+              three ranges in French or German are wider than a phone. */}
+          <s-stack direction="inline" gap="small-200" accessibilityLabel={t("dashboard.range_label")}>
             {RANGES.map((range) => (
               <s-button
                 key={range.days}
@@ -101,7 +103,7 @@ export default function Dashboard() {
                 {t(range.labelKey)}
               </s-button>
             ))}
-          </s-button-group>
+          </s-stack>
         </s-grid>
       </s-query-container>
 

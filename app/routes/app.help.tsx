@@ -58,7 +58,10 @@ export default function Help() {
                   <s-text type="strong">{t(`help.q_${id}`)}</s-text>
                 </summary>
                 <s-box paddingBlockStart="small">
-                  <s-text>{t(`help.a_${id}`, { cap: FREE_RESPONSE_CAP })}</s-text>
+                  <s-stack gap="small-200">
+                    <s-text>{t(`help.a_${id}`, { cap: FREE_RESPONSE_CAP })}</s-text>
+                    {id === "privacy" ? <s-link href="/app/privacy">{t("privacy.notice_link")}</s-link> : null}
+                  </s-stack>
                 </s-box>
               </details>
             </s-box>

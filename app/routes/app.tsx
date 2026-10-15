@@ -26,6 +26,7 @@ import type { loader as rootLoader } from "~/root";
 
 import { Banner } from "~/components/admin-ui";
 import { SupportIconButton } from "~/components/support-button";
+import { DataNotice } from "~/components/data-notice";
 import {
   createTranslator,
   DEFAULT_LANGUAGE,
@@ -37,6 +38,7 @@ import { effectivePlan, evaluateCap, planFor } from "~/lib/plans";
 import { getUsageCount } from "~/lib/responses.server";
 import { ensureShop } from "~/lib/provision.server";
 import { guarded } from "~/lib/admin-errors.server";
+import { RECORD_RETENTION_DAYS } from "~/lib/retention.server";
 import { authenticate } from "~/shopify.server";
 import { isShopifyAuthResponse } from "~/lib/shopify-boundary";
 import { APP_VERSION } from "@shared/support";
@@ -140,6 +142,8 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
      * dashboard's setup guide offers the full picker, detected value preselected.
      */
     hasExplicitLanguage: isSupportedLanguage(shop.language),
+    /** For the privacy line at the foot of every page. */
+    retentionMonths: Math.round(RECORD_RETENTION_DAYS / 30),
   };
 });
 
@@ -154,7 +158,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
  */
 
 export default function AdminLayout() {
-  const { apiKey, shop, plan, cap, language, version } = useLoaderData<typeof loader>();
+  const { apiKey, shop, plan, cap, language, version, retentionMonths } = useLoaderData<typeof loader>();
   const t = createTranslator(language);
   const location = useLocation();
   const titleKey = usePageTitleKey();
@@ -196,7 +200,7 @@ export default function AdminLayout() {
             <s-box padding="small" border="base" borderRadius="base" background="base">
               <s-query-container>
                 <s-grid
-                  gridTemplateColumns="@container (inline-size > 560px) auto minmax(0, 1fr) auto, minmax(0, 1fr) auto"
+                  gridTemplateColumns="@container (inline-size > 560px) auto minmax(0, 1fr) auto, minmax(0, 1fr)"
                   gap="small"
                   alignItems="center"
                 >
@@ -260,6 +264,10 @@ export default function AdminLayout() {
           ) : null}
 
           <Outlet />
+
+          {/* First layer of the privacy notice, on every page; the full
+              account is one tap away on /app/privacy. */}
+          <DataNotice t={t} months={retentionMonths} />
         </s-stack>
         </div>
       </s-page>

@@ -11,6 +11,7 @@ import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
 import { FEATURE_FLAGS } from "@shared/feature-flags";
 import { countFailedSync } from "~/lib/sync.server";
+import { formatDay } from "~/lib/format-day";
 import { grantedSyncScopes } from "~/lib/scopes.server";
 
 /**
@@ -80,7 +81,7 @@ function requestOrders(payload: string): string[] {
 
 export default function Settings() {
   const data = useLoaderData<typeof loader>();
-  const { t, language } = useAdminI18n();
+  const { t, language, locale } = useAdminI18n();
 
   return (
     <s-stack gap="base">
@@ -122,12 +123,13 @@ export default function Settings() {
       <Panel title={t("settings.privacy_title")} description={t("settings.privacy_description")}>
         <s-stack gap="small">
           <s-text>{t("settings.privacy_body")}</s-text>
+          <s-link href="/app/privacy">{t("privacy.notice_link")}</s-link>
           {data.dataRequests.length > 0 ? (
             <s-stack gap="small-200">
               <s-text type="strong">{t("settings.privacy_requests_title")}</s-text>
               {data.dataRequests.map((request) => (
                 <s-text key={request.id} fontSize="small">
-                  {request.createdAt.slice(0, 10)}
+                  {formatDay(request.createdAt, locale)}
                   {request.orders.length > 0
                     ? ` · ${t("settings.privacy_request_found", { count: request.orders.length, orders: request.orders.join(", ") })}`
                     : ""}

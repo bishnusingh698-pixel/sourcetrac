@@ -12,7 +12,7 @@ import {
   RESULTS_RESPONSE_LIMIT,
   summariseSurvey,
 } from "~/lib/survey-analytics.server";
-import { SATISFACTION_OPTIONS } from "@shared/survey-rules";
+import { fixedOptionLabel } from "~/lib/answer-text";
 import { listSurveys, getSurveyRow } from "~/lib/surveys.server";
 import { formatMoney } from "~/lib/money";
 import { ensureShop } from "~/lib/provision.server";
@@ -121,13 +121,6 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     }),
   };
 });
-
-/** Yes/No and satisfaction have fixed options with no stored label. */
-function fixedOptionLabel(optionId: string, t: (key: string) => string): string | null {
-  if (optionId === "yes" || optionId === "no") return t(`surveys.${optionId}`);
-  if (SATISFACTION_OPTIONS.some((option) => option.id === optionId)) return t(`surveys.satisfaction_${optionId}`);
-  return null;
-}
 
 export default function Results() {
   const data = useLoaderData<typeof loader>();

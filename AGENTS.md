@@ -1293,3 +1293,34 @@ share by priority; nothing is paused. Sync is skipped below Scale in both
 `submitAnswer` and `loadSyncContext`. `tests/db-plan-gates.test.ts` and
 `tests/unit/survey-setup.test.ts` cover it. DB tests that need several live
 surveys put their shop on Scale first.
+
+## Privacy notice, yearly prices and layout (2026-10-15)
+
+- **Layered privacy notice.** `DataNotice` sits under `<Outlet />` in the shell
+  so every admin page carries one line on what is stored, linking to
+  `/app/privacy` (`DataCollectionDetails`, not in the nav). Just-in-time
+  notices (`JustInTimeNotice`) sit on text questions, the Shopify actions panel
+  and the export. `tests/unit/data-notice.test.ts` classifies every column of
+  `Response`, `Answer` and `OrderCache`; a new column fails it until the notice
+  is updated. The public `/privacy` route says the same things in English.
+- **`Response.customerId` is never written** (only nulled by `customers/redact`),
+  so the notice does not list it. If a sync starts filling it, the test fails:
+  add it back to `COLLECTED` and the copy in all ten locales.
+- **`Panel` must not set `padding="none"`.** It did, and every Panel's content
+  sat against the card edge. `none` is only for full-bleed content, which then
+  needs its own `s-box padding`.
+- **Multi-condition `@container` values are unverified.** Shopify only documents
+  `@container (cond) a, b`. For more than two layouts use plain CSS
+  `repeat(auto-fit, minmax(min(100%, Nrem), 1fr))`, which needs no container.
+  Two fields side by side use that too, so they stack on a phone.
+- **`s-button-group` never wraps**; a row of long labels (date ranges in French)
+  uses `s-stack direction="inline"` instead.
+- **Yearly price display** is the per-month equivalent, the monthly price struck
+  through, the yearly total billed, and the saving in money and percent
+  (`yearlySavingMinor`). Copy must stay factual (Built for Shopify 4.3.1): no
+  "most popular" or "2 months free" claims.
+- **Answers as text** go through `answerParts` (`app/lib/answer-text.ts`) so a
+  Yes/No answer reads "Yes", not "yes, 1", on the Responses page and in the
+  results CSV.
+- Layout here is checked statically only: `cdn.shopify.com` is blocked from this
+  container, so Polaris cannot render in a local browser.

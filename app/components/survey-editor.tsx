@@ -11,6 +11,7 @@ import {
 } from "@shared/survey-rules";
 import { planHas, type PlanTier } from "@shared/plan-features";
 import type { EditorSurvey } from "~/lib/surveys.server";
+import { JustInTimeNotice } from "~/components/data-notice";
 
 /**
  * The question editor: one card per question, in the order buyers see them.
@@ -482,6 +483,9 @@ function QuestionCard({
                   maxLength={limits.MAX_HELP_TEXT}
                   onInput={(v) => setQuestion(index, { placeholder: v || null })}
                 />
+                {/* Typed answers are the one place a buyer can volunteer
+                    personal details, so say so where the question is made. */}
+                <JustInTimeNotice>{t("privacy.text_warning")}</JustInTimeNotice>
               </>
             ) : null}
           </s-stack>
@@ -657,7 +661,7 @@ function FollowUpEditor({
             <s-text color="subdued" fontSize="small">
               {t("editor.score_between")}
             </s-text>
-            <s-grid gridTemplateColumns="minmax(0, 1fr) minmax(0, 1fr)" gap="small">
+            <s-grid gridTemplateColumns="repeat(auto-fit, minmax(min(100%, 11rem), 1fr))" gap="small">
               <s-number-field
                 label={t("editor.score_min")}
                 min={0}

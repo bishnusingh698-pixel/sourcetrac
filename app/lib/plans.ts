@@ -156,6 +156,14 @@ export function planPriceMinor(key: PlanKey, cycle: BillingCycle = "monthly"): n
 }
 
 /**
+ * What a year on the yearly cycle saves against twelve monthly payments, in
+ * minor units. Zero for Free.
+ */
+export function yearlySavingMinor(plan: Pick<PlanDefinition, "priceMinor" | "yearlyPriceMinor">): number {
+  return Math.max(0, plan.priceMinor * 12 - plan.yearlyPriceMinor);
+}
+
+/**
  * The price as Shopify's money `amount` expects it: a decimal string in MAJOR
  * units ("4.99"). `priceMinor` is minor units, and sending it directly bills
  * 100x the advertised price.

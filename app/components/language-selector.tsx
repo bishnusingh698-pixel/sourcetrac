@@ -174,8 +174,8 @@ export function LanguageSelector({
         >
           {LANGUAGES.map((language) => (
             <s-option
+              key={language.code}
               {...passthrough({
-                key: language.code,
                 value: language.code,
                 selected: pending === language.code,
                 style: flagStyle(FLAGS[language.code]),
@@ -220,7 +220,7 @@ export function LanguageSelector({
               // focusable button with the radio nested inside, which added a
               // tab stop per language and put a radio inside a button for
               // screen readers, defeating the single-tab-stop radiogroup.
-              <label key={language.code} className="st-lang-option">
+              <label key={language.code} className="st-lang-card">
               <s-box
                 background={selected ? "strong" : "base"}
                 border="base"

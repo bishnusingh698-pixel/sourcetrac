@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { Banner } from "~/components/admin-ui";
+import { JustInTimeNotice } from "~/components/data-notice";
 import { LockedNote, checkboxChecked, fieldValue, numberOrNull, type TFn } from "~/components/survey-editor";
 import { LIMITS } from "@shared/survey-rules";
 import { planHas, usesAdvancedTargeting, type PlanTier } from "@shared/plan-features";
@@ -81,7 +82,7 @@ export function AdvancedTargeting({
 
   return (
     <s-stack gap="base">
-      <s-grid gridTemplateColumns="minmax(0, 1fr) minmax(0, 1fr)" gap="small">
+      <s-grid gridTemplateColumns="repeat(auto-fit, minmax(min(100%, 11rem), 1fr))" gap="small">
         <NumberField
           label={t("editor.min_value", { currency: shopCurrency })}
           value={targeting.minValue ?? null}
@@ -115,7 +116,7 @@ export function AdvancedTargeting({
         value={(targeting.countries ?? []).join(", ")}
         onInput={(e: Event) => set({ countries: list(fieldValue(e)).map((c) => c.toUpperCase()) })}
       />
-      <s-grid gridTemplateColumns="minmax(0, 1fr) minmax(0, 1fr)" gap="small">
+      <s-grid gridTemplateColumns="repeat(auto-fit, minmax(min(100%, 11rem), 1fr))" gap="small">
         <s-date-field
           label={t("editor.starts")}
           value={targeting.startsAt ? targeting.startsAt.slice(0, 10) : ""}
@@ -180,6 +181,9 @@ export function ShopifyActions({
 
   return (
     <s-stack gap="base">
+      {/* Shopify actions are where answers leave SourceTrac, so the notice
+          sits on the panel that switches them on. */}
+      <JustInTimeNotice>{t("privacy.actions_notice")}</JustInTimeNotice>
       {grantedScopes.length === 0 ? (
         <Banner tone="info" heading={t("surveys.sync_no_scopes_title")}>
           {t("surveys.sync_no_scopes_body")}
