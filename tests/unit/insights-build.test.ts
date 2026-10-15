@@ -22,6 +22,8 @@ function row(
 ): SurveyResponseRow {
   return {
     id: `r${Math.random()}`,
+    surveyId: "s",
+    isFirstOrder: null,
     orderId: null,
     orderNumber: null,
     orderTotal: null,

@@ -104,28 +104,26 @@ export function escapeCsvValue(value: string | number | null | undefined): strin
 }
 
 export function toCsv(rows: ReadonlyArray<CsvRow>): string {
-  const lines: string[] = [CSV_HEADERS.join(",")];
-
-  for (const row of rows) {
-    lines.push(
-      [
-        row.orderName,
-        row.submittedAt,
-        row.timeZone,
-        row.channel,
-        row.otherAnswer,
-        row.orderTotal,
-        row.currency,
-        row.revenueStatus,
-        row.orderLink,
-      ]
-        .map(escapeCsvValue)
-        .join(","),
-    );
-  }
-
   // Trailing newline: some spreadsheet importers drop the final row without it.
-  return `${UTF8_BOM}${lines.join("\r\n")}\r\n`;
+  return tableToCsv(toChannelTable(rows));
+}
+
+/** The channel file as a table, for the Export page's preview. */
+export function toChannelTable(rows: ReadonlyArray<CsvRow>): CsvTable {
+  return {
+    headers: [...CSV_HEADERS],
+    rows: rows.map((row) => [
+      row.orderName,
+      row.submittedAt,
+      row.timeZone,
+      row.channel,
+      row.otherAnswer,
+      row.orderTotal,
+      row.currency,
+      row.revenueStatus,
+      row.orderLink,
+    ]),
+  };
 }
 
 /** True when `Intl` knows the zone. Shopify's `ianaTimezone` always should. */
@@ -213,37 +211,91 @@ export function toSurveyCsv(
   rows: ReadonlyArray<SurveyCsvRow>,
   questionColumns: ReadonlyArray<{ id: string; header: string }>,
 ): string {
-  const headers = [
-    "order",
-    "submitted_at",
-    "timezone",
-    "where",
-    "order_total",
-    "currency",
-    "revenue_status",
-    "order_link",
-    ...questionColumns.map((q) => q.header),
-  ];
-  const lines: string[] = [headers.map(escapeCsvValue).join(",")];
+  return tableToCsv(toSurveyTable(rows, questionColumns));
+}
 
-  for (const row of rows) {
-    lines.push(
-      [
-        row.orderName,
-        row.submittedAt,
-        row.timeZone,
-        row.placement,
-        row.orderTotal,
-        row.currency,
-        row.revenueStatus,
-        row.orderLink,
-        ...questionColumns.map((q) => row.answers[q.id] ?? ""),
-      ]
-        .map(escapeCsvValue)
-        .join(","),
-    );
-  }
+/** A CSV as headers and cells, so the Export page can preview the exact file. */
+export type CsvTable = { headers: string[]; rows: Array<Array<string | null>> };
 
+/** The wide per-survey file as a table: fixed columns, then one per question. */
+export function toSurveyTable(
+  rows: ReadonlyArray<SurveyCsvRow>,
+  questionColumns: ReadonlyArray<{ id: string; header: string }>,
+): CsvTable {
+  return {
+    headers: [
+      "order",
+      "submitted_at",
+      "timezone",
+      "where",
+      "order_total",
+      "currency",
+      "revenue_status",
+      "order_link",
+      ...questionColumns.map((q) => q.header),
+    ],
+    rows: rows.map((row) => [
+      row.orderName,
+      row.submittedAt,
+      row.timeZone,
+      row.placement,
+      row.orderTotal,
+      row.currency,
+      row.revenueStatus,
+      row.orderLink,
+      ...questionColumns.map((q) => row.answers[q.id] ?? ""),
+    ]),
+  };
+}
+
+/**
+ * Every survey in one file. Surveys ask different questions, so this is the
+ * long ("one row per answer") shape: one row for each question a buyer
+ * answered, named by survey and question. An order with three answers has
+ * three rows, so its total repeats; the Export page says not to add it up.
+ */
+export type AllSurveysCsvRow = Omit<SurveyCsvRow, "answers"> & {
+  surveyName: string;
+  question: string;
+  answer: string;
+};
+
+export const ALL_SURVEYS_HEADERS = [
+  "survey",
+  "order",
+  "submitted_at",
+  "timezone",
+  "where",
+  "question",
+  "answer",
+  "order_total",
+  "currency",
+  "revenue_status",
+  "order_link",
+] as const;
+
+export function toAllSurveysTable(rows: ReadonlyArray<AllSurveysCsvRow>): CsvTable {
+  return {
+    headers: [...ALL_SURVEYS_HEADERS],
+    rows: rows.map((row) => [
+      row.surveyName,
+      row.orderName,
+      row.submittedAt,
+      row.timeZone,
+      row.placement,
+      row.question,
+      row.answer,
+      row.orderTotal,
+      row.currency,
+      row.revenueStatus,
+      row.orderLink,
+    ]),
+  };
+}
+
+/** UTF-8 BOM, CRLF lines and a trailing newline, like every SourceTrac file. */
+export function tableToCsv(table: CsvTable): string {
+  const lines = [table.headers, ...table.rows].map((cells) => cells.map(escapeCsvValue).join(","));
   return `${UTF8_BOM}${lines.join("\r\n")}\r\n`;
 }
 

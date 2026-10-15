@@ -122,6 +122,8 @@ export type SurveyListItem = {
   questionCount: number;
   responseCount: number;
   updatedAt: string;
+  /** When the survey was created; the earliest an order could have seen it. */
+  createdAt: string;
 };
 
 /** Shape the editor posts back. Option ids are optional: absent means "new". */
@@ -399,6 +401,7 @@ export async function listSurveys(shopId: string): Promise<SurveyListItem[]> {
     responseCount: row.responseCount,
     // The merchant's last change, not the last buyer answer.
     updatedAt: row.editedAt.toISOString(),
+    createdAt: row.createdAt.toISOString(),
   }));
 }
 

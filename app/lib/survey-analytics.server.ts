@@ -49,6 +49,7 @@ export type SurveyAnswerRow = {
 
 export type SurveyResponseRow = {
   id: string;
+  surveyId: string;
   orderId: string | null;
   orderNumber: string | null;
   orderTotal: string | null;
@@ -60,6 +61,8 @@ export type SurveyResponseRow = {
   /** The order never arrived in time, so the row is excluded from revenue. */
   unverifiedFailed: boolean;
   createdAt: Date;
+  /** The buyer's first order with the shop; null when the checkout did not say. */
+  isFirstOrder: boolean | null;
   /** T8: numeric product ids on the order's lines (may be empty). */
   productIds: string[];
   answers: SurveyAnswerRow[];
@@ -77,7 +80,8 @@ export const RESULTS_RESPONSE_LIMIT = 5_000;
 /** Load responses for a survey in a window, with their answers and order facts. */
 export async function fetchSurveyResponses(params: {
   shopId: string;
-  surveyId: string;
+  /** Omitted: every survey of the shop. */
+  surveyId?: string;
   start?: Date;
   end?: Date;
   limit?: number;
@@ -87,7 +91,7 @@ export async function fetchSurveyResponses(params: {
     db.response.findMany({
       where: {
         shopId: params.shopId,
-        surveyId: params.surveyId,
+        ...(params.surveyId ? { surveyId: params.surveyId } : {}),
         ...(params.start || params.end
           ? { createdAt: { ...(params.start ? { gte: params.start } : {}), ...(params.end ? { lt: params.end } : {}) } }
           : {}),
@@ -129,6 +133,7 @@ export async function fetchSurveyResponses(params: {
     const order = row.orderId ? orderById.get(row.orderId) : undefined;
     return {
       id: row.id,
+      surveyId: row.surveyId,
       orderId: row.orderId,
       orderNumber: order?.orderNumber ?? null,
       orderTotal: row.orderTotal === null ? null : row.orderTotal.toString(),
@@ -138,6 +143,7 @@ export async function fetchSurveyResponses(params: {
       verified: row.verified,
       unverifiedFailed: row.unverifiedFailed,
       createdAt: row.createdAt,
+      isFirstOrder: row.isFirstOrder,
       productIds: safeParseArray(row.productIds),
       answers: row.answers.map((answer) => ({
         questionId: answer.questionId,
@@ -259,8 +265,11 @@ export type QuestionBreakdown =
       options: Array<{
         optionId: string;
         count: number;
-        /** Net revenue attributed to answers that chose this option, per currency. */
-        revenueByCurrency: Array<{ currency: string; minor: number }>;
+        /**
+         * Net revenue attributed to answers that chose this option, per
+         * currency, with the number of counted orders behind it (for AOV).
+         */
+        revenueByCurrency: CurrencyTotal[];
       }>;
       otherCount: number;
       /** Satisfaction questions: the CSAT score. */
@@ -430,23 +439,43 @@ export function isPendingResponse(row: Pick<SurveyResponseRow, "orderId" | "orde
   return row.orderId !== null && row.orderTotal === null && !row.unverifiedFailed;
 }
 
-function rollup(entries: ReadonlyArray<{ currency: string; minor: number }>): Array<{ currency: string; minor: number }> {
-  const totals = new Map<string, number>();
+/**
+ * Revenue in one currency and the counted orders it comes from. AOV is
+ * `minor / orders` within one currency; currencies are never added together.
+ */
+export type CurrencyTotal = { currency: string; minor: number; orders: number };
+
+function rollup(entries: ReadonlyArray<{ currency: string; minor: number }>): CurrencyTotal[] {
+  const totals = new Map<string, { minor: number; orders: number }>();
   for (const { currency, minor } of entries) {
-    const next = (totals.get(currency) ?? 0) + minor;
-    if (Number.isSafeInteger(next)) totals.set(currency, next);
+    const current = totals.get(currency) ?? { minor: 0, orders: 0 };
+    const next = current.minor + minor;
+    // An overflowing sum is dropped with its order, so AOV stays consistent.
+    if (Number.isSafeInteger(next)) totals.set(currency, { minor: next, orders: current.orders + 1 });
   }
   return [...totals.entries()]
-    .map(([currency, minor]) => ({ currency, minor }))
+    .map(([currency, total]) => ({ currency, ...total }))
     .sort((a, b) => a.currency.localeCompare(b.currency));
 }
+
+/** Average order value in minor units, or null with no counted orders. */
+export function aovMinor(total: Pick<CurrencyTotal, "minor" | "orders">): number | null {
+  if (total.orders <= 0) return null;
+  return Math.round(total.minor / total.orders);
+}
+
+/** Answers from one kind of buyer, and the revenue their orders brought. */
+export type BuyerGroup = { responses: number; revenueByCurrency: CurrencyTotal[] };
 
 export type SurveySummary = {
   totalResponses: number;
   pendingResponses: number;
   flaggedResponses: number;
-  revenueByCurrency: Array<{ currency: string; minor: number }>;
+  /** Counted revenue per currency, with its order count for AOV. */
+  revenueByCurrency: CurrencyTotal[];
   countsByPlacement: Array<{ placement: string; count: number }>;
+  /** First-time vs returning buyers; `unknown` when the checkout did not say. */
+  buyers: { first: BuyerGroup; returning: BuyerGroup; unknown: number };
 };
 
 export function summariseSurvey(responses: ReadonlyArray<SurveyResponseRow>): SurveySummary {
@@ -454,14 +483,25 @@ export function summariseSurvey(responses: ReadonlyArray<SurveyResponseRow>): Su
   let pending = 0;
   let flagged = 0;
   const byPlacement = new Map<string, number>();
+  const firstRevenue: Array<{ currency: string; minor: number }> = [];
+  const returningRevenue: Array<{ currency: string; minor: number }> = [];
+  let first = 0;
+  let returning = 0;
+  let unknown = 0;
 
   for (const response of responses) {
     if (response.flagged) flagged += 1;
     if (isPendingResponse(response)) pending += 1;
     byPlacement.set(response.placement, (byPlacement.get(response.placement) ?? 0) + 1);
+    if (response.isFirstOrder === true) first += 1;
+    else if (response.isFirstOrder === false) returning += 1;
+    else unknown += 1;
     const decision = decideSurveyRevenue(response);
     if (decision.included && response.order) {
-      revenue.push({ currency: response.order.currency, minor: decision.minor });
+      const entry = { currency: response.order.currency, minor: decision.minor };
+      revenue.push(entry);
+      if (response.isFirstOrder === true) firstRevenue.push(entry);
+      else if (response.isFirstOrder === false) returningRevenue.push(entry);
     }
   }
 
@@ -473,7 +513,59 @@ export function summariseSurvey(responses: ReadonlyArray<SurveyResponseRow>): Su
     countsByPlacement: [...byPlacement.entries()]
       .map(([placement, count]) => ({ placement, count }))
       .sort((a, b) => b.count - a.count),
+    buyers: {
+      first: { responses: first, revenueByCurrency: rollup(firstRevenue) },
+      returning: { responses: returning, revenueByCurrency: rollup(returningRevenue) },
+      unknown,
+    },
   };
+}
+
+/**
+ * Answer rate per survey: of the real orders placed while the survey existed
+ * (inside the chosen window), how many answered it. Test and cancelled orders
+ * are left out of both sides, as on the channel report. A survey shown only to
+ * some buyers (targeting, sampling, one page) reads lower, and the page says so.
+ *
+ * One small indexed count per survey; a shop has at most MAX_SURVEYS_TOTAL.
+ */
+export async function surveyAnswerRates(params: {
+  shopId: string;
+  surveys: ReadonlyArray<{ id: string; createdAt: Date }>;
+  /** Null: all time. */
+  start: Date | null;
+  end: Date;
+}): Promise<Map<string, { answered: number; orders: number }>> {
+  const results = await Promise.all(
+    params.surveys.map(async (survey) => {
+      const from = params.start && params.start > survey.createdAt ? params.start : survey.createdAt;
+      const rows = await retryDb(() =>
+        db.$queryRaw<Array<{ orders: bigint; answered: bigint }>>`
+          SELECT
+            COUNT(*)::bigint AS orders,
+            COUNT(*) FILTER (
+              WHERE EXISTS (
+                SELECT 1 FROM "Response" r
+                WHERE r."shopId" = o."shopId" AND r."surveyId" = ${survey.id} AND r."orderId" = o."orderId"
+              )
+            )::bigint AS answered
+          FROM "OrderCache" o
+          WHERE o."shopId" = ${params.shopId}
+            AND o."createdAtShop" >= ${from} AND o."createdAtShop" < ${params.end}
+            AND o."isTest" = false AND o."isCancelled" = false
+        `,
+      );
+      const row = rows[0];
+      return [survey.id, { orders: Number(row?.orders ?? 0), answered: Number(row?.answered ?? 0) }] as const;
+    }),
+  );
+  return new Map(results);
+}
+
+/** Whole-percent answer rate, capped at 100; null with no orders to compare. */
+export function answerRatePercent(rate: { answered: number; orders: number } | undefined): number | null {
+  if (!rate || rate.orders <= 0) return null;
+  return Math.min(100, Math.round((rate.answered / rate.orders) * 100));
 }
 
 export function surveyWindowBounds(days: number, now = new Date()) {
