@@ -59,3 +59,19 @@ describe("canSync", () => {
     }
   });
 });
+
+describe("customer data minimisation", () => {
+  it("does not request write_customers (dropped 2026-10-15 for GDPR)", async () => {
+    const { DECLARED_SCOPES } = await import("~/lib/env");
+    expect(DECLARED_SCOPES as readonly string[]).not.toContain("write_customers");
+    const { readFileSync } = await import("node:fs");
+    const toml = readFileSync("shopify.app.toml", "utf8");
+    expect(toml).not.toMatch(/^scopes = ".*write_customers/m);
+  });
+
+  it("hides the customer tag field unless the scope exists or the survey already uses it", async () => {
+    const { readFileSync } = await import("node:fs");
+    const source = readFileSync("app/components/survey-settings-panels.tsx", "utf8");
+    expect(source).toContain('grantedScopes.includes("write_customers") || tagText(raw.customerTags)');
+  });
+});

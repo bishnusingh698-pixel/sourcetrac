@@ -213,12 +213,17 @@ export function ShopifyActions({
         value={tagText(raw.orderTags)}
         onInput={(e: Event) => set({ orderTags: parseTags(fieldValue(e)) })}
       />
-      <s-text-field
-        label={t("surveys.sync_customer_tags")}
-        details={t("surveys.sync_customer_tags_help")}
-        value={tagText(raw.customerTags)}
-        onInput={(e: Event) => set({ customerTags: parseTags(fieldValue(e)) })}
-      />
+      {/* The app no longer asks to edit customers (GDPR data minimisation), so
+          customer tags are offered only where that access exists, or where a
+          survey still carries them and the merchant needs to clear them. */}
+      {grantedScopes.includes("write_customers") || tagText(raw.customerTags) ? (
+        <s-text-field
+          label={t("surveys.sync_customer_tags")}
+          details={t("surveys.sync_customer_tags_help")}
+          value={tagText(raw.customerTags)}
+          onInput={(e: Event) => set({ customerTags: parseTags(fieldValue(e)) })}
+        />
+      ) : null}
       <s-checkbox
         label={t("surveys.sync_metafield")}
         checked={Array.isArray(raw.metafields) && raw.metafields.length > 0 ? true : undefined}

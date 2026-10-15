@@ -34,7 +34,8 @@ import {
   type SurveyInput,
 } from "~/lib/surveys.server";
 import { getShopDisplay } from "~/lib/studio.server";
-import { grantedSyncScopes } from "~/lib/scopes.server";
+import { grantedSyncScopes, hasScope } from "~/lib/scopes.server";
+import { SMART_ACTION_PRESETS } from "@shared/templates/smart-actions";
 import { effectivePlan } from "~/lib/plans";
 import { LANGUAGES } from "~/lib/i18n";
 import { LIMITS } from "@shared/survey-rules";
@@ -81,11 +82,24 @@ export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) =>
     limits: LIMITS,
     plan: planTier(effectivePlan(shop)),
     grantedScopes: grantedSyncScopes(session.scope),
-    templatePresets: template?.smartActions ?? [],
+    // Customer presets need write_customers, which the app no longer requests.
+    // Offer them only where the scope exists or the survey already uses one,
+    // so a merchant is never shown a switch that can do nothing.
+    templatePresets: (template?.smartActions ?? []).filter(
+      (id) =>
+        SMART_ACTION_PRESETS[id]?.scope !== "write_customers" ||
+        hasScope(session.scope, "write_customers") ||
+        presetIdsOf(survey.syncOptions).includes(id),
+    ),
     overActiveLimit: survey.status !== "active" && (await isOverActiveLimit(shop.id, survey.id)),
     liveLimit: usage.limit,
   };
 });
+
+function presetIdsOf(syncOptions: Record<string, unknown>): string[] {
+  const presets = syncOptions.presets;
+  return Array.isArray(presets) ? presets.filter((id): id is string => typeof id === "string") : [];
+}
 
 const INTENTS = new Set(["save", "go-live", "publish", "discard", "pause", "activate"]);
 

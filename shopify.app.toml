@@ -8,17 +8,17 @@ application_url = "https://sourcetrac.onrender.com"
 embedded = true
 
 # read_orders is the only scope the survey itself needs: order totals arrive by
-# webhook and we never mutate an order for Core. The optional sync below makes
-# the app request write_customers too, which puts it in protected customer
-# data review: the listing and privacy docs must say so.
-# Phase 7 adds write scopes for optional sync (tag orders/customers, target by
-# collection). Every such feature is gated at runtime on the *granted* scopes
+# webhook and we never mutate an order for Core.
+# Phase 7 adds write scopes for optional sync (tag orders, target by
+# collection). write_customers was dropped on 2026-10-15 to keep customer data
+# out of the app (GDPR data minimisation): customer tags and customer metafields
+# are not offered, and their code paths skip because the scope is never granted. Every such feature is gated at runtime on the *granted* scopes
 # (app/lib/scopes.server.ts), so a merchant who has not re-approved keeps a
 # working app with sync simply skipped.
 # Declared only under [access_scopes]: the top-level `scopes` key is the legacy
 # format and Shopify CLI 4.8.3 rejects the whole file as invalid if it is present.
 [access_scopes]
-scopes = "read_orders,write_orders,write_customers,read_products"
+scopes = "read_orders,write_orders,read_products"
 
 # There is no API-version key under [access_scopes]; the version is pinned by
 # [webhooks] api_version below, each extension's api_version, and API_VERSION

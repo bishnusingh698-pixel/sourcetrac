@@ -14,7 +14,7 @@ import { z } from "zod";
 export const API_VERSION = "2026-07";
 
 /** The scopes `shopify.app.toml` declares under [access_scopes]. */
-export const DECLARED_SCOPES = ["read_orders", "write_orders", "write_customers", "read_products"] as const;
+export const DECLARED_SCOPES = ["read_orders", "write_orders", "read_products"] as const;
 
 const HEX_32 = z
   .string()
@@ -110,7 +110,7 @@ export function assertStartupInvariants(): string[] {
   }
 
   const scopes = e.SCOPES.split(",").map((s) => s.trim()).filter(Boolean);
-  // The deliberate allowlist. Phase 7 adds write scopes for order/customer tags
+  // The deliberate allowlist. Phase 7 adds write scopes for order tags
   // and product collection targeting; each such feature is gated at runtime on
   // the *granted* scopes (see app/lib/scopes.server.ts), so a store that has not
   // re-approved keeps working. Anything outside this set is a mistake.
