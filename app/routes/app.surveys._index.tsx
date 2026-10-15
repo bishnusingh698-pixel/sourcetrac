@@ -1,4 +1,4 @@
-import { Form, redirect, useLoaderData, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from "react-router";
+import { Form, redirect, useActionData, useLoaderData, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 import { useState } from "react";
 
 import { Panel, type BadgeTone } from "~/components/admin-ui";
@@ -16,7 +16,7 @@ import {
   type SurveyListItem,
 } from "~/lib/surveys.server";
 import { findTemplate } from "@shared/survey-templates";
-import { ValidationError } from "~/lib/errors";
+import { NotFoundError, ValidationError } from "~/lib/errors";
 
 /**
  * Surveys list.
@@ -52,6 +52,21 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
   const intent = String(form.get("intent") ?? "");
   const surveyId = String(form.get("surveyId") ?? "");
 
+  // Expected refusals (a limit, a missing placement, a survey deleted in another
+  // tab) are shown on the page, not turned into the generic 500 screen.
+  try {
+    return await runListAction(shop.id, intent, surveyId, form);
+  } catch (error) {
+    if (error instanceof ValidationError || error instanceof NotFoundError) {
+      const code = typeof error.fields.code === "string" ? error.fields.code : error.code;
+      return { ok: false as const, code, message: error.message };
+    }
+    throw error;
+  }
+});
+
+async function runListAction(shopId: string, intent: string, surveyId: string, form: FormData) {
+  const shop = { id: shopId };
   switch (intent) {
     case "create-from-template": {
       const template = findTemplate(String(form.get("templateId") ?? ""));
@@ -130,7 +145,7 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
     default:
       throw new ValidationError("Unknown action.", "Reload the page and try again.");
   }
-});
+}
 
 function StatusBadge({ status }: { status: SurveyListItem["status"] }) {
   const { t } = useAdminI18n();
@@ -139,11 +154,15 @@ function StatusBadge({ status }: { status: SurveyListItem["status"] }) {
 
 export default function Surveys() {
   const { surveys } = useLoaderData<typeof loader>();
+  const actionData = useActionData<typeof action>();
   const { t } = useAdminI18n();
+  const failureKey = actionData && actionData.ok === false ? `surveys.validation_${actionData.code}` : null;
+  const failureText = failureKey ? (t(failureKey) === failureKey ? actionData!.ok === false && actionData!.message : t(failureKey)) : null;
 
   return (
     <s-stack gap="base">
       <s-section heading={t("surveys.title")} subheading={t("surveys.subtitle")} padding="none" />
+      {failureText ? <s-banner tone="critical">{failureText}</s-banner> : null}
 
       {surveys.length === 0 ? (
         <Panel title={t("surveys.empty_title")} description={t("surveys.empty_body")}>

@@ -359,6 +359,8 @@ model Question {
   translations     String       @default("{}")
   /// Archived questions are hidden from shoppers but keep their results.
   archived         Boolean      @default(false)
+  /// The template's stable question id this row was created from, if any.
+  templateKey      String?
 
   survey  Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
   options Option[]
@@ -380,6 +382,8 @@ model Option {
   archived     Boolean @default(false)
   /// locale -> translated label.
   translations String  @default("{}")
+  /// The template's stable option id this row was created from, if any.
+  templateKey  String?
 
   question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 

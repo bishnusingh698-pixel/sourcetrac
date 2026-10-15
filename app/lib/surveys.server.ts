@@ -19,6 +19,8 @@ import { effectivePlan } from "~/lib/plans";
 import { findShopById } from "~/lib/shop.server";
 import { catalogPlanFromKey, definitionHasExclusiveOption, planIncludesGrowth } from "@shared/templates/catalog";
 import { templateById } from "@shared/templates";
+import { stableQuestionId } from "@shared/templates/resolve";
+import { isEnabled } from "@shared/feature-flags";
 import {
   DEFAULT_SURVEY_TEXT,
   type CompiledConfig,
@@ -51,10 +53,14 @@ export type EditorOption = {
   exclusive: boolean;
   archived: boolean;
   translations: Record<string, string | undefined>;
+  /** The template's stable option id this row came from, if any. */
+  templateKey?: string | null;
 };
 
 export type EditorQuestion = Omit<SurveyQuestionDef, "options"> & {
   options: EditorOption[];
+  /** The template's stable question id this row came from, if any. */
+  templateKey?: string | null;
 };
 
 export type EditorSurvey = {
@@ -110,8 +116,14 @@ export type SurveyListItem = {
 
 /** Shape the editor posts back. Option ids are optional: absent means "new". */
 export type SurveyInputQuestion = Omit<SurveyQuestionDef, "id" | "options"> & {
+  /**
+   * The row id for an existing question. Anything else (a template's stable id,
+   * an editor placeholder, a source survey's id when duplicating) means "new";
+   * show-if conditions may reference it and are remapped to the saved id.
+   */
   id?: string;
-  options?: Array<Omit<SurveyOptionDef, "id"> & { id?: string }>;
+  templateKey?: string | null;
+  options?: Array<Omit<SurveyOptionDef, "id"> & { id?: string; templateKey?: string | null }>;
 };
 
 export type SurveyInput = {
@@ -195,7 +207,18 @@ export function rowToEditor(
     hasDraft: row.draft !== null,
     revision: row.revision,
     updatedAt: row.updatedAt.toISOString(),
-    questions: row.questions.map(toEditorQuestion),
+    // The Studio never shows removed (archived) questions or options: posting
+    // them back used to resurrect them. Buyers' submit validation and results
+    // read the published view, which keeps them for their labels.
+    questions:
+      view === "draft"
+        ? row.questions
+            .filter((question) => !question.archived)
+            .map((question) => {
+              const editor = toEditorQuestion(question);
+              return { ...editor, options: editor.options.filter((option) => !option.archived) };
+            })
+        : row.questions.map(toEditorQuestion),
   };
 
   // A live/paused survey with unpublished changes shows the DRAFT in the
@@ -268,6 +291,7 @@ function toEditorQuestion(question: SurveyWithQuestions["questions"][number]): E
     showIf: parseJson<ShowIf | null>(question.showIf, null),
     translations: parseJson(question.translations, {}),
     archived: question.archived,
+    templateKey: question.templateKey,
     options: question.options.map((option) => ({
       id: option.id,
       label: option.label,
@@ -275,6 +299,7 @@ function toEditorQuestion(question: SurveyWithQuestions["questions"][number]): E
       exclusive: option.exclusive,
       archived: option.archived,
       translations: parseJson(option.translations, {}),
+      templateKey: option.templateKey,
     })),
   };
 }
@@ -321,10 +346,12 @@ function inputToDefinition(input: SurveyInput, id?: string): SurveyDefinition {
     layout: input.layout,
     questions: input.questions.map((question, index) => ({
       ...question,
-      id: question.id ?? `new-q${index}`,
+      // `||`, not `??`: the editor used to send "" for every new item, and two
+      // new options sharing "" failed validation as duplicates.
+      id: question.id || `new-q${index}`,
       options: question.options?.map((option, optionIndex) => ({
         ...option,
-        id: option.id ?? `new-o${index}-${optionIndex}`,
+        id: option.id || `new-o${index}-${optionIndex}`,
       })),
     })),
   };
@@ -334,11 +361,22 @@ function inputToDefinition(input: SurveyInput, id?: string): SurveyDefinition {
 // Reads
 // ---------------------------------------------------------------------------
 
+/**
+ * Which survey wins a placement, and the list order. Ties on priority break on
+ * creation order: `updatedAt` moves on every shopper answer, so it handed the
+ * placement to whichever survey was answered last, forever.
+ */
+const SURVEY_ORDER: Prisma.SurveyOrderByWithRelationInput[] = [
+  { priority: "desc" },
+  { createdAt: "asc" },
+  { id: "asc" },
+];
+
 export async function listSurveys(shopId: string): Promise<SurveyListItem[]> {
   const rows = await db.survey.findMany({
     where: { shopId },
-    orderBy: [{ priority: "desc" }, { updatedAt: "desc" }],
-    include: { _count: { select: { questions: true } } },
+    orderBy: SURVEY_ORDER,
+    include: { _count: { select: { questions: { where: { archived: false } } } } },
   });
 
   return rows.map((row) => ({
@@ -380,7 +418,7 @@ export async function getEditorSurvey(shopId: string, surveyId: string): Promise
 export async function getActiveSurveys(shopId: string): Promise<SurveyWithQuestions[]> {
   return db.survey.findMany({
     where: { shopId, status: "active" },
-    orderBy: [{ priority: "desc" }, { updatedAt: "desc" }],
+    orderBy: SURVEY_ORDER,
     include: surveyInclude,
   });
 }
@@ -397,28 +435,58 @@ export async function countSurveys(shopId: string): Promise<{ total: number; act
 // Writes
 // ---------------------------------------------------------------------------
 
+/** A template's stable ids all start with this (see `stableQuestionId`). */
+function templateKeyPrefix(templateId: string | null | undefined): string | null {
+  return templateId ? stableQuestionId(templateId, "") : null;
+}
+
+/** Posted ids (stable, placeholder or a source survey's) -> saved row ids. */
+type IdMap = Map<string, string>;
+
+function remapShowIf(showIf: ShowIf | null | undefined, idMap: IdMap): ShowIf | null {
+  if (!showIf) return null;
+  return {
+    ...showIf,
+    questionId: idMap.get(showIf.questionId) ?? showIf.questionId,
+    ...(showIf.optionIds ? { optionIds: showIf.optionIds.map((id) => idMap.get(id) ?? id) } : {}),
+  };
+}
+
 async function persistQuestions(
   tx: Prisma.TransactionClient,
   surveyId: string,
   questions: SurveyInput["questions"],
-  { hasResponses }: { hasResponses: boolean },
-): Promise<string | null> {
-  // Existing option ids for this survey, so a posted id can be matched.
-  const existingOptions = await tx.option.findMany({
-    where: { question: { surveyId } },
-    select: { id: true, questionId: true },
-  });
-  const existingIds = new Set(existingOptions.map((o) => o.id));
+  { hasResponses, templateId }: { hasResponses: boolean; templateId?: string | null },
+): Promise<IdMap> {
+  // Existing rows for this survey, so a posted id can be matched. Anything not
+  // found here is new and gets a fresh id; an id from another question is never
+  // updated in place (it would keep its old question).
+  const existingQuestions = new Map(
+    (
+      await tx.question.findMany({ where: { surveyId }, select: { id: true, type: true, archived: true } })
+    ).map((q) => [q.id, q]),
+  );
+  const existingOptions = new Map(
+    (
+      await tx.option.findMany({
+        where: { question: { surveyId } },
+        select: { id: true, questionId: true, archived: true },
+      })
+    ).map((o) => [o.id, o]),
+  );
+  const prefix = templateKeyPrefix(templateId);
+  const templateKeyOf = (posted: string, explicit: string | null | undefined) =>
+    explicit ?? (prefix && posted.startsWith(prefix) ? posted : null);
 
+  const idMap: IdMap = new Map();
   const keptOptionIds = new Set<string>();
   const keptQuestionIds = new Set<string>();
+  const conditions: Array<{ id: string; showIf: ShowIf | null | undefined }> = [];
 
   for (let i = 0; i < questions.length; i += 1) {
     const question = questions[i]!;
-    const questionId =
-      question.id && (await tx.question.findFirst({ where: { id: question.id, surveyId }, select: { id: true } }))
-        ? question.id
-        : undefined;
+    const posted = question.id ?? "";
+    const existing = posted ? existingQuestions.get(posted) : undefined;
 
     const data = {
       position: i,
@@ -432,74 +500,251 @@ async function persistQuestions(
       allowOther: question.allowOther ?? false,
       minSelections: question.minSelections ?? null,
       maxSelections: question.maxSelections ?? null,
-      showIf: question.showIf ? JSON.stringify(question.showIf) : null,
+      // Written in a second pass, once every posted id has its saved id.
+      showIf: null,
       translations: JSON.stringify(question.translations ?? {}),
-      archived: false,
     };
 
     let savedQuestionId: string;
-    if (questionId) {
-      await tx.question.update({ where: { id: questionId }, data });
-      savedQuestionId = questionId;
+    if (existing) {
+      await tx.question.update({ where: { id: existing.id }, data });
+      savedQuestionId = existing.id;
     } else {
-      const created = await tx.question.create({ data: { ...data, surveyId }, select: { id: true } });
+      const created = await tx.question.create({
+        data: { ...data, surveyId, archived: false, templateKey: templateKeyOf(posted, question.templateKey) },
+        select: { id: true },
+      });
       savedQuestionId = created.id;
     }
+    if (posted) idMap.set(posted, savedQuestionId);
     keptQuestionIds.add(savedQuestionId);
+    conditions.push({ id: savedQuestionId, showIf: question.showIf });
 
     const options = question.options ?? [];
     for (let j = 0; j < options.length; j += 1) {
       const option = options[j]!;
-      const optionId = option.id && existingIds.has(option.id) ? option.id : undefined;
+      const postedOption = option.id ?? "";
+      const existingOption = postedOption ? existingOptions.get(postedOption) : undefined;
       const optionData = {
         position: j,
         label: option.label,
         isOther: option.isOther ?? false,
         exclusive: option.exclusive ?? false,
-        archived: false,
         translations: JSON.stringify(option.translations ?? {}),
       };
-      if (optionId) {
-        await tx.option.update({ where: { id: optionId }, data: optionData });
-        keptOptionIds.add(optionId);
+      let savedOptionId: string;
+      if (existingOption && existingOption.questionId === savedQuestionId) {
+        await tx.option.update({ where: { id: existingOption.id }, data: optionData });
+        savedOptionId = existingOption.id;
       } else {
         const created = await tx.option.create({
-          data: { ...optionData, questionId: savedQuestionId },
+          data: {
+            ...optionData,
+            archived: false,
+            questionId: savedQuestionId,
+            templateKey: templateKeyOf(postedOption, option.templateKey),
+          },
           select: { id: true },
         });
-        keptOptionIds.add(created.id);
+        savedOptionId = created.id;
       }
+      if (postedOption) idMap.set(postedOption, savedOptionId);
+      keptOptionIds.add(savedOptionId);
     }
+  }
+
+  // Show-if conditions name posted ids: a template's stable ids, an editor
+  // placeholder for a question or option added in the same edit, or the source
+  // survey's ids when duplicating. Rewrite them to the saved ids. Fixed option
+  // ids (yes/no, satisfaction) are not in the map and stay as they are.
+  for (const { id, showIf } of conditions) {
+    const remapped = remapShowIf(showIf, idMap);
+    if (remapped) await tx.question.update({ where: { id }, data: { showIf: JSON.stringify(remapped) } });
   }
 
   // Removed questions and options: delete when the survey has no answers yet
   // (nothing to lose), otherwise archive so results keep their labels.
-  const removedQuestions = await tx.question.findMany({
-    where: { surveyId, id: { notIn: [...keptQuestionIds] } },
-    select: { id: true },
-  });
-  const removedOptions = await tx.option.findMany({
-    where: { question: { surveyId }, id: { notIn: [...keptOptionIds] } },
-    select: { id: true },
-  });
+  const removedQuestions = [...existingQuestions.keys()].filter((id) => !keptQuestionIds.has(id));
+  const removedOptions = [...existingOptions.keys()].filter((id) => !keptOptionIds.has(id));
 
   if (hasResponses) {
     if (removedOptions.length > 0) {
-      await tx.option.updateMany({ where: { id: { in: removedOptions.map((o) => o.id) } }, data: { archived: true } });
+      await tx.option.updateMany({ where: { id: { in: removedOptions } }, data: { archived: true } });
     }
     if (removedQuestions.length > 0) {
-      await tx.question.updateMany({
-        where: { id: { in: removedQuestions.map((q) => q.id) } },
-        data: { archived: true },
-      });
+      await tx.question.updateMany({ where: { id: { in: removedQuestions } }, data: { archived: true } });
     }
   } else {
     // No answers: a hard delete is safe and keeps a draft clean.
-    await tx.option.deleteMany({ where: { id: { in: removedOptions.map((o) => o.id) } } });
-    await tx.question.deleteMany({ where: { id: { in: removedQuestions.map((q) => q.id) } } });
+    await tx.option.deleteMany({ where: { id: { in: removedOptions } } });
+    await tx.question.deleteMany({ where: { id: { in: removedQuestions } } });
   }
 
-  return questions[0]?.id ?? null;
+  return idMap;
+}
+
+/**
+ * Server-side checks on everything the Studio posts besides the questions,
+ * which used to be mass-assigned from the JSON with client-only limits.
+ * Returns the input with placements de-duplicated and the design resolved.
+ */
+function sanitizeSurveyInput(input: SurveyInput): SurveyInput {
+  const fail = (field: string, code: string, message: string): never => {
+    throw new ValidationError(message, "Check the highlighted field and save again.", { field, code });
+  };
+
+  if (!Array.isArray(input.questions)) fail("questions", "invalid", "The survey could not be read.");
+  if (!Array.isArray(input.placements)) fail("placements", "invalid_placement", "Choose where the survey shows.");
+  const enabled = new Set<Placement>(["thank_you", "order_status"]);
+  if (isEnabled("ONSITE_SURVEYS")) enabled.add("onsite");
+  if (isEnabled("SURVEY_LINK_PAGE")) enabled.add("link");
+  for (const placement of input.placements) {
+    if (!enabled.has(placement)) fail("placements", "invalid_placement", "That placement is not available.");
+  }
+  const placements = [...new Set(input.placements)];
+
+  if (input.rotationWeight !== undefined) {
+    const w = input.rotationWeight;
+    if (typeof w !== "number" || !Number.isInteger(w) || w < 1 || w > 10) {
+      fail("rotationWeight", "invalid_rotation_weight", "The rotation weight must be a whole number from 1 to 10.");
+    }
+  }
+
+  const targeting = input.targeting ?? {};
+  if (typeof targeting !== "object" || Array.isArray(targeting)) fail("targeting", "invalid_targeting", "Targeting could not be read.");
+  if (targeting.samplePercent != null) {
+    const p = targeting.samplePercent;
+    if (typeof p !== "number" || !Number.isInteger(p) || p < 1 || p > 100) {
+      fail("targeting.samplePercent", "invalid_sample", "The sample must be a whole number from 1 to 100.");
+    }
+  }
+  if (targeting.maxResponses != null) {
+    const m = targeting.maxResponses;
+    if (typeof m !== "number" || !Number.isInteger(m) || m < 1) {
+      fail("targeting.maxResponses", "invalid_max_responses", "The response limit must be 1 or more.");
+    }
+  }
+  for (const key of ["minValue", "maxValue"] as const) {
+    const v = targeting[key];
+    if (v != null && (typeof v !== "number" || !Number.isFinite(v) || v < 0)) {
+      fail(`targeting.${key}`, "invalid_order_value", "Order values must be 0 or more.");
+    }
+  }
+  const listLimit = (key: "productIds" | "collectionIds" | "resolvedProductIds" | "countries" | "languages", max: number) => {
+    const list = targeting[key];
+    if (list === undefined) return;
+    if (!Array.isArray(list) || list.length > max || list.some((v) => typeof v !== "string" || v.length > 64)) {
+      fail(`targeting.${key}`, "invalid_targeting", "Targeting has too many entries.");
+    }
+  };
+  listLimit("productIds", LIMITS.MAX_TARGET_PRODUCTS);
+  listLimit("resolvedProductIds", 500);
+  listLimit("collectionIds", LIMITS.MAX_TARGET_COLLECTIONS);
+  listLimit("countries", 250);
+  listLimit("languages", 50);
+
+  let design: DesignSettings | undefined;
+  if (input.design !== undefined) {
+    design = resolveDesign(input.design);
+    const valid =
+      (design.layout === "all" || design.layout === "one_by_one") &&
+      typeof design.showProgress === "boolean" &&
+      typeof design.showTitle === "boolean" &&
+      (design.ratingStyle === "numbers" || design.ratingStyle === "stars") &&
+      (design.cardBorder === "border" || design.cardBorder === "no_border") &&
+      (design.spacing === "compact" || design.spacing === "comfortable") &&
+      typeof design.scaleLowLabel === "string" &&
+      design.scaleLowLabel.length <= LIMITS.MAX_SCALE_LABEL &&
+      typeof design.scaleHighLabel === "string" &&
+      design.scaleHighLabel.length <= LIMITS.MAX_SCALE_LABEL;
+    if (!valid) fail("design", "invalid_design", "The design settings could not be read.");
+  }
+
+  // Translations ship to every buyer in the compiled config. Bound each string
+  // by the limit of the field it translates (the longest is 200 characters).
+  const tooLong = (value: unknown, max: number): boolean => {
+    if (typeof value === "string") return value.length > max;
+    if (value && typeof value === "object") return Object.values(value).some((v) => tooLong(v, max));
+    return false;
+  };
+  if (tooLong(input.translations ?? {}, LIMITS.MAX_QUESTION_TEXT)) {
+    fail("translations", "translation_too_long", "A translation is too long.");
+  }
+  input.questions.forEach((question, index) => {
+    if (tooLong(question.translations ?? {}, LIMITS.MAX_QUESTION_TEXT)) {
+      fail(`questions[${index}].translations`, "translation_too_long", "A translation is too long.");
+    }
+    (question.options ?? []).forEach((option, optionIndex) => {
+      if (tooLong(option.translations ?? {}, LIMITS.MAX_OPTION_LABEL)) {
+        fail(`questions[${index}].options[${optionIndex}].translations`, "translation_too_long", "A translation is too long.");
+      }
+    });
+  });
+
+  const syncOptions = input.syncOptions ?? {};
+  if (typeof syncOptions !== "object" || Array.isArray(syncOptions) || JSON.stringify(syncOptions).length > 8_000) {
+    fail("syncOptions", "invalid_sync_options", "The sync settings could not be read.");
+  }
+
+  return { ...input, placements, ...(design ? { design } : {}) };
+}
+
+/**
+ * Refuse changing the type of a question that already has answers: the stored
+ * answers would be re-read under the new type (a channel option read as an NPS
+ * score). Relabelling stays allowed, so typos can be fixed.
+ */
+function assertTypesUnchanged(input: SurveyInput, existing: SurveyWithQuestions): void {
+  if (existing.responseCount === 0) return;
+  const types = new Map(existing.questions.map((q) => [q.id, q.type]));
+  input.questions.forEach((question, index) => {
+    const before = question.id ? types.get(question.id) : undefined;
+    if (before && before !== question.type) {
+      throw new ValidationError(
+        "A question that already has answers cannot change type.",
+        "Add a new question instead, and remove the old one.",
+        { field: `questions[${index}].type`, code: "type_locked" },
+      );
+    }
+  });
+}
+
+/** Refuse activation past the active-survey limit (not counting `exceptId`). */
+async function assertActiveLimit(client: Prisma.TransactionClient | typeof db, shopId: string, exceptId?: string): Promise<void> {
+  const active = await client.survey.count({
+    where: { shopId, status: "active", ...(exceptId ? { id: { not: exceptId } } : {}) },
+  });
+  if (active >= LIMITS.MAX_ACTIVE_SURVEYS) {
+    throw new ValidationError(
+      `You can have at most ${LIMITS.MAX_ACTIVE_SURVEYS} live surveys.`,
+      "Pause a survey you no longer need, then try again.",
+      { field: "status", code: "too_many_active" },
+    );
+  }
+}
+
+/** Whether another live survey limit would be exceeded by activating `surveyId`. */
+export async function isOverActiveLimit(shopId: string, surveyId: string): Promise<boolean> {
+  const active = await db.survey.count({ where: { shopId, status: "active", id: { not: surveyId } } });
+  return active >= LIMITS.MAX_ACTIVE_SURVEYS;
+}
+
+/**
+ * Write a merchant change only if the revision is still the one read. The check
+ * and the write are one statement, so two windows saving at once cannot both
+ * succeed, and a publish cannot commit a draft that a newer save replaced.
+ */
+async function claimRevision(
+  client: Prisma.TransactionClient | typeof db,
+  surveyId: string,
+  revision: number,
+  data: Prisma.SurveyUpdateManyMutationInput,
+): Promise<void> {
+  const result = await client.survey.updateMany({
+    where: { id: surveyId, revision },
+    data: { ...data, revision: { increment: 1 } },
+  });
+  if (result.count === 0) throw new ConflictError(undefined, { expected: revision });
 }
 
 /**
@@ -549,8 +794,15 @@ async function assertPlanAllowsEdit(
 
   const next = inputToDefinition(input);
   if (!definitionHasExclusiveOption(next)) return;
-  const hadExclusive = existing.questions.some((q) => q.options.some((o) => o.exclusive));
-  if (hadExclusive) return;
+  // Grandfather per option: only an option that is ALREADY exclusive may stay
+  // so. One exclusive option anywhere used to unlock the feature everywhere.
+  const alreadyExclusive = new Set(
+    existing.questions.flatMap((q) => q.options.filter((o) => o.exclusive).map((o) => o.id)),
+  );
+  const addsExclusive = input.questions.some((q) =>
+    (q.options ?? []).some((o) => o.exclusive === true && !(o.id && alreadyExclusive.has(o.id))),
+  );
+  if (!addsExclusive) return;
 
   throw new ValidationError(
     "That option is included in a paid plan.",
@@ -559,20 +811,25 @@ async function assertPlanAllowsEdit(
   );
 }
 
-export async function createSurvey(shopId: string, input: SurveyInput): Promise<EditorSurvey> {
-  const { total } = await countSurveys(shopId);
-  if (total >= LIMITS.MAX_SURVEYS_TOTAL) {
-    throw new ValidationError(
-      `You can have at most ${LIMITS.MAX_SURVEYS_TOTAL} surveys.`,
-      "Delete a survey you no longer need, then try again.",
-      { field: "name", code: "too_many_surveys" },
-    );
-  }
-
+export async function createSurvey(shopId: string, rawInput: SurveyInput): Promise<EditorSurvey> {
+  const input = sanitizeSurveyInput(rawInput);
   await assertPlanAllowsSurvey(shopId, input);
   assertValid(inputToDefinition(input));
 
   const created = await db.$transaction(async (tx) => {
+    // Serialise creates per shop so the limits below hold under parallel
+    // requests (a double-clicked "Create" or two tabs).
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`survey-create:${shopId}`}))`;
+    const total = await tx.survey.count({ where: { shopId } });
+    if (total >= LIMITS.MAX_SURVEYS_TOTAL) {
+      throw new ValidationError(
+        `You can have at most ${LIMITS.MAX_SURVEYS_TOTAL} surveys.`,
+        "Delete a survey you no longer need, then try again.",
+        { field: "name", code: "too_many_surveys" },
+      );
+    }
+    if (input.status === "active") await assertActiveLimit(tx, shopId);
+
     const survey = await tx.survey.create({
       data: {
         shopId,
@@ -598,7 +855,10 @@ export async function createSurvey(shopId: string, input: SurveyInput): Promise<
       select: { id: true },
     });
 
-    await persistQuestions(tx, survey.id, input.questions, { hasResponses: false });
+    const idMap = await persistQuestions(tx, survey.id, input.questions, {
+      hasResponses: false,
+      templateId: input.templateId,
+    });
 
     // Default the channel-report question to the first choice question.
     const channelQuestion = await tx.question.findFirst({
@@ -606,10 +866,11 @@ export async function createSurvey(shopId: string, input: SurveyInput): Promise<
       orderBy: { position: "asc" },
       select: { id: true },
     });
-    if (channelQuestion) {
+    const requested = input.channelReportQuestionId ? idMap.get(input.channelReportQuestionId) : undefined;
+    if (requested || channelQuestion) {
       await tx.survey.update({
         where: { id: survey.id },
-        data: { channelReportQuestionId: input.channelReportQuestionId ?? channelQuestion.id },
+        data: { channelReportQuestionId: requested ?? channelQuestion!.id },
       });
     }
 
@@ -628,29 +889,33 @@ export async function createSurvey(shopId: string, input: SurveyInput): Promise<
  * seeing the published version until the merchant publishes (S7). The draft is
  * the full editable definition (questions, design, targeting, placements), so
  * publishing can apply it in one transaction.
+ *
+ * Status, priority and template provenance are never taken from the posted
+ * survey: status changes go through `setSurveyStatus` (with its guards),
+ * priority through `reorderSurveys`, and the template is fixed at creation.
  */
 export async function updateSurvey(
   shopId: string,
   surveyId: string,
-  input: SurveyInput,
+  rawInput: SurveyInput,
   expectedRevision?: number,
 ): Promise<EditorSurvey> {
   const existing = await getSurveyRow(shopId, surveyId);
   if (!existing) throw new NotFoundError("That survey does not exist.", { surveyId });
   assertRevision(expectedRevision, existing.revision);
+  const revision = expectedRevision ?? existing.revision;
 
+  const input = sanitizeSurveyInput(rawInput);
   await assertPlanAllowsEdit(shopId, input, existing);
   assertValid(inputToDefinition(input, surveyId));
+  assertTypesUnchanged(input, existing);
 
   const wasActive = existing.status === "active";
   const isLiveOrPaused = existing.status === "active" || existing.status === "paused";
 
   if (isLiveOrPaused) {
     // Hold the change back as a draft. One row update; no polling (section 6.6).
-    await db.survey.update({
-      where: { id: surveyId },
-      data: { draft: JSON.stringify(input), draftUpdatedAt: new Date(), revision: { increment: 1 } },
-    });
+    await claimRevision(db, surveyId, revision, { draft: JSON.stringify(input), draftUpdatedAt: new Date() });
     await invalidateConfig(shopId);
     logger.info("survey_draft_saved", { shop_id: shopId, survey_id: surveyId });
     return getEditorSurvey(shopId, surveyId);
@@ -659,43 +924,49 @@ export async function updateSurvey(
   const hasResponses = existing.responseCount > 0;
 
   await db.$transaction(async (tx) => {
-    await tx.survey.update({
-      where: { id: surveyId },
-      data: {
-        name: input.name,
-        status: input.status ?? existing.status,
-        priority: input.priority ?? existing.priority,
-        placements: JSON.stringify(input.placements),
-        layout: input.layout,
-        title: input.title,
-        intro: input.intro,
-        buttonLabel: input.buttonLabel,
-        thankYouText: input.thankYouText,
-        channelReportQuestionId: input.channelReportQuestionId ?? existing.channelReportQuestionId,
-        targeting: JSON.stringify(input.targeting ?? {}),
-        syncOptions: JSON.stringify(input.syncOptions ?? {}),
-        translations: JSON.stringify(input.translations ?? {}),
-        templateId: input.templateId ?? existing.templateId,
-        templateVersion: input.templateVersion ?? existing.templateVersion,
-        rotation: input.rotation ?? existing.rotation,
-        rotationWeight: input.rotationWeight ?? existing.rotationWeight,
-        learnAndStop: input.learnAndStop ?? existing.learnAndStop,
-        designJson: JSON.stringify(input.design ?? existing.designJson),
-        // Bump the version on every save of an active survey, so responses
-        // record which revision they answered.
-        version: wasActive ? { increment: 1 } : existing.version,
-        // Move the concurrency token so a second window holding the old value
-        // is refused rather than clobbering this save.
-        revision: { increment: 1 },
-      },
+    await claimRevision(tx, surveyId, revision, {
+      name: input.name,
+      placements: JSON.stringify(input.placements),
+      layout: input.layout,
+      title: input.title,
+      intro: input.intro,
+      buttonLabel: input.buttonLabel,
+      thankYouText: input.thankYouText,
+      targeting: JSON.stringify(input.targeting ?? {}),
+      syncOptions: JSON.stringify(input.syncOptions ?? {}),
+      translations: JSON.stringify(input.translations ?? {}),
+      rotation: input.rotation ?? existing.rotation,
+      rotationWeight: input.rotationWeight ?? existing.rotationWeight,
+      learnAndStop: input.learnAndStop ?? existing.learnAndStop,
+      // `designJson` is already a JSON string; only a posted design is encoded.
+      designJson: input.design ? JSON.stringify(input.design) : existing.designJson,
+      // Bump the version on every save of an active survey, so responses
+      // record which revision they answered.
+      ...(wasActive ? { version: { increment: 1 } } : {}),
     });
 
-    await persistQuestions(tx, surveyId, input.questions, { hasResponses });
+    const idMap = await persistQuestions(tx, surveyId, input.questions, {
+      hasResponses,
+      templateId: existing.templateId,
+    });
+    await applyChannelReportQuestion(tx, surveyId, input.channelReportQuestionId, idMap);
   });
 
   await invalidateConfig(shopId);
   logger.info("survey_saved", { shop_id: shopId, survey_id: surveyId });
   return getEditorSurvey(shopId, surveyId);
+}
+
+/** Point the channel report at the posted question, through the id map. */
+async function applyChannelReportQuestion(
+  tx: Prisma.TransactionClient,
+  surveyId: string,
+  posted: string | null | undefined,
+  idMap: IdMap,
+): Promise<void> {
+  if (!posted) return;
+  const id = idMap.get(posted);
+  if (id) await tx.survey.update({ where: { id: surveyId }, data: { channelReportQuestionId: id } });
 }
 
 /**
@@ -712,42 +983,56 @@ export async function publishSurveyDraft(
 ): Promise<EditorSurvey> {
   const existing = await getSurveyRow(shopId, surveyId);
   if (!existing) throw new NotFoundError("That survey does not exist.", { surveyId });
-  if (existing.draft === null) throw new ValidationError("There is nothing to publish.", "Edit the survey first.", { field: "draft", code: "no_draft" });
+  const noDraft = () =>
+    new ValidationError("There is nothing to publish.", "Edit the survey first.", { field: "draft", code: "no_draft" });
+  if (existing.draft === null) throw noDraft();
   assertRevision(expectedRevision, existing.revision);
+  const revision = expectedRevision ?? existing.revision;
 
-  const draftInput = parseJson<SurveyInput>(existing.draft, null as unknown as SurveyInput);
+  const parsedDraft = parseJson<SurveyInput | null>(existing.draft, null);
+  if (!parsedDraft || typeof parsedDraft !== "object" || !Array.isArray(parsedDraft.questions)) throw noDraft();
+  const draftInput = sanitizeSurveyInput(parsedDraft);
   await assertPlanAllowsEdit(shopId, draftInput, existing);
   assertValid(inputToDefinition(draftInput, surveyId));
+  assertTypesUnchanged(draftInput, existing);
+  if (existing.status === "active" && draftInput.placements.length === 0) {
+    // The same guard as activation: a live survey with no placement shows
+    // nowhere while reading "active".
+    throw new ValidationError(
+      "Choose where the survey shows before publishing.",
+      "Pick at least one placement, or pause the survey instead.",
+      { field: "placements", code: "no_placements" },
+    );
+  }
 
   const hasResponses = existing.responseCount > 0;
 
   await db.$transaction(async (tx) => {
-    await tx.survey.update({
-      where: { id: surveyId },
-      data: {
-        name: draftInput.name,
-        placements: JSON.stringify(draftInput.placements),
-        layout: draftInput.layout,
-        title: draftInput.title,
-        intro: draftInput.intro,
-        buttonLabel: draftInput.buttonLabel,
-        thankYouText: draftInput.thankYouText,
-        channelReportQuestionId: draftInput.channelReportQuestionId ?? existing.channelReportQuestionId,
-        targeting: JSON.stringify(draftInput.targeting ?? {}),
-        syncOptions: JSON.stringify(draftInput.syncOptions ?? {}),
-        translations: JSON.stringify(draftInput.translations ?? {}),
-        rotation: draftInput.rotation ?? existing.rotation,
-        rotationWeight: draftInput.rotationWeight ?? existing.rotationWeight,
-        learnAndStop: draftInput.learnAndStop ?? existing.learnAndStop,
-        designJson: JSON.stringify(draftInput.design ?? parseJson(existing.designJson, DEFAULT_DESIGN)),
-        version: { increment: 1 },
-        revision: { increment: 1 },
-        draft: null,
-        draftUpdatedAt: null,
-      },
+    await claimRevision(tx, surveyId, revision, {
+      name: draftInput.name,
+      placements: JSON.stringify(draftInput.placements),
+      layout: draftInput.layout,
+      title: draftInput.title,
+      intro: draftInput.intro,
+      buttonLabel: draftInput.buttonLabel,
+      thankYouText: draftInput.thankYouText,
+      targeting: JSON.stringify(draftInput.targeting ?? {}),
+      syncOptions: JSON.stringify(draftInput.syncOptions ?? {}),
+      translations: JSON.stringify(draftInput.translations ?? {}),
+      rotation: draftInput.rotation ?? existing.rotation,
+      rotationWeight: draftInput.rotationWeight ?? existing.rotationWeight,
+      learnAndStop: draftInput.learnAndStop ?? existing.learnAndStop,
+      designJson: draftInput.design ? JSON.stringify(draftInput.design) : existing.designJson,
+      version: { increment: 1 },
+      draft: null,
+      draftUpdatedAt: null,
     });
 
-    await persistQuestions(tx, surveyId, draftInput.questions, { hasResponses });
+    const idMap = await persistQuestions(tx, surveyId, draftInput.questions, {
+      hasResponses,
+      templateId: existing.templateId,
+    });
+    await applyChannelReportQuestion(tx, surveyId, draftInput.channelReportQuestionId, idMap);
   });
 
   await invalidateConfig(shopId);
@@ -756,10 +1041,11 @@ export async function publishSurveyDraft(
 }
 
 /** Discard a draft (S7). The published survey is untouched. */
-export async function discardSurveyDraft(shopId: string, surveyId: string): Promise<void> {
+export async function discardSurveyDraft(shopId: string, surveyId: string, expectedRevision?: number): Promise<void> {
   const existing = await getSurveyRow(shopId, surveyId);
   if (!existing) throw new NotFoundError("That survey does not exist.", { surveyId });
-  await db.survey.update({ where: { id: surveyId }, data: { draft: null, draftUpdatedAt: null, revision: { increment: 1 } } });
+  assertRevision(expectedRevision, existing.revision);
+  await claimRevision(db, surveyId, expectedRevision ?? existing.revision, { draft: null, draftUpdatedAt: null });
   await invalidateConfig(shopId);
 }
 
@@ -767,8 +1053,16 @@ export async function setSurveyStatus(shopId: string, surveyId: string, status: 
   const existing = await getSurveyRow(shopId, surveyId);
   if (!existing) throw new NotFoundError("That survey does not exist.", { surveyId });
 
+  if (status === "paused" && existing.status === "draft") {
+    // Pausing is for a live survey; a never-published draft has nothing to pause.
+    throw new ValidationError("Only a live survey can be paused.", "Go live first, or keep editing the draft.", {
+      field: "status",
+      code: "not_live",
+    });
+  }
+
   if (status === "active") {
-    if (existing.questions.length === 0) {
+    if (!existing.questions.some((question) => !question.archived)) {
       throw new ValidationError(
         "Add at least one question before activating.",
         "Open the survey and add a question, then activate it.",
@@ -785,7 +1079,13 @@ export async function setSurveyStatus(shopId: string, surveyId: string, status: 
     }
   }
 
-  await db.survey.update({ where: { id: surveyId }, data: { status, revision: { increment: 1 } } });
+  await db.$transaction(async (tx) => {
+    if (status === "active" && existing.status !== "active") {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`survey-create:${shopId}`}))`;
+      await assertActiveLimit(tx, shopId, surveyId);
+    }
+    await tx.survey.update({ where: { id: surveyId }, data: { status, revision: { increment: 1 } } });
+  });
   await invalidateConfig(shopId);
 }
 
@@ -799,8 +1099,15 @@ export async function deleteSurvey(shopId: string, surveyId: string): Promise<vo
   logger.info("survey_deleted", { shop_id: shopId, survey_id: surveyId });
 }
 
+/**
+ * Copy the PUBLISHED survey (what buyers see), live questions only. The source
+ * ids are posted as-is: they do not exist in the copy, so every row is new, and
+ * show-if conditions and the channel report are remapped to the copy's ids.
+ */
 export async function duplicateSurvey(shopId: string, surveyId: string): Promise<EditorSurvey> {
-  const source = await getEditorSurvey(shopId, surveyId);
+  const row = await getSurveyRow(shopId, surveyId);
+  if (!row) throw new NotFoundError("That survey does not exist.", { surveyId });
+  const source = rowToEditor(row, { view: "published" });
   const input: SurveyInput = {
     name: `${source.name} (copy)`.slice(0, LIMITS.MAX_SURVEY_NAME),
     status: "draft",
@@ -811,14 +1118,22 @@ export async function duplicateSurvey(shopId: string, surveyId: string): Promise
     intro: source.intro,
     buttonLabel: source.buttonLabel,
     thankYouText: source.thankYouText,
+    channelReportQuestionId: source.channelReportQuestionId,
     targeting: source.targeting,
     syncOptions: source.syncOptions,
     translations: source.translations,
-    // Fresh ids so the copy owns its options.
-    questions: source.questions.map(({ id: _id, options, ...question }) => ({
-      ...question,
-      options: options.map(({ id: _optionId, ...option }) => option),
-    })),
+    templateId: source.templateId,
+    templateVersion: source.templateVersion,
+    rotation: source.rotation,
+    rotationWeight: source.rotationWeight,
+    learnAndStop: source.learnAndStop,
+    design: source.design,
+    questions: source.questions
+      .filter((question) => !question.archived)
+      .map(({ archived: _archived, options, ...question }) => ({
+        ...question,
+        options: options.filter((option) => !option.archived).map(({ archived: _a, ...option }) => option),
+      })),
   };
   return createSurvey(shopId, input);
 }

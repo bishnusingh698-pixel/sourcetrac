@@ -16,8 +16,21 @@ export type ShopDisplay = {
 };
 
 const TTL_MS = 10 * 60 * 1000;
+/** A lookup that came back empty is usually a transient Admin API failure. */
+const EMPTY_TTL_MS = 30 * 1000;
+const MAX_ENTRIES = 500;
 
 const cache = new Map<string, { value: ShopDisplay; expiresAt: number }>();
+
+/** Drop expired entries, then the oldest, so neither cache grows without bound. */
+function prune<V>(map: Map<string, { value: V; expiresAt: number }>, now: number): void {
+  if (map.size < MAX_ENTRIES) return;
+  for (const [key, entry] of map) if (entry.expiresAt <= now) map.delete(key);
+  for (const key of map.keys()) {
+    if (map.size < MAX_ENTRIES) break;
+    map.delete(key);
+  }
+}
 
 export async function getShopDisplay(
   shopId: string,
@@ -29,7 +42,8 @@ export async function getShopDisplay(
   if (cached && cached.expiresAt > now) return cached.value;
 
   const value = await fetchShopDisplay(shopDomain, accessToken);
-  cache.set(shopId, { value, expiresAt: now + TTL_MS });
+  prune(cache, now);
+  cache.set(shopId, { value, expiresAt: now + (value.name === null ? EMPTY_TTL_MS : TTL_MS) });
   return value;
 }
 
@@ -53,7 +67,9 @@ export async function getProductTitles(
   if (cached && cached.expiresAt > now) return cached.value;
 
   const value = await fetchProductTitles(shopDomain, accessToken, productIds);
-  titleCache.set(key, { value, expiresAt: now + TTL_MS });
+  prune(titleCache, now);
+  const empty = productIds.length > 0 && Object.keys(value).length === 0;
+  titleCache.set(key, { value, expiresAt: now + (empty ? EMPTY_TTL_MS : TTL_MS) });
   return value;
 }
 

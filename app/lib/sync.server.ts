@@ -236,7 +236,11 @@ async function loadSyncContext(shopId: string, responseId: string): Promise<{
       where: { id: responseId, shopId },
       include: {
         survey: { select: { syncOptions: true, channelReportQuestionId: true, templateId: true } },
-        answers: true,
+        answers: {
+          include: {
+            question: { select: { templateKey: true, options: { select: { id: true, templateKey: true } } } },
+          },
+        },
       },
     }),
   );
@@ -286,11 +290,16 @@ async function loadSyncContext(shopId: string, responseId: string): Promise<{
       channelLabel,
       templateId: response.survey.templateId,
       presetIds: options.presets ?? [],
-      answers: response.answers.map((a) => ({
-        questionId: a.questionId,
-        optionIds: safeJson<string[]>(a.optionIds, []),
-        numberValue: a.numberValue,
-      })),
+      // Smart-action presets name the template's stable ids. Rows have their
+      // own unique ids and remember the stable one as `templateKey`.
+      answers: response.answers.map((a) => {
+        const optionKeys = new Map(a.question.options.map((o) => [o.id, o.templateKey ?? o.id]));
+        return {
+          questionId: a.question.templateKey ?? a.questionId,
+          optionIds: safeJson<string[]>(a.optionIds, []).map((id) => optionKeys.get(id) ?? id),
+          numberValue: a.numberValue,
+        };
+      }),
     },
   };
 }

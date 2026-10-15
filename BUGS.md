@@ -174,7 +174,7 @@ the shop endpoint") is stale.
 
   The core "channel → revenue" report is empty.
 
-### [ ] C5. Template surveys lose their stable question and option ids, which breaks follow-ups, smart actions and insights (EDIT/SYNC) — CONFIRMED
+### [x] C5. Template surveys lose their stable question and option ids, which breaks follow-ups, smart actions and insights (EDIT/SYNC) — CONFIRMED
 
 - **Where:** `app/lib/surveys.server.ts:409-413` and `:437-463`, with `shared/templates/resolve.ts:108` and `:177`, `shared/templates/smart-actions.ts:288-295` and `app/lib/insights.server.ts:151`.
 - **Defect:** `persistQuestions` keeps a posted id only if it already exists in that survey, so a new survey gets fresh cuids. Template `showIf` conditions are stored verbatim, still referencing `stableQuestionId(...)` ids that no longer exist.
@@ -242,32 +242,32 @@ the shop endpoint") is stale.
 
 ### Survey editor
 
-- [ ] **H9 (CONFIRMED): "Go live" always fails with a 500.**
+- [x] **H9 (CONFIRMED): "Go live" always fails with a 500.**
   - Where: `app/routes/app.surveys.$id.tsx:159-162` versus `:177` (button `:515`, `submitIntent` `:321-326`).
   - Defect: `submitIntent("go-live")` posts only `intent` and `revision`. The action throws "The survey was not submitted" before it reaches the `go-live` branch, and `guarded()` turns that into a 500.
   - Scenario: any merchant clicks the primary "Go live" button. The survey is never activated.
-- [ ] **H10 (CONFIRMED): two new options collide on an empty id.**
+- [x] **H10 (CONFIRMED): two new options collide on an empty id.**
   - Where: `app/components/survey-editor.tsx:247-254`, `:269-270`, `:489` → `app/lib/surveys.server.ts:315-320` → `shared/survey-rules.ts:568`.
   - Defect: new options get `id: ""`. `option.id ?? placeholder` does not replace `""`, so two new options share an id and validation fails with `duplicate_option`.
   - Scenario: "Add question" (which creates two default options), "Duplicate question", or adding two options, then Save. The save is refused, so merchants cannot add a choice question from the Studio.
-- [ ] **H11 (CONFIRMED): deleted questions and options come back on the next save.**
+- [x] **H11 (CONFIRMED): deleted questions and options come back on the next save.**
   - Where: `app/lib/surveys.server.ts:262-270`, `:429` and `:451` (also `:810-813`).
   - Defect: archived questions and options are sent to the editor and posted back, and `persistQuestions` writes `archived: false` on every posted row.
   - Scenario: on a survey with answers, delete option "TikTok" and save. Reload, edit anything, and save again: "TikTok" is live for buyers again.
   - Also:
     - archived rows count toward `MAX_QUESTIONS`;
     - `duplicateSurvey` copies archived rows as live ones.
-- [ ] **H12 (CONFIRMED race): the optimistic-concurrency check is not atomic.**
+- [x] **H12 (CONFIRMED race): the optimistic-concurrency check is not atomic.**
   - Where: `app/lib/surveys.server.ts:630-645` and `:654-683`; publish at `:705-740`.
   - Defect: `assertRevision` compares a value read earlier, and the UPDATE is `where: { id }` with no revision condition.
   - Scenarios:
     - Two tabs at revision N both save: the second silently overwrites the first.
     - A draft save races a publish: publish commits the older draft and sets `draft: null`, destroying the newer one.
-- [ ] **H13 (CONFIRMED): unsaved Studio edits are discarded whenever a shopper answers.**
+- [x] **H13 (CONFIRMED): unsaved Studio edits are discarded whenever a shopper answers.**
   - Where: `app/routes/app.surveys.$id.tsx:248-255`.
   - Defect: the editor resets local state when `dataKey` (`updatedAt:hasDraft:status`) changes. `Survey.updatedAt` moves on every shopper answer (`responseCount` increment).
   - Scenario: the merchant is editing a live survey, a shopper answers, and the merchant switches tab or language (which revalidates). All unsaved edits are discarded without warning.
-- [ ] **H14 (CONFIRMED): duplicating a survey with a show-if fails with a 500.**
+- [x] **H14 (CONFIRMED): duplicating a survey with a show-if fails with a 500.**
   - Where: `app/lib/surveys.server.ts:794-815`.
   - Defect: `duplicateSurvey` strips ids but copies `showIf` pointing at the source survey's ids.
   - Scenario: Duplicate any survey with a show-if and get `show_if_unknown`, which becomes a 500.
@@ -422,22 +422,22 @@ the shop endpoint") is stale.
 
 ### Survey editor
 
-- [ ] **M21 (CONFIRMED): a show-if can point at an unsaved option and never match.**
+- [x] **M21 (CONFIRMED): a show-if can point at an unsaved option and never match.**
   - Where: `app/components/survey-editor.tsx:566-571` → `app/lib/surveys.server.ts:427`.
   - Defect: a show-if can reference a new option with id `""`, and `optionIds: [""]` is persisted literally.
   - Scenario: add option "TikTok" and, in the same edit, make Q2 show if Q1 = TikTok. Q2 never shows.
-- [ ] **M22 (CONFIRMED): discard ignores the posted revision.**
+- [x] **M22 (CONFIRMED): discard ignores the posted revision.**
   - Where: `app/routes/app.surveys.$id.tsx:145-146` and `app/lib/surveys.server.ts:751-755`.
   - Scenario: Discard from a stale tab wipes a newer draft.
-- [ ] **M23 (CONFIRMED): one active survey can starve another.**
+- [x] **M23 (CONFIRMED): one active survey can starve another.**
   - Where: `app/lib/surveys.server.ts:375` and `:573` (selection `api.survey.tsx`).
   - Defect: all surveys are created with `priority: 0`, and ties are broken by `updatedAt desc`, which moves on each answer.
   - Scenario: two active Thank-you surveys. The one with the latest answer wins forever.
-- [ ] **M24 (CONFIRMED): the active-survey limit is never enforced.**
+- [x] **M24 (CONFIRMED): the active-survey limit is never enforced.**
   - Where: `app/lib/surveys.server.ts:758-780`, with `app/routes/app.surveys.$id.tsx:306` and `app.surveys.library.$id.setup.tsx:259`.
   - Defect: `MAX_ACTIVE_SURVEYS` is never checked, and `overActiveLimit: false` is hard-coded.
   - Scenario: activating up to 50 surveys can exceed `MAX_COMPILED_CONFIG_BYTES`, which is only logged.
-- [ ] **M25 (CONFIRMED): survey fields are saved with no server-side validation.**
+- [x] **M25 (CONFIRMED): survey fields are saved with no server-side validation.**
   - Where: `app/lib/surveys.server.ts:660`, `:667-669`, `:675`, `:721` and `:728-734`.
   - Defect: placements, targeting, design, translations, `syncOptions` and `rotationWeight` are mass-assigned from the posted JSON. The limits are client-only.
   - Scenarios:
@@ -445,19 +445,19 @@ the shop endpoint") is stale.
     - 10 KB labels are shipped to checkout;
     - `samplePercent ≤ 0` hides the survey forever;
     - a non-integer `rotationWeight` causes a Prisma error and a 500.
-- [ ] **M26 (CONFIRMED): publish and save skip the activation guards.**
+- [x] **M26 (CONFIRMED): publish and save skip the activation guards.**
   - Where: `app/lib/surveys.server.ts:716-742` and `:658`.
   - Defect: publish does not re-run `no_placements`, and a draft save can set `status` straight from the input.
   - Scenario: untick every placement on a live survey and publish. It stays "active" but shows nowhere.
-- [ ] **M27 (CONFIRMED): expected validation and not-found errors become generic 500s.**
+- [x] **M27 (CONFIRMED): expected validation and not-found errors become generic 500s.**
   - Where: `app/routes/app.surveys.$id.tsx:155-156`, `app.surveys._index.tsx:58,114,131` and `app.surveys.library.$id.setup.tsx:152-157`.
   - Defect: `ValidationError` and `NotFoundError` are thrown out of actions.
   - Scenario: activating with no placements, hitting the survey limit, an unknown template, or a survey deleted in another tab all show the 500 page.
-- [ ] **M28 (PLAUSIBLE): editing an answered question reinterprets its history.**
+- [x] **M28 (PLAUSIBLE): editing an answered question reinterprets its history.**
   - Where: `app/lib/surveys.server.ts:438-463`.
   - Defect: a question can change `type`, and an option can be relabelled, while keeping its id.
   - Scenario: change Q1 from `single_choice` to `nps`, or rename "Instagram" to "TikTok". Historical answers are reinterpreted.
-- [ ] **M29 (CONFIRMED): Overview and Results read the draft structure.**
+- [x] **M29 (CONFIRMED): Overview and Results read the draft structure.**
   - Where: `app/routes/app.surveys.$id.tsx:95`.
   - Defect: insights are built from the draft view, not the published one.
   - Scenario: a draft that deletes a question hides that question's results until publish.
@@ -693,46 +693,46 @@ the shop endpoint") is stale.
 
 ### Survey editor
 
-- [ ] **L51 (CONFIRMED): saving reverts a reorder.**
+- [x] **L51 (CONFIRMED): saving reverts a reorder.**
   - Where: `app/lib/surveys.server.ts:818-823` and `:659`.
   - Defect: reorder does not bump `revision`, and a save writes back the stale `priority`.
   - Scenario: reorder in the list, save in the Studio, and the reorder is reverted.
-- [ ] **L52 (CONFIRMED): saving without `design` double-encodes it.**
+- [x] **L52 (CONFIRMED): saving without `design` double-encodes it.**
   - Where: `app/lib/surveys.server.ts:675`.
   - Defect: `JSON.stringify(input.design ?? existing.designJson)` double-encodes when `design` is absent. The editor always sends it.
-- [ ] **L53 (CONFIRMED): a corrupt draft makes publish throw.**
+- [x] **L53 (CONFIRMED): a corrupt draft makes publish throw.**
   - Where: `app/lib/surveys.server.ts:710-712`.
   - Defect: a corrupt or `"null"` draft throws a TypeError on publish, giving a 500.
-- [ ] **L54 (CONFIRMED, crafted payload only): an option can be moved under another question.**
+- [x] **L54 (CONFIRMED, crafted payload only): an option can be moved under another question.**
   - Where: `app/lib/surveys.server.ts:442-456`.
   - Defect: an option id from another question is updated in place but keeps its original `questionId`.
-- [ ] **L55 (CONFIRMED): the Free-plan exclusive-option check is too loose.**
+- [x] **L55 (CONFIRMED): the Free-plan exclusive-option check is too loose.**
   - Where: `app/lib/surveys.server.ts:544-545`.
   - Defect: the grandfather check passes if any option anywhere in the survey is exclusive.
-- [ ] **L56 (PLAUSIBLE): a Free shop can unlock a paid template feature.**
+- [x] **L56 (PLAUSIBLE): a Free shop can unlock a paid template feature.**
   - Where: `app/lib/surveys.server.ts:670`.
   - Defect: `templateId` is mass-assignable, which bypasses the `byProduct` plan gate.
-- [ ] **L57 (CONFIRMED): parallel creates can exceed the survey limit.**
+- [x] **L57 (CONFIRMED): parallel creates can exceed the survey limit.**
   - Where: `app/lib/surveys.server.ts:555-567`.
   - Defect: the survey-count limit is checked outside the transaction.
-- [ ] **L58 (CONFIRMED): an unknown intent saves the survey.**
+- [x] **L58 (CONFIRMED): an unknown intent saves the survey.**
   - Where: `app/routes/app.surveys.$id.tsx:124`.
-- [ ] **L59 (CONFIRMED): Pause and Activate silently drop unsaved edits.**
+- [x] **L59 (CONFIRMED): Pause and Activate silently drop unsaved edits.**
   - Where: `app/routes/app.surveys.$id.tsx:150-158` and `:321-326`.
   - Defect: both are enabled while the form is dirty and post no survey data.
-- [ ] **L60 (CONFIRMED): the setup wizard can crash or half-create a survey.**
+- [x] **L60 (CONFIRMED): the setup wizard can crash or half-create a survey.**
   - Where: `app/routes/app.surveys.library.$id.setup.tsx:133` and `:180-183`.
   - Defect: `JSON.parse` is unguarded, and create plus activate are not atomic.
   - Scenario: a retry after a failed activation creates a duplicate survey.
-- [ ] **L61 (CONFIRMED, crafted POST only): the `use-template` action creates an orphan and fails.**
+- [x] **L61 (CONFIRMED, crafted POST only): the `use-template` action creates an orphan and fails.**
   - Where: `app/routes/app.surveys.library._index.tsx:126-130`.
   - Defect: it redirects with a survey id to a route that expects a template id, leaving an orphan draft and a 500.
-- [ ] **L62 (CONFIRMED): a never-published draft can be paused.**
+- [x] **L62 (CONFIRMED): a never-published draft can be paused.**
   - Where: `app/routes/app.surveys._index.tsx:109-115`.
-- [ ] **L63 (CONFIRMED): any loader error reads as "not found".**
+- [x] **L63 (CONFIRMED): any loader error reads as "not found".**
   - Where: `app/routes/app.surveys.$id.tsx:70`.
   - Defect: `.catch(() => null)` turns a DB outage into "survey does not exist".
-- [ ] **L64 (CONFIRMED): the Studio title cache never evicts.**
+- [x] **L64 (CONFIRMED): the Studio title cache never evicts.**
   - Where: `app/lib/studio.server.ts:31-57`.
   - Defect: `titleCache` is never evicted, and a transient failure is cached for 10 minutes.
 
@@ -797,4 +797,4 @@ the shop endpoint") is stale.
 - [ ] **I21:** `app/routes/app.plans.tsx:175-191`: re-choosing the current plan is not blocked server-side and `replacementBehavior` is unset, so duplicate pending charges are possible. (CONFIRMED)
 - [ ] **I22:** `app/routes/app.tsx:107`: the shell loader sends the whole shop record (including `subscriptionGid`) to the browser. (CONFIRMED)
 - [ ] **I24:** `app/routes/app.language.tsx:22`: the action is not wrapped in `guarded`. (CONFIRMED)
-- [ ] **I25:** `app/lib/surveys.server.ts:362`: an absent `revision` skips the concurrency check, so any client can bypass it. (CONFIRMED)
+- [x] **I25:** `app/lib/surveys.server.ts:362`: an absent `revision` skips the concurrency check, so any client can bypass it. (CONFIRMED)

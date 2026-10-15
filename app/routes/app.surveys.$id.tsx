@@ -28,7 +28,10 @@ import { ConflictError, NotFoundError, ValidationError } from "~/lib/errors";
 import {
   discardSurveyDraft,
   getEditorSurvey,
+  getSurveyRow,
+  isOverActiveLimit,
   publishSurveyDraft,
+  rowToEditor,
   setSurveyStatus,
   updateSurvey,
   type EditorSurvey,
@@ -67,8 +70,13 @@ export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) =>
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
   const id = params.id ?? "";
-  const survey = await getEditorSurvey(shop.id, id).catch(() => null);
-  if (!survey) throw new NotFoundError("That survey does not exist.", { surveyId: id });
+  // Only "not found" reads as not found; a database outage must surface as one.
+  const row = await getSurveyRow(shop.id, id);
+  if (!row) throw new NotFoundError("That survey does not exist.", { surveyId: id });
+  const survey = rowToEditor(row);
+  // Overview and Results describe what buyers answered: the published survey,
+  // archived questions included for their labels, never the unpublished draft.
+  const published = rowToEditor(row, { view: "published" });
 
   const display = await getShopDisplay(shop.id, shop.shopDomain, session.accessToken);
   const language = resolveAdminLanguage(request, shop.language, shop.adminLocale);
@@ -92,7 +100,7 @@ export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) =>
     : {};
   const insights = buildSurveyInsights({
     responses,
-    questions: survey.questions,
+    questions: published.questions,
     templateId: survey.templateId,
     locale,
     productTitles,
@@ -113,8 +121,22 @@ export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) =>
     surveyLinkEnabled: isEnabled("SURVEY_LINK_PAGE"),
     insights,
     insightsLocale: locale,
+    overActiveLimit: survey.status !== "active" && (await isOverActiveLimit(shop.id, survey.id)),
   };
 });
+
+const INTENTS = new Set(["save", "go-live", "publish", "discard", "pause", "activate"]);
+
+/** A survey-level ValidationError or ConflictError, as the editor renders it. */
+function failure(error: unknown) {
+  if (error instanceof ValidationError) {
+    return { ok: false as const, conflict: false, issues: extractIssues(error) };
+  }
+  if (error instanceof ConflictError) {
+    return { ok: false as const, conflict: true, issues: [] };
+  }
+  return null;
+}
 
 export const action = guarded(async ({ request, params }: ActionFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -122,39 +144,39 @@ export const action = guarded(async ({ request, params }: ActionFunctionArgs) =>
   const id = params.id ?? "";
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "save");
-  // The concurrency token the editor loaded. Absent from older payloads; the
-  // server then skips the check (see `assertRevision`).
+  if (!INTENTS.has(intent)) {
+    return { ok: false as const, conflict: false, issues: [{ path: "", code: "unknown_intent", message: "That action is not supported." }] };
+  }
+  // The concurrency token the editor loaded. Every Studio post carries it; one
+  // without it is refused rather than skipping the check.
   const rawRevision = form.get("revision");
-  const expectedRevision = typeof rawRevision === "string" && rawRevision !== "" ? Number(rawRevision) : undefined;
+  const expectedRevision = typeof rawRevision === "string" && rawRevision !== "" ? Number(rawRevision) : Number.NaN;
+  if (!Number.isInteger(expectedRevision)) {
+    return { ok: false as const, conflict: true, issues: [] };
+  }
 
-  if (intent === "publish") {
-    try {
+  try {
+    if (intent === "publish") {
       await publishSurveyDraft(shop.id, id, expectedRevision);
-    } catch (error) {
-      if (error instanceof ValidationError) {
-        return { ok: false as const, conflict: false, issues: extractIssues(error) };
-      }
-      if (error instanceof ConflictError) {
-        return { ok: false as const, conflict: true, issues: [] };
-      }
-      throw error;
+      return redirect(`/app/surveys/${id}?tab=studio&published=1`);
     }
-    return redirect(`/app/surveys/${id}?tab=studio&published=1`);
-  }
-
-  if (intent === "discard") {
-    await discardSurveyDraft(shop.id, id);
-    return redirect(`/app/surveys/${id}?tab=studio&discarded=1`);
-  }
-
-  if (intent === "pause") {
-    await setSurveyStatus(shop.id, id, "paused");
-    return redirect(`/app/surveys/${id}?tab=studio`);
-  }
-
-  if (intent === "activate") {
-    await setSurveyStatus(shop.id, id, "active");
-    return redirect(`/app/surveys/${id}?tab=studio`);
+    if (intent === "discard") {
+      await discardSurveyDraft(shop.id, id, expectedRevision);
+      return redirect(`/app/surveys/${id}?tab=studio&discarded=1`);
+    }
+    if (intent === "pause") {
+      await setSurveyStatus(shop.id, id, "paused");
+      return redirect(`/app/surveys/${id}?tab=studio`);
+    }
+    if (intent === "activate") {
+      await setSurveyStatus(shop.id, id, "active");
+      return redirect(`/app/surveys/${id}?tab=studio`);
+    }
+  } catch (error) {
+    const result = failure(error);
+    if (result) return result;
+    if (error instanceof NotFoundError) return redirect("/app/surveys");
+    throw error;
   }
 
   const raw = form.get("survey");
@@ -179,12 +201,9 @@ export const action = guarded(async ({ request, params }: ActionFunctionArgs) =>
       return redirect(`/app/surveys/${id}?tab=studio&launched=1`);
     }
   } catch (error) {
-    if (error instanceof ValidationError) {
-      return { ok: false as const, conflict: false, issues: extractIssues(error) };
-    }
-    if (error instanceof ConflictError) {
-      return { ok: false as const, conflict: true, issues: [] };
-    }
+    const result = failure(error);
+    if (result) return result;
+    if (error instanceof NotFoundError) return redirect("/app/surveys");
     throw error;
   }
   return redirect(`/app/surveys/${id}?tab=studio&saved=1`);
@@ -245,7 +264,9 @@ export default function SurveyStudio() {
   // After a save/publish/pause the loader re-runs and hands back the persisted
   // survey. Reset the local editor to it, or the form would still show the
   // pre-save values and read as dirty.
-  const dataKey = `${survey.updatedAt}:${survey.hasDraft}:${survey.status}`;
+  // Keyed on the merchant-only revision: `updatedAt` moves on every shopper
+  // answer, which reset (and discarded) unsaved edits on any revalidation.
+  const dataKey = `${survey.revision}:${survey.hasDraft}:${survey.status}`;
   const lastKey = useRef(dataKey);
   useEffect(() => {
     if (lastKey.current === dataKey) return;
@@ -303,7 +324,7 @@ export default function SurveyStudio() {
     },
     placements: draft.placements,
     maxQuestions: null,
-    overActiveLimit: false,
+    overActiveLimit: data.overActiveLimit,
     configBytes: new TextEncoder().encode(JSON.stringify(draft)).length,
     blockAdded: null,
     translationsComplete: null,
@@ -316,12 +337,15 @@ export default function SurveyStudio() {
     setParams(search, { preventScrollReset: true });
   };
 
-  // Status actions (go live / publish / pause / activate / discard) are not form
-  // saves, so they post a small intent payload instead of the whole survey.
+  // Status actions (publish / pause / activate / discard) are not form saves, so
+  // they post a small intent payload. Pause and Activate are disabled while the
+  // form has unsaved edits, which they would otherwise silently drop.
   const submitIntent = (intent: string) => {
     const body = new FormData();
     body.set("intent", intent);
     body.set("revision", String(draft.revision));
+    // "Go live" saves the survey and activates it, so it carries the survey.
+    if (intent === "go-live") body.set("survey", JSON.stringify(draft));
     submit(body, { method: "post" });
   };
 
@@ -834,7 +858,7 @@ function GoLivePanel({
           </s-button>
         ) : null}
         {draft.status === "active" && !draft.hasDraft ? (
-          <s-button type="button" onClick={onPause}>
+          <s-button type="button" disabled={dirty || undefined} onClick={onPause}>
             {t("surveys.pause")}
           </s-button>
         ) : null}
@@ -844,7 +868,7 @@ function GoLivePanel({
           </s-button>
         ) : null}
         {draft.status === "paused" ? (
-          <s-button type="button" onClick={onActivate}>
+          <s-button type="button" disabled={dirty || blocked || undefined} onClick={onActivate}>
             {t("surveys.activate")}
           </s-button>
         ) : null}

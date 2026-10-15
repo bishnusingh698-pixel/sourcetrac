@@ -129,10 +129,25 @@ describe("template plan enforcement (DH-002)", () => {
 
     const row = await getSurveyRow(shopId, survey.id);
     expect(row).not.toBeNull();
-    // Editing while keeping the exclusive option is allowed (grandfathered).
+    // Editing while keeping the exclusive option is allowed (grandfathered). The
+    // editor posts the saved ids back, which is what marks the option as kept.
     await expect(
-      updateSurvey(shopId, survey.id, exclusiveInput({ name: "Still works" })),
+      updateSurvey(shopId, survey.id, {
+        ...exclusiveInput({ name: "Still works" }),
+        questions: survey.questions.map((question) => ({ ...question })),
+      }),
     ).resolves.toBeTruthy();
+    // Grandfathering is per option (L55): marking a second option exclusive is
+    // still adding the feature.
+    await expect(
+      updateSurvey(shopId, survey.id, {
+        ...exclusiveInput({ name: "Adds another" }),
+        questions: survey.questions.map((question) => ({
+          ...question,
+          options: question.options.map((option) => ({ ...option, exclusive: true })),
+        })),
+      }),
+    ).rejects.toMatchObject({ fields: { code: "template_plan_locked" } });
 
     // A fresh Free survey with no exclusive option cannot gain one.
     const plain = await createSurvey(shopId, {

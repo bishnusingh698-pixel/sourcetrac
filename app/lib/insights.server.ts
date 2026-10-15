@@ -87,7 +87,13 @@ export type SurveyInsights = {
  */
 export function buildSurveyInsights(params: {
   responses: ReadonlyArray<SurveyResponseRow>;
-  questions: ReadonlyArray<{ id: string; type: string; text: string; options: ReadonlyArray<{ id: string; label: string; archived: boolean }> }>;
+  questions: ReadonlyArray<{
+    id: string;
+    type: string;
+    text: string;
+    templateKey?: string | null;
+    options: ReadonlyArray<{ id: string; label: string; archived: boolean }>;
+  }>;
   templateId: string | null;
   locale: string;
   productTitles?: Record<string, string>;
@@ -150,8 +156,10 @@ export function buildSurveyInsights(params: {
     const [rowKey, colKey] = crossKeys;
     const rowId = stableQuestionId(params.templateId, rowKey);
     const colId = stableQuestionId(params.templateId, colKey);
-    const rowQ = questions.find((q) => q.id === rowId);
-    const colQ = questions.find((q) => q.id === colId);
+    // Stored rows have unique ids and keep the stable one as `templateKey`.
+    const keyOf = (id: string) => params.questions.find((q) => q.id === id)?.templateKey ?? id;
+    const rowQ = questions.find((q) => keyOf(q.id) === rowId);
+    const colQ = questions.find((q) => keyOf(q.id) === colId);
     if (rowQ && colQ) {
       result.crossTab = buildCrossTab({ responses, rowQuestion: rowQ, colQuestion: colQ });
       result.crossRowQuestionId = rowQ.id;
