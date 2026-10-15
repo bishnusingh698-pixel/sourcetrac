@@ -1152,7 +1152,7 @@
     "keep_title": "Por quanto tempo fica guardado",
     "keep_body": "Respostas e dados de pedidos são excluídos após {{months}} meses. Registros de webhook são excluídos após {{days}} dias. Quando você desinstala o SourceTrac, a Shopify nos pede para excluir todos os dados da sua loja 48 horas depois, e nós excluímos.",
     "rights_title": "Direitos dos compradores",
-    "rights_body": "Os compradores pedem a você, não ao SourceTrac. Quando um comprador pede à Shopify os seus dados ou a exclusão deles, a Shopify encaminha o pedido ao SourceTrac. Excluímos as respostas dele automaticamente e mostramos o pedido na página Configurações.",
+    "rights_body": "Os compradores pedem a você, não à SourceTrac, e a Shopify nos encaminha os pedidos. Quando um comprador pede os próprios dados, localizamos as respostas dele e mostramos o pedido na página Configurações. Quando um comprador pede a exclusão, apagamos as respostas dele automaticamente.",
     "contact_title": "Dúvidas",
     "contact_body": "Escreva para {{email}} sobre qualquer item desta página.",
     "role_title": "Para a sua política de privacidade",

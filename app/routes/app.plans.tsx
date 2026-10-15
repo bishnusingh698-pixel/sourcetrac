@@ -83,7 +83,9 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   let activePlan = effectivePlan(shop);
   let synced = false;
   // The live charge's cycle, when Shopify answered, so the page opens on it.
-  let activeCycle: BillingCycle = "monthly";
+  // Null when Shopify could not be asked: guessing "monthly" told a yearly
+  // subscriber they paid monthly and offered to switch them to yearly.
+  let activeCycle: BillingCycle | null = null;
   if (session.accessToken) {
     try {
       const subscriptions = await fetchActiveSubscriptions({
@@ -138,7 +140,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     cap: evaluateCap(activePlan, used),
     activeCycle,
     // The cycle the cards show: the URL's choice, else the merchant's own.
-    cycle: isBillingCycle(requestedCycle) ? requestedCycle : activeCycle,
+    cycle: isBillingCycle(requestedCycle) ? requestedCycle : (activeCycle ?? "monthly"),
     discountPercent: YEARLY_DISCOUNT_PERCENT,
     // The biggest yearly saving, for the badge on the Monthly / Yearly switch.
     maxYearlySaving: formatMoney(
@@ -310,7 +312,7 @@ export default function Plans() {
               </s-text>
               <s-stack direction="inline" gap="small" alignItems="center">
                 <s-heading>{currentName}</s-heading>
-                {current.key === "free" ? null : (
+                {current.key === "free" || data.activeCycle === null ? null : (
                   <s-badge tone="success">
                     {data.activeCycle === "yearly" ? t("plans.billed_yearly") : t("plans.billed_monthly")}
                   </s-badge>
@@ -351,7 +353,11 @@ export default function Plans() {
 
       <s-grid gridTemplateColumns="repeat(auto-fit, minmax(min(100%, 15rem), 1fr))" gap="base">
         {data.plans.map((plan) => {
-          const isCurrent = plan.key === data.activePlan && (plan.key === "free" || data.activeCycle === data.cycle);
+          // An unknown cycle still marks the plan as current on both views,
+          // so the page never offers to "switch" a merchant to what they have.
+          const isCurrent =
+            plan.key === data.activePlan &&
+            (plan.key === "free" || data.activeCycle === null || data.activeCycle === data.cycle);
           const recommended = plan.key === "growth";
           const name = t(`plans.${plan.key}`);
           return (

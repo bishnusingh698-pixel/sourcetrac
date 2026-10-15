@@ -1152,7 +1152,7 @@
     "keep_title": "Hoe lang het wordt bewaard",
     "keep_body": "Antwoorden en bestelgegevens worden na {{months}} maanden verwijderd. Webhookregistraties worden na {{days}} dagen verwijderd. Als je SourceTrac verwijdert, vraagt Shopify ons 48 uur later alle gegevens van je winkel te wissen, en dat doen we.",
     "rights_title": "Rechten van kopers",
-    "rights_body": "Kopers vragen het aan jou, niet aan SourceTrac. Als een koper Shopify om zijn gegevens vraagt of om ze te wissen, stuurt Shopify het verzoek door naar SourceTrac. We verwijderen de antwoorden automatisch en tonen het verzoek op de pagina Instellingen.",
+    "rights_body": "Kopers vragen het aan jou, niet aan SourceTrac, en Shopify stuurt hun verzoeken naar ons door. Vraagt een koper om zijn gegevens, dan zoeken we zijn antwoorden op en tonen we het verzoek op de pagina Instellingen. Vraagt een koper om verwijdering, dan verwijderen we zijn antwoorden automatisch.",
     "contact_title": "Vragen",
     "contact_body": "Mail naar {{email}} over alles op deze pagina.",
     "role_title": "Voor je privacybeleid",

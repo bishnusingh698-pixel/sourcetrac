@@ -332,6 +332,9 @@ model Survey {
   /// every save, publish and status change. Not `@updatedAt`, so answer counting
   /// (which increments `responseCount`) cannot raise a false conflict.
   revision      Int      @default(0)
+  /// Last merchant change (save, publish, discard, status). Shown as "Updated"
+  /// on the survey list; `updatedAt` also moves on every buyer answer.
+  editedAt      DateTime @default(now())
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

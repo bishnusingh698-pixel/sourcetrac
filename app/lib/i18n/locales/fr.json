@@ -1152,7 +1152,7 @@
     "keep_title": "Durée de conservation",
     "keep_body": "Les réponses et les détails des commandes sont supprimés après {{months}} mois. Les enregistrements de webhook sont supprimés après {{days}} jours. Lorsque vous désinstallez SourceTrac, Shopify nous demande de supprimer toutes les données de votre boutique 48 heures plus tard, et nous le faisons.",
     "rights_title": "Droits des acheteurs",
-    "rights_body": "Les acheteurs s’adressent à vous, pas à SourceTrac. Lorsqu’un acheteur demande à Shopify ses données ou leur suppression, Shopify transmet la demande à SourceTrac. Nous supprimons automatiquement ses réponses et affichons la demande sur la page Paramètres.",
+    "rights_body": "Les acheteurs s’adressent à vous, pas à SourceTrac, et Shopify nous transmet leurs demandes. Lorsqu’un acheteur demande ses données, nous retrouvons ses réponses et affichons la demande sur la page Paramètres. Lorsqu’un acheteur demande leur suppression, nous supprimons automatiquement ses réponses.",
     "contact_title": "Questions",
     "contact_body": "Écrivez à {{email}} pour toute question sur cette page.",
     "role_title": "Pour votre politique de confidentialité",

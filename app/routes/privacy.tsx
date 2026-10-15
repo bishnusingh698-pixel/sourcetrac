@@ -52,14 +52,17 @@ export default function PrivacyPolicy() {
 
       <h2>Why we store it</h2>
       <p>
-        To show you, the merchant, which marketing channels earn revenue. The data
-        stays inside your own Shopify admin. No other merchant can see it.
+        To show you, the merchant, which marketing channels earn revenue. No other
+        merchant can see it. It leaves SourceTrac only when you download a CSV
+        export, or when you turn on Shopify actions, which copy answers into your
+        own store as order tags, customer tags, customer metafields or a Shopify
+        Flow trigger.
       </p>
 
       <h2>How long we keep it</h2>
       <p>
-        Survey answers and cached orders are deleted after 24 months, and raw
-        webhook payloads after 30 days. These periods are fixed and the same for
+        Survey answers and cached orders are deleted after 24 months, and webhook
+        delivery records (which hold no order or buyer details) after 30 days. These periods are fixed and the same for
         every store.
       </p>
 

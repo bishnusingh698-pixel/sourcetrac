@@ -112,7 +112,14 @@ export default function Surveys() {
   const actionData = useActionData<typeof action>();
   const { t, locale } = useAdminI18n();
   const failureKey = actionData && actionData.ok === false ? `surveys.validation_${actionData.code}` : null;
-  const failureText = failureKey ? (t(failureKey) === failureKey ? actionData!.ok === false && actionData!.message : t(failureKey)) : null;
+  // `limit` fills `validation_plan_live_limit`; without it the banner read
+  // "Your plan allows {{limit}} live surveys".
+  const failureParams = { limit: usage.limit ?? "" };
+  const failureText = failureKey
+    ? t(failureKey) === failureKey
+      ? actionData!.ok === false && actionData!.message
+      : t(failureKey, failureParams)
+    : null;
 
   const createActions = (
     <s-button href="/app/surveys/library" variant="primary" icon="plus">

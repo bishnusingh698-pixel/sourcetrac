@@ -21,6 +21,7 @@ import {
   discardSurveyDraft,
   getCompiledConfig,
   getEditorSurvey,
+  listSurveys,
   publishSurveyDraft,
   updateSurvey,
   type SurveyInput,
@@ -260,6 +261,21 @@ describe("concurrency conflict detection (section 6.6)", () => {
     await expect(
       updateSurvey(shopId, survey.id, baseInput({ name: "No false conflict", title: "still fine" }), loaded.revision),
     ).resolves.toBeTruthy();
+  });
+
+  it("dates the survey list by the merchant's last change, not the last answer", async () => {
+    const survey = await createSurvey(shopId, baseInput({ name: "Edited date" }));
+    const past = new Date("2026-01-02T03:04:05.000Z");
+    await prisma.survey.update({ where: { id: survey.id }, data: { editedAt: past } });
+    // A buyer answer moves `updatedAt`, which the list used to show.
+    await prisma.survey.update({ where: { id: survey.id }, data: { responseCount: { increment: 1 } } });
+    const listed = (await listSurveys(shopId)).find((s) => s.id === survey.id);
+    expect(listed?.updatedAt).toBe(past.toISOString());
+
+    const loaded = await getEditorSurvey(shopId, survey.id);
+    await updateSurvey(shopId, survey.id, baseInput({ name: "Edited date", title: "changed" }), loaded.revision);
+    const relisted = (await listSurveys(shopId)).find((s) => s.id === survey.id);
+    expect(new Date(relisted!.updatedAt).getTime()).toBeGreaterThan(past.getTime());
   });
 });
 

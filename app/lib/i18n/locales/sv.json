@@ -1152,7 +1152,7 @@
     "keep_title": "Hur länge den sparas",
     "keep_body": "Svar och orderuppgifter raderas efter {{months}} månader. Webhook-poster raderas efter {{days}} dagar. När du avinstallerar SourceTrac ber Shopify oss att radera all data för din butik 48 timmar senare, och det gör vi.",
     "rights_title": "Köparnas rättigheter",
-    "rights_body": "Köpare vänder sig till dig, inte till SourceTrac. När en köpare ber Shopify om sin data eller om att få den raderad skickar Shopify vidare förfrågan till SourceTrac. Vi raderar köparens svar automatiskt och visar förfrågan på sidan Inställningar.",
+    "rights_body": "Köpare vänder sig till dig, inte till SourceTrac, och Shopify skickar deras begäranden vidare till oss. När en köpare begär sina uppgifter letar vi fram svaren och visar begäran på sidan Inställningar. När en köpare begär radering raderar vi svaren automatiskt.",
     "contact_title": "Frågor",
     "contact_body": "Skriv till {{email}} om något på den här sidan.",
     "role_title": "För din integritetspolicy",

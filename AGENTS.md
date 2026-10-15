@@ -1324,3 +1324,8 @@ surveys put their shop on Scale first.
   results CSV.
 - Layout here is checked statically only: `cdn.shopify.com` is blocked from this
   container, so Polaris cannot render in a local browser.
+- **The survey list's "Updated" date is `Survey.editedAt`**, set only by merchant
+  writes alongside `revision`. `updatedAt` moves on every buyer answer, so a busy
+  survey always read "Updated today".
+- **An unknown billing cycle is `null`** on the Plans page (Shopify unreachable
+  or no token). Guessing "monthly" offered a yearly subscriber a switch to yearly.

@@ -1152,7 +1152,7 @@
     "keep_title": "保留多长时间",
     "keep_body": "回答和订单信息会在 {{months}} 个月后删除。Webhook 记录会在 {{days}} 天后删除。卸载 SourceTrac 后，Shopify 会在 48 小时后要求我们删除您店铺的全部数据，我们会照做。",
     "rights_title": "买家的权利",
-    "rights_body": "买家向您提出请求，而不是向 SourceTrac。当买家向 Shopify 请求获取或删除自己的数据时，Shopify 会将请求转给 SourceTrac。我们会自动删除该买家的回答，并在“设置”页面列出该请求。",
+    "rights_body": "买家向您提出请求，而不是向 SourceTrac，Shopify 会把请求转给我们。买家索取其数据时，我们会找出其回答，并在“设置”页面列出该请求。买家要求删除时，我们会自动删除其回答。",
     "contact_title": "有疑问",
     "contact_body": "关于本页的任何内容，请发邮件至 {{email}}。",
     "role_title": "用于您的隐私政策",
