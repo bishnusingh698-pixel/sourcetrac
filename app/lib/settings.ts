@@ -366,6 +366,19 @@ export const orderIdSchema = z
   .transform(normaliseOrderId)
   .pipe(z.string().regex(/^\d+$/, "orderId must be numeric"));
 
+/**
+ * A survey id as a merchant pastes it into a checkout block's "Survey ID"
+ * setting: trimmed and lower-cased. Anything that is not an id (a survey name,
+ * a stray character) parses to `undefined` instead of failing the request, so
+ * a bad setting falls back to the normal pick rather than hiding the survey.
+ */
+export const surveyIdSchema = z
+  .string()
+  .transform((value) => value.trim().toLowerCase())
+  .pipe(z.string().regex(/^[a-z0-9]{8,40}$/))
+  .optional()
+  .catch(undefined);
+
 /** Options from `label.<i>` / `emoji.<i>` fields, in index order. */
 export function readIndexedOptions(form: FormData): Array<{ label: string; emoji: string }> {
   const indices = new Set<number>();

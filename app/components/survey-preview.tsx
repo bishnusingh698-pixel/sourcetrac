@@ -22,7 +22,7 @@ export function SurveyPreview({ survey, t }: { survey: EditorSurvey; t: TFn }) {
 
   return (
     <s-stack gap="small">
-      <div className="st-preview" aria-label={t("preview.aria")}>
+      <div className="st-preview" role="group" aria-label={t("preview.aria")}>
         <s-stack gap="base">
           {survey.design.showTitle && survey.title ? <s-text type="strong">{survey.title}</s-text> : null}
           {survey.intro ? <s-text color="subdued">{survey.intro}</s-text> : null}

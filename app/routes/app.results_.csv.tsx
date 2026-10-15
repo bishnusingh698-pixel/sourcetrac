@@ -17,6 +17,9 @@ import { ensureShop } from "~/lib/provision.server";
 import { startOrderBackfill } from "~/lib/order-backfill.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
+import { answerParts } from "~/lib/answer-text";
+import { createTranslator } from "~/lib/i18n";
+import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
 
 /**
  * Results CSV download (`/app/results/csv?survey=<id>`).
@@ -54,9 +57,14 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const row = await getSurveyRow(shop.id, selectedId);
   const questions = row?.questions ?? [];
   const labels = new Map<string, string>();
+  const types = new Map<string, string>();
   for (const question of questions) {
+    types.set(question.id, question.type);
     for (const option of question.options) labels.set(option.id, option.label);
   }
+  // Fixed Yes/No and satisfaction labels in the merchant's language, as on
+  // the Responses page; the merchant's own option labels are already theirs.
+  const t = createTranslator(resolveAdminLanguage(request, shop.language, shop.adminLocale));
 
   const taken = new Set<string>();
   const questionColumns = questions.map((question, index) => ({
@@ -74,12 +82,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
 
     const answers: Record<string, string> = {};
     for (const answer of response.answers) {
-      const parts: string[] = [];
-      for (const optionId of answer.optionIds) parts.push(labels.get(optionId) ?? optionId);
-      if (answer.otherText) parts.push(answer.otherText);
-      if (typeof answer.numberValue === "number") parts.push(String(answer.numberValue));
-      if (answer.textValue) parts.push(answer.textValue);
-      answers[answer.questionId] = parts.join("; ");
+      answers[answer.questionId] = answerParts(answer, types.get(answer.questionId), labels, t).join("; ");
     }
 
     return {

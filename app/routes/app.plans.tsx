@@ -23,6 +23,7 @@ import {
   planFor,
   PLANS,
   YEARLY_DISCOUNT_PERCENT,
+  yearlySavingMinor,
   type BillingCycle,
 } from "~/lib/plans";
 import { formatMoney } from "~/lib/money";
@@ -82,7 +83,9 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   let activePlan = effectivePlan(shop);
   let synced = false;
   // The live charge's cycle, when Shopify answered, so the page opens on it.
-  let activeCycle: BillingCycle = "monthly";
+  // Null when Shopify could not be asked: guessing "monthly" told a yearly
+  // subscriber they paid monthly and offered to switch them to yearly.
+  let activeCycle: BillingCycle | null = null;
   if (session.accessToken) {
     try {
       const subscriptions = await fetchActiveSubscriptions({
@@ -137,8 +140,14 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     cap: evaluateCap(activePlan, used),
     activeCycle,
     // The cycle the cards show: the URL's choice, else the merchant's own.
-    cycle: isBillingCycle(requestedCycle) ? requestedCycle : activeCycle,
+    cycle: isBillingCycle(requestedCycle) ? requestedCycle : (activeCycle ?? "monthly"),
     discountPercent: YEARLY_DISCOUNT_PERCENT,
+    // The biggest yearly saving, for the badge on the Monthly / Yearly switch.
+    maxYearlySaving: formatMoney(
+      Math.max(...PLAN_ORDER.map((key) => yearlySavingMinor(PLANS[key]))),
+      PLANS.scale.currencyCode,
+      locale,
+    ),
     plans: PLAN_ORDER.map((key) => {
       const plan = PLANS[key];
       const free = plan.priceMinor === 0;
@@ -152,6 +161,9 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
         yearlyPerMonth: free
           ? null
           : formatMoney(Math.floor(plan.yearlyPriceMinor / 12), plan.currencyCode, locale),
+        // Twelve monthly payments minus the yearly price: the exact amount a
+        // year of yearly billing saves, derived rather than typed in.
+        yearlySaving: free ? null : formatMoney(yearlySavingMinor(plan), plan.currencyCode, locale),
         features: plan.features,
       };
     }),
@@ -300,7 +312,7 @@ export default function Plans() {
               </s-text>
               <s-stack direction="inline" gap="small" alignItems="center">
                 <s-heading>{currentName}</s-heading>
-                {current.key === "free" ? null : (
+                {current.key === "free" || data.activeCycle === null ? null : (
                   <s-badge tone="success">
                     {data.activeCycle === "yearly" ? t("plans.billed_yearly") : t("plans.billed_monthly")}
                   </s-badge>
@@ -336,14 +348,17 @@ export default function Plans() {
             {t("plans.cycle_yearly")}
           </s-button>
         </s-button-group>
-        <s-badge tone="success">{t("plans.save_percent", { percent: data.discountPercent })}</s-badge>
+        <s-badge tone="success">{t("plans.save_up_to", { amount: data.maxYearlySaving })}</s-badge>
       </s-stack>
 
       <s-grid gridTemplateColumns="repeat(auto-fit, minmax(min(100%, 15rem), 1fr))" gap="base">
         {data.plans.map((plan) => {
-          const isCurrent = plan.key === data.activePlan && (plan.key === "free" || data.activeCycle === data.cycle);
+          // An unknown cycle still marks the plan as current on both views,
+          // so the page never offers to "switch" a merchant to what they have.
+          const isCurrent =
+            plan.key === data.activePlan &&
+            (plan.key === "free" || data.activeCycle === null || data.activeCycle === data.cycle);
           const recommended = plan.key === "growth";
-          const price = plan.monthly === null ? t("plans.free") : yearly ? plan.yearly : plan.monthly;
           const name = t(`plans.${plan.key}`);
           return (
             <s-box
@@ -368,18 +383,7 @@ export default function Plans() {
                   <s-text color="subdued">{t(`plans.best_for_${plan.key}`)}</s-text>
                 </s-stack>
 
-                <s-stack gap="small-200">
-                  <s-text fontSize="large-100" fontWeight="bold" fontVariantNumeric="tabular-nums">
-                    {price}
-                  </s-text>
-                  <s-text color="subdued" fontSize="small">
-                    {plan.monthly === null
-                      ? t("plans.forever")
-                      : yearly
-                        ? t("plans.per_year_equivalent", { price: plan.yearlyPerMonth ?? "" })
-                        : t("plans.per_month")}
-                  </s-text>
-                </s-stack>
+                <PlanPrice plan={plan} yearly={yearly} percent={data.discountPercent} t={t} />
 
                 <s-divider />
 
@@ -436,6 +440,17 @@ export default function Plans() {
         })}
       </s-grid>
 
+      <s-stack direction="inline" gap="base" alignItems="center">
+        {(["reassure_cancel", "reassure_shopify", "reassure_data"] as const).map((key) => (
+          <s-stack key={key} direction="inline" gap="small-200" alignItems="center">
+            <s-icon type="check" tone="success" size="small" />
+            <s-text color="subdued" fontSize="small">
+              {t(`plans.${key}`)}
+            </s-text>
+          </s-stack>
+        ))}
+      </s-stack>
+
       <Panel title={t("plans.billing_title")}>
         <s-stack gap="small">
           <s-text>{t("plans.billing_body")}</s-text>
@@ -445,6 +460,84 @@ export default function Plans() {
     </s-stack>
   );
 }
+type PlanCard = ReturnType<typeof useLoaderData<typeof loader>>["plans"][number];
+
+/**
+ * The price block of a plan card.
+ *
+ * Yearly leads with what it costs per month, next to the monthly price struck
+ * through, so the two cycles compare like for like; the amount actually billed
+ * once a year and the saving in money follow, because a merchant decides on
+ * the charge they will see on their invoice, not on a percentage. Monthly shows
+ * the yearly option as one quiet line, so the saving is visible without
+ * switching.
+ */
+function PlanPrice({
+  plan,
+  yearly,
+  percent,
+  t,
+}: {
+  plan: PlanCard;
+  yearly: boolean;
+  percent: number;
+  t: ReturnType<typeof useAdminI18n>["t"];
+}) {
+  if (plan.monthly === null) {
+    return (
+      <s-stack gap="small-200">
+        <s-text fontSize="large-100" fontWeight="bold">
+          {t("plans.free")}
+        </s-text>
+        <s-text color="subdued" fontSize="small">
+          {t("plans.forever")}
+        </s-text>
+      </s-stack>
+    );
+  }
+
+  if (!yearly) {
+    return (
+      <s-stack gap="small-200">
+        <s-stack direction="inline" gap="small-200" alignItems="baseline">
+          <s-text fontSize="large-100" fontWeight="bold" fontVariantNumeric="tabular-nums">
+            {plan.monthly}
+          </s-text>
+          <s-text color="subdued">{t("plans.per_month")}</s-text>
+        </s-stack>
+        <s-text color="subdued" fontSize="small">
+          {t("plans.yearly_nudge", { price: plan.yearlyPerMonth ?? "", amount: plan.yearlySaving ?? "" })}
+        </s-text>
+      </s-stack>
+    );
+  }
+
+  return (
+    <s-stack gap="small-200">
+      <s-stack direction="inline" gap="small-200" alignItems="baseline">
+        <s-text fontSize="large-100" fontWeight="bold" fontVariantNumeric="tabular-nums">
+          {plan.yearlyPerMonth}
+        </s-text>
+        <s-text color="subdued">{t("plans.per_month")}</s-text>
+        <s-text color="subdued" fontVariantNumeric="tabular-nums">
+          <del className="st-was-price">
+            <span className="st-visually-hidden">{t("plans.was_price")} </span>
+            {plan.monthly}
+          </del>
+        </s-text>
+      </s-stack>
+      <s-text color="subdued" fontSize="small">
+        {t("plans.billed_yearly_total", { price: plan.yearly ?? "" })}
+      </s-text>
+      <s-stack direction="inline" gap="small">
+        <s-badge tone="success" icon="discount">
+          {t("plans.save_amount", { amount: plan.yearlySaving ?? "", percent })}
+        </s-badge>
+      </s-stack>
+    </s-stack>
+  );
+}
+
 /**
  * A cancel/downgrade control that asks before submitting.
  *

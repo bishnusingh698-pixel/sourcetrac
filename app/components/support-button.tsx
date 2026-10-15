@@ -158,7 +158,7 @@ export function SupportContactPanel({
           plain element so a long address wraps instead of overflowing. */}
       <s-box padding="small" border="base" borderRadius="base" background="subdued">
         <s-grid gridTemplateColumns="minmax(0, 1fr) auto" gap="small" alignItems="center">
-          <div className="st-wrap">
+          <div className="st-wrap-anywhere">
             <s-text type="address">{SUPPORT_EMAIL}</s-text>
           </div>
           <s-button type="button" variant="tertiary" icon="clipboard" onClick={copy}>

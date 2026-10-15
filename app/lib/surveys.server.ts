@@ -397,7 +397,8 @@ export async function listSurveys(shopId: string): Promise<SurveyListItem[]> {
     placements: parseJson<Placement[]>(row.placements, []),
     questionCount: row._count.questions,
     responseCount: row.responseCount,
-    updatedAt: row.updatedAt.toISOString(),
+    // The merchant's last change, not the last buyer answer.
+    updatedAt: row.editedAt.toISOString(),
   }));
 }
 
@@ -774,7 +775,7 @@ async function claimRevision(
 ): Promise<void> {
   const result = await client.survey.updateMany({
     where: { id: surveyId, revision },
-    data: { ...data, revision: { increment: 1 } },
+    data: { ...data, revision: { increment: 1 }, editedAt: new Date() },
   });
   if (result.count === 0) throw new ConflictError(undefined, { expected: revision });
 }
@@ -1172,7 +1173,7 @@ export async function setSurveyStatus(shopId: string, surveyId: string, status: 
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`survey-create:${shopId}`}))`;
       await assertActiveLimit(tx, shopId, surveyId);
     }
-    await tx.survey.update({ where: { id: surveyId }, data: { status, revision: { increment: 1 } } });
+    await tx.survey.update({ where: { id: surveyId }, data: { status, revision: { increment: 1 }, editedAt: new Date() } });
   });
   await invalidateConfig(shopId);
 }

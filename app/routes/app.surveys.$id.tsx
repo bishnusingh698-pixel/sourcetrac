@@ -14,6 +14,7 @@ import {
 import { Banner } from "~/components/admin-ui";
 import { FrameText, QuestionList, errorId, type TFn } from "~/components/survey-editor";
 import { SurveyPreview } from "~/components/survey-preview";
+import { SurveyIdBox } from "~/components/survey-id-box";
 import { AdvancedTargeting, Audience, Automation, Languages, ShopifyActions } from "~/components/survey-settings-panels";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
@@ -441,6 +442,7 @@ export default function SurveyEditorPage() {
                 >
                   {t("editor.open_checkout_editor")}
                 </s-button>
+                <SurveyIdBox surveyId={survey.id} t={t} />
               </s-stack>
             </s-section>
 

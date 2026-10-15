@@ -20,6 +20,15 @@
     "satisfaction_neutral": "一般",
     "satisfaction_satisfied": "满意",
     "satisfaction_very_satisfied": "非常满意",
-    "previewTitle": "简短问题"
+    "previewTitle": "简短问题",
+    "editorShowing": "SourceTrac 问卷：{{name}}",
+    "editorDraft": "草稿。在 SourceTrac 中发布前，买家看不到它。",
+    "editorPaused": "已暂停。在 SourceTrac 中恢复前，买家看不到它。",
+    "editorNotFound": "没有问卷使用此 ID。请从 SourceTrac 中的问卷重新复制 ID。",
+    "editorNoneLive": "此页面还没有已发布的问卷。在 SourceTrac 中发布问卷之前，买家在这里看不到任何内容。",
+    "editorUnavailable": "无法在编辑器中加载您的问卷，因此这里显示的是示例。买家仍会看到您在 SourceTrac 中设置的问卷。",
+    "editorPinnedNote": "预览。编辑器中不会发送任何内容。定向规则在真实订单上生效。",
+    "editorPriorityNote": "预览。此区块显示优先级最高的已发布问卷。如需指定问卷，请将其问卷 ID 粘贴到此区块的设置中。",
+    "editorOtherPage": "此问卷未设置在此页面显示。请在 SourceTrac 的“显示位置”中开启此页面。"
   }
 }

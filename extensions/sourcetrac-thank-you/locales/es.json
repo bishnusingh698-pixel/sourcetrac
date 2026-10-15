@@ -20,6 +20,15 @@
     "satisfaction_neutral": "Neutral",
     "satisfaction_satisfied": "Satisfecho",
     "satisfaction_very_satisfied": "Muy satisfecho",
-    "previewTitle": "Pregunta rápida"
+    "previewTitle": "Pregunta rápida",
+    "editorShowing": "Encuesta de SourceTrac: {{name}}",
+    "editorDraft": "Borrador. Los compradores no la verán hasta que la publiques en SourceTrac.",
+    "editorPaused": "En pausa. Los compradores no la verán hasta que la reanudes en SourceTrac.",
+    "editorNotFound": "Ninguna encuesta tiene este ID. Vuelve a copiar el ID desde la encuesta en SourceTrac.",
+    "editorNoneLive": "Todavía no hay ninguna encuesta activa en esta página. Los compradores no verán nada aquí hasta que una encuesta esté activa en SourceTrac.",
+    "editorUnavailable": "No se pudo cargar tu encuesta en el editor, así que esto es un ejemplo. Los compradores siguen viendo la encuesta que configuraste en SourceTrac.",
+    "editorPinnedNote": "Vista previa. Desde el editor no se envía nada. Las reglas de segmentación se aplican en pedidos reales.",
+    "editorPriorityNote": "Vista previa. Este bloque muestra tu encuesta activa de mayor prioridad. Para elegir una, pega su ID de encuesta en la configuración de este bloque.",
+    "editorOtherPage": "Esta encuesta no está configurada para mostrarse en esta página. Activa esta página en «Dónde se muestra» en SourceTrac."
   }
 }

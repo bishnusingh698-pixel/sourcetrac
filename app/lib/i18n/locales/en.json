@@ -123,7 +123,7 @@
     "sync_flags_on": "Preview features are switched on for this store.",
     "privacy_title": "Privacy",
     "privacy_description": "What SourceTrac stores, and the requests we have handled.",
-    "privacy_body": "SourceTrac stores only an order ID, the answer, the channel and a timestamp. No customer name, email, phone or address is ever stored.",
+    "privacy_body": "SourceTrac stores the answers, the order (its number, total, currency and status) and a few details about it: the buyer's checkout language and country, the products and whether it was their first order. It never stores buyer names, emails, phone numbers, addresses or payment details.",
     "privacy_requests_title": "Recent data requests",
     "remove_option": "Remove {{label}}",
     "sync_failed_one": "{{count}} Shopify write could not be completed after several tries. Last error: {{error}}",
@@ -167,7 +167,7 @@
     "empty_body": "You have no answers to export yet. Once buyers start answering, they will appear here.",
     "count_body_one": "This file will contain all {{count}} of your answers.",
     "count_body_other": "This file will contain all {{count}} of your answers.",
-    "columns_note": "Columns: {{columns}}. There is no customer name, email or address in the file.",
+    "columns_note": "Columns: {{columns}}.",
     "download": "Download CSV",
     "preview_title": "Preview",
     "preview_description": "Your {{count}} most recent answers, exactly as they will export.",
@@ -245,7 +245,15 @@
     "feature_follow_ups": "Follow-up questions, and surveys for first-time or returning buyers",
     "feature_targeting": "Show a survey by order value, country, share of buyers or dates, and stop after a set number of answers",
     "feature_automation": "Stop a survey on its own once the answer is clear, and rotate several surveys",
-    "feature_unlimited_surveys": "Unlimited live surveys"
+    "feature_unlimited_surveys": "Unlimited live surveys",
+    "save_up_to": "Save up to {{amount}} a year",
+    "yearly_nudge": "Or {{price}} a month with yearly billing, saving {{amount}} a year",
+    "was_price": "Regular price",
+    "billed_yearly_total": "Billed {{price}} once a year",
+    "save_amount": "You save {{amount}} a year ({{percent}}%)",
+    "reassure_cancel": "Change or cancel any time on this page",
+    "reassure_shopify": "Billed on your Shopify invoice",
+    "reassure_data": "Your answers stay if you downgrade"
   },
   "help": {
     "title": "Help",
@@ -256,7 +264,7 @@
     "faq_title": "Frequently asked",
     "contact_tip": "Before writing, the fastest fix for a missing survey is usually the checkout editor check in the first two answers above.",
     "q_create": "How do I create my survey?",
-    "a_create": "Your survey is created for you when you install SourceTrac, with a ready-made question and six answer options. Change the question and options on the Survey page. Then make it visible to buyers: in Shopify admin go to Settings › Checkout, click Customize, choose the Thank you page from the page menu at the top and add the SourceTrac app block. Do the same for the Order status page, then save.",
+    "a_create": "Go to Surveys and choose New survey. Pick a template or start from scratch, then edit the questions and go live. To show it to buyers, in Shopify admin go to Settings › Checkout, click Customize, choose the Thank you page from the page menu at the top and add the SourceTrac app block. Do the same for the Order status page, then save.",
     "q_not_showing": "Why is the question not showing on my thank-you page?",
     "a_not_showing": "Three things are worth checking. First, the SourceTrac block must be added to the thank-you page in your checkout editor (Settings › Checkout › Customize) and set to visible. Second, Shopify does not offer the thank-you and order status pages on the Starter plan — check your plan in Shopify admin. Third, if you just installed, it can take a minute for the first order to arrive.",
     "q_both_pages": "Why does a buyer see the question on both the thank-you and order status page?",
@@ -268,13 +276,13 @@
     "q_limit": "I reached my free limit. Did I lose my answers?",
     "a_limit": "No. Answers keep being collected, stored and counted in your dashboard totals. Nothing is hidden. Upgrading only removes the monthly limit.",
     "q_privacy": "Does SourceTrac ask for anything about my customers?",
-    "a_privacy": "No. We store only the order ID, the channel the buyer picked, and the time. We never collect names, emails or addresses, and there is no customer data in your CSV export.",
+    "a_privacy": "SourceTrac stores the answers, the order number and total, and a few details: the buyer's checkout language and country, the products and whether it was their first order. It never collects names, emails, phone numbers or addresses. Text buyers type is stored as written, so ask questions that don't invite personal details.",
     "q_change": "Can I change the question after going live?",
-    "a_change": "Yes. Change the wording or options on the Survey page at any time. The new version applies to the next order. Answers already collected keep their original channel.",
+    "a_change": "Yes. Open the survey from Surveys, change it and save. A live survey updates from the next order. Answers already collected stay as they were.",
     "q_cancel": "How do I cancel?",
     "a_cancel": "Cancel from the Plans page. Your survey keeps working on the Free plan with {{cap}} responses a month, and nothing is deleted.",
     "q_multiple": "Can I run more than one survey?",
-    "a_multiple": "Yes. Open Surveys to create as many as you need, each on its own thank-you or order-status block. A thank-you page shows one survey at a time, chosen by priority.",
+    "a_multiple": "Yes. Free has 1 live survey, Growth 10 and Scale no limit. Create them from Surveys. A thank-you page shows one survey at a time, chosen by priority.",
     "q_question_types": "What kinds of question can I ask?",
     "a_question_types": "Multiple choice, a single choice, a rating, a scale from 0 to 10, yes/no, and free text. You can show a question only when an earlier answer matches, and show questions one at a time on a phone.",
     "q_sync": "Why is Shopify sync not running?",
@@ -524,7 +532,11 @@
     "validation_plan_shopify_actions": "Tags, metafields and Shopify Flow need the Scale plan.",
     "validation_plan_auto_stop": "Auto-stop needs the Scale plan.",
     "validation_plan_rotation": "Survey rotation needs the Scale plan.",
-    "validation_template_plan_locked": "This template needs a paid plan."
+    "validation_template_plan_locked": "This template needs a paid plan.",
+    "validation_no_placements": "Choose where the survey shows before you go live.",
+    "validation_not_live": "Only a live survey can be paused.",
+    "validation_no_draft": "There are no changes to publish.",
+    "validation_too_many_surveys": "You have reached the most surveys a store can have. Delete one you no longer need, then try again."
   },
   "templates": {
     "how_did_you_hear": {
@@ -601,7 +613,19 @@
     "filter_product": "Product",
     "multi_credit_note": "An answer with several choices counts its order under each one, so these amounts can add up to more than the total.",
     "capped_note": "Based on the newest {{limit}} answers.",
-    "download_failed": "The download did not start. Please try again in a moment."
+    "download_failed": "The download did not start. Please try again in a moment.",
+    "score_nps": "Net Promoter Score (NPS)",
+    "score_nps_help": "Percent of promoters minus percent of detractors, from −100 to +100.",
+    "score_promoters": "Promoters (9–10)",
+    "score_passives": "Passives (7–8)",
+    "score_detractors": "Detractors (0–6)",
+    "score_csat": "Customer satisfaction (CSAT)",
+    "score_csat_help": "Share of answers that were 4 or 5 out of 5.",
+    "score_average": "Average {{average}} out of 5",
+    "score_based_on_one": "Based on {{count}} answer.",
+    "score_based_on_other": "Based on {{count}} answers.",
+    "score_share": "{{percent}}% ({{count}})",
+    "score_share_percent": "{{percent}}%"
   },
   "responses": {
     "title": "Responses",
@@ -947,10 +971,11 @@
     "next_step": "Next step",
     "start_with": "Start with “{{name}}”",
     "view": "View",
-    "reliable_ideas": "Your {{name}} results are reliable. See ideas to try.",
+    "reliable_ideas": "Your {{name}} results are reliable. See what buyers told you.",
     "unpublished": "{{name}} has unpublished changes. Review and publish.",
     "open_report": "Open channel report",
-    "do_it": "Go"
+    "do_it": "Go",
+    "see_results": "See the latest answers to {{name}}."
   },
   "support": {
     "button_label": "Email support",
@@ -1103,7 +1128,11 @@
     "languages_help_one": "Buyers see the survey in their checkout language. {{count}} language has a translation.",
     "languages_help_other": "Buyers see the survey in their checkout language. {{count}} languages have a translation.",
     "language": "Language",
-    "languages_frame": "Title, intro and buttons"
+    "languages_frame": "Title, intro and buttons",
+    "survey_id_label": "Survey ID",
+    "survey_id_help": "Running more than one survey? In the checkout editor, select the SourceTrac survey block and paste this ID into its Survey ID setting. That block then shows only this survey, and the editor previews it. Leave the setting empty to show your highest-priority live survey.",
+    "survey_id_copied": "Survey ID copied",
+    "survey_id_copy_failed": "Couldn't copy. Select the ID and copy it."
   },
   "preview": {
     "title": "Preview",
@@ -1118,5 +1147,34 @@
     "follow_up_range": "Asked if question {{n}} scores {{min}} to {{max}}",
     "other": "Other (buyer types an answer)",
     "dropdown": "Choose an answer"
+  },
+  "privacy": {
+    "notice": "SourceTrac keeps survey answers and order details for {{months}} months. It never stores buyer names, emails, phone numbers, addresses or payment details.",
+    "notice_link": "See what SourceTrac stores",
+    "title": "Privacy and data",
+    "intro": "SourceTrac collects only what it needs to show which channels bring you sales. Here is all of it, in plain words.",
+    "collect_title": "What SourceTrac stores for each answer",
+    "collect_order": "The order: its ID, order number, total, currency and status (paid, refunded, cancelled or test)",
+    "collect_answers": "The answers: the options the buyer picked, any score they gave and any text they typed",
+    "collect_context": "Context: when they answered, which page it was on, their checkout language and country, the products in the order, and whether it was their first order",
+    "collect_store": "About your store: your shop domain and the Shopify session the app needs to run",
+    "text_warning": "Typed answers are stored exactly as the buyer wrote them. Ask questions that don't invite personal details such as names or emails.",
+    "never_title": "What SourceTrac never stores",
+    "never_body": "Buyer names, email addresses, phone numbers, postal addresses and payment details. SourceTrac does not ask Shopify for them.",
+    "why_title": "Why",
+    "why_body": "Only to show you which channels and answers bring in orders and revenue. The data is not sold, shared with advertisers or used to profile buyers. It leaves SourceTrac only when you download a CSV, or when you turn on Shopify actions, which write answers to your own orders and customers in Shopify.",
+    "who_title": "Who can see it and where it is kept",
+    "who_body": "You and the staff you allow to use the app. The app runs on Render and the database is hosted by Neon. Data is sent over encrypted connections, and the Shopify access token is encrypted when stored.",
+    "keep_title": "How long it is kept",
+    "keep_body": "Answers and order details are deleted after {{months}} months. Webhook records are deleted after {{days}} days. When you uninstall SourceTrac, Shopify asks us to delete all of your store's data 48 hours later, and we do.",
+    "rights_title": "Buyers' rights",
+    "rights_body": "Buyers ask you, not SourceTrac, and Shopify forwards their requests to us. When a buyer asks for their data, we look up their answers and list the request on the Settings page. When a buyer asks to be erased, we delete their answers automatically.",
+    "contact_title": "Questions",
+    "contact_body": "Write to {{email}} about anything on this page.",
+    "role_title": "For your privacy policy",
+    "role_body": "You decide what your survey asks, so for your buyers' data you are the controller and SourceTrac processes it for you. Mention the survey in your store's privacy policy. You can adapt this text:",
+    "policy_text": "After checkout we may ask you a short optional survey, such as how you heard about us. Your answers are stored with your order number by our survey provider, SourceTrac, for up to {{months}} months, and are used only to understand which channels bring us customers. They are never sold or used for advertising.",
+    "actions_notice": "Shopify actions copy answers into your Shopify store as order tags, customer tags or customer metafields. They then follow Shopify's rules for your store data, not SourceTrac's deletion schedule.",
+    "export_notice": "The file contains order numbers, answers and order totals, and any text buyers typed. Keep it as safely as your other store records."
   }
 }

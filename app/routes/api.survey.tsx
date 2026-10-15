@@ -1,7 +1,7 @@
 import { data } from "react-router";
 import { z } from "zod";
 
-import { orderIdSchema } from "~/lib/settings";
+import { orderIdSchema, surveyIdSchema } from "~/lib/settings";
 import { toResponse } from "~/lib/http.server";
 import { serialiseError, ValidationError } from "~/lib/errors";
 import { logger } from "~/lib/logger";
@@ -41,6 +41,8 @@ const querySchema = z.object({
   isFirstOrder: z.enum(["0", "1"]).optional(),
   /** ISO 3166-1 alpha-2, from the checkout/customer-account localization API. */
   country: z.string().length(2).optional(),
+  /** The survey this block is pinned to, from the block's "Survey ID" setting. */
+  surveyId: surveyIdSchema,
 });
 
 export const loader = async ({ request }: { request: Request }) => {
@@ -59,6 +61,7 @@ export const loader = async ({ request }: { request: Request }) => {
       paymentTypes: url.searchParams.get("paymentTypes") ?? undefined,
       isFirstOrder: url.searchParams.get("isFirstOrder") ?? undefined,
       country: url.searchParams.get("country") ?? undefined,
+      surveyId: url.searchParams.get("surveyId") || undefined,
     });
 
     if (!parsed.success) {
@@ -133,15 +136,30 @@ export const loader = async ({ request }: { request: Request }) => {
         responseCount: liveCounts.get(candidate.id) ?? candidate.responseCount,
       });
 
-    // T11: the highest-priority match wins, unless it is in the rotation group,
-    // in which case one member is chosen by a deterministic, weighted pick so
-    // the same order sees the same survey on both surfaces.
-    const ranked = config.surveys.filter(matches);
-    const top = ranked[0] ?? null;
-    let survey = top;
-    if (top && top.rotation) {
-      const group = rotationGroup(config.surveys, placement, matches).sort((a, b) => b.priority - a.priority);
-      survey = pickFromRotation(group, orderId) ?? top;
+    // A block pinned to one survey shows that survey or nothing: a merchant who
+    // paused it does not want another survey appearing in its place. An id that
+    // names no survey at all (deleted, or mistyped) falls back to the normal
+    // pick, so a stale setting never leaves the page without a survey.
+    const pinnedId = parsed.data.surveyId ?? null;
+    const pinned = pinnedId ? (config.surveys.find((candidate) => candidate.id === pinnedId) ?? null) : null;
+    const pinnedExists = pinnedId
+      ? pinned !== null || (await db.survey.count({ where: { id: pinnedId, shopId: shop.id } })) > 0
+      : false;
+
+    let survey: (typeof config.surveys)[number] | null;
+    if (pinnedExists) {
+      survey = pinned && matches(pinned) ? pinned : null;
+    } else {
+      // T11: the highest-priority match wins, unless it is in the rotation
+      // group, in which case one member is chosen by a deterministic, weighted
+      // pick so the same order sees the same survey on both surfaces.
+      const ranked = config.surveys.filter(matches);
+      const top = ranked[0] ?? null;
+      survey = top;
+      if (top && top.rotation) {
+        const group = rotationGroup(config.surveys, placement, matches).sort((a, b) => b.priority - a.priority);
+        survey = pickFromRotation(group, orderId) ?? top;
+      }
     }
 
     logger.info("survey_config_served_v2", {
@@ -150,6 +168,7 @@ export const loader = async ({ request }: { request: Request }) => {
       order_id: orderId,
       placement,
       matched: Boolean(survey),
+      pinned: pinnedExists,
       already_answered: alreadyAnswered,
     });
 

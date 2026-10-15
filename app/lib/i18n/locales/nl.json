@@ -123,7 +123,7 @@
     "sync_flags_on": "Previewfuncties zijn aan voor deze winkel.",
     "privacy_title": "Privacy",
     "privacy_description": "Wat SourceTrac bewaart en welke verzoeken we hebben afgehandeld.",
-    "privacy_body": "SourceTrac bewaart alleen een bestel-ID, het antwoord, het kanaal en een tijdstempel. Nooit een naam, e-mail, telefoonnummer of adres.",
+    "privacy_body": "SourceTrac bewaart de antwoorden, de bestelling (nummer, totaal, valuta en status) en een paar gegevens daarover: de checkouttaal en het land van de koper, de producten en of het de eerste bestelling was. Namen, e-mailadressen, telefoonnummers, adressen of betaalgegevens van kopers worden nooit bewaard.",
     "privacy_requests_title": "Recente gegevensverzoeken",
     "remove_option": "{{label}} verwijderen",
     "sync_failed_one": "{{count}} schrijfactie naar Shopify is na meerdere pogingen niet gelukt. Laatste fout: {{error}}",
@@ -167,7 +167,7 @@
     "empty_body": "Je hebt nog geen antwoorden om te exporteren. Zodra klanten beginnen te antwoorden, verschijnen ze hier.",
     "count_body_one": "Dit bestand bevat al je {{count}} antwoorden.",
     "count_body_other": "Dit bestand bevat al je {{count}} antwoorden.",
-    "columns_note": "Kolommen: {{columns}}. Het bestand bevat geen klantnaam, e-mailadres of adres.",
+    "columns_note": "Kolommen: {{columns}}.",
     "download": "CSV downloaden",
     "preview_title": "Voorbeeld",
     "preview_description": "Je {{count}} meest recente antwoorden, precies zoals ze worden geëxporteerd.",
@@ -245,7 +245,15 @@
     "feature_follow_ups": "Vervolgvragen, en enquêtes voor nieuwe of terugkerende kopers",
     "feature_targeting": "Toon een enquête op basis van orderwaarde, land, deel van de kopers of data, en stop na een vast aantal antwoorden",
     "feature_automation": "Stop een enquête vanzelf zodra het antwoord duidelijk is, en wissel af tussen meerdere enquêtes",
-    "feature_unlimited_surveys": "Onbeperkt aantal live enquêtes"
+    "feature_unlimited_surveys": "Onbeperkt aantal live enquêtes",
+    "save_up_to": "Bespaar tot {{amount}} per jaar",
+    "yearly_nudge": "Of {{price}} per maand met jaarlijkse facturering, je bespaart {{amount}} per jaar",
+    "was_price": "Normale prijs",
+    "billed_yearly_total": "Eén keer per jaar {{price}} gefactureerd",
+    "save_amount": "Je bespaart {{amount}} per jaar ({{percent}}%)",
+    "reassure_cancel": "Wijzig of zeg op wanneer je wilt via deze pagina",
+    "reassure_shopify": "Gefactureerd op je Shopify-factuur",
+    "reassure_data": "Je antwoorden blijven bewaard als je overstapt naar een lager abonnement"
   },
   "help": {
     "title": "Help",
@@ -256,7 +264,7 @@
     "faq_title": "Veelgestelde vragen",
     "contact_tip": "Voordat je schrijft: als de enquête ontbreekt, helpt meestal de controle in de checkout-editor uit de eerste twee antwoorden hierboven.",
     "q_create": "Hoe maak ik mijn enquête?",
-    "a_create": "Je enquête wordt automatisch aangemaakt wanneer je SourceTrac installeert, met een kant-en-klare vraag en zes antwoordopties. Pas de vraag en opties aan op de pagina Enquête. Om hem zichtbaar te maken voor kopers: ga in je Shopify-beheer naar Instellingen › Checkout, klik op Aanpassen, kies de bedankpagina in het paginamenu bovenaan en voeg het SourceTrac-appblok toe. Doe hetzelfde voor de pagina met bestelstatus en sla op.",
+    "a_create": "Ga naar Enquêtes en kies Nieuwe enquête. Kies een sjabloon of begin vanaf nul, pas de vragen aan en zet de enquête live. Om hem zichtbaar te maken voor kopers: ga in je Shopify-beheer naar Instellingen › Checkout, klik op Aanpassen, kies de bedankpagina in het paginamenu bovenaan en voeg het SourceTrac-appblok toe. Doe hetzelfde voor de pagina met bestelstatus en sla op.",
     "q_not_showing": "Waarom verschijnt de vraag niet op mijn bedankpagina?",
     "a_not_showing": "Controleer drie dingen. Ten eerste moet het SourceTrac-blok in je checkout-editor (Instellingen › Checkout › Aanpassen) aan de bedankpagina zijn toegevoegd en zichtbaar zijn. Ten tweede biedt Shopify de bedank- en pagina met bestelstatus niet aan in het Starter-abonnement — controleer je abonnement in je Shopify-beheer. Ten derde kan het na de installatie een minuut duren voordat de eerste bestelling binnenkomt.",
     "q_both_pages": "Waarom ziet een koper de vraag op zowel de bedankpagina als de pagina met bestelstatus?",
@@ -268,13 +276,13 @@
     "q_limit": "Ik heb mijn gratis limiet bereikt. Ben ik antwoorden kwijt?",
     "a_limit": "Nee. Antwoorden worden gewoon verzameld, opgeslagen en meegeteld in de totalen op je dashboard. Er wordt niets verborgen. Upgraden haalt alleen de maandelijkse limiet weg.",
     "q_privacy": "Vraagt SourceTrac iets over mijn klanten?",
-    "a_privacy": "Nee. We slaan alleen het order-ID, het gekozen kanaal en het tijdstip op. We verzamelen nooit namen, e-mailadressen of adressen, en je CSV-export bevat geen klantgegevens.",
+    "a_privacy": "SourceTrac bewaart de antwoorden, het bestelnummer en het totaal, en een paar gegevens: de checkouttaal en het land van de koper, de producten en of het de eerste bestelling was. Namen, e-mailadressen, telefoonnummers of adressen worden nooit verzameld. Tekst die kopers typen wordt bewaard zoals ingevoerd, dus stel vragen die niet uitnodigen tot persoonlijke gegevens.",
     "q_change": "Kan ik de vraag wijzigen nadat hij live staat?",
-    "a_change": "Ja. Wijzig de tekst of opties op elk moment op de pagina Enquête. De nieuwe versie geldt vanaf de volgende bestelling. Al verzamelde antwoorden houden hun oorspronkelijke kanaal.",
+    "a_change": "Ja. Open de enquête via Enquêtes, pas hem aan en sla op. Een live enquête wordt bijgewerkt vanaf de volgende bestelling. Antwoorden die al verzameld zijn, blijven zoals ze waren.",
     "q_cancel": "Hoe zeg ik op?",
     "a_cancel": "Zeg op via de pagina Abonnementen. Je enquête blijft werken op Gratis met {{cap}} antwoorden per maand, en er wordt niets verwijderd.",
     "q_multiple": "Kan ik meer dan één enquête hebben?",
-    "a_multiple": "Ja. Open Enquêtes om er zoveel te maken als je nodig hebt, elk op een eigen thank-you- of bestelstatusblok. Een thank-you-pagina toont één enquête, gekozen op prioriteit.",
+    "a_multiple": "Ja. Gratis heeft 1 live enquête, Groei 10 en Schaal geen limiet. Maak ze aan via Enquêtes. Een bedankpagina toont één enquête tegelijk, gekozen op prioriteit.",
     "q_question_types": "Welke soorten vragen kan ik stellen?",
     "a_question_types": "Meerkeuze, enkele keuze, beoordeling, schaal van 0 tot 10, ja/nee en vrije tekst. Je kunt een vraag alleen tonen als een eerder antwoord past, en ze op de telefoon één voor één tonen.",
     "q_sync": "Waarom loopt de Shopify-synchronisatie niet?",
@@ -578,7 +586,11 @@
     "validation_plan_shopify_actions": "Voor tags, metavelden en Shopify Flow heb je het abonnement Schaal nodig.",
     "validation_plan_auto_stop": "Voor automatisch stoppen heb je het abonnement Schaal nodig.",
     "validation_plan_rotation": "Voor het afwisselen van enquêtes heb je het abonnement Schaal nodig.",
-    "validation_template_plan_locked": "Voor deze sjabloon heb je een betaald abonnement nodig."
+    "validation_template_plan_locked": "Voor deze sjabloon heb je een betaald abonnement nodig.",
+    "validation_no_placements": "Kies waar de enquête verschijnt voordat je hem live zet.",
+    "validation_not_live": "Alleen een live enquête kan worden gepauzeerd.",
+    "validation_no_draft": "Er zijn geen wijzigingen om te publiceren.",
+    "validation_too_many_surveys": "Je hebt het maximumaantal enquêtes voor een winkel bereikt. Verwijder er een die je niet meer nodig hebt en probeer het opnieuw."
   },
   "templates": {
     "how_did_you_hear": {
@@ -655,7 +667,19 @@
     "filter_product": "Product",
     "multi_credit_note": "Een antwoord met meerdere keuzes telt de bestelling bij elke keuze mee, dus deze bedragen kunnen samen meer zijn dan het totaal.",
     "capped_note": "Gebaseerd op de nieuwste {{limit}} antwoorden.",
-    "download_failed": "De download is niet gestart. Probeer het zo opnieuw."
+    "download_failed": "De download is niet gestart. Probeer het zo opnieuw.",
+    "score_nps": "Net Promoter Score (NPS)",
+    "score_nps_help": "Percentage promotors min percentage criticasters, van −100 tot +100.",
+    "score_promoters": "Promotors (9–10)",
+    "score_passives": "Passieven (7–8)",
+    "score_detractors": "Criticasters (0–6)",
+    "score_csat": "Klanttevredenheid (CSAT)",
+    "score_csat_help": "Aandeel antwoorden met een 4 of 5 van de 5.",
+    "score_average": "Gemiddeld {{average}} van de 5",
+    "score_based_on_one": "Op basis van {{count}} antwoord.",
+    "score_based_on_other": "Op basis van {{count}} antwoorden.",
+    "score_share": "{{percent}}% ({{count}})",
+    "score_share_percent": "{{percent}}%"
   },
   "responses": {
     "title": "Antwoorden",
@@ -947,10 +971,11 @@
     "next_step": "Volgende stap",
     "start_with": "Begin met ‘{{name}}’",
     "view": "Bekijken",
-    "reliable_ideas": "Je resultaten voor {{name}} zijn betrouwbaar. Bekijk ideeën om te proberen.",
+    "reliable_ideas": "Je resultaten voor {{name}} zijn betrouwbaar. Bekijk wat kopers je vertelden.",
     "unpublished": "{{name}} heeft niet-gepubliceerde wijzigingen. Bekijk en publiceer.",
     "open_report": "Kanaalrapport openen",
-    "do_it": "Ga"
+    "do_it": "Ga",
+    "see_results": "Bekijk de nieuwste antwoorden op {{name}}."
   },
   "support": {
     "button_label": "E-mail support",
@@ -1103,7 +1128,11 @@
     "languages_help_one": "Kopers zien de enquête in de taal van hun checkout. {{count}} taal heeft een vertaling.",
     "languages_help_other": "Kopers zien de enquête in de taal van hun checkout. {{count}} talen hebben een vertaling.",
     "language": "Taal",
-    "languages_frame": "Titel, intro en knoppen"
+    "languages_frame": "Titel, intro en knoppen",
+    "survey_id_label": "Enquête-ID",
+    "survey_id_help": "Meer dan één enquête? Selecteer in de checkout-editor het blok 'SourceTrac survey' en plak deze ID in de instelling 'Survey ID'. Dat blok toont dan alleen deze enquête, en de editor toont het voorbeeld ervan. Laat de instelling leeg om je live enquête met de hoogste prioriteit te tonen.",
+    "survey_id_copied": "Enquête-ID gekopieerd",
+    "survey_id_copy_failed": "Kopiëren mislukt. Selecteer de ID en kopieer hem."
   },
   "preview": {
     "title": "Voorbeeld",
@@ -1118,5 +1147,34 @@
     "follow_up_range": "Gesteld als vraag {{n}} een score van {{min}} tot {{max}} heeft",
     "other": "Anders (koper typt een antwoord)",
     "dropdown": "Kies een antwoord"
+  },
+  "privacy": {
+    "notice": "SourceTrac bewaart enquêteantwoorden en bestelgegevens {{months}} maanden. Namen, e-mailadressen, telefoonnummers, adressen en betaalgegevens van kopers worden nooit opgeslagen.",
+    "notice_link": "Bekijk wat SourceTrac bewaart",
+    "title": "Privacy en gegevens",
+    "intro": "SourceTrac verzamelt alleen wat nodig is om je te laten zien welke kanalen verkopen opleveren. Hier is alles, in gewone taal.",
+    "collect_title": "Wat SourceTrac per antwoord bewaart",
+    "collect_order": "De bestelling: het ID, bestelnummer, totaal, valuta en de status (betaald, terugbetaald, geannuleerd of test)",
+    "collect_answers": "De antwoorden: de opties die de koper koos, een eventueel gegeven score en eventuele getypte tekst",
+    "collect_context": "Context: wanneer de koper antwoordde, op welke pagina, de taal en het land van de checkout, de producten in de bestelling en of het de eerste bestelling was",
+    "collect_store": "Over je winkel: je winkeldomein en de Shopify-sessie die de app nodig heeft om te werken",
+    "text_warning": "Getypte antwoorden worden precies opgeslagen zoals de koper ze schreef. Stel vragen die niet uitnodigen tot persoonlijke gegevens zoals namen of e-mailadressen.",
+    "never_title": "Wat SourceTrac nooit bewaart",
+    "never_body": "Namen, e-mailadressen, telefoonnummers, postadressen en betaalgegevens van kopers. SourceTrac vraagt Shopify er niet om.",
+    "why_title": "Waarom",
+    "why_body": "Alleen om je te laten zien welke kanalen en antwoorden bestellingen en omzet opleveren. De gegevens worden niet verkocht, niet gedeeld met adverteerders en niet gebruikt om profielen van kopers te maken. Ze verlaten SourceTrac alleen als je een CSV downloadt, of als je Shopify-acties aanzet, die antwoorden naar je eigen bestellingen en klanten in Shopify schrijven.",
+    "who_title": "Wie het kan zien en waar het wordt bewaard",
+    "who_body": "Jij en de medewerkers die je toegang geeft tot de app. De app draait op Render en de database wordt gehost door Neon. Gegevens gaan over versleutelde verbindingen en het Shopify-toegangstoken wordt versleuteld opgeslagen.",
+    "keep_title": "Hoe lang het wordt bewaard",
+    "keep_body": "Antwoorden en bestelgegevens worden na {{months}} maanden verwijderd. Webhookregistraties worden na {{days}} dagen verwijderd. Als je SourceTrac verwijdert, vraagt Shopify ons 48 uur later alle gegevens van je winkel te wissen, en dat doen we.",
+    "rights_title": "Rechten van kopers",
+    "rights_body": "Kopers vragen het aan jou, niet aan SourceTrac, en Shopify stuurt hun verzoeken naar ons door. Vraagt een koper om zijn gegevens, dan zoeken we zijn antwoorden op en tonen we het verzoek op de pagina Instellingen. Vraagt een koper om verwijdering, dan verwijderen we zijn antwoorden automatisch.",
+    "contact_title": "Vragen",
+    "contact_body": "Mail naar {{email}} over alles op deze pagina.",
+    "role_title": "Voor je privacybeleid",
+    "role_body": "Jij bepaalt wat je enquête vraagt, dus voor de gegevens van je kopers ben jij de verwerkingsverantwoordelijke en verwerkt SourceTrac ze voor jou. Noem de enquête in het privacybeleid van je winkel. Je kunt deze tekst aanpassen:",
+    "policy_text": "Na het afrekenen kunnen we je een korte, vrijwillige enquête voorleggen, bijvoorbeeld over hoe je over ons hebt gehoord. Je antwoorden worden samen met je bestelnummer maximaal {{months}} maanden bewaard door onze enquêteprovider, SourceTrac, en alleen gebruikt om te begrijpen via welke kanalen klanten bij ons komen. Ze worden nooit verkocht of gebruikt voor advertenties.",
+    "actions_notice": "Shopify-acties kopiëren antwoorden naar je Shopify-winkel als bestellingtags, klanttags of klantmetavelden. Daarna gelden de regels van Shopify voor je winkelgegevens, niet het verwijderschema van SourceTrac.",
+    "export_notice": "Het bestand bevat bestelnummers, antwoorden, besteltotalen en tekst die kopers hebben getypt. Bewaar het net zo veilig als je andere winkelgegevens."
   }
 }

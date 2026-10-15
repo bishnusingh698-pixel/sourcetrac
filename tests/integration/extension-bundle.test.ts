@@ -78,6 +78,12 @@ async function mount(
   surface: (typeof SURFACES)[number],
   editor: boolean,
   surveyOverride: Record<string, unknown> = {},
+  options: {
+    /** The block's merchant settings (`shopify.settings.value`). */
+    settings?: Record<string, unknown>;
+    /** What `/api/survey-preview` answers: a body, or `"fail"` for a 401. */
+    preview?: Record<string, unknown> | "fail";
+  } = {},
 ) {
   const win = new Window();
   (globalThis as { document: unknown }).document = win.document;
@@ -90,6 +96,13 @@ async function mount(
       body: typeof init.body === "string" ? init.body : null,
       auth: (init.headers as Record<string, string> | undefined)?.Authorization,
     });
+    if (String(url).includes("/api/survey-preview")) {
+      if (options.preview === "fail") return new Response("{}", { status: 401 });
+      return new Response(JSON.stringify(options.preview ?? {}), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     const body = String(url).includes("/api/survey?")
       ? {
           enabled: true,
@@ -164,6 +177,7 @@ async function mount(
       country: { value: { isoCode: "US" } },
     },
     extension: { editor: editor ? { type: "checkout" } : undefined },
+    settings: { value: options.settings ?? {} },
   };
   (globalThis as { shopify?: unknown }).shopify = host;
 
@@ -259,12 +273,82 @@ describe.each(SURFACES)("$name extension bundle", (surface) => {
     });
   });
 
-  it("shows a preview in the checkout editor and never calls the backend", async () => {
-    const page = await mount(await bundle(surface), surface, true);
+  it("shows the merchant's real survey in the checkout editor, and sends nothing", async () => {
+    const survey = {
+      id: "survey-7",
+      version: 3,
+      priority: 0,
+      placements: ["thank_you", "order_status"],
+      layout: "all",
+      title: "Delivery check",
+      intro: null,
+      buttonLabel: "Submit",
+      thankYouText: "Thanks!",
+      channelReportQuestionId: null,
+      targeting: {},
+      translations: {},
+      questions: [
+        {
+          id: "q1",
+          type: "single_choice",
+          text: "Did your order arrive on time?",
+          textMultiline: false,
+          required: true,
+          randomizeOptions: false,
+          allowOther: false,
+          options: [
+            { id: "on_time", label: "On time", isOther: false },
+            { id: "late", label: "Late", isOther: false },
+          ],
+        },
+      ],
+    };
+    const page = await mount(await bundle(surface), surface, true, {}, {
+      settings: { survey_id: "  SURVEY7abcdefgh " },
+      preview: { survey, name: "Delivery check", status: "draft", pinned: true, reason: null },
+    });
+    await page.settle();
 
-    expect(page.body().querySelector("s-heading")?.textContent).toBe("t:sourcetrac.previewTitle");
-    expect(page.body().querySelectorAll("s-clickable").length).toBeGreaterThan(0);
-    expect(page.calls).toEqual([]);
+    // The block's Survey ID setting picks the survey, cleaned to the id format.
+    const previewCall = page.calls.find((call) => call.url.includes("/api/survey-preview"));
+    expect(previewCall).toMatchObject({ method: "GET", auth: "Bearer token-123" });
+    const query = new URL(previewCall!.url, "https://example.test").searchParams;
+    expect(query.get("surveyId")).toBe("survey7abcdefgh");
+    expect(query.get("placement")).toBe(surface.name === "thank-you" ? "thank_you" : "order_status");
+
+    // The real survey, not the sample, with its status called out.
+    expect(page.body().textContent).toContain("Did your order arrive on time?");
+    expect(page.body().textContent).not.toContain("t:sourcetrac.previewQuestion");
+    expect(page.body().textContent).toContain("t:sourcetrac.editorShowing");
+    expect(page.body().textContent).toContain("t:sourcetrac.editorDraft");
+
+    // The merchant can click through it; nothing is ever posted.
+    const tiles = page.body().querySelectorAll("s-clickable");
+    expect(tiles).toHaveLength(2);
+    page.click(tiles[0] as unknown as Element);
+    await page.settle();
+    await page.settle();
+    expect(page.calls.filter((call) => call.method === "POST")).toHaveLength(0);
+    expect(page.calls.some((call) => call.url.includes("/api/survey?"))).toBe(false);
+  });
+
+  it("falls back to the sample, with a reason, when no survey can be shown in the editor", async () => {
+    const none = await mount(await bundle(surface), surface, true, {}, {
+      preview: { survey: null, name: null, status: null, pinned: false, reason: "none_live" },
+    });
+    await none.settle();
+    expect(none.body().querySelector("s-heading")?.textContent).toBe("t:sourcetrac.previewTitle");
+    expect(none.body().textContent).toContain("t:sourcetrac.editorNoneLive");
+    expect(none.calls.filter((call) => call.method === "POST")).toHaveLength(0);
+
+    // No setting: the request carries no survey id.
+    const call = none.calls.find((c) => c.url.includes("/api/survey-preview"));
+    expect(new URL(call!.url, "https://example.test").searchParams.has("surveyId")).toBe(false);
+
+    const failed = await mount(await bundle(surface), surface, true, {}, { preview: "fail" });
+    await failed.settle();
+    expect(failed.body().querySelector("s-heading")?.textContent).toBe("t:sourcetrac.previewTitle");
+    expect(failed.body().textContent).toContain("t:sourcetrac.editorUnavailable");
   });
 
   it("bundles no React", async () => {

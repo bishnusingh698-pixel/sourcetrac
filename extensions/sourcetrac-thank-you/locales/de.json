@@ -20,6 +20,15 @@
     "satisfaction_neutral": "Neutral",
     "satisfaction_satisfied": "Zufrieden",
     "satisfaction_very_satisfied": "Sehr zufrieden",
-    "previewTitle": "Kurze Frage"
+    "previewTitle": "Kurze Frage",
+    "editorShowing": "SourceTrac-Umfrage: {{name}}",
+    "editorDraft": "Entwurf. Käufer sehen ihn erst, wenn Sie ihn in SourceTrac live schalten.",
+    "editorPaused": "Pausiert. Käufer sehen sie erst, wenn Sie sie in SourceTrac fortsetzen.",
+    "editorNotFound": "Keine Umfrage hat diese ID. Kopieren Sie die ID erneut aus der Umfrage in SourceTrac.",
+    "editorNoneLive": "Auf dieser Seite ist noch keine Umfrage live. Käufer sehen hier nichts, bis eine Umfrage in SourceTrac live geht.",
+    "editorUnavailable": "Ihre Umfrage konnte im Editor nicht geladen werden, daher sehen Sie ein Beispiel. Käufer sehen trotzdem die Umfrage, die Sie in SourceTrac festgelegt haben.",
+    "editorPinnedNote": "Vorschau. Aus dem Editor wird nichts gesendet. Zielgruppenregeln gelten bei echten Bestellungen.",
+    "editorPriorityNote": "Vorschau. Dieser Block zeigt Ihre Live-Umfrage mit der höchsten Priorität. Um eine bestimmte zu wählen, fügen Sie ihre Umfrage-ID in die Einstellungen dieses Blocks ein.",
+    "editorOtherPage": "Diese Umfrage ist für diese Seite nicht aktiviert. Aktivieren Sie die Seite in SourceTrac unter „Wo sie erscheint“."
   }
 }

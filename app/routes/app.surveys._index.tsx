@@ -15,6 +15,7 @@ import {
   setSurveyStatus,
   type SurveyListItem,
 } from "~/lib/surveys.server";
+import { formatDay } from "~/lib/format-day";
 import { NotFoundError, ValidationError } from "~/lib/errors";
 
 /**
@@ -109,9 +110,16 @@ function StatusBadge({ status }: { status: SurveyListItem["status"] }) {
 export default function Surveys() {
   const { surveys, usage } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
-  const { t } = useAdminI18n();
+  const { t, locale } = useAdminI18n();
   const failureKey = actionData && actionData.ok === false ? `surveys.validation_${actionData.code}` : null;
-  const failureText = failureKey ? (t(failureKey) === failureKey ? actionData!.ok === false && actionData!.message : t(failureKey)) : null;
+  // `limit` fills `validation_plan_live_limit`; without it the banner read
+  // "Your plan allows {{limit}} live surveys".
+  const failureParams = { limit: usage.limit ?? "" };
+  const failureText = failureKey
+    ? t(failureKey) === failureKey
+      ? actionData!.ok === false && actionData!.message
+      : t(failureKey, failureParams)
+    : null;
 
   const createActions = (
     <s-button href="/app/surveys/library" variant="primary" icon="plus">
@@ -169,7 +177,7 @@ export default function Surveys() {
                           ? survey.placements.map((p) => t(`surveys.placement_${p}`)).join(", ")
                           : t("surveys.placement_none")}
                         {" · "}
-                        {t("surveys.updated_on", { date: survey.updatedAt.slice(0, 10) })}
+                        {t("surveys.updated_on", { date: formatDay(survey.updatedAt, locale) })}
                       </s-text>
                     </s-stack>
                     <s-stack gap="small-200" alignItems="end">

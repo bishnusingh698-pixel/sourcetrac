@@ -1293,3 +1293,69 @@ share by priority; nothing is paused. Sync is skipped below Scale in both
 `submitAnswer` and `loadSyncContext`. `tests/db-plan-gates.test.ts` and
 `tests/unit/survey-setup.test.ts` cover it. DB tests that need several live
 surveys put their shop on Scale first.
+
+## Privacy notice, yearly prices and layout (2026-10-15)
+
+- **Layered privacy notice.** `DataNotice` sits under `<Outlet />` in the shell
+  so every admin page carries one line on what is stored, linking to
+  `/app/privacy` (`DataCollectionDetails`, not in the nav). Just-in-time
+  notices (`JustInTimeNotice`) sit on text questions, the Shopify actions panel
+  and the export. `tests/unit/data-notice.test.ts` classifies every column of
+  `Response`, `Answer` and `OrderCache`; a new column fails it until the notice
+  is updated. The public `/privacy` route says the same things in English.
+- **`Response.customerId` is never written** (only nulled by `customers/redact`),
+  so the notice does not list it. If a sync starts filling it, the test fails:
+  add it back to `COLLECTED` and the copy in all ten locales.
+- **`Panel` must not set `padding="none"`.** It did, and every Panel's content
+  sat against the card edge. `none` is only for full-bleed content, which then
+  needs its own `s-box padding`.
+- **Multi-condition `@container` values are unverified.** Shopify only documents
+  `@container (cond) a, b`. For more than two layouts use plain CSS
+  `repeat(auto-fit, minmax(min(100%, Nrem), 1fr))`, which needs no container.
+  Two fields side by side use that too, so they stack on a phone.
+- **`s-button-group` never wraps**; a row of long labels (date ranges in French)
+  uses `s-stack direction="inline"` instead.
+- **Yearly price display** is the per-month equivalent, the monthly price struck
+  through, the yearly total billed, and the saving in money and percent
+  (`yearlySavingMinor`). Copy must stay factual (Built for Shopify 4.3.1): no
+  "most popular" or "2 months free" claims.
+- **Answers as text** go through `answerParts` (`app/lib/answer-text.ts`) so a
+  Yes/No answer reads "Yes", not "yes, 1", on the Responses page and in the
+  results CSV.
+- Layout here is checked statically only: `cdn.shopify.com` is blocked from this
+  container, so Polaris cannot render in a local browser.
+- **The survey list's "Updated" date is `Survey.editedAt`**, set only by merchant
+  writes alongside `revision`. `updatedAt` moves on every buyer answer, so a busy
+  survey always read "Updated today".
+- **An unknown billing cycle is `null`** on the Plans page (Shopify unreachable
+  or no token). Guessing "monthly" offered a yearly subscriber a switch to yearly.
+
+## Which survey a checkout block shows, and the editor preview (2026-10-15)
+
+- **Each block has a `survey_id` setting** (`[extensions.settings]` in both
+  checkout TOMLs, read as `shopify.settings.value.survey_id`, cleaned by
+  `cleanSurveyId`). Settings choices can only be static, so the merchant pastes
+  the ID; the survey editor shows it with a copy button (`SurveyIdBox`, in
+  "Show it in your store").
+- **`/api/survey` with `surveyId`:** a pinned block shows that survey or
+  **nothing** (paused, draft, other page, targeting miss). Never another survey
+  in its place. An id naming no survey **of this shop** falls back to the normal
+  pick, so a stale setting never empties the page or reaches another shop.
+  `tests/db-survey-pinning.test.ts` covers it.
+- **The editor shows the real survey** via `/api/survey-preview` (any status
+  when pinned, else the top live survey for the page), with banners for draft,
+  paused, wrong page, not found and none live. Preview mode in
+  `useMultiSurvey` never POSTs. If the fetch fails the block shows the sample
+  with `editorUnavailable`. Whether `sessionToken.get()` works inside the
+  checkout editor was not verifiable here; that fallback is the safety net.
+- These are extension changes: they need `shopify app deploy`, not only a
+  Render redeploy.
+
+## NPS and CSAT scores (2026-10-15)
+
+`npsResult` / `csatResult` in `shared/survey-rules.ts`; `questionScore` in
+`survey-analytics.server.ts` attaches one to each breakdown (`nps` for NPS,
+`csat` for `rating_5` and `satisfaction_5`, from the fixed option ids). CSAT is
+the share of 4–5 answers. Values outside the scale are ignored, and no answers
+means `null` (no score shown), never 0. The `customer-satisfaction` template is
+the CSAT counterpart of `loyalty-pulse`. Tests: `tests/unit/scores.test.ts`.

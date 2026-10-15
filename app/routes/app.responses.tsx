@@ -3,7 +3,8 @@ import { useLoaderData, type LoaderFunctionArgs, type MetaFunction } from "react
 import { Panel, PageIntro } from "~/components/admin-ui";
 import { SurveyPicker } from "~/components/survey-picker";
 import { orderAdminLink, resolveExportTimeZone, type RevenueStatus } from "~/lib/csv";
-import { intlLocaleFor } from "~/lib/i18n";
+import { createTranslator, intlLocaleFor } from "~/lib/i18n";
+import { answerParts } from "~/lib/answer-text";
 import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import { currentOrderTotal, fetchSurveyResponses, surveyRevenueStatus } from "~/lib/survey-analytics.server";
@@ -44,7 +45,8 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   // to reach Prisma as a fractional or overflowing offset and fail with a 500.
   const page = Math.min(MAX_PAGE, Math.max(0, Math.floor(Number(url.searchParams.get("page") ?? "0") || 0)));
 
-  const locale = intlLocaleFor(resolveAdminLanguage(request, shop.language, shop.adminLocale));
+  const language = resolveAdminLanguage(request, shop.language, shop.adminLocale);
+  const locale = intlLocaleFor(language);
 
   if (!selectedId) {
     return { surveys: [], selected: null, rows: [], page: 0, hasMore: false, labels: {}, timeZone: "UTC" };
@@ -52,9 +54,12 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
 
   const row = await getSurveyRow(shop.id, selectedId);
   const labels = new Map<string, string>();
+  const types = new Map<string, string>();
   for (const question of row?.questions ?? []) {
+    types.set(question.id, question.type);
     for (const option of question.options) labels.set(option.id, option.label);
   }
+  const t = createTranslator(language);
 
   // Times are shown in the shop's own zone, like the CSV, and labelled with it.
   const { timeZone: shopZone } = await getShopLocaleInfo(shop.id, shop.shopDomain, session.accessToken);
@@ -80,14 +85,10 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     rows: slice.map((response) => {
       const status = surveyRevenueStatus(response);
       const total = currentOrderTotal(response);
-      const answers = response.answers.map((answer) => {
-        const parts: string[] = [];
-        for (const optionId of answer.optionIds) parts.push(labels.get(optionId) ?? optionId);
-        if (answer.otherText) parts.push(answer.otherText);
-        if (typeof answer.numberValue === "number") parts.push(String(answer.numberValue));
-        if (answer.textValue) parts.push(answer.textValue);
-        return { questionId: answer.questionId, text: parts.join(", ") };
-      });
+      const answers = response.answers.map((answer) => ({
+        questionId: answer.questionId,
+        text: answerParts(answer, types.get(answer.questionId), labels, t).join(", "),
+      }));
 
       return {
         id: response.id,

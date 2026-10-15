@@ -172,7 +172,7 @@ export function Panel({
   children: ReactNode;
 }) {
   return (
-    <s-section heading={title} subheading={description} padding="none">
+    <s-section heading={title} subheading={description}>
       {children}
     </s-section>
   );

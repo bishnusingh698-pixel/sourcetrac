@@ -20,6 +20,15 @@
     "satisfaction_neutral": "Neutro",
     "satisfaction_satisfied": "Satisfeito",
     "satisfaction_very_satisfied": "Muito satisfeito",
-    "previewTitle": "Pergunta rápida"
+    "previewTitle": "Pergunta rápida",
+    "editorShowing": "Pesquisa do SourceTrac: {{name}}",
+    "editorDraft": "Rascunho. Os compradores só vão vê-la quando você publicá-la no SourceTrac.",
+    "editorPaused": "Pausada. Os compradores só vão vê-la quando você retomá-la no SourceTrac.",
+    "editorNotFound": "Nenhuma pesquisa tem este ID. Copie o ID novamente na pesquisa no SourceTrac.",
+    "editorNoneLive": "Ainda não há pesquisa ativa nesta página. Os compradores não veem nada aqui até que uma pesquisa fique ativa no SourceTrac.",
+    "editorUnavailable": "Não foi possível carregar sua pesquisa no editor, então este é um exemplo. Os compradores continuam vendo a pesquisa que você definiu no SourceTrac.",
+    "editorPinnedNote": "Prévia. Nada é enviado a partir do editor. As regras de segmentação valem para pedidos reais.",
+    "editorPriorityNote": "Prévia. Este bloco mostra sua pesquisa ativa de maior prioridade. Para escolher uma, cole o ID dela nas configurações deste bloco.",
+    "editorOtherPage": "Esta pesquisa não está configurada para aparecer nesta página. Ative esta página em \"Onde aparece\" no SourceTrac."
   }
 }

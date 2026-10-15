@@ -19,3 +19,17 @@ allowed_urls = [ "https://sourcetrac.onrender.com/*" ]
 [[extensions.targeting]]
 module = "./src/OrderStatusBlock.tsx"
 target = "customer-account.order-status.block.render"
+
+# Which survey this block shows. Empty: the highest-priority live survey for
+# this page. A merchant who runs several surveys pastes one survey's ID here
+# (shown on that survey in SourceTrac), and the checkout editor then previews
+# that exact survey. Read by the block as `shopify.settings.value.survey_id`.
+[extensions.settings]
+  [[extensions.settings.fields]]
+  key = "survey_id"
+  type = "single_line_text_field"
+  name = "Survey ID (optional)"
+  description = "Leave empty to show your highest-priority live survey. To show one survey here, copy its Survey ID from the survey in SourceTrac and paste it."
+    [[extensions.settings.fields.validations]]
+    name = "max"
+    value = "40"

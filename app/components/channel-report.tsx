@@ -310,11 +310,12 @@ export function KpiGrid({
 }) {
   const { summary } = report;
   return (
-    // Two tiles per row on a phone, four on desktop. A single column made the
-    // four headline numbers a long scroll on a phone.
+    // Four tiles on desktop, two on a phone, one on the narrowest frames. The
+    // fallback's minimum is half the row, so it never makes three; and never
+    // under 9rem, so a long amount drops to one column instead of overflowing.
     <s-query-container>
       <s-grid
-        gridTemplateColumns="@container (inline-size > 760px) repeat(4, minmax(0, 1fr)), (inline-size > 300px) repeat(2, minmax(0, 1fr)), minmax(0, 1fr)"
+        gridTemplateColumns="@container (inline-size > 640px) repeat(4, minmax(0, 1fr)), repeat(auto-fit, minmax(min(100%, max(9rem, calc(50% - 1rem))), 1fr))"
         gap="base"
       >
         <Metric label={t("dashboard.metric_revenue")} help={t("dashboard.metric_revenue_help")} href={href}>

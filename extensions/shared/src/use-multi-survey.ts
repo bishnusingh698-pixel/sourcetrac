@@ -11,6 +11,7 @@ import {
   type Placement,
   type SubmitResult,
   type SurveyConfigV2,
+  type SurveyPreview,
 } from "./survey-logic";
 
 export type MultiPhase = "loading" | "asking" | "sending" | "done" | "hidden";
@@ -19,7 +20,14 @@ export type MultiPhase = "loading" | "asking" | "sending" | "done" | "hidden";
 const CONFIRMATION_MS = 2500;
 
 export interface MultiSurveyApi {
-  fetchSurvey: (orderId: string, placement: Placement, locale: string | null) => Promise<SurveyConfigV2 | null>;
+  fetchSurvey: (
+    orderId: string,
+    placement: Placement,
+    locale: string | null,
+    surveyId?: string | null,
+  ) => Promise<SurveyConfigV2 | null>;
+  /** The checkout editor's read of the merchant's real survey. */
+  fetchPreview?: (placement: Placement, surveyId: string | null) => Promise<SurveyPreview | null>;
   submitAnswers: (params: {
     surveyId: string;
     surveyVersion?: number;
@@ -178,9 +186,21 @@ export function useMultiSurvey(
   orderId: string,
   placement: Placement,
   api: MultiSurveyApi,
+  options: {
+    /** The block's "Survey ID" setting, already cleaned. */
+    surveyId?: string | null;
+    /**
+     * Checkout editor: load the merchant's real survey with no order, and let
+     * them click through it without anything being sent.
+     */
+    preview?: boolean;
+  } = {},
 ) {
+  const surveyId = options.surveyId ?? null;
+  const preview = options.preview === true;
   const [phase, setPhase] = useState<MultiPhase>("loading");
   const [survey, setSurvey] = useState<CompiledSurvey | null>(null);
+  const [previewInfo, setPreviewInfo] = useState<Omit<SurveyPreview, "survey"> | null>(null);
   const [answers, setAnswers] = useState<AnswerState>({});
   const [step, setStep] = useState(0);
 
@@ -198,13 +218,48 @@ export function useMultiSurvey(
 
   useEffect(() => {
     let cancelled = false;
+    const locale = apiRef.current.getLocale?.() ?? null;
+
+    if (preview) {
+      // The editor re-renders as the merchant edits the Survey ID setting, so
+      // each change starts again from a clean slate.
+      submitted.current = false;
+      setAnswers({});
+      setStep(0);
+      setPhase("loading");
+      const fetchPreview = apiRef.current.fetchPreview;
+      if (!fetchPreview) {
+        setPhase("hidden");
+        return;
+      }
+      fetchPreview(placement, surveyId).then((result) => {
+        if (cancelled || !mounted.current) return;
+        if (!result) {
+          setPreviewInfo(null);
+          setSurvey(null);
+          setPhase("hidden");
+          return;
+        }
+        const { survey: previewSurvey, ...info } = result;
+        setPreviewInfo(info);
+        if (!previewSurvey || previewSurvey.questions.length === 0) {
+          setSurvey(null);
+          setPhase("hidden");
+          return;
+        }
+        setSurvey(localizeSurvey(previewSurvey, locale));
+        setPhase("asking");
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
 
     // The order id arrives from an async subscription. Wait for a real id so we
     // never fire `?orderId=`, which the route would reject.
     if (!orderId) return;
 
-    const locale = apiRef.current.getLocale?.() ?? null;
-    apiRef.current.fetchSurvey(orderId, placement, locale).then((result) => {
+    apiRef.current.fetchSurvey(orderId, placement, locale, surveyId).then((result) => {
       if (cancelled || !mounted.current) return;
 
       const config = result;
@@ -241,7 +296,7 @@ export function useMultiSurvey(
     return () => {
       cancelled = true;
     };
-  }, [orderId, placement]);
+  }, [orderId, placement, surveyId, preview]);
 
   /** Visible questions in definition order. */
   const visibleQuestions = useMemo(() => {
@@ -270,6 +325,21 @@ export function useMultiSurvey(
       submitted.current = true;
       setPhase("sending");
 
+      if (preview) {
+        // Nothing is sent from the editor. Show the thank-you message, then
+        // start over so the merchant can try another path through the survey.
+        setPhase("done");
+        setTimeout(() => {
+          if (!mounted.current) return;
+          submitted.current = false;
+          answersRef.current = {};
+          setAnswers({});
+          setStep(0);
+          setPhase("asking");
+        }, CONFIRMATION_MS);
+        return;
+      }
+
       const visible = visibleQuestionsFor(survey.questions, finalAnswers);
       const payload: AnswerInput[] = visible.map((question) => ({
         ...(finalAnswers[question.id] ?? {}),
@@ -296,7 +366,7 @@ export function useMultiSurvey(
         if (mounted.current) setPhase("hidden");
       }, CONFIRMATION_MS);
     },
-    [survey, orderId, placement],
+    [survey, orderId, placement, preview],
   );
 
   /**
@@ -362,6 +432,8 @@ export function useMultiSurvey(
   return {
     phase,
     survey,
+    /** In the editor: which survey is shown and why, or why nothing is. */
+    previewInfo,
     answers,
     shown,
     oneByOne,

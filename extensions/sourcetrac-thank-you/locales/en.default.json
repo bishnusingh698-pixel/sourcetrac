@@ -20,6 +20,15 @@
     "satisfaction_neutral": "Neutral",
     "satisfaction_satisfied": "Satisfied",
     "satisfaction_very_satisfied": "Very satisfied",
-    "previewTitle": "Quick question"
+    "previewTitle": "Quick question",
+    "editorShowing": "SourceTrac survey: {{name}}",
+    "editorDraft": "Draft. Buyers won't see it until you go live in SourceTrac.",
+    "editorPaused": "Paused. Buyers won't see it until you resume it in SourceTrac.",
+    "editorNotFound": "No survey has this ID. Copy the ID again from the survey in SourceTrac.",
+    "editorNoneLive": "No survey is live on this page yet. Buyers see nothing here until a survey goes live in SourceTrac.",
+    "editorUnavailable": "Your survey could not be loaded in the editor, so this is a sample. Buyers still see the survey you set in SourceTrac.",
+    "editorPinnedNote": "Preview. Nothing is sent from the editor. Targeting rules apply on real orders.",
+    "editorPriorityNote": "Preview. This block shows your highest-priority live survey. To choose one, paste its Survey ID into this block's settings.",
+    "editorOtherPage": "This survey is not set to show on this page. Turn this page on under \"Where it shows\" in SourceTrac."
   }
 }

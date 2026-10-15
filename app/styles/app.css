@@ -85,7 +85,7 @@
   outline-offset: 2px;
 }
 
-.st-lang-option {
+.st-lang-card {
   display: block;
   cursor: pointer;
   border-radius: 0.5rem;
@@ -412,4 +412,11 @@
 .st-align-end {
   display: block;
   text-align: end;
+}
+
+/* --- Plans ---------------------------------------------------------------- */
+
+/* The monthly price struck through beside the yearly per-month price. */
+.st-was-price {
+  text-decoration-thickness: 1px;
 }

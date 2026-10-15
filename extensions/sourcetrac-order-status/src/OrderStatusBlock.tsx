@@ -4,8 +4,9 @@ import { render } from "preact";
 import { useMemo } from "preact/hooks";
 import type { Api } from "@shopify/ui-extensions/customer-account.order-status.block.render";
 
-import { MultiSurveyPreview, MultiSurveyView } from "../../shared/src/MultiSurveyView";
-import { createSurveyApi } from "../../shared/src/survey-logic";
+import { MultiSurveyView } from "../../shared/src/MultiSurveyView";
+import { EditorPreview } from "../../shared/src/EditorPreview";
+import { cleanSurveyId, createSurveyApi } from "../../shared/src/survey-logic";
 import { useMultiSurvey } from "../../shared/src/use-multi-survey";
 
 /** Must match the APP_URL the backend is reached on, and the host
@@ -60,13 +61,26 @@ function OrderStatusBlock() {
   // Set only inside the checkout editor, where there is no real order.
   const inEditor = shopify.extension.editor !== undefined;
 
-  // No id in the editor, so no config fetch and nothing can be submitted
-  // against a placeholder order.
-  const survey = useMultiSurvey(inEditor ? "" : (orderId ?? ""), "order_status", surveyApi);
+  // The block's "Survey ID" setting picks which survey it shows; empty means
+  // the highest-priority live survey. Read during render so an edit in the
+  // checkout editor re-renders the block. Absent on hosts without settings.
+  let settingValue: unknown;
+  try {
+    settingValue = shopify.settings?.value?.survey_id;
+  } catch {
+    settingValue = undefined;
+  }
+  const surveyId = cleanSurveyId(settingValue);
+
+  // The editor has no real order: it loads the merchant's survey for preview
+  // instead, and nothing can be submitted against a placeholder order.
+  const survey = useMultiSurvey(inEditor ? "" : (orderId ?? ""), "order_status", surveyApi, {
+    surveyId,
+    preview: inEditor,
+  });
 
   if (inEditor) {
-    // Rendering nothing here left an empty block in the editor that looked broken.
-    return <MultiSurveyPreview t={survey.t} />;
+    return <EditorPreview survey={survey} />;
   }
 
   if (!orderId) {
