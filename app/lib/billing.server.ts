@@ -333,24 +333,6 @@ export function cycleOf(subscription: Pick<ActiveSubscription, "cycle"> | null |
 }
 
 /**
- * Whether a live subscription is billed above today's list price for its plan
- * and cycle, i.e. it was approved before the 2026-10 price cut.
- *
- * Shopify never changes the price of an approved subscription: a merchant who
- * approved Growth at $19 keeps paying $19 until they approve a new charge. This
- * is what lets the Plans page offer that merchant the lower price. Unknown
- * prices (no line item, unparseable amount, another currency) are never
- * flagged, so nobody is nudged to re-approve on a guess.
- */
-export function isOnLegacyPrice(subscription: ActiveSubscription | null, plan: PlanKey): boolean {
-  if (!subscription || plan === "free") return false;
-  if (!subscription.priceAmount || subscription.currencyCode !== PLANS[plan].currencyCode) return false;
-  const paid = Number(subscription.priceAmount);
-  const list = Number(planPriceAmount(plan, cycleOf(subscription)));
-  return Number.isFinite(paid) && paid > list + 0.0001;
-}
-
-/**
  * Whether the Plans page must rewrite the stored plan to match Shopify.
  *
  * True when the plan differs, and also when Shopify reports the stored paid

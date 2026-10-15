@@ -239,9 +239,6 @@
     "save_percent": "Spara {{percent}} % med årsvis",
     "switch_yearly": "Byt till årsvis fakturering",
     "switch_monthly": "Byt till månadsvis fakturering",
-    "legacy_title": "Du betalar ett äldre, högre pris ({{price}})",
-    "legacy_body": "{{plan}} kostar nu {{price}}. Shopify fortsätter att ta betalt enligt det pris du godkände tills du godkänner det nya. Då ersätter det nya priset din nuvarande debitering.",
-    "legacy_cta": "Byt till det nya priset",
     "yearly_note": "Årsvis fakturering kostar {{percent}} % mindre än månadsvis och debiteras en gång om året. Att byta mellan månadsvis och årsvis ersätter din nuvarande debitering när du godkänner det i Shopify."
   },
   "help": {

@@ -239,9 +239,6 @@
     "save_percent": "按年支付节省 {{percent}}%",
     "switch_yearly": "切换为按年计费",
     "switch_monthly": "切换为按月计费",
-    "legacy_title": "你正在支付旧的较高价格（{{price}}）",
-    "legacy_body": "{{plan}} 现在的价格是 {{price}}。在你批准新价格之前，Shopify 会继续按你批准的旧价格收费。批准后，新价格将替换当前费用。",
-    "legacy_cta": "切换到新价格",
     "yearly_note": "按年计费比按月便宜 {{percent}}%，每年收费一次。在按月和按年之间切换后，一旦你在 Shopify 中批准，就会替换当前费用。"
   },
   "help": {

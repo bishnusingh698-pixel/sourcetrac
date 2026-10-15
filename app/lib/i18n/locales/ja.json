@@ -239,9 +239,6 @@
     "save_percent": "年払いで {{percent}}% お得",
     "switch_yearly": "年払いに切り替える",
     "switch_monthly": "月払いに切り替える",
-    "legacy_title": "以前の高い料金（{{price}}）が請求されています",
-    "legacy_body": "{{plan}} は現在 {{price}} です。新しい料金を承認するまで、Shopify は承認済みの料金を請求し続けます。承認すると新しい料金に切り替わります。",
-    "legacy_cta": "新しい料金に切り替える",
     "yearly_note": "年払いは月払いより {{percent}}% 安く、年に 1 回請求されます。月払いと年払いを切り替えると、Shopify で承認した時点で現在の請求が置き換わります。"
   },
   "help": {

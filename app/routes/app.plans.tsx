@@ -11,7 +11,7 @@ import {
 } from "react-router";
 
 import { Banner, Panel } from "~/components/admin-ui";
-import { createSubscription, cancelSubscription, cycleOf, isOnLegacyPrice } from "~/lib/billing.server";
+import { createSubscription, cancelSubscription, cycleOf } from "~/lib/billing.server";
 import { logger } from "~/lib/logger";
 import {
   effectivePlan,
@@ -81,11 +81,8 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   // approved or cancelled outside the app is reflected here immediately.
   let activePlan = effectivePlan(shop);
   let synced = false;
-  // The live charge's cycle and price, when Shopify answered. Used to mark the
-  // current cycle and to offer the lower price to a merchant still billed at
-  // the pre-2026-10 price.
+  // The live charge's cycle, when Shopify answered, so the page opens on it.
   let activeCycle: BillingCycle = "monthly";
-  let legacyPrice: string | null = null;
   if (session.accessToken) {
     try {
       const subscriptions = await fetchActiveSubscriptions({
@@ -97,10 +94,6 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
       const live = activeSourceTracSubscription(subscriptions, { allowTest });
       const reconciled: "free" | "growth" | "scale" = paid ?? "free";
       activeCycle = cycleOf(live);
-      if (live && paid && isOnLegacyPrice(live, paid)) {
-        const amount = Number(live.priceAmount);
-        legacyPrice = formatMoney(Math.round(amount * 100), live.currencyCode ?? "USD", locale);
-      }
       if (needsPlanSync(shop, reconciled)) {
         // `planStatus` records whether a charge is actually live, and the
         // `app_subscriptions/*` webhooks own it. This page only sees
@@ -143,7 +136,6 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     used,
     cap: evaluateCap(activePlan, used),
     activeCycle,
-    legacyPrice,
     // The cycle the cards show: the URL's choice, else the merchant's own.
     cycle: isBillingCycle(requestedCycle) ? requestedCycle : activeCycle,
     discountPercent: YEARLY_DISCOUNT_PERCENT,
@@ -226,14 +218,12 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
     const allowTest = await testChargesAllowed(shop.shopDomain, accessToken);
 
     // Choosing the plan and cycle already held would create a second,
-    // duplicate charge for the merchant to approve. The one exception is a
-    // charge still billed at the old, higher price: re-approving moves it to
-    // today's price, and Shopify replaces the old charge on approval.
+    // duplicate charge for the merchant to approve.
     try {
       const subscriptions = await fetchActiveSubscriptions({ shopDomain: shop.shopDomain, accessToken });
       const current = paidPlanFromSubscriptions(subscriptions, { allowTest });
       const live = activeSourceTracSubscription(subscriptions, { allowTest });
-      if (current === plan && cycleOf(live) === cycle && !isOnLegacyPrice(live, plan)) {
+      if (current === plan && cycleOf(live) === cycle) {
         return result(true, "plans.msg_already_on_plan");
       }
     } catch {
@@ -297,30 +287,6 @@ export default function Plans() {
           heading={outcome.ok ? t("common.done") : t("errors.boundary_title")}
         >
           <s-text>{t(outcome.message.key, outcome.message.params)}</s-text>
-        </Banner>
-      ) : data.legacyPrice ? (
-        // Shopify never lowers an approved charge by itself, so a merchant who
-        // subscribed before the price cut is told, once, how to get it.
-        <Banner tone="warning" heading={t("plans.legacy_title", { price: data.legacyPrice })}>
-          <s-stack gap="small">
-            <s-text>
-              {t("plans.legacy_body", {
-                plan: currentName,
-                price:
-                  (data.activeCycle === "yearly"
-                    ? data.plans.find((p) => p.key === current.key)?.yearly
-                    : data.plans.find((p) => p.key === current.key)?.monthly) ?? "",
-              })}
-            </s-text>
-            <Form method="post">
-              <input type="hidden" name="intent" value="subscribe" />
-              <input type="hidden" name="plan" value={current.key} />
-              <input type="hidden" name="cycle" value={data.activeCycle} />
-              <s-button type="submit" variant="primary" loading={pendingPlan === current.key}>
-                {t("plans.legacy_cta")}
-              </s-button>
-            </Form>
-          </s-stack>
         </Banner>
       ) : null}
 

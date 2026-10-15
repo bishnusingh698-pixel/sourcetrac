@@ -239,9 +239,6 @@
     "save_percent": "Economize {{percent}}% no anual",
     "switch_yearly": "Mudar para cobrança anual",
     "switch_monthly": "Mudar para cobrança mensal",
-    "legacy_title": "Você está pagando um preço antigo e mais alto ({{price}})",
-    "legacy_body": "{{plan}} agora custa {{price}}. A Shopify continua cobrando o preço que você aprovou até você aprovar o novo. Ao aprovar, o novo preço substitui a cobrança atual.",
-    "legacy_cta": "Mudar para o novo preço",
     "yearly_note": "A cobrança anual custa {{percent}}% menos que a mensal e é feita uma vez por ano. Mudar entre mensal e anual substitui a cobrança atual quando você aprova na Shopify."
   },
   "help": {

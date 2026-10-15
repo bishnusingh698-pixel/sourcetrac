@@ -239,9 +239,6 @@
     "save_percent": "Bespaar {{percent}}% met jaarlijks",
     "switch_yearly": "Overstappen op jaarlijks",
     "switch_monthly": "Overstappen op maandelijks",
-    "legacy_title": "Je betaalt een oudere, hogere prijs ({{price}})",
-    "legacy_body": "{{plan}} kost nu {{price}}. Shopify blijft de goedgekeurde prijs rekenen tot je de nieuwe goedkeurt. Daarna vervangt de nieuwe prijs je huidige betaling.",
-    "legacy_cta": "Overstappen op de nieuwe prijs",
     "yearly_note": "Jaarlijks betalen kost {{percent}}% minder dan maandelijks en wordt één keer per jaar gerekend. Wisselen tussen maandelijks en jaarlijks vervangt je huidige betaling zodra je het in Shopify goedkeurt."
   },
   "help": {

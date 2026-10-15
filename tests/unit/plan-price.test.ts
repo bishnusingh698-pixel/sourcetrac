@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { cycleOf, isOnLegacyPrice, type ActiveSubscription } from "~/lib/billing.server";
+import { cycleOf, type ActiveSubscription } from "~/lib/billing.server";
 import {
   BILLING_INTERVALS,
   cycleFromInterval,
@@ -58,7 +58,7 @@ describe("yearly pricing", () => {
   });
 });
 
-describe("subscriptions approved at the old price", () => {
+describe("subscription cycle", () => {
   const sub = (overrides: Partial<ActiveSubscription>): ActiveSubscription => ({
     id: "gid://shopify/AppSubscription/1",
     name: "SourceTrac — Growth",
@@ -66,21 +66,6 @@ describe("subscriptions approved at the old price", () => {
     test: false,
     currentPeriodEnd: null,
     ...overrides,
-  });
-
-  it("flags a Growth charge still billed at $19", () => {
-    expect(isOnLegacyPrice(sub({ cycle: "monthly", priceAmount: "19.0", currencyCode: "USD" }), "growth")).toBe(true);
-  });
-
-  it("does not flag a charge at today's price, monthly or yearly", () => {
-    expect(isOnLegacyPrice(sub({ cycle: "monthly", priceAmount: "4.99", currencyCode: "USD" }), "growth")).toBe(false);
-    expect(isOnLegacyPrice(sub({ cycle: "yearly", priceAmount: "53.89", currencyCode: "USD" }), "growth")).toBe(false);
-  });
-
-  it("never flags on a guess: no price, another currency, or no subscription", () => {
-    expect(isOnLegacyPrice(sub({}), "growth")).toBe(false);
-    expect(isOnLegacyPrice(sub({ priceAmount: "19.0", currencyCode: "EUR" }), "growth")).toBe(false);
-    expect(isOnLegacyPrice(null, "growth")).toBe(false);
   });
 
   it("reads a subscription without a line item as monthly", () => {

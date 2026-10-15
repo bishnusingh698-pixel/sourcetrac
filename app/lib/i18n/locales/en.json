@@ -239,9 +239,6 @@
     "save_percent": "Save {{percent}}% with yearly",
     "switch_yearly": "Switch to yearly billing",
     "switch_monthly": "Switch to monthly billing",
-    "legacy_title": "You are paying an older, higher price ({{price}})",
-    "legacy_body": "{{plan}} now costs {{price}}. Shopify keeps charging the price you approved until you approve the new one. Approve it and the new price replaces your current charge.",
-    "legacy_cta": "Switch to the new price",
     "yearly_note": "Yearly billing costs {{percent}}% less than paying monthly and is charged once a year. Switching between monthly and yearly replaces your current charge once you approve it in Shopify."
   },
   "help": {

@@ -1226,11 +1226,11 @@ mounted when the root fails.
   interval; the charge name gets " (yearly)" so `matchPlanByDisplayName` and
   `paidPlanFromSubscriptions` still match on "sourcetrac" + plan name. Do not
   rename the monthly `displayName`: live subscriptions are matched by it.
-- **Shopify never re-prices an approved subscription.** Merchants who approved
-  $19 / $49 keep paying that until they approve a new charge. `PLANS_QUERY`
-  reads each subscription's line-item price and interval, `isOnLegacyPrice`
-  flags an above-list price, and the Plans page offers a one-click switch (the
-  "already on this plan" guard lets that re-subscribe through).
+- **No old-price migration.** The app had no installs when prices dropped from
+  $19 / $49, so there is no "switch to the new price" path. If prices change
+  again after launch, remember Shopify never re-prices an approved
+  subscription: merchants keep the price they approved until they approve a
+  new charge. `PLANS_QUERY` already reads each line item's price and interval.
 - **The support button opens Gmail compose with `window.open`**, not an `href`.
   A Polaris button `href` is treated by App Bridge as in-app navigation, so the
   old `mailto:` button did nothing inside the admin. Do not pass the

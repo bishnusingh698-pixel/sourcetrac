@@ -239,9 +239,6 @@
     "save_percent": "{{percent}} % sparen mit jährlicher Zahlung",
     "switch_yearly": "Zur jährlichen Abrechnung wechseln",
     "switch_monthly": "Zur monatlichen Abrechnung wechseln",
-    "legacy_title": "Sie zahlen einen älteren, höheren Preis ({{price}})",
-    "legacy_body": "{{plan}} kostet jetzt {{price}}. Shopify berechnet den genehmigten Preis weiter, bis Sie den neuen genehmigen. Danach ersetzt der neue Preis Ihre aktuelle Abbuchung.",
-    "legacy_cta": "Zum neuen Preis wechseln",
     "yearly_note": "Die jährliche Abrechnung kostet {{percent}} % weniger als die monatliche und wird einmal im Jahr berechnet. Ein Wechsel zwischen monatlich und jährlich ersetzt Ihre aktuelle Abbuchung, sobald Sie ihn in Shopify genehmigen."
   },
   "help": {

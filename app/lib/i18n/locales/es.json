@@ -239,9 +239,6 @@
     "save_percent": "Ahorra un {{percent}} % con el pago anual",
     "switch_yearly": "Cambiar a facturación anual",
     "switch_monthly": "Cambiar a facturación mensual",
-    "legacy_title": "Estás pagando un precio antiguo y más alto ({{price}})",
-    "legacy_body": "{{plan}} ahora cuesta {{price}}. Shopify sigue cobrando el precio que aprobaste hasta que apruebes el nuevo. Al aprobarlo, el nuevo precio sustituye tu cargo actual.",
-    "legacy_cta": "Cambiar al nuevo precio",
     "yearly_note": "La facturación anual cuesta un {{percent}} % menos que la mensual y se cobra una vez al año. Cambiar entre mensual y anual sustituye tu cargo actual cuando lo apruebas en Shopify."
   },
   "help": {
