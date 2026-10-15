@@ -30,6 +30,8 @@ export type ShopRecord = {
   /// When the checkout-support plan check last ran.
   checkoutCheckedAt: Date | null;
   installState: "installed" | "uninstalled";
+  /// When the current installation began (null on rows from before it was kept).
+  installedAt: Date | null;
 };
 
 export function defaultOptionsJson(): string {
@@ -53,6 +55,12 @@ export async function upsertShop(params: {
   const { shopDomain, shopId } = params;
   const encrypted = params.accessToken ? encryptSecret(params.accessToken) : null;
 
+  // A new installation starts now; a re-auth of a live one keeps its start.
+  const prior = await retryDb(() =>
+    db.shop.findUnique({ where: { shopDomain }, select: { installState: true, installedAt: true } }),
+  );
+  const startsInstallation = !prior || prior.installState !== "installed" || prior.installedAt === null;
+
   const row = await retryDb(() =>
     db.shop.upsert({
       where: { shopDomain },
@@ -69,6 +77,7 @@ export async function upsertShop(params: {
           : {}),
         installState: "installed",
         uninstalledAt: null,
+        installedAt: new Date(),
       },
       update: {
         // provisionShop falls back to the domain when Shopify's identity lookup
@@ -86,6 +95,7 @@ export async function upsertShop(params: {
           : {}),
         installState: "installed",
         uninstalledAt: null,
+        ...(startsInstallation ? { installedAt: new Date() } : {}),
       },
       select: { id: true },
     }),
@@ -113,6 +123,7 @@ export async function findShopByDomain(shopDomain: string): Promise<ShopRecord |
         checkoutSupported: true,
         checkoutCheckedAt: true,
         installState: true,
+        installedAt: true,
       },
     }),
   );
@@ -145,6 +156,7 @@ export async function findShopById(shopId: string): Promise<ShopRecord | null> {
         checkoutSupported: true,
         checkoutCheckedAt: true,
         installState: true,
+        installedAt: true,
       },
     }),
   );
@@ -175,6 +187,25 @@ export async function getAccessToken(internalShopId: string): Promise<string | n
   }
 
   return token;
+}
+
+/**
+ * Store a fresh copy of the offline token for an INSTALLED shop only. Unlike
+ * `upsertShop` it never flips a shop back to installed: a webhook racing an
+ * uninstall used to resurrect the shop with the revoked token.
+ */
+export async function refreshStoredToken(internalShopId: string, accessToken: string): Promise<void> {
+  const encrypted = encryptSecret(accessToken);
+  await retryDb(() =>
+    db.shop.updateMany({
+      where: { id: internalShopId, installState: "installed" },
+      data: {
+        accessTokenEncrypted: encrypted.ciphertext,
+        accessTokenIv: encrypted.iv,
+        accessTokenTag: encrypted.tag,
+      },
+    }),
+  );
 }
 
 /** Erase the token on uninstall so no credential outlives the installation. */

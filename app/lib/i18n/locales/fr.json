@@ -110,7 +110,9 @@
     "privacy_requests_title": "Demandes de données récentes",
     "remove_option": "Supprimer {{label}}",
     "sync_failed_one": "{{count}} écriture dans Shopify n’a pas abouti après plusieurs essais. Dernière erreur : {{error}}",
-    "sync_failed_other": "{{count}} écritures dans Shopify n’ont pas abouti après plusieurs essais. Dernière erreur : {{error}}"
+    "sync_failed_other": "{{count}} écritures dans Shopify n’ont pas abouti après plusieurs essais. Dernière erreur : {{error}}",
+    "privacy_request_found_one": "Réponses trouvées pour {{count}} commande : {{orders}}",
+    "privacy_request_found_other": "Réponses trouvées pour {{count}} commandes : {{orders}}"
   },
   "onboarding": {
     "title": "Prise en main",

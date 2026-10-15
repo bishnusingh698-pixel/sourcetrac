@@ -1,6 +1,7 @@
 import { db, isRetryableDbError } from "~/db.server";
 import { logger } from "~/lib/logger";
 import { withRetry } from "~/lib/retry.server";
+import { processPendingDeletions } from "~/lib/compliance.server";
 
 /**
  * Retention enforcement.
@@ -23,8 +24,13 @@ import { withRetry } from "~/lib/retry.server";
 
 export const WEBHOOK_RETENTION_DAYS = 30;
 export const RECORD_RETENTION_DAYS = 730; // 24 months
-/** Data-request records and deferred-redact rows are transient, not records. */
+/** Data-request records are transient, not records. */
 export const DATA_REQUEST_RETENTION_DAYS = 30;
+/**
+ * A shop uninstalled this long ago whose shop/redact never arrived (Shopify
+ * sends it 48 hours after uninstall) is deleted by retention as a backstop.
+ */
+export const UNINSTALLED_SHOP_RETENTION_DAYS = 30;
 
 export type RetentionReport = {
   webhookEventsDeleted: number;
@@ -35,7 +41,10 @@ export type RetentionReport = {
   dailyStatsDeleted: number;
   pendingSyncDeleted: number;
   dataRequestsDeleted: number;
+  /** Deferred redacts executed (not discarded) by this pass. */
   pendingDeletionsDeleted: number;
+  redactedOrdersDeleted: number;
+  uninstalledShopsDeleted: number;
   ranAt: string;
 };
 
@@ -86,10 +95,10 @@ export async function runRetentionPurge(now: Date = new Date()): Promise<Retenti
     await retryDb(() => db.surveyResponse.deleteMany({ where: { submittedAt: { lt: recordCutoff } } }))
   ).count;
 
-  // The v2 model. `Answer` and `SurveyDailyStats` cascade from `Response` in
-  // the schema, but answers are still deleted explicitly first so the report is
-  // honest about what was removed. Ordering matters: answers reference
-  // responses, so responses go last.
+  // The v2 model. `Answer` cascades from `Response` in the schema (daily stats
+  // do not: they are keyed by survey and day, and age out below), but answers
+  // are still deleted explicitly first so the report is honest about what was
+  // removed. Ordering matters: answers reference responses, so responses go last.
   const answersDeleted = (
     await retryDb(() => db.answer.deleteMany({ where: { response: { createdAt: { lt: recordCutoff } } } }))
   ).count;
@@ -120,17 +129,46 @@ export async function runRetentionPurge(now: Date = new Date()): Promise<Retenti
     await retryDb(() => db.dataRequest.deleteMany({ where: { createdAt: { lt: dataRequestCutoff } } }))
   ).count;
 
-  // Deferred redacts are drained lazily when a shop visits the dashboard. A row
-  // still here after the *record* window means the shop never returned, so the
-  // obligation it encodes is moot and the row would otherwise live forever.
-  const pendingDeletionsDeleted = (
-    await retryDb(() => db.pendingDeletion.deleteMany({ where: { createdAt: { lt: recordCutoff } } }))
+  // Deferred redacts are a deletion obligation, never something to discard:
+  // every queued one is EXECUTED here, whatever its age.
+  const pendingShops = await retryDb(() =>
+    db.pendingDeletion.findMany({ distinct: ["shopId"], select: { shopId: true } }),
+  );
+  let pendingDeletionsDeleted = 0;
+  for (const { shopId } of pendingShops) {
+    const before = await retryDb(() => db.pendingDeletion.count({ where: { shopId } }));
+    await processPendingDeletions(shopId, Number.POSITIVE_INFINITY);
+    const after = await retryDb(() => db.pendingDeletion.count({ where: { shopId } }));
+    pendingDeletionsDeleted += before - after;
+  }
+
+  // Redaction tombstones keep a redacted order from being stored again; they
+  // age out on the record clock like the orders they stand for.
+  const redactedOrdersDeleted = (
+    await retryDb(() => db.redactedOrder.deleteMany({ where: { createdAt: { lt: recordCutoff } } }))
   ).count;
 
+  // Backstop for a shop/redact that never arrived: an uninstalled shop past
+  // the window is deleted with everything it owns, sessions included.
+  const uninstalledCutoff = daysAgo(UNINSTALLED_SHOP_RETENTION_DAYS, now);
+  const abandoned = await retryDb(() =>
+    db.shop.findMany({
+      where: { installState: "uninstalled", uninstalledAt: { lt: uninstalledCutoff } },
+      select: { id: true, shopDomain: true },
+    }),
+  );
+  for (const shop of abandoned) {
+    await retryDb(() => db.session.deleteMany({ where: { shop: shop.shopDomain } }));
+    await retryDb(() => db.shop.deleteMany({ where: { id: shop.id, installState: "uninstalled" } }));
+  }
+  const uninstalledShopsDeleted = abandoned.length;
+
+  // Orders age by the ORDER's date (an order backfilled years after it was
+  // placed is not young), and are kept while a retained answer references it.
   const orderCacheDeleted = await retryDb(
     () => db.$executeRaw`
       DELETE FROM "OrderCache" o
-      WHERE o."createdAt" < ${recordCutoff}
+      WHERE o."createdAtShop" < ${recordCutoff}
         AND NOT EXISTS (
           SELECT 1 FROM "SurveyResponse" r
           WHERE r."shopId" = o."shopId" AND r."orderId" = o."orderId"
@@ -152,6 +190,8 @@ export async function runRetentionPurge(now: Date = new Date()): Promise<Retenti
     pendingSyncDeleted,
     dataRequestsDeleted,
     pendingDeletionsDeleted,
+    redactedOrdersDeleted,
+    uninstalledShopsDeleted,
     ranAt: now.toISOString(),
   };
 

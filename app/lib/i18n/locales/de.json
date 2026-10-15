@@ -110,7 +110,9 @@
     "privacy_requests_title": "Aktuelle Datenanfragen",
     "remove_option": "{{label}} entfernen",
     "sync_failed_one": "{{count}} Schreibvorgang bei Shopify konnte nach mehreren Versuchen nicht abgeschlossen werden. Letzter Fehler: {{error}}",
-    "sync_failed_other": "{{count}} Schreibvorgänge bei Shopify konnten nach mehreren Versuchen nicht abgeschlossen werden. Letzter Fehler: {{error}}"
+    "sync_failed_other": "{{count}} Schreibvorgänge bei Shopify konnten nach mehreren Versuchen nicht abgeschlossen werden. Letzter Fehler: {{error}}",
+    "privacy_request_found_one": "Antworten für {{count}} Bestellung gefunden: {{orders}}",
+    "privacy_request_found_other": "Antworten für {{count}} Bestellungen gefunden: {{orders}}"
   },
   "onboarding": {
     "title": "Erste Schritte",

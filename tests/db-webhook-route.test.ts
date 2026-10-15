@@ -105,6 +105,7 @@ describe("POST /webhooks", () => {
   });
 
   it("erases the shop on shop/redact", async () => {
+    await prisma.shop.update({ where: { id: shopId }, data: { installState: "uninstalled" } });
     const response = await action({ request: signed("shop/redact", { shop_domain: DOMAIN }) });
     expect(response.status).toBe(200);
     expect(await prisma.shop.findUnique({ where: { id: shopId } })).toBeNull();

@@ -18,6 +18,7 @@ import { minorToDecimalString, parseMoneyToMinor } from "~/lib/money";
 import { currentUtcPeriod, evaluateCap, planFor, type PlanKey } from "~/lib/plans";
 import { withRetry } from "~/lib/retry.server";
 import { invalidateConfig } from "~/lib/surveys.server";
+import { isRedactedOrder } from "~/lib/compliance.server";
 import { enqueueSync, hasSyncWork, parseSyncOptions, processPendingSync } from "~/lib/sync.server";
 import { shouldLearnAndStop } from "@shared/templates/confidence";
 import {
@@ -218,6 +219,13 @@ export async function submitAnswers(input: AnswerSubmitInput): Promise<AnswerSub
     return { outcome: "invalid", issues: issues.map((i) => `${i.path}: ${i.code}`) };
   }
   const answers = normalized.answers;
+
+  // The buyer of an order that was redacted asked for its data to be erased;
+  // nothing about that order is stored again. The buyer still sees thanks.
+  if (input.orderId && (await isRedactedOrder(input.shopId, input.orderId))) {
+    logger.info("answer_redacted_order_ignored", { shop_id: input.shopId, survey_id: input.surveyId });
+    return { outcome: "duplicate", id: "", isLocked: false, counted: true };
+  }
 
   const usedBefore = await getUsageCount(input.shopId);
   const capStatus = evaluateCap(input.plan, usedBefore);

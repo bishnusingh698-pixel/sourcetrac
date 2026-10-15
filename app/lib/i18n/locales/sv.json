@@ -110,7 +110,9 @@
     "privacy_requests_title": "Senaste dataförfrågningar",
     "remove_option": "Ta bort {{label}}",
     "sync_failed_one": "{{count}} skrivning till Shopify kunde inte slutföras efter flera försök. Senaste fel: {{error}}",
-    "sync_failed_other": "{{count}} skrivningar till Shopify kunde inte slutföras efter flera försök. Senaste fel: {{error}}"
+    "sync_failed_other": "{{count}} skrivningar till Shopify kunde inte slutföras efter flera försök. Senaste fel: {{error}}",
+    "privacy_request_found_one": "Svar hittades för {{count}} order: {{orders}}",
+    "privacy_request_found_other": "Svar hittades för {{count}} ordrar: {{orders}}"
   },
   "onboarding": {
     "title": "Kom igång",

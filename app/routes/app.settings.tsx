@@ -38,7 +38,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
       where: { shopId: shop.id },
       orderBy: { createdAt: "desc" },
       take: 10,
-      select: { id: true, createdAt: true },
+      select: { id: true, createdAt: true, payload: true },
     }),
     // Shopify writes that gave up after every retry, so they are not silent.
     countFailedSync(shop.id),
@@ -59,9 +59,22 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     dataRequests: dataRequests.map((request) => ({
       id: request.id,
       createdAt: request.createdAt.toISOString(),
+      // The orders whose answers the request found, so the merchant can open
+      // them on the Responses page and pass the data on.
+      orders: requestOrders(request.payload),
     })),
   };
 });
+
+function requestOrders(payload: string): string[] {
+  try {
+    const parsed = JSON.parse(payload) as { records?: Array<{ orderId?: unknown }> };
+    const ids = (parsed.records ?? []).map((record) => record.orderId).filter((id): id is string => typeof id === "string");
+    return [...new Set(ids)];
+  } catch {
+    return [];
+  }
+}
 
 export default function Settings() {
   const data = useLoaderData<typeof loader>();
@@ -124,6 +137,9 @@ export default function Settings() {
               {data.dataRequests.map((request) => (
                 <s-text key={request.id} fontSize="small">
                   {request.createdAt.slice(0, 10)}
+                  {request.orders.length > 0
+                    ? ` · ${t("settings.privacy_request_found", { count: request.orders.length, orders: request.orders.join(", ") })}`
+                    : ""}
                 </s-text>
               ))}
             </s-stack>

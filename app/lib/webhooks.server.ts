@@ -6,14 +6,15 @@ import { minorToDecimalString, parseMoneyToMinor } from "~/lib/money";
 import { withRetry } from "~/lib/retry.server";
 import { reconcileOrderForResponses } from "~/lib/answers.server";
 import { reconcileResponsesForOrder } from "~/lib/responses.server";
+import { isRedactedOrder } from "~/lib/compliance.server";
 import {
   clearAccessToken,
   findShopByDomain,
   findShopById,
   getAccessToken,
+  refreshStoredToken,
   setCheckoutSupport,
   setPlan,
-  upsertShop,
 } from "~/lib/shop.server";
 import { checkoutSurfacesSupported, fetchShopPlanName } from "~/lib/shopify-rest.server";
 import { isPlanKey, type PlanKey } from "~/lib/plans";
@@ -49,10 +50,9 @@ export async function resolveInstalledShop(shopDomain: string, accessToken: stri
   const existing = await findShopByDomain(shopDomain);
   if (!existing || existing.installState !== "installed") return null;
 
-  // Keep the stored copy of the offline token fresh. upsertShop leaves the token
-  // alone when none is supplied.
+  // Keep the stored copy of the offline token fresh, for an installed shop only.
   if (accessToken) {
-    await upsertShop({ shopDomain, shopId: existing.shopId, accessToken });
+    await refreshStoredToken(existing.id, accessToken);
   }
 
   // Only probe the Admin API while the plan check is unresolved or failed, and
@@ -332,12 +332,21 @@ export async function processWebhook(params: {
     }
 
     case "app/uninstalled": {
-      // Sessions hold the access token in plaintext. They must not outlive the
-      // installation, whether or not we still have a shop row.
-      await retryDb(() => db.session.deleteMany({ where: { shop: shopDomain } }));
-
       const shop = await findShopByDomain(shopDomain);
+      // A delivery retried after the merchant already reinstalled belongs to the
+      // previous installation. Applying it would delete the new sessions, null
+      // the new token and drop a paying merchant to Free.
+      if (shop && triggeredAt && shop.installedAt && triggeredAt < shop.installedAt) {
+        logger.info("app_uninstalled_stale_ignored", { shop_id: shop.id });
+        return { action: "app_uninstalled", shopInternalId: shop.id };
+      }
+
+      // Sessions hold the access token. They must not outlive the installation,
+      // whether or not we still have a shop row.
+      await retryDb(() => db.session.deleteMany({ where: { shop: shopDomain } }));
       if (!shop) return { action: "app_uninstalled", shopInternalId: "" };
+      // Queued Shopify writes must not fire months later after a reinstall.
+      await retryDb(() => db.pendingSync.deleteMany({ where: { shopId: shop.id } }));
       // Data is RETAINED (see docs/03 FLOW 10). Only the credential is erased.
       await clearAccessToken(shop.id);
       logger.info("app_uninstalled", { shop_id: shop.id, shop_domain: shopDomain });
@@ -413,6 +422,7 @@ function readOrder(order: ShopifyOrder): ValidOrder | null {
 
 type OrderOutcome = { orderId: string; applied: boolean; reconciled: number };
 
+
 /**
  * Write an order into the cache.
  *
@@ -436,6 +446,12 @@ export async function upsertOrderCache(
   if (!valid) return null;
 
   const { orderId, createdAt, updatedAt } = valid;
+
+  // An order a customer asked to have redacted is never stored again.
+  if (await isRedactedOrder(shopInternalId, orderId)) {
+    logger.info("order_redacted_ignored", { shop_id: shopInternalId, order_id: orderId });
+    return { orderId, applied: false, reconciled: 0 };
+  }
   // orders/cancelled means cancelled even if the payload omits cancelled_at.
   const cancelledAt = valid.cancelledAt ?? (forceCancelled ? updatedAt : null);
 

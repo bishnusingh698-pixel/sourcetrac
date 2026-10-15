@@ -110,7 +110,9 @@
     "privacy_requests_title": "Richieste dati recenti",
     "remove_option": "Rimuovi {{label}}",
     "sync_failed_one": "{{count}} scrittura su Shopify non è riuscita dopo vari tentativi. Ultimo errore: {{error}}",
-    "sync_failed_other": "{{count}} scritture su Shopify non sono riuscite dopo vari tentativi. Ultimo errore: {{error}}"
+    "sync_failed_other": "{{count}} scritture su Shopify non sono riuscite dopo vari tentativi. Ultimo errore: {{error}}",
+    "privacy_request_found_one": "Risposte trovate per {{count}} ordine: {{orders}}",
+    "privacy_request_found_other": "Risposte trovate per {{count}} ordini: {{orders}}"
   },
   "onboarding": {
     "title": "Introduzione",

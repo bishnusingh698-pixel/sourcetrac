@@ -36,6 +36,13 @@ first; otherwise the option safest for merchants and their data.
 - **L40** (poison rows): backoff now grows from 1 minute to 6 hours; a row that exhausts its retries is logged as an error and counted on the Settings page with its last error.
 - **L47** (customer block history): reads the customer's newest 100 orders, and logs lookup failures. Orders older than the `read_orders` 60-day window stay out of reach by design (`read_all_orders` is not requested).
 - **I18/I14** (first-order preset, unrecorded facts): the Thank-you block now sends `isFirstOrder`, country and product ids with the answer and they are stored; the first-order preset writes only when `isFirstOrder` is true (unknown counts as no). The customer id is still never stored, by the privacy posture.
+- **H20** (late `shop/redact`): when the shop is installed at the time the redact arrives, it has reinstalled since the uninstall that triggered it, so nothing is deleted and a warning is logged. Deleting would wipe the merchant's current surveys, answers and live session. Shopify sends `shop/redact` 48 hours after an uninstall, so an installed shop cannot be the target of a current one.
+- **M10** (late `app/uninstalled`): ignored when its `X-Shopify-Triggered-At` is earlier than the current installation's start (new nullable `Shop.installedAt`, additive migration seeded from `createdAt`). Without that header the uninstall still applies, as before.
+- **H19/M11** (deferred redacts): the remainder of a large `customers/redact` drains in the background right after the webhook, every webhook kicks a throttled drain of all shops' queued redacts, and retention executes (never discards) queued redacts.
+- **L28** (redacted orders come back): a new `RedactedOrder` tombstone table (additive migration) records every order a redact names; later order webhooks and answers for it are ignored (the buyer still sees "thanks"). Tombstones age out on the 24-month record clock.
+- **L32** (`shop/redact` never arrives): retention deletes a shop uninstalled more than 30 days ago (sessions included) — well past Shopify's 48-hour redact, so it only acts when that delivery was lost.
+- **L30** (daily stats after redact): `SurveyDailyStats` is cleared for the shop on a customer redact. Nothing reads the table, and a day bucket can describe a single order.
+- **M12** (data request): `orders_requested` is now read; the full answers for those orders are stored in the data-request record and the Settings page lists which orders had answers.
 
 ## Steps for the repository owner (not done here: deploys or touching real data)
 
@@ -45,3 +52,4 @@ first; otherwise the option safest for merchants and their data.
 3. **Deploy note:** this branch adds migration `20261015090000_template_keys` (two nullable columns, additive). `npm run start` applies it.
 4. **Deploy note:** migration `20261015100000_order_triggered_at` adds one nullable column to `OrderCache` (additive). `npm run start` applies it.
 5. **After deploying, run `shopify app deploy`** so the checkout and admin extensions ship (the admin blocks gained `locales/`, the Thank-you block sends order facts). Shopify then re-runs the extensions' review-free update; nothing else is required.
+6. **Deploy note:** migration `20261015110000_install_time_and_redacted_orders` adds `Shop.installedAt` (seeded from `createdAt` for installed shops) and the `RedactedOrder` table. Additive; `npm run start` applies it.

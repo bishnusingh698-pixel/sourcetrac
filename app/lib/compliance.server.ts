@@ -1,6 +1,7 @@
 import { db, isRetryableDbError } from "~/db.server";
 import { logger } from "~/lib/logger";
 import { withRetry } from "~/lib/retry.server";
+import { channelCountsForShop } from "~/lib/analytics-queries.server";
 import { findShopByDomain } from "~/lib/shop.server";
 
 /**
@@ -23,104 +24,176 @@ function retryDb<T>(operation: () => Promise<T>): Promise<T> {
   return withRetry(operation, { attempts: 3, baseDelayMs: 250, shouldRetry: isRetryableDbError });
 }
 
+export type DataRequestRecord = {
+  orderId: string;
+  submittedAt: string;
+  /** Question text -> the answer as the buyer gave it (option label or text). */
+  answers: Array<{ question: string; answer: string }>;
+};
+
 export type DataRequestResult = {
   shopFound: boolean;
-  /**
-   * Always empty in practice: no customer identifier is stored, so there is no
-   * way to scope a response to one individual without over-disclosing.
-   */
+  /** Orders Shopify named that we hold survey answers for. */
   ordersFound: string[];
+  records: DataRequestRecord[];
   note: string;
 };
 
 /**
- * customers/data_request — export data for a specific customer.
+ * customers/data_request — report the data held about one customer.
  *
- * The webhook payload identifies the customer by email/phone. We do not index
- * those, so we cannot match them to specific responses. We return the shop's
- * orders that have a survey response, and document why.
- *
- * There is no `shopId` parameter. The shop is always resolved from the payload's
- * `shop_domain`, which the webhook handler already verified; accepting an id as
- * well would have been an unvalidated second way to address the same shop.
+ * We hold no customer contact details, but Shopify names the customer's orders
+ * in `orders_requested`, and answers are stored per order. Those answers
+ * (including any free text the buyer typed) ARE this customer's data, so they
+ * are reported in full for the merchant to pass on. Other buyers' answers are
+ * never included. A shop-level summary is kept alongside for context.
  */
 export async function handleDataRequest(params: {
   shopDomain: string;
   customerEmail?: string;
   customerPhone?: string;
   orderIds?: string[];
+  /** The delivery's id; a retried delivery does not record a second request. */
+  webhookId?: string;
 }): Promise<DataRequestResult> {
   const shop = await findShopByDomain(params.shopDomain);
 
   if (!shop) {
-    return {
-      shopFound: false,
-      ordersFound: [],
-      note: "No SourceTrac installation for this shop.",
-    };
+    return { shopFound: false, ordersFound: [], records: [], note: "No SourceTrac installation for this shop." };
   }
 
-  // Shopify does not send `orders_to_redact` on this topic, so there is no
-  // order list to scope to. Falling back to "every response for the shop" would
-  // hand one customer's data request the order IDs of every other buyer on the
-  // shop -- a larger disclosure than the request asks for, and one that grows
-  // with the shop's size. Returning the channels we hold instead answers the
-  // actual question: what did we keep about this shop's buyers.
+  const requested = [...new Set(params.orderIds ?? [])];
+  const records = requested.length > 0 ? await recordsForOrders(shop.id, requested) : [];
+
   const [responseCount, v2ResponseCount, orderCount, channels] = await Promise.all([
     retryDb(() => db.surveyResponse.count({ where: { shopId: shop.id } })),
     retryDb(() => db.response.count({ where: { shopId: shop.id } })),
     retryDb(() => db.orderCache.count({ where: { shopId: shop.id } })),
-    retryDb(() =>
-      db.surveyResponse.groupBy({
-        by: ["channel"],
-        where: { shopId: shop.id },
-        _count: { channel: true },
-      }),
-    ),
+    // Both answer stores: the checkout blocks write only the v2 model.
+    channelCountsForShop(shop.id),
   ]);
 
   logger.info("compliance_data_request", {
     shop_id: shop.id,
     response_count: responseCount + v2ResponseCount,
+    requested_orders: requested.length,
+    records_found: records.length,
     // Logged for the audit trail only; the values are never stored.
     has_email: Boolean(params.customerEmail),
     has_phone: Boolean(params.customerPhone),
   });
 
-  const breakdown = channels
-    .map((c) => `${c.channel}: ${c._count.channel}`)
-    .join(", ");
+  const breakdown = channels.map((c) => `${c.label}: ${c.count}`).join(", ");
+  const ordersFound = [...new Set(records.map((record) => record.orderId))];
 
   const note =
-    "SourceTrac stores no customer contact details (no name, email, phone or " +
-    "address) and no customer ID, so no records are attributable to the " +
-    "individual who made this request. For this shop we hold " +
-    `${responseCount + v2ResponseCount} survey response(s) across ${orderCount} cached order(s)` +
-    (breakdown ? `, by channel: ${breakdown}. ` : ". ") +
-    "Each response contains only an order ID, the channel selected, and the " +
-    "timestamp. Merchant-level totals are available from the SourceTrac " +
-    "dashboard.";
+    (records.length > 0
+      ? `For the ${requested.length} order(s) Shopify named, SourceTrac holds ${records.length} survey ` +
+        `response(s) (orders ${ordersFound.join(", ")}); every answer is listed in this request. `
+      : requested.length > 0
+        ? `SourceTrac holds no survey answers for the ${requested.length} order(s) Shopify named. `
+        : "") +
+    "SourceTrac stores no customer contact details (no name, email, phone or address) and no customer ID. " +
+    `For this shop we hold ${responseCount + v2ResponseCount} survey response(s) across ${orderCount} cached order(s)` +
+    (breakdown ? `, by channel: ${breakdown}.` : ".");
 
-  // Record that a data request was answered, so the merchant can see it on the
-  // Settings page for the retention window. The stored payload is the export
-  // summary, never the buyer's identifiers — we hold none to store.
-  await retryDb(() =>
-    db.dataRequest.create({
-      data: {
-        shopId: shop.id,
-        customerId: null,
-        payload: JSON.stringify({ note, responseCount: responseCount + v2ResponseCount, orderCount }),
-      },
-    }),
-  );
+  // Record the request so the merchant can see (and pass on) what was found.
+  // The stored payload is the export, never the buyer's identifiers.
+  const alreadyRecorded =
+    params.webhookId !== undefined &&
+    (await retryDb(() =>
+      db.dataRequest.findFirst({
+        where: { shopId: shop.id, payload: { contains: `"webhookId":${JSON.stringify(params.webhookId)}` } },
+        select: { id: true },
+      }),
+    )) !== null;
+  if (!alreadyRecorded) {
+    await retryDb(() =>
+      db.dataRequest.create({
+        data: {
+          shopId: shop.id,
+          customerId: null,
+          payload: JSON.stringify({
+            webhookId: params.webhookId ?? null,
+            note,
+            responseCount: responseCount + v2ResponseCount,
+            orderCount,
+            records,
+          }),
+        },
+      }),
+    );
+  }
 
-  return {
-    shopFound: true,
-    // No customer identifier is stored, so no per-customer order list can be
-    // produced. Returning one would mean returning other buyers' orders.
-    ordersFound: [],
-    note,
-  };
+  return { shopFound: true, ordersFound, records, note };
+}
+
+/** Every answer stored for the given orders, legacy and v2, oldest first. */
+async function recordsForOrders(shopId: string, orderIds: string[]): Promise<DataRequestRecord[]> {
+  const [legacy, v2, labels] = await Promise.all([
+    retryDb(() =>
+      db.surveyResponse.findMany({
+        where: { shopId, orderId: { in: orderIds } },
+        select: { id: true, orderId: true, channel: true, otherText: true, submittedAt: true },
+      }),
+    ),
+    retryDb(() =>
+      db.response.findMany({
+        where: { shopId, orderId: { in: orderIds } },
+        select: {
+          id: true,
+          orderId: true,
+          createdAt: true,
+          answers: {
+            select: {
+              optionIds: true,
+              numberValue: true,
+              textValue: true,
+              otherText: true,
+              question: { select: { text: true, options: { select: { id: true, label: true } } } },
+            },
+          },
+        },
+      }),
+    ),
+    retryDb(() => db.shop.findUnique({ where: { id: shopId }, select: { questionText: true } })),
+  ]);
+  const migrated = new Set(v2.map((row) => row.id));
+
+  const records: DataRequestRecord[] = [];
+  for (const row of legacy) {
+    if (migrated.has(`bf-response-${row.id}`)) continue;
+    records.push({
+      orderId: row.orderId,
+      submittedAt: row.submittedAt.toISOString(),
+      answers: [{ question: labels?.questionText ?? "", answer: [row.channel, row.otherText].filter(Boolean).join(": ") }],
+    });
+  }
+  for (const row of v2) {
+    records.push({
+      orderId: row.orderId ?? "",
+      submittedAt: row.createdAt.toISOString(),
+      answers: row.answers.map((answer) => {
+        const labelOf = new Map(answer.question.options.map((option) => [option.id, option.label]));
+        const parts: string[] = [];
+        for (const id of safeIds(answer.optionIds)) parts.push(labelOf.get(id) ?? id);
+        if (typeof answer.numberValue === "number") parts.push(String(answer.numberValue));
+        if (answer.textValue) parts.push(answer.textValue);
+        if (answer.otherText) parts.push(answer.otherText);
+        return { question: answer.question.text, answer: parts.join("; ") };
+      }),
+    });
+  }
+  return records.sort((a, b) => a.submittedAt.localeCompare(b.submittedAt));
+}
+
+function safeIds(raw: string): string[] {
+  try {
+    const value = JSON.parse(raw) as unknown;
+    return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -144,6 +217,8 @@ export async function handleDataRequest(params: {
 export async function handleCustomerRedact(params: {
   shopDomain: string;
   orderIds: string[];
+  /** The delivery's id; a retried delivery does not queue the work twice. */
+  webhookId?: string;
 }): Promise<{ shopFound: boolean; deletedResponses: number; deletedOrders: number; deletedV2Responses: number; deferred: boolean }> {
   const shop = await findShopByDomain(params.shopDomain);
 
@@ -159,21 +234,48 @@ export async function handleCustomerRedact(params: {
     return { shopFound: true, deletedResponses: 0, deletedOrders: 0, deletedV2Responses: 0, deferred: false };
   }
 
-  if (orderIds.length > REDACT_BATCH_SIZE) {
-    // Store only the orders the inline pass will NOT delete, so the lazy drain
-    // resumes where this left off rather than re-scanning the whole set.
-    const remaining = orderIds.slice(REDACT_BATCH_SIZE);
+  // Remember every named order first, so nothing about them is stored again
+  // (a later orders/updated, a late answer) while the deletion runs.
+  for (let i = 0; i < orderIds.length; i += 1000) {
+    const chunk = orderIds.slice(i, i + 1000);
     await retryDb(() =>
-      db.pendingDeletion.create({
-        data: { shopId: shop.id, scope: "customer", payload: JSON.stringify({ orderIds: remaining }) },
-      }),
+      db.redactedOrder.createMany({ data: chunk.map((orderId) => ({ shopId: shop.id, orderId })), skipDuplicates: true }),
     );
+  }
+
+  if (orderIds.length > REDACT_BATCH_SIZE) {
+    // The first batch inline, then the rest queued. Queued after the inline
+    // pass (and once per delivery), so a retried webhook does not queue the
+    // same work twice.
+    const first = await deleteOrdersForShop(shop.id, orderIds.slice(0, REDACT_BATCH_SIZE));
+    const remaining = orderIds.slice(REDACT_BATCH_SIZE);
+    const queued =
+      params.webhookId !== undefined &&
+      (await retryDb(() =>
+        db.pendingDeletion.findFirst({
+          where: { shopId: shop.id, payload: { contains: `"webhookId":${JSON.stringify(params.webhookId)}` } },
+          select: { id: true },
+        }),
+      )) !== null;
+    if (!queued) {
+      await retryDb(() =>
+        db.pendingDeletion.create({
+          data: {
+            shopId: shop.id,
+            scope: "customer",
+            payload: JSON.stringify({ orderIds: remaining, webhookId: params.webhookId ?? null }),
+          },
+        }),
+      );
+    }
     logger.info("compliance_customer_redact_deferred", {
       shop_id: shop.id,
       orders: orderIds.length,
       remaining: remaining.length,
     });
-    const first = await deleteOrdersForShop(shop.id, orderIds.slice(0, REDACT_BATCH_SIZE));
+    // Drain the rest right after this response, not on the merchant's next
+    // dashboard visit (which may be after Shopify's 30-day deadline).
+    startPendingDeletions(shop.id);
     return { shopFound: true, ...first, deferred: true };
   }
 
@@ -206,6 +308,20 @@ async function deleteOrdersForShop(
   const deletedV2Responses = (await retryDb(() => db.response.deleteMany({ where: scope }))).count;
   const deletedOrders = (await retryDb(() => db.orderCache.deleteMany({ where: scope }))).count;
   const deletedResponses = (await retryDb(() => db.surveyResponse.deleteMany({ where: scope }))).count;
+
+  // A submit landing between the read above and the delete leaves a sync row
+  // with no response (PendingSync has no foreign key to cascade it).
+  await retryDb(
+    () => db.$executeRaw`
+      DELETE FROM "PendingSync" p
+      WHERE p."shopId" = ${shopId}
+        AND NOT EXISTS (SELECT 1 FROM "Response" r WHERE r.id = p."responseId")
+    `,
+  );
+  // SurveyDailyStats aggregates per day and channel; a bucket can describe a
+  // single order. Nothing reads the table, so it is cleared for the shop rather
+  // than left holding redacted orders' channel and total.
+  await retryDb(() => db.surveyDailyStats.deleteMany({ where: { shopId } }));
 
   logger.info("compliance_customer_redact", {
     shop_id: shopId,
@@ -252,10 +368,10 @@ export async function processPendingDeletions(shopId: string, maxBatches = 5): P
     }
 
     if (orderIds.length === 0) {
-      await retryDb(() => db.pendingDeletion.delete({ where: { id: row.id } }));
+      await retryDb(() => db.pendingDeletion.deleteMany({ where: { id: row.id } }));
     } else {
       await retryDb(() =>
-        db.pendingDeletion.update({ where: { id: row.id }, data: { payload: JSON.stringify({ orderIds }) } }),
+        db.pendingDeletion.updateMany({ where: { id: row.id }, data: { payload: JSON.stringify({ orderIds }) } }),
       );
       remaining += orderIds.length;
     }
@@ -264,14 +380,62 @@ export async function processPendingDeletions(shopId: string, maxBatches = 5): P
   return { processed, remaining };
 }
 
-let lastDeletionSweep: number | undefined;
+/** Per shop: one process-wide timestamp let one shop's visit skip every other shop's drain. */
+const lastDeletionSweep = new Map<string, number>();
 const DELETION_SWEEP_INTERVAL_MS = 5 * 60 * 1000;
+/** One drain per shop at a time. */
+const deletionsInFlight = new Map<string, Promise<void>>();
 
-/** Drain deferred redacts at most once per few minutes per process, never throwing. */
+/** Drain a shop's deferred redacts in the background, never throwing. */
+export function startPendingDeletions(shopId: string): void {
+  if (deletionsInFlight.has(shopId)) return;
+  const run = (async () => {
+    try {
+      // Every queued batch, not a few: this runs off the request path.
+      await processPendingDeletions(shopId, Number.POSITIVE_INFINITY);
+    } catch (error) {
+      logger.warn("compliance_deferred_redact_failed", {
+        shop_id: shopId,
+        error_message: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      deletionsInFlight.delete(shopId);
+    }
+  })();
+  deletionsInFlight.set(shopId, run);
+}
+
+/**
+ * Drain every shop's deferred redacts. Run from the webhook route and the
+ * retention job, so a redact completes whether or not its merchant ever opens
+ * the app again. Throttled, and never throws.
+ */
+let lastGlobalDeletionSweep: number | undefined;
+
+export async function maybeRunAllPendingDeletions(): Promise<void> {
+  const now = Date.now();
+  if (lastGlobalDeletionSweep !== undefined && now - lastGlobalDeletionSweep < DELETION_SWEEP_INTERVAL_MS) return;
+  lastGlobalDeletionSweep = now;
+  try {
+    const shops = await retryDb(() =>
+      db.pendingDeletion.findMany({ distinct: ["shopId"], select: { shopId: true } }),
+    );
+    for (const { shopId } of shops) startPendingDeletions(shopId);
+  } catch (error) {
+    lastGlobalDeletionSweep = undefined;
+    logger.warn("compliance_deferred_redact_sweep_failed", {
+      error_message: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+/** Drain deferred redacts at most once per few minutes per shop, never throwing. */
 export async function maybeRunPendingDeletions(shopId: string): Promise<void> {
   const now = Date.now();
-  if (lastDeletionSweep !== undefined && now - lastDeletionSweep < DELETION_SWEEP_INTERVAL_MS) return;
-  lastDeletionSweep = now;
+  const last = lastDeletionSweep.get(shopId);
+  if (last !== undefined && now - last < DELETION_SWEEP_INTERVAL_MS) return;
+  if (lastDeletionSweep.size > 10_000) lastDeletionSweep.clear();
+  lastDeletionSweep.set(shopId, now);
   try {
     const result = await processPendingDeletions(shopId);
     if (result.processed > 0 || result.remaining > 0) {
@@ -282,7 +446,7 @@ export async function maybeRunPendingDeletions(shopId: string): Promise<void> {
       });
     }
   } catch (error) {
-    lastDeletionSweep = undefined;
+    lastDeletionSweep.delete(shopId);
     logger.warn("compliance_deferred_redact_failed", {
       shop_id: shopId,
       error_message: error instanceof Error ? error.message : String(error),
@@ -298,11 +462,20 @@ export async function handleShopRedact(params: {
   shopDomain: string;
   shopId?: string;
 }): Promise<{ shopFound: boolean; deleted: boolean }> {
+  const shop = await findShopByDomain(params.shopDomain);
+
+  // shop/redact follows an uninstall by 48 hours. A shop that is installed now
+  // has reinstalled since: the request belongs to the previous installation,
+  // and deleting would wipe the merchant's current surveys, answers and live
+  // session. See DECISIONS.md (H20).
+  if (shop && shop.installState === "installed") {
+    logger.warn("compliance_shop_redact_skipped_reinstalled", { shop_id: shop.id, shop_domain: params.shopDomain });
+    return { shopFound: true, deleted: false };
+  }
+
   // Sessions hold access tokens (and, for online sessions, a staff member's
   // name and email). They are deleted even when no shop row remains.
   await retryDb(() => db.session.deleteMany({ where: { shop: params.shopDomain } }));
-
-  const shop = await findShopByDomain(params.shopDomain);
 
   if (!shop) {
     logger.info("compliance_shop_redact_noop", { shop_domain: params.shopDomain });
@@ -315,4 +488,15 @@ export async function handleShopRedact(params: {
 
   logger.info("compliance_shop_redact", { shop_id: shop.id, shop_domain: params.shopDomain });
   return { shopFound: true, deleted: true };
+}
+
+/** Whether customers/redact named this order (see `RedactedOrder`). */
+export async function isRedactedOrder(shopInternalId: string, orderId: string): Promise<boolean> {
+  const row = await retryDb(() =>
+    db.redactedOrder.findUnique({
+      where: { shopId_orderId: { shopId: shopInternalId, orderId } },
+      select: { orderId: true },
+    }),
+  );
+  return row !== null;
 }

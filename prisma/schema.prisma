@@ -87,6 +87,9 @@ model Shop {
   accessTokenTag       String?
   installState         InstallState @default(installed)
   uninstalledAt        DateTime?
+  /// When the current installation began. A late app/uninstalled or
+  /// shop/redact from an earlier installation is recognised by it.
+  installedAt          DateTime?
   plan                 Plan         @default(free)
   planStatus           PlanStatus   @default(active)
   subscriptionGid      String?
@@ -123,6 +126,7 @@ model Shop {
   pendingSyncs     PendingSync[]
   pendingDeletions PendingDeletion[]
   dataRequests     DataRequest[]
+  redactedOrders   RedactedOrder[]
 
   @@index([installState])
 }
@@ -510,6 +514,20 @@ model PendingDeletion {
   shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
   @@index([shopId, createdAt])
+}
+
+/// An order a customers/redact named. Its data is never stored again: a later
+/// orders/updated or a new answer for it is ignored. Kept on the record
+/// retention clock.
+model RedactedOrder {
+  shopId    String
+  orderId   String
+  createdAt DateTime @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@id([shopId, orderId])
+  @@index([createdAt])
 }
 
 /// A stored customers/data_request export, shown on Settings for 30 days.

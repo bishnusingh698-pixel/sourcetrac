@@ -110,7 +110,9 @@
     "privacy_requests_title": "最近的数据请求",
     "remove_option": "删除 {{label}}",
     "sync_failed_one": "有 {{count}} 项 Shopify 写入在多次重试后仍未完成。最近的错误：{{error}}",
-    "sync_failed_other": "有 {{count}} 项 Shopify 写入在多次重试后仍未完成。最近的错误：{{error}}"
+    "sync_failed_other": "有 {{count}} 项 Shopify 写入在多次重试后仍未完成。最近的错误：{{error}}",
+    "privacy_request_found_one": "找到 {{count}} 个订单的回答：{{orders}}",
+    "privacy_request_found_other": "找到 {{count}} 个订单的回答：{{orders}}"
   },
   "onboarding": {
     "title": "开始使用",

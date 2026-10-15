@@ -110,7 +110,9 @@
     "privacy_requests_title": "最近のデータリクエスト",
     "remove_option": "{{label}} を削除",
     "sync_failed_one": "Shopify への書き込み {{count}} 件が、複数回の再試行後も完了しませんでした。最後のエラー: {{error}}",
-    "sync_failed_other": "Shopify への書き込み {{count}} 件が、複数回の再試行後も完了しませんでした。最後のエラー: {{error}}"
+    "sync_failed_other": "Shopify への書き込み {{count}} 件が、複数回の再試行後も完了しませんでした。最後のエラー: {{error}}",
+    "privacy_request_found_one": "{{count}} 件の注文で回答が見つかりました: {{orders}}",
+    "privacy_request_found_other": "{{count}} 件の注文で回答が見つかりました: {{orders}}"
   },
   "onboarding": {
     "title": "はじめに",

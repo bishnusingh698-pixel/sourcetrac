@@ -199,16 +199,18 @@ describe("customers/redact deletes the orders Shopify names", () => {
 
     expect(first.deferred).toBe(true);
     expect(first.deletedV2Responses).toBe(REDACT_BATCH_SIZE);
-    expect(await prisma.pendingDeletion.count({ where: { shopId: shop.id } })).toBe(1);
-    // The remaining 5 are still present until drained.
-    expect(await prisma.response.count({ where: { shopId: shop.id } })).toBe(5);
 
-    const drained = await processPendingDeletions(shop.id);
-
-    expect(drained.processed).toBe(5);
-    expect(drained.remaining).toBe(0);
+    // The remaining 5 are drained in the background right after the webhook,
+    // without waiting for the merchant to open the app (H19).
+    for (let i = 0; i < 100 && (await prisma.pendingDeletion.count({ where: { shopId: shop.id } })) > 0; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
     expect(await prisma.response.count({ where: { shopId: shop.id } })).toBe(0);
     expect(await prisma.pendingDeletion.count({ where: { shopId: shop.id } })).toBe(0);
+
+    // A later explicit drain finds nothing left.
+    const drained = await processPendingDeletions(shop.id);
+    expect(drained).toEqual({ processed: 0, remaining: 0 });
   });
 });
 
@@ -223,6 +225,13 @@ describe("shop/redact removes the whole shop", () => {
       },
     });
 
+    // shop/redact follows an uninstall. While the shop is installed (it has
+    // reinstalled since), the request is stale and nothing is deleted (H20).
+    const stale = await handleShopRedact({ shopDomain: DOMAIN_B });
+    expect(stale.deleted).toBe(false);
+    expect(await prisma.surveyResponse.count({ where: { shopId: shop.id } })).toBe(1);
+
+    await prisma.shop.update({ where: { id: shop.id }, data: { installState: "uninstalled" } });
     const result = await handleShopRedact({ shopDomain: DOMAIN_B });
 
     expect(result.deleted).toBe(true);

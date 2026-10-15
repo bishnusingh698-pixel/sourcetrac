@@ -110,7 +110,9 @@
     "privacy_requests_title": "Recent data requests",
     "remove_option": "Remove {{label}}",
     "sync_failed_one": "{{count}} Shopify write could not be completed after several tries. Last error: {{error}}",
-    "sync_failed_other": "{{count}} Shopify writes could not be completed after several tries. Last error: {{error}}"
+    "sync_failed_other": "{{count}} Shopify writes could not be completed after several tries. Last error: {{error}}",
+    "privacy_request_found_one": "Answers found for {{count}} order: {{orders}}",
+    "privacy_request_found_other": "Answers found for {{count}} orders: {{orders}}"
   },
   "onboarding": {
     "title": "Get started",

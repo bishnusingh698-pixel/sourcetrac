@@ -110,7 +110,9 @@
     "privacy_requests_title": "Recente gegevensverzoeken",
     "remove_option": "{{label}} verwijderen",
     "sync_failed_one": "{{count}} schrijfactie naar Shopify is na meerdere pogingen niet gelukt. Laatste fout: {{error}}",
-    "sync_failed_other": "{{count}} schrijfacties naar Shopify zijn na meerdere pogingen niet gelukt. Laatste fout: {{error}}"
+    "sync_failed_other": "{{count}} schrijfacties naar Shopify zijn na meerdere pogingen niet gelukt. Laatste fout: {{error}}",
+    "privacy_request_found_one": "Antwoorden gevonden voor {{count}} bestelling: {{orders}}",
+    "privacy_request_found_other": "Antwoorden gevonden voor {{count}} bestellingen: {{orders}}"
   },
   "onboarding": {
     "title": "Aan de slag",

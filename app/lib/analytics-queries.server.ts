@@ -149,6 +149,21 @@ function channelAnswersSql(shopId: string): Prisma.Sql {
   `;
 }
 
+/** Answers per channel for a shop, from both stores, with the merchant's labels. */
+export async function channelCountsForShop(shopId: string): Promise<Array<{ channel: string; label: string; count: number }>> {
+  const [rows, shop] = await Promise.all([
+    retryDb(() =>
+      db.$queryRaw<Array<{ channel: string; count: bigint }>>`
+        SELECT r.channel, COUNT(*)::bigint AS count FROM (${channelAnswersSql(shopId)}) r
+        GROUP BY r.channel ORDER BY count DESC
+      `,
+    ),
+    retryDb(() => db.shop.findUnique({ where: { id: shopId }, select: { id: true, optionsJson: true, questionText: true } })),
+  ]);
+  const labels = shop ? await fetchChannelLabels(shop) : new Map<string, string>();
+  return rows.map((row) => ({ channel: row.channel, label: channelLabel(row.channel, labels), count: Number(row.count) }));
+}
+
 /** How many channel answers the shop has in total (the Export page count). */
 export async function countChannelAnswers(shopId: string): Promise<number> {
   const rows = await retryDb(() =>

@@ -4,7 +4,11 @@ Read-only audit. Fixed items are ticked `[x]`; ambiguous fixes are recorded in
 `DECISIONS.md`. Findings that turned out not to be real bugs on closer
 inspection were removed (S1-3, I1, I3, I4, I10, I12, I13, I23, I26, I27; and I16,
 which the installed `@shopify/ui-extensions` 2026.7 types settle: the
-thank-you `order.id` "becomes the Order object ID in the GraphQL Admin API").
+thank-you `order.id` "becomes the Order object ID in the GraphQL Admin API"; L25,
+whose re-stored row holds a token Shopify already revoked and is removed by
+`shop/redact`; L29, where an order-less answer has no link to any customer for a
+redact to follow and ages out with retention; and I7, ledger rows that hold no
+personal data and are purged after 30 days).
 
 Original note: no application code was changed by the audit. Every finding names a file and
 line, and gives a concrete scenario that triggers it.
@@ -306,11 +310,11 @@ the shop endpoint") is stale.
 
 ### Uninstall, GDPR and retention
 
-- [ ] **H19 (CONFIRMED): a deferred `customers/redact` can miss Shopify's 30-day deadline.**
+- [x] **H19 (CONFIRMED): a deferred `customers/redact` can miss Shopify's 30-day deadline.**
   - Where: `app/lib/compliance.server.ts:267-273`; callers only `app/routes/app._index.tsx:52` and `app.dashboard.tsx:60`.
   - Defect: deferred redact batches drain only when that merchant opens Home or Dashboard. The 5-minute throttle is one module-level timestamp shared by all shops.
   - Scenario: a redact names 450 orders, so 250 are deferred. If the merchant does not open the app for 30+ days, those Responses, Answers (including free text), legacy rows and `OrderCache` outlive the deadline. A visit by any other shop in the previous 5 minutes also makes this shop's drain skip.
-- [ ] **H20 (PLAUSIBLE): a late `shop/redact` can wipe a reinstalled shop.**
+- [x] **H20 (PLAUSIBLE): a late `shop/redact` can wipe a reinstalled shop.**
   - Where: `app/lib/compliance.server.ts:303-314`.
   - Defect: `handleShopRedact` deletes Sessions and the Shop row (cascading everything) without checking `installState` or `uninstalledAt`.
   - Scenario: the merchant uninstalls, reinstalls within 48h, and a `shop/redact` for the old install still arrives (or a late retry). All new surveys, responses and orders are deleted, along with the live session.
@@ -365,7 +369,7 @@ the shop endpoint") is stale.
 
 ### Uninstall, GDPR and retention
 
-- [ ] **M10 (PLAUSIBLE): a late `app/uninstalled` wipes a reinstalled, paying shop.**
+- [x] **M10 (PLAUSIBLE): a late `app/uninstalled` wipes a reinstalled, paying shop.**
   - Where: `app/lib/webhooks.server.ts:306-316` and `app/lib/shop.server.ts:177-195`; `triggeredAt` is dropped at `app/routes/webhooks.tsx:35`.
   - Defect: the uninstall is applied with no ordering check.
   - Scenario: the first uninstall delivery times out on a cold start. The merchant reinstalls and subscribes, then the retry lands. It:
@@ -373,11 +377,11 @@ the shop endpoint") is stale.
     - nulls the token;
     - sets `plan: free` and clears `subscriptionGid`.
   - Result: until the next admin visit, all `orders/*` webhooks and billing notices are ignored, and the merchant stays capped at Free while paying.
-- [ ] **M11 (CONFIRMED): retention silently drops unfinished redacts.**
+- [x] **M11 (CONFIRMED): retention silently drops unfinished redacts.**
   - Where: `app/lib/retention.server.ts:126-128`.
   - Defect: retention deletes `PendingDeletion` rows after 24 months instead of executing them.
   - Scenario: an unfinished redact (see H19) is discarded, never run, and nothing alerts.
-- [ ] **M12 (CONFIRMED that `orderIds` is unused; the payload shape is PLAUSIBLE): the customer data request reports nothing.**
+- [x] **M12 (CONFIRMED that `orderIds` is unused; the payload shape is PLAUSIBLE): the customer data request reports nothing.**
   - Where: `app/routes/webhooks.tsx:136-142` and `app/lib/compliance.server.ts:51` and `:63-68`.
   - Defect: `customers/data_request` ignores the payload's `orders_requested`, and `handleDataRequest`'s `orderIds` is never used. The stored summary (`:94-102`) says no records are attributable to the individual.
   - Scenario: Response and Answer rows for those orders (free text included) exist but are not reported, so the merchant gets an incorrect data-request answer.
@@ -492,7 +496,7 @@ the shop endpoint") is stale.
 
 ### Install, auth and session
 
-- [ ] **L1 (CONFIRMED): a webhook can resurrect an uninstalled shop.**
+- [x] **L1 (CONFIRMED): a webhook can resurrect an uninstalled shop.**
   - Where: `app/lib/webhooks.server.ts:49-55` with `app/lib/shop.server.ts:85-86`; the same pattern is in `app/lib/provision.server.ts:69-71`.
   - Defect: `resolveInstalledShop` checks `installState`, then `upsertShop` unconditionally sets `installed` and writes the token.
   - Scenario: an `orders/updated` delivery runs concurrently with `app/uninstalled`. The shop is flipped back to installed with the revoked token stored, and after `shop/redact` the Shop row is recreated.
@@ -592,30 +596,24 @@ the shop endpoint") is stale.
 
 ### Uninstall, GDPR and retention
 
-- [ ] **L25 (PLAUSIBLE): a Session row can reappear after uninstall.**
-  - Where: `app/session-storage.server.ts:366-367` and `app/lib/webhooks.server.ts:309`.
-  - Defect: an in-flight request can re-store a (revoked) Session after uninstall's `deleteMany`.
-- [ ] **L26 (CONFIRMED): webhook retries duplicate `PendingDeletion` and `DataRequest` rows.**
+- [x] **L26 (CONFIRMED): webhook retries duplicate `PendingDeletion` and `DataRequest` rows.**
   - Where: `app/lib/compliance.server.ts:166-176` and `:107-115`.
   - Defect: the `PendingDeletion` row is created before the inline batch, and the `DataRequest` row is created on every delivery.
   - Scenario: a retry duplicates both. The deletes are idempotent.
-- [ ] **L27 (PLAUSIBLE): a submit during a redact orphans a PendingSync row.**
+- [x] **L27 (PLAUSIBLE): a submit during a redact orphans a PendingSync row.**
   - Where: `app/lib/compliance.server.ts:200-206`.
   - Defect: a submit landing between the `findMany` and `deleteMany` orphans its PendingSync row, and there is no FK to cascade it.
-- [ ] **L28 (PLAUSIBLE): a redacted order can be written again.**
+- [x] **L28 (PLAUSIBLE): a redacted order can be written again.**
   - Where: `app/lib/webhooks.server.ts:266-274`.
   - Defect: nothing blocks re-creation. A later `orders/updated` recreates its `OrderCache`, and the buyer can answer it again.
-- [ ] **L29 (CONFIRMED): order-less responses can never be redacted.**
-  - Where: `app/lib/compliance.server.ts:198`.
-  - Defect: responses with `orderId = null` (on-site/link) are unreachable by `customers/redact` until 24-month retention.
-- [ ] **L30 (PLAUSIBLE): redaction never adjusts daily stats.**
+- [x] **L30 (PLAUSIBLE): redaction never adjusts daily stats.**
   - Where: `app/lib/compliance.server.ts:193-208`.
   - Defect: `SurveyDailyStats` backfilled rows can map to one order's channel and total.
   - Related: the retention comment at `retention.server.ts:89-91` wrongly claims these rows cascade.
-- [ ] **L31 (CONFIRMED): retention ages `OrderCache` by cache date, not order date.**
+- [x] **L31 (CONFIRMED): retention ages `OrderCache` by cache date, not order date.**
   - Where: `app/lib/retention.server.ts:133`.
   - Scenario: a 3-year-old backfilled order is kept 24 more months.
-- [ ] **L32 (CONFIRMED): there is no backstop when `shop/redact` never arrives.**
+- [x] **L32 (CONFIRMED): there is no backstop when `shop/redact` never arrives.**
   - Where: `app/lib/retention.server.ts:58-166`.
   - Scenario: a shop uninstalled more than 48h ago whose `shop/redact` never arrived keeps its data for 24 months, and its Shop row forever.
 
@@ -784,8 +782,7 @@ the shop endpoint") is stale.
 
 - [x] **I2:** `markUnverifiedFailedResponses` (`app/lib/answers.server.ts:480-486`) has no `shopId` filter and no `orderId IS NOT NULL` filter. It runs only from `api.survey-config.tsx:84` (the legacy route), not on a dashboard visit as the project notes claim. It also flags order-less on-site/link answers. (CONFIRMED)
 - [x] **I5:** `app/routes/app.dashboard.tsx:79` vs `:87`: two `new Date()` calls can straddle UTC midnight and shift the trend by a day. (PLAUSIBLE)
-- [ ] **I6:** `app/lib/compliance.server.ts:73-79`: the data-request channel breakdown reads only legacy `SurveyResponse`, while the total includes v2. (CONFIRMED)
-- [ ] **I7:** Compliance, failed and ignored webhook ledger rows have `shopId = null` (`app/routes/webhooks.tsx:78`, `app/lib/webhooks.server.ts:152`), so they survive `shop/redact` until the 30-day purge. They hold no PII. (CONFIRMED)
+- [x] **I6:** `app/lib/compliance.server.ts:73-79`: the data-request channel breakdown reads only legacy `SurveyResponse`, while the total includes v2. (CONFIRMED)
 - [ ] **I8:** `app/lib/crypto.server.ts:72`: `safeEqual` leaks the secret length. Also, `/readyz` (`app/routes/readyz.tsx:23`) shares `RETENTION_JOB_SECRET` with the data-deleting `/jobs/retention`. (CONFIRMED)
 - [ ] **I9:** `app/routes/jobs.retention.ts:20-28`: an unset secret returns a distinctive `503 not_configured`, not the 404 its comment promises. (CONFIRMED)
 - [x] **I11:** `app/lib/order-backfill.server.ts:83`: the `lastAttempt` map is never pruned. (CONFIRMED)
