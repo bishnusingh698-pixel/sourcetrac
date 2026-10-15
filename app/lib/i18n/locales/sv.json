@@ -244,7 +244,8 @@
     "feature_live_surveys_other": "Upp till {{count}} publicerade enkäter åt gången",
     "feature_follow_ups": "Följdfrågor och enkäter för förstagångsköpare eller återkommande köpare",
     "feature_targeting": "Visa en enkät utifrån ordervärde, land, andel köpare eller datum, och sluta efter ett visst antal svar",
-    "feature_automation": "Stoppa en enkät automatiskt när svaret är tydligt, och rotera flera enkäter"
+    "feature_automation": "Stoppa en enkät automatiskt när svaret är tydligt, och rotera flera enkäter",
+    "feature_unlimited_surveys": "Obegränsat antal publicerade enkäter"
   },
   "help": {
     "title": "Hjälp",

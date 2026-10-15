@@ -1279,10 +1279,10 @@ editor locks and server checks all read it):
 
 - Free: 1 live survey, 50 answers/month, follow-ups, new vs returning buyers,
   every template's short version, the full "How did you hear about us?".
-- Growth: 3 live surveys, unlimited answers, full templates (questions beyond
+- Growth: 10 live surveys, unlimited answers, full templates (questions beyond
   `liteQuestionKeys`, "None of these", per-product results), advanced
   targeting (order value, countries, sampling, dates, answer cap).
-- Scale: 10 live surveys, Shopify actions (tags, metafields, presets, Flow),
+- Scale: unlimited live surveys (`LIVE_SURVEY_LIMIT.scale` is null; only `MAX_SURVEYS_TOTAL` caps it), Shopify actions (tags, metafields, presets, Flow),
   auto-stop, rotation.
 
 Server enforcement is in `surveys.server.ts` (`plan_live_limit`,

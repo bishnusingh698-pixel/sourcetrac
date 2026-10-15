@@ -244,7 +244,8 @@
     "feature_live_surveys_other": "Hasta {{count}} encuestas activas a la vez",
     "feature_follow_ups": "Preguntas de seguimiento y encuestas para compradores nuevos o recurrentes",
     "feature_targeting": "Mostrar una encuesta según el valor del pedido, el país, el porcentaje de compradores o las fechas, y detenerla tras un número fijo de respuestas",
-    "feature_automation": "Detener una encuesta automáticamente cuando la respuesta esté clara y rotar varias encuestas"
+    "feature_automation": "Detener una encuesta automáticamente cuando la respuesta esté clara y rotar varias encuestas",
+    "feature_unlimited_surveys": "Encuestas activas ilimitadas"
   },
   "help": {
     "title": "Ayuda",

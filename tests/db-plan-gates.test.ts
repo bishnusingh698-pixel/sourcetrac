@@ -73,18 +73,23 @@ afterAll(async () => {
 });
 
 describe("live survey limit", () => {
-  it("allows one live survey on Free and three on Growth", async () => {
+  it("allows one live survey on Free, ten on Growth and any number on Scale", async () => {
     await createSurvey(shopId, input({ status: "active" }));
     const second = await createSurvey(shopId, input({ name: "Second" }));
     expect(await codeOf(setSurveyStatus(shopId, second.id, "active"))).toBe("plan_live_limit");
 
     await setPlan("growth");
     await setSurveyStatus(shopId, second.id, "active");
-    const third = await createSurvey(shopId, input({ name: "Third", status: "active" }));
-    const fourth = await createSurvey(shopId, input({ name: "Fourth" }));
-    expect(await codeOf(setSurveyStatus(shopId, fourth.id, "active"))).toBe("plan_live_limit");
-    expect(third.status).toBe("active");
-    expect(await liveSurveyUsage(shopId)).toEqual({ live: 3, limit: 3, plan: "growth" });
+    for (let i = 3; i <= 10; i += 1) await createSurvey(shopId, input({ name: `S${i}`, status: "active" }));
+    const eleventh = await createSurvey(shopId, input({ name: "Eleventh" }));
+    expect(await codeOf(setSurveyStatus(shopId, eleventh.id, "active"))).toBe("plan_live_limit");
+    expect(await liveSurveyUsage(shopId)).toEqual({ live: 10, limit: 10, plan: "growth" });
+
+    await setPlan("scale");
+    await setSurveyStatus(shopId, eleventh.id, "active");
+    await createSurvey(shopId, input({ name: "Twelfth", status: "active" }));
+    expect(await liveSurveyUsage(shopId)).toEqual({ live: 12, limit: null, plan: "scale" });
+    expect((await getCompiledConfig(shopId)).surveys).toHaveLength(12);
   });
 
   it("serves only the plan's share of live surveys after a downgrade, without pausing any", async () => {

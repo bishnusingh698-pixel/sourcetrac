@@ -123,7 +123,7 @@ export default function Surveys() {
     <s-stack gap="base">
       <PageIntro actions={createActions}>{t("surveys.subtitle")}</PageIntro>
       {failureText ? <s-banner tone="critical">{failureText}</s-banner> : null}
-      {usage.live > usage.limit ? (
+      {usage.limit !== null && usage.live > usage.limit ? (
         // A downgrade leaves more surveys live than the plan serves. Buyers only
         // see the first ones in priority order; the rest keep their settings.
         <s-banner tone="warning" heading={t("surveys.over_limit_title", { count: usage.limit })}>

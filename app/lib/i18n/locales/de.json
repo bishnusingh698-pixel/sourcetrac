@@ -244,7 +244,8 @@
     "feature_live_surveys_other": "Bis zu {{count}} Live-Umfragen gleichzeitig",
     "feature_follow_ups": "Folgefragen sowie Umfragen für Erstkäufer oder wiederkehrende Käufer",
     "feature_targeting": "Umfragen nach Bestellwert, Land, Käuferanteil oder Zeitraum anzeigen und nach einer festgelegten Zahl von Antworten beenden",
-    "feature_automation": "Eine Umfrage automatisch beenden, sobald das Ergebnis eindeutig ist, und mehrere Umfragen rotieren lassen"
+    "feature_automation": "Eine Umfrage automatisch beenden, sobald das Ergebnis eindeutig ist, und mehrere Umfragen rotieren lassen",
+    "feature_unlimited_surveys": "Unbegrenzt viele Live-Umfragen"
   },
   "help": {
     "title": "Hilfe",

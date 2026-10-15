@@ -244,7 +244,8 @@
     "feature_live_surveys_other": "Up to {{count}} live surveys at a time",
     "feature_follow_ups": "Follow-up questions, and surveys for first-time or returning buyers",
     "feature_targeting": "Show a survey by order value, country, share of buyers or dates, and stop after a set number of answers",
-    "feature_automation": "Stop a survey on its own once the answer is clear, and rotate several surveys"
+    "feature_automation": "Stop a survey on its own once the answer is clear, and rotate several surveys",
+    "feature_unlimited_surveys": "Unlimited live surveys"
   },
   "help": {
     "title": "Help",

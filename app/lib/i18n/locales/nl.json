@@ -244,7 +244,8 @@
     "feature_live_surveys_other": "Tot {{count}} live enquêtes tegelijk",
     "feature_follow_ups": "Vervolgvragen, en enquêtes voor nieuwe of terugkerende kopers",
     "feature_targeting": "Toon een enquête op basis van orderwaarde, land, deel van de kopers of data, en stop na een vast aantal antwoorden",
-    "feature_automation": "Stop een enquête vanzelf zodra het antwoord duidelijk is, en wissel af tussen meerdere enquêtes"
+    "feature_automation": "Stop een enquête vanzelf zodra het antwoord duidelijk is, en wissel af tussen meerdere enquêtes",
+    "feature_unlimited_surveys": "Onbeperkt aantal live enquêtes"
   },
   "help": {
     "title": "Help",

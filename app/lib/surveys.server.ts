@@ -725,9 +725,9 @@ async function shopPlanTier(shopId: string): Promise<PlanTier> {
   return planTier(effectivePlan(shop ?? { plan: null, planStatus: "" }));
 }
 
-/** How many surveys this plan may have live, never more than the hard cap. */
-function activeLimitFor(plan: PlanTier): number {
-  return Math.min(LIMITS.MAX_ACTIVE_SURVEYS, liveSurveyLimit(plan));
+/** How many surveys this plan may have live; null is no limit. */
+function activeLimitFor(plan: PlanTier): number | null {
+  return liveSurveyLimit(plan);
 }
 
 /** Refuse activation past the active-survey limit (not counting `exceptId`). */
@@ -737,31 +737,23 @@ async function assertActiveLimit(client: Prisma.TransactionClient | typeof db, s
   });
   const plan = await shopPlanTier(shopId);
   const limit = activeLimitFor(plan);
-  if (active < limit) return;
-  if (limit < LIMITS.MAX_ACTIVE_SURVEYS) {
-    // The plan's own limit, not the hard cap: say so, so the merchant knows an
-    // upgrade (or pausing another survey) is the way forward.
-    throw new ValidationError(
-      `Your plan includes ${limit} live ${limit === 1 ? "survey" : "surveys"}.`,
-      "Pause another survey, or upgrade to run more at once.",
-      { field: "status", code: "plan_live_limit", limit },
-    );
-  }
+  if (limit === null || active < limit) return;
   throw new ValidationError(
-    `You can have at most ${LIMITS.MAX_ACTIVE_SURVEYS} live surveys.`,
-    "Pause a survey you no longer need, then try again.",
-    { field: "status", code: "too_many_active" },
+    `Your plan includes ${limit} live ${limit === 1 ? "survey" : "surveys"}.`,
+    "Pause another survey, or upgrade to run more at once.",
+    { field: "status", code: "plan_live_limit", limit },
   );
 }
 
 /** Whether another live survey limit would be exceeded by activating `surveyId`. */
 export async function isOverActiveLimit(shopId: string, surveyId: string): Promise<boolean> {
   const active = await db.survey.count({ where: { shopId, status: "active", id: { not: surveyId } } });
-  return active >= activeLimitFor(await shopPlanTier(shopId));
+  const limit = activeLimitFor(await shopPlanTier(shopId));
+  return limit !== null && active >= limit;
 }
 
 /** Live surveys versus what the plan includes, for the surveys list notice. */
-export async function liveSurveyUsage(shopId: string): Promise<{ live: number; limit: number; plan: PlanTier }> {
+export async function liveSurveyUsage(shopId: string): Promise<{ live: number; limit: number | null; plan: PlanTier }> {
   const [live, plan] = await Promise.all([
     db.survey.count({ where: { shopId, status: "active" } }),
     shopPlanTier(shopId),
@@ -1339,7 +1331,8 @@ export async function getCompiledConfig(shopId: string): Promise<CompiledConfig>
   // downgraded with more surveys live, without pausing (or touching) any of
   // them, so they come back as they were on an upgrade.
   const [active, plan] = await Promise.all([getActiveSurveys(shopId), shopPlanTier(shopId)]);
-  const rows = active.slice(0, activeLimitFor(plan));
+  const limit = activeLimitFor(plan);
+  const rows = limit === null ? active : active.slice(0, limit);
   const config = buildConfig(rows);
   const size = Buffer.byteLength(JSON.stringify(config), "utf8");
   if (size > LIMITS.MAX_COMPILED_CONFIG_BYTES) {

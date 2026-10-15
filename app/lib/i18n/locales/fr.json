@@ -244,7 +244,8 @@
     "feature_live_surveys_other": "Jusqu'à {{count}} sondages en ligne à la fois",
     "feature_follow_ups": "Questions de suivi, et sondages pour les nouveaux acheteurs ou les acheteurs récurrents",
     "feature_targeting": "Afficher un sondage selon la valeur de commande, le pays, la part d'acheteurs ou les dates, et l'arrêter après un nombre de réponses défini",
-    "feature_automation": "Arrêter automatiquement un sondage dès que la réponse est claire, et faire tourner plusieurs sondages"
+    "feature_automation": "Arrêter automatiquement un sondage dès que la réponse est claire, et faire tourner plusieurs sondages",
+    "feature_unlimited_surveys": "Sondages en ligne illimités"
   },
   "help": {
     "title": "Aide",

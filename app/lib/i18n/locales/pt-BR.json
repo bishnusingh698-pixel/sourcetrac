@@ -244,7 +244,8 @@
     "feature_live_surveys_other": "Até {{count}} pesquisas no ar por vez",
     "feature_follow_ups": "Perguntas complementares e pesquisas para quem compra pela primeira vez ou já comprou antes",
     "feature_targeting": "Mostre uma pesquisa por valor do pedido, país, parcela de compradores ou datas, e pare após um número definido de respostas",
-    "feature_automation": "Pare uma pesquisa automaticamente quando a resposta estiver clara e alterne entre várias pesquisas"
+    "feature_automation": "Pare uma pesquisa automaticamente quando a resposta estiver clara e alterne entre várias pesquisas",
+    "feature_unlimited_surveys": "Pesquisas no ar ilimitadas"
   },
   "help": {
     "title": "Ajuda",

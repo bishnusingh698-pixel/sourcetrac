@@ -244,7 +244,8 @@
     "feature_live_surveys_other": "同时最多上线 {{count}} 个问卷",
     "feature_follow_ups": "追问，以及面向首次购买或回头客的问卷",
     "feature_targeting": "按订单金额、国家/地区、买家比例或日期显示问卷，并在收到设定数量的回答后停止",
-    "feature_automation": "结果明确后自动停止问卷，并轮换多个问卷"
+    "feature_automation": "结果明确后自动停止问卷，并轮换多个问卷",
+    "feature_unlimited_surveys": "上线问卷数量不限"
   },
   "help": {
     "title": "帮助",

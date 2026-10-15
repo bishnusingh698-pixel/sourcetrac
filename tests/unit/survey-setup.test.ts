@@ -36,15 +36,20 @@ describe("plan features", () => {
     expect(planHas("scale", "shopify_actions")).toBe(true);
   });
 
-  it("allows 1, 3 and 10 live surveys", () => {
-    expect([liveSurveyLimit("free"), liveSurveyLimit("growth"), liveSurveyLimit("scale")]).toEqual([1, 3, 10]);
-    expect(liveSurveyLimit("scale")).toBeLessThanOrEqual(LIMITS.MAX_ACTIVE_SURVEYS);
+  it("allows 1 live survey on Free, 10 on Growth and no limit on Scale", () => {
+    expect([liveSurveyLimit("free"), liveSurveyLimit("growth"), liveSurveyLimit("scale")]).toEqual([1, 10, null]);
   });
 
   it("lists the live-survey limit on every plan card", () => {
     for (const plan of Object.values(PLANS)) {
+      const limit = liveSurveyLimit(plan.key);
       const feature = plan.features.find((f) => f.key === "plans.feature_live_surveys");
-      expect(feature?.params?.count, plan.key).toBe(liveSurveyLimit(plan.key));
+      if (limit === null) {
+        expect(feature, plan.key).toBeUndefined();
+        expect(plan.features.some((f) => f.key === "plans.feature_unlimited_surveys"), plan.key).toBe(true);
+      } else {
+        expect(feature?.params?.count, plan.key).toBe(limit);
+      }
     }
   });
 

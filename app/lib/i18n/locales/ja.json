@@ -244,7 +244,8 @@
     "feature_live_surveys_other": "同時に公開できるアンケート最大{{count}}件",
     "feature_follow_ups": "フォローアップの質問と、初めての購入者やリピーター向けのアンケート",
     "feature_targeting": "注文金額、国、購入者の割合、日付でアンケートを表示し、決まった回答数に達したら停止",
-    "feature_automation": "結果がはっきりしたらアンケートを自動で停止し、複数のアンケートをローテーション"
+    "feature_automation": "結果がはっきりしたらアンケートを自動で停止し、複数のアンケートをローテーション",
+    "feature_unlimited_surveys": "公開できるアンケート数は無制限"
   },
   "help": {
     "title": "ヘルプ",

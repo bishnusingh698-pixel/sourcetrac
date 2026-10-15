@@ -244,7 +244,8 @@
     "feature_live_surveys_other": "Fino a {{count}} sondaggi online alla volta",
     "feature_follow_ups": "Domande di approfondimento e sondaggi per chi acquista per la prima volta o torna ad acquistare",
     "feature_targeting": "Mostra un sondaggio in base a valore dell'ordine, paese, quota di clienti o date, e fermalo dopo un certo numero di risposte",
-    "feature_automation": "Ferma un sondaggio da solo quando la risposta è chiara e alterna più sondaggi"
+    "feature_automation": "Ferma un sondaggio da solo quando la risposta è chiara e alterna più sondaggi",
+    "feature_unlimited_surveys": "Sondaggi online illimitati"
   },
   "help": {
     "title": "Assistenza",

@@ -9,10 +9,11 @@
  * pricing notes in AGENTS.md):
  * - Free keeps the whole attribution use case: the "how did you hear" question,
  *   follow-up questions, new vs returning buyers, revenue by channel, export.
- * - Growth adds volume and reach: unlimited answers, more live surveys, the full
+ * - Growth adds volume and reach: unlimited answers, 10 live surveys, the full
  *   version of every template and the detailed "who sees it" rules.
- * - Scale adds automation: writing answers back to Shopify (tags, metafields,
- *   Flow), stopping a survey once the answer is clear, and rotating surveys.
+ * - Scale adds automation and removes the live-survey limit: writing answers
+ *   back to Shopify (tags, metafields, Flow), stopping a survey once the answer
+ *   is clear, and rotating surveys.
  */
 
 export type PlanTier = "free" | "growth" | "scale";
@@ -52,10 +53,14 @@ export function planHas(plan: PlanTier, feature: PlanFeature): boolean {
   return planAtLeast(plan, FEATURE_PLAN[feature]);
 }
 
-/** How many surveys may be live at once. */
-export const LIVE_SURVEY_LIMIT: Record<PlanTier, number> = { free: 1, growth: 3, scale: 10 };
+/**
+ * How many surveys may be live at once; null is no limit. A live survey costs
+ * nothing to serve (the block fetches only the one it shows), so the limit is
+ * there to separate the plans, not to protect the server.
+ */
+export const LIVE_SURVEY_LIMIT: Record<PlanTier, number | null> = { free: 1, growth: 10, scale: null };
 
-export function liveSurveyLimit(plan: PlanTier): number {
+export function liveSurveyLimit(plan: PlanTier): number | null {
   return LIVE_SURVEY_LIMIT[plan];
 }
 
