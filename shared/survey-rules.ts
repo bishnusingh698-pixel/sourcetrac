@@ -436,6 +436,65 @@ export function npsScore(buckets: ReadonlyArray<CountBucket>): number | null {
   return Math.round(((promoters - detractors) / total) * 100);
 }
 
+/** The NPS split behind the score, so the page can show where it comes from. */
+export type NpsResult = {
+  /** −100 to 100. */
+  score: number;
+  promoters: number;
+  passives: number;
+  detractors: number;
+  total: number;
+};
+
+/**
+ * Net Promoter Score with its split: promoters answered 9–10, passives 7–8,
+ * detractors 0–6. Values outside 0–10 are not NPS answers and are ignored, so a
+ * question whose type changed cannot skew the score. Null with no answers.
+ */
+export function npsResult(buckets: ReadonlyArray<CountBucket>): NpsResult | null {
+  const valid = buckets.filter(
+    ({ value, count }) => Number.isInteger(value) && value >= 0 && value <= 10 && Number.isFinite(count) && count > 0,
+  );
+  const sum = (test: (value: number) => boolean) =>
+    valid.reduce((total, bucket) => total + (test(bucket.value) ? bucket.count : 0), 0);
+  const total = sum(() => true);
+  const score = npsScore(valid);
+  if (total === 0 || score === null) return null;
+  return {
+    score,
+    promoters: sum((v) => v >= 9),
+    passives: sum((v) => v === 7 || v === 8),
+    detractors: sum((v) => v <= 6),
+    total,
+  };
+}
+
+/** Customer satisfaction (CSAT) on a 1–5 scale. */
+export type CsatResult = {
+  /** Share of answers that were 4 or 5, as a whole percent. */
+  percent: number;
+  satisfied: number;
+  total: number;
+  /** Mean answer, one decimal place. */
+  average: number;
+};
+
+/**
+ * CSAT: the share of answers that were 4 or 5 on a 1–5 scale ("satisfied" or
+ * "very satisfied"), the usual definition. Values outside 1–5 are ignored.
+ * Null with no answers, rendered as no score rather than 0%.
+ */
+export function csatResult(buckets: ReadonlyArray<CountBucket>): CsatResult | null {
+  const valid = buckets.filter(
+    ({ value, count }) => Number.isInteger(value) && value >= 1 && value <= 5 && Number.isFinite(count) && count > 0,
+  );
+  const total = valid.reduce((sum, b) => sum + b.count, 0);
+  const average = averageRating(valid);
+  if (total === 0 || average === null) return null;
+  const satisfied = valid.reduce((sum, b) => sum + (b.value >= 4 ? b.count : 0), 0);
+  return { percent: Math.round((satisfied / total) * 100), satisfied, total, average };
+}
+
 /**
  * Mean of a 1–5 rating distribution, to one decimal place. Null when there are
  * no answers.

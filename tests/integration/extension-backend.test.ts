@@ -280,7 +280,9 @@ describe("checkout editor preview", () => {
       expect(source).toMatch(/const inEditor = shopify\.extension\.editor !== undefined;/);
       expect(source).toMatch(/useMultiSurvey\(inEditor \? "" : /);
 
-      const previewIndex = source.indexOf("<MultiSurveyPreview");
+      // EditorPreview shows the merchant's real survey, or the sample when it
+      // cannot (tests/integration/extension-bundle.test.ts drives both).
+      const previewIndex = source.indexOf("<EditorPreview");
       const liveIndex = source.indexOf("<MultiSurveyView");
       const nullIndex = source.indexOf("return null;");
       expect(previewIndex, "the editor must get the preview").toBeGreaterThan(-1);

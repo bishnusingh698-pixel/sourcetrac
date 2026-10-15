@@ -667,7 +667,19 @@
     "filter_product": "Prodotto",
     "multi_credit_note": "Una risposta con più scelte conta il suo ordine per ciascuna, quindi questi importi possono superare il totale.",
     "capped_note": "Basato sulle {{limit}} risposte più recenti.",
-    "download_failed": "Il download non è partito. Riprova tra un momento."
+    "download_failed": "Il download non è partito. Riprova tra un momento.",
+    "score_nps": "Net Promoter Score (NPS)",
+    "score_nps_help": "Percentuale di promotori meno percentuale di detrattori, da −100 a +100.",
+    "score_promoters": "Promotori (9–10)",
+    "score_passives": "Passivi (7–8)",
+    "score_detractors": "Detrattori (0–6)",
+    "score_csat": "Soddisfazione clienti (CSAT)",
+    "score_csat_help": "Quota di risposte con 4 o 5 su 5.",
+    "score_average": "Media {{average}} su 5",
+    "score_based_on_one": "Basato su {{count}} risposta.",
+    "score_based_on_other": "Basato su {{count}} risposte.",
+    "score_share": "{{percent}}% ({{count}})",
+    "score_share_percent": "{{percent}}%"
   },
   "responses": {
     "title": "Risposte",
@@ -1116,7 +1128,11 @@
     "languages_help_one": "I clienti vedono il sondaggio nella lingua del checkout. {{count}} lingua ha una traduzione.",
     "languages_help_other": "I clienti vedono il sondaggio nella lingua del checkout. {{count}} lingue hanno una traduzione.",
     "language": "Lingua",
-    "languages_frame": "Titolo, introduzione e pulsanti"
+    "languages_frame": "Titolo, introduzione e pulsanti",
+    "survey_id_label": "ID del sondaggio",
+    "survey_id_help": "Hai più di un sondaggio? Nell'editor del checkout, seleziona il blocco \"SourceTrac survey\" e incolla questo ID nella sua impostazione \"Survey ID\". Quel blocco mostrerà solo questo sondaggio e l'editor ne mostrerà l'anteprima. Lascia l'impostazione vuota per mostrare il sondaggio attivo con la priorità più alta.",
+    "survey_id_copied": "ID del sondaggio copiato",
+    "survey_id_copy_failed": "Impossibile copiare. Seleziona l'ID e copialo."
   },
   "preview": {
     "title": "Anteprima",

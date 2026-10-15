@@ -667,7 +667,19 @@
     "filter_product": "商品",
     "multi_credit_note": "複数選択の回答は、選んだ各項目に注文が計上されるため、これらの金額の合計は全体を上回ることがあります。",
     "capped_note": "最新の{{limit}}件の回答に基づいています。",
-    "download_failed": "ダウンロードを開始できませんでした。しばらくしてからもう一度お試しください。"
+    "download_failed": "ダウンロードを開始できませんでした。しばらくしてからもう一度お試しください。",
+    "score_nps": "ネットプロモータースコア（NPS）",
+    "score_nps_help": "推奨者の割合から批判者の割合を引いた値で、−100 から +100 までです。",
+    "score_promoters": "推奨者（9–10）",
+    "score_passives": "中立者（7–8）",
+    "score_detractors": "批判者（0–6）",
+    "score_csat": "顧客満足度（CSAT）",
+    "score_csat_help": "5 段階で 4 または 5 と答えた割合です。",
+    "score_average": "平均 {{average}}（5 点満点）",
+    "score_based_on_one": "{{count}} 件の回答に基づきます。",
+    "score_based_on_other": "{{count}} 件の回答に基づきます。",
+    "score_share": "{{percent}}% ({{count}})",
+    "score_share_percent": "{{percent}}%"
   },
   "responses": {
     "title": "回答",
@@ -1116,7 +1128,11 @@
     "languages_help_one": "購入者にはチェックアウトの言語でアンケートが表示されます。翻訳がある言語は{{count}}件です。",
     "languages_help_other": "購入者にはチェックアウトの言語でアンケートが表示されます。翻訳がある言語は{{count}}件です。",
     "language": "言語",
-    "languages_frame": "タイトル、導入文、ボタン"
+    "languages_frame": "タイトル、導入文、ボタン",
+    "survey_id_label": "アンケート ID",
+    "survey_id_help": "アンケートが複数ありますか？チェックアウトエディタで「SourceTrac survey」ブロックを選択し、この ID を「Survey ID」設定に貼り付けてください。そのブロックにはこのアンケートだけが表示され、エディタでもプレビューされます。設定を空にすると、優先度が最も高い公開中のアンケートが表示されます。",
+    "survey_id_copied": "アンケート ID をコピーしました",
+    "survey_id_copy_failed": "コピーできませんでした。ID を選択してコピーしてください。"
   },
   "preview": {
     "title": "プレビュー",

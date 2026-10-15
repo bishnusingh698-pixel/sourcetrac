@@ -73,6 +73,28 @@ export type SurveyConfigV2 = {
   survey: CompiledSurvey | null;
 };
 
+/** Shape returned by GET /api/survey-preview (checkout editor only). */
+export type SurveyPreview = {
+  survey: CompiledSurvey | null;
+  name: string | null;
+  status: "draft" | "active" | "paused" | null;
+  pinned: boolean;
+  /** False when the survey is not set to show on the page this block is on. */
+  onThisPage: boolean;
+  reason: "not_found" | "none_live" | null;
+};
+
+/**
+ * The block's "Survey ID" setting as the server expects it, or null. Merchants
+ * paste it, so stray spaces and capitals are forgiven; anything that cannot be
+ * an id is dropped rather than sent.
+ */
+export function cleanSurveyId(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const id = value.trim().toLowerCase();
+  return /^[a-z0-9]{8,40}$/.test(id) ? id : null;
+}
+
 /**
  * Sentinel channel for the free-text answer. Must match
  * `OTHER_CHANNEL_VALUE` in app/lib/settings.ts, which the submit route
@@ -403,10 +425,12 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
    * The v2 multi-question config. One active survey for this order and
    * placement, already compiled server-side.
    */
-  function fetchSurvey(orderId: string, placement: Placement, locale: string | null) {
+  function fetchSurvey(orderId: string, placement: Placement, locale: string | null, surveyId?: string | null) {
     const query = new URLSearchParams({ placement });
     if (orderId) query.set("orderId", orderId);
     if (locale) query.set("locale", locale);
+    // The block's "Survey ID" setting: show that survey, not the priority pick.
+    if (surveyId) query.set("surveyId", surveyId);
     // T7: only the Thank-you block binds this. Sending it here keeps the payment
     // rule server-side, so a survey that targets manual payment methods is
     // matched against the real selection rather than always seeing an empty list.
@@ -421,6 +445,18 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
     if (typeof country === "string" && country.length > 0) query.set("country", country.slice(0, 2).toUpperCase());
     return withRetries("survey_fetch", surfaceOf(placement), () =>
       attempt<SurveyConfigV2>(`/api/survey?${query.toString()}`, { method: "GET" }),
+    );
+  }
+
+  /**
+   * The merchant's real survey for the checkout editor, which has no order. A
+   * read only: the editor preview never submits.
+   */
+  function fetchPreview(placement: Placement, surveyId: string | null) {
+    const query = new URLSearchParams({ placement });
+    if (surveyId) query.set("surveyId", surveyId);
+    return withRetries("survey_preview", surfaceOf(placement), () =>
+      attempt<SurveyPreview>(`/api/survey-preview?${query.toString()}`, { method: "GET" }),
     );
   }
 
@@ -509,5 +545,5 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
     }
   }
 
-  return { fetchSurveyConfig, fetchSurvey, submitResponse, submitAnswers, getLocale: buyerLocale, t };
+  return { fetchSurveyConfig, fetchSurvey, fetchPreview, submitResponse, submitAnswers, getLocale: buyerLocale, t };
 }

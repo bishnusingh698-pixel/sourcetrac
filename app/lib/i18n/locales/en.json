@@ -613,7 +613,19 @@
     "filter_product": "Product",
     "multi_credit_note": "An answer with several choices counts its order under each one, so these amounts can add up to more than the total.",
     "capped_note": "Based on the newest {{limit}} answers.",
-    "download_failed": "The download did not start. Please try again in a moment."
+    "download_failed": "The download did not start. Please try again in a moment.",
+    "score_nps": "Net Promoter Score (NPS)",
+    "score_nps_help": "Percent of promoters minus percent of detractors, from −100 to +100.",
+    "score_promoters": "Promoters (9–10)",
+    "score_passives": "Passives (7–8)",
+    "score_detractors": "Detractors (0–6)",
+    "score_csat": "Customer satisfaction (CSAT)",
+    "score_csat_help": "Share of answers that were 4 or 5 out of 5.",
+    "score_average": "Average {{average}} out of 5",
+    "score_based_on_one": "Based on {{count}} answer.",
+    "score_based_on_other": "Based on {{count}} answers.",
+    "score_share": "{{percent}}% ({{count}})",
+    "score_share_percent": "{{percent}}%"
   },
   "responses": {
     "title": "Responses",
@@ -1116,7 +1128,11 @@
     "languages_help_one": "Buyers see the survey in their checkout language. {{count}} language has a translation.",
     "languages_help_other": "Buyers see the survey in their checkout language. {{count}} languages have a translation.",
     "language": "Language",
-    "languages_frame": "Title, intro and buttons"
+    "languages_frame": "Title, intro and buttons",
+    "survey_id_label": "Survey ID",
+    "survey_id_help": "Running more than one survey? In the checkout editor, select the SourceTrac survey block and paste this ID into its Survey ID setting. That block then shows only this survey, and the editor previews it. Leave the setting empty to show your highest-priority live survey.",
+    "survey_id_copied": "Survey ID copied",
+    "survey_id_copy_failed": "Couldn't copy. Select the ID and copy it."
   },
   "preview": {
     "title": "Preview",

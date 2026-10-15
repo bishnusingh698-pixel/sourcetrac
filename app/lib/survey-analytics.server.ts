@@ -16,7 +16,16 @@ import type { RevenueStatus } from "~/lib/csv";
 import { formatDecimalForCurrency } from "~/lib/money";
 import { evaluateResponseRevenue, type RevenueDecision } from "~/lib/revenue";
 import { withRetry } from "~/lib/retry.server";
-import { SATISFACTION_OPTIONS, YES_NO_IDS } from "@shared/survey-rules";
+import {
+  SATISFACTION_OPTIONS,
+  YES_NO_IDS,
+  csatResult,
+  npsResult,
+  satisfactionValue,
+  type CountBucket,
+  type CsatResult,
+  type NpsResult,
+} from "@shared/survey-rules";
 
 function retryDb<T>(operation: () => Promise<T>): Promise<T> {
   return withRetry(operation, { attempts: 3, baseDelayMs: 250, shouldRetry: isRetryableDbError });
@@ -239,6 +248,9 @@ export function currentOrderTotal(row: SurveyResponseRow): { total: string; curr
   return null;
 }
 
+/** The headline score a question type has, if any. */
+export type QuestionScore = ({ kind: "nps" } & NpsResult) | ({ kind: "csat" } & CsatResult);
+
 export type QuestionBreakdown =
   | {
       kind: "choice";
@@ -251,6 +263,8 @@ export type QuestionBreakdown =
         revenueByCurrency: Array<{ currency: string; minor: number }>;
       }>;
       otherCount: number;
+      /** Satisfaction questions: the CSAT score. */
+      score: QuestionScore | null;
       /**
        * Multiple choice: an answer with several choices credits its whole order
        * to each one, so the per-option revenue can sum to more than the total.
@@ -263,6 +277,8 @@ export type QuestionBreakdown =
       questionId: string;
       total: number;
       distribution: Array<{ value: number; count: number }>;
+      /** NPS for an NPS question, CSAT for a 1–5 rating. */
+      score: QuestionScore | null;
     }
   | {
       kind: "text";
@@ -316,6 +332,7 @@ export function buildBreakdowns(params: {
         questionId: question.id,
         total: distribution.reduce((sum, d) => sum + d.count, 0),
         distribution,
+        score: questionScore(question.type, distribution),
       };
     }
 
@@ -362,9 +379,32 @@ export function buildBreakdowns(params: {
       total: relevant.length,
       options,
       otherCount,
+      score:
+        question.type === "satisfaction_5"
+          ? questionScore(
+              question.type,
+              options.flatMap((option) => {
+                const value = satisfactionValue(option.optionId);
+                return value === undefined ? [] : [{ value, count: option.count }];
+              }),
+            )
+          : null,
       multiple: question.type === "multi_choice",
     };
   });
+}
+
+/** NPS for an NPS question; CSAT for a 1–5 rating or satisfaction question. */
+export function questionScore(type: string, buckets: ReadonlyArray<CountBucket>): QuestionScore | null {
+  if (type === "nps") {
+    const result = npsResult(buckets);
+    return result ? { kind: "nps", ...result } : null;
+  }
+  if (type === "rating_5" || type === "satisfaction_5") {
+    const result = csatResult(buckets);
+    return result ? { kind: "csat", ...result } : null;
+  }
+  return null;
 }
 
 /**

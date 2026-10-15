@@ -20,6 +20,15 @@
     "satisfaction_neutral": "Neutro",
     "satisfaction_satisfied": "Soddisfatto",
     "satisfaction_very_satisfied": "Molto soddisfatto",
-    "previewTitle": "Domanda rapida"
+    "previewTitle": "Domanda rapida",
+    "editorShowing": "Sondaggio SourceTrac: {{name}}",
+    "editorDraft": "Bozza. Gli acquirenti non la vedranno finché non la pubblichi in SourceTrac.",
+    "editorPaused": "In pausa. Gli acquirenti non lo vedranno finché non lo riprendi in SourceTrac.",
+    "editorNotFound": "Nessun sondaggio ha questo ID. Copia di nuovo l'ID dal sondaggio in SourceTrac.",
+    "editorNoneLive": "Non c'è ancora nessun sondaggio attivo in questa pagina. Gli acquirenti non vedono nulla qui finché un sondaggio non è attivo in SourceTrac.",
+    "editorUnavailable": "Non è stato possibile caricare il tuo sondaggio nell'editor, quindi questo è un esempio. Gli acquirenti vedono comunque il sondaggio che hai impostato in SourceTrac.",
+    "editorPinnedNote": "Anteprima. Dall'editor non viene inviato nulla. Le regole di targeting si applicano agli ordini reali.",
+    "editorPriorityNote": "Anteprima. Questo blocco mostra il tuo sondaggio attivo con la priorità più alta. Per sceglierne uno, incolla il suo ID nelle impostazioni di questo blocco.",
+    "editorOtherPage": "Questo sondaggio non è impostato per apparire in questa pagina. Attiva questa pagina in \"Dove appare\" in SourceTrac."
   }
 }

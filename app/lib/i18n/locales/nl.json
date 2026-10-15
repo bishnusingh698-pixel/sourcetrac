@@ -667,7 +667,19 @@
     "filter_product": "Product",
     "multi_credit_note": "Een antwoord met meerdere keuzes telt de bestelling bij elke keuze mee, dus deze bedragen kunnen samen meer zijn dan het totaal.",
     "capped_note": "Gebaseerd op de nieuwste {{limit}} antwoorden.",
-    "download_failed": "De download is niet gestart. Probeer het zo opnieuw."
+    "download_failed": "De download is niet gestart. Probeer het zo opnieuw.",
+    "score_nps": "Net Promoter Score (NPS)",
+    "score_nps_help": "Percentage promotors min percentage criticasters, van −100 tot +100.",
+    "score_promoters": "Promotors (9–10)",
+    "score_passives": "Passieven (7–8)",
+    "score_detractors": "Criticasters (0–6)",
+    "score_csat": "Klanttevredenheid (CSAT)",
+    "score_csat_help": "Aandeel antwoorden met een 4 of 5 van de 5.",
+    "score_average": "Gemiddeld {{average}} van de 5",
+    "score_based_on_one": "Op basis van {{count}} antwoord.",
+    "score_based_on_other": "Op basis van {{count}} antwoorden.",
+    "score_share": "{{percent}}% ({{count}})",
+    "score_share_percent": "{{percent}}%"
   },
   "responses": {
     "title": "Antwoorden",
@@ -1116,7 +1128,11 @@
     "languages_help_one": "Kopers zien de enquête in de taal van hun checkout. {{count}} taal heeft een vertaling.",
     "languages_help_other": "Kopers zien de enquête in de taal van hun checkout. {{count}} talen hebben een vertaling.",
     "language": "Taal",
-    "languages_frame": "Titel, intro en knoppen"
+    "languages_frame": "Titel, intro en knoppen",
+    "survey_id_label": "Enquête-ID",
+    "survey_id_help": "Meer dan één enquête? Selecteer in de checkout-editor het blok 'SourceTrac survey' en plak deze ID in de instelling 'Survey ID'. Dat blok toont dan alleen deze enquête, en de editor toont het voorbeeld ervan. Laat de instelling leeg om je live enquête met de hoogste prioriteit te tonen.",
+    "survey_id_copied": "Enquête-ID gekopieerd",
+    "survey_id_copy_failed": "Kopiëren mislukt. Selecteer de ID en kopieer hem."
   },
   "preview": {
     "title": "Voorbeeld",

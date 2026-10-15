@@ -667,7 +667,19 @@
     "filter_product": "Produit",
     "multi_credit_note": "Une réponse à plusieurs choix compte sa commande pour chacun, ces montants peuvent donc dépasser le total.",
     "capped_note": "Basé sur les {{limit}} réponses les plus récentes.",
-    "download_failed": "Le téléchargement n’a pas démarré. Réessayez dans un instant."
+    "download_failed": "Le téléchargement n’a pas démarré. Réessayez dans un instant.",
+    "score_nps": "Net Promoter Score (NPS)",
+    "score_nps_help": "Pourcentage de promoteurs moins pourcentage de détracteurs, de −100 à +100.",
+    "score_promoters": "Promoteurs (9–10)",
+    "score_passives": "Passifs (7–8)",
+    "score_detractors": "Détracteurs (0–6)",
+    "score_csat": "Satisfaction client (CSAT)",
+    "score_csat_help": "Part des réponses de 4 ou 5 sur 5.",
+    "score_average": "Moyenne {{average}} sur 5",
+    "score_based_on_one": "Basé sur {{count}} réponse.",
+    "score_based_on_other": "Basé sur {{count}} réponses.",
+    "score_share": "{{percent}} % ({{count}})",
+    "score_share_percent": "{{percent}} %"
   },
   "responses": {
     "title": "Réponses",
@@ -1116,7 +1128,11 @@
     "languages_help_one": "Les acheteurs voient le sondage dans la langue de leur paiement. {{count}} langue dispose d'une traduction.",
     "languages_help_other": "Les acheteurs voient le sondage dans la langue de leur paiement. {{count}} langues disposent d'une traduction.",
     "language": "Langue",
-    "languages_frame": "Titre, introduction et boutons"
+    "languages_frame": "Titre, introduction et boutons",
+    "survey_id_label": "Identifiant de l'enquête",
+    "survey_id_help": "Vous avez plusieurs enquêtes ? Dans l'éditeur de paiement, sélectionnez le bloc « SourceTrac survey » et collez cet identifiant dans son paramètre « Survey ID ». Ce bloc n'affiche alors que cette enquête, et l'éditeur en montre l'aperçu. Laissez le paramètre vide pour afficher votre enquête en ligne la plus prioritaire.",
+    "survey_id_copied": "Identifiant copié",
+    "survey_id_copy_failed": "Copie impossible. Sélectionnez l'identifiant et copiez-le."
   },
   "preview": {
     "title": "Aperçu",

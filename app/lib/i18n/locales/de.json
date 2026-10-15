@@ -667,7 +667,19 @@
     "filter_product": "Produkt",
     "multi_credit_note": "Eine Antwort mit mehreren Auswahlen zählt ihre Bestellung bei jeder davon, daher können diese Beträge zusammen mehr als die Gesamtsumme ergeben.",
     "capped_note": "Basierend auf den neuesten {{limit}} Antworten.",
-    "download_failed": "Der Download wurde nicht gestartet. Bitte versuchen Sie es gleich noch einmal."
+    "download_failed": "Der Download wurde nicht gestartet. Bitte versuchen Sie es gleich noch einmal.",
+    "score_nps": "Net Promoter Score (NPS)",
+    "score_nps_help": "Anteil der Promotoren minus Anteil der Kritiker, von −100 bis +100.",
+    "score_promoters": "Promotoren (9–10)",
+    "score_passives": "Passive (7–8)",
+    "score_detractors": "Kritiker (0–6)",
+    "score_csat": "Kundenzufriedenheit (CSAT)",
+    "score_csat_help": "Anteil der Antworten mit 4 oder 5 von 5.",
+    "score_average": "Durchschnitt {{average}} von 5",
+    "score_based_on_one": "Basierend auf {{count}} Antwort.",
+    "score_based_on_other": "Basierend auf {{count}} Antworten.",
+    "score_share": "{{percent}} % ({{count}})",
+    "score_share_percent": "{{percent}} %"
   },
   "responses": {
     "title": "Antworten",
@@ -1116,7 +1128,11 @@
     "languages_help_one": "Käufer sehen die Umfrage in ihrer Checkout-Sprache. Für {{count}} Sprache gibt es eine Übersetzung.",
     "languages_help_other": "Käufer sehen die Umfrage in ihrer Checkout-Sprache. Für {{count}} Sprachen gibt es eine Übersetzung.",
     "language": "Sprache",
-    "languages_frame": "Titel, Einleitung und Schaltflächen"
+    "languages_frame": "Titel, Einleitung und Schaltflächen",
+    "survey_id_label": "Umfrage-ID",
+    "survey_id_help": "Sie haben mehrere Umfragen? Wählen Sie im Checkout-Editor den Block „SourceTrac survey“ aus und fügen Sie diese ID in seine Einstellung „Survey ID“ ein. Der Block zeigt dann nur diese Umfrage, und der Editor zeigt ihre Vorschau. Lassen Sie die Einstellung leer, um Ihre Live-Umfrage mit der höchsten Priorität zu zeigen.",
+    "survey_id_copied": "Umfrage-ID kopiert",
+    "survey_id_copy_failed": "Kopieren fehlgeschlagen. Markieren Sie die ID und kopieren Sie sie."
   },
   "preview": {
     "title": "Vorschau",

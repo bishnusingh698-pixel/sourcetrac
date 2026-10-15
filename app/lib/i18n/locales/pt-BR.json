@@ -667,7 +667,19 @@
     "filter_product": "Produto",
     "multi_credit_note": "Uma resposta com várias opções conta o pedido em cada uma, então estes valores podem somar mais que o total.",
     "capped_note": "Com base nas {{limit}} respostas mais recentes.",
-    "download_failed": "O download não começou. Tente novamente em instantes."
+    "download_failed": "O download não começou. Tente novamente em instantes.",
+    "score_nps": "Net Promoter Score (NPS)",
+    "score_nps_help": "Porcentagem de promotores menos porcentagem de detratores, de −100 a +100.",
+    "score_promoters": "Promotores (9–10)",
+    "score_passives": "Neutros (7–8)",
+    "score_detractors": "Detratores (0–6)",
+    "score_csat": "Satisfação do cliente (CSAT)",
+    "score_csat_help": "Parcela das respostas com nota 4 ou 5 de 5.",
+    "score_average": "Média de {{average}} de 5",
+    "score_based_on_one": "Com base em {{count}} resposta.",
+    "score_based_on_other": "Com base em {{count}} respostas.",
+    "score_share": "{{percent}}% ({{count}})",
+    "score_share_percent": "{{percent}}%"
   },
   "responses": {
     "title": "Respostas",
@@ -1116,7 +1128,11 @@
     "languages_help_one": "Os compradores veem a pesquisa no idioma do checkout. {{count}} idioma tem tradução.",
     "languages_help_other": "Os compradores veem a pesquisa no idioma do checkout. {{count}} idiomas têm tradução.",
     "language": "Idioma",
-    "languages_frame": "Título, introdução e botões"
+    "languages_frame": "Título, introdução e botões",
+    "survey_id_label": "ID da pesquisa",
+    "survey_id_help": "Tem mais de uma pesquisa? No editor do checkout, selecione o bloco \"SourceTrac survey\" e cole este ID na configuração \"Survey ID\". Esse bloco passa a mostrar só esta pesquisa, e o editor mostra a prévia dela. Deixe a configuração vazia para mostrar sua pesquisa ativa de maior prioridade.",
+    "survey_id_copied": "ID da pesquisa copiado",
+    "survey_id_copy_failed": "Não foi possível copiar. Selecione o ID e copie."
   },
   "preview": {
     "title": "Prévia",

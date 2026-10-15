@@ -667,7 +667,19 @@
     "filter_product": "产品",
     "multi_credit_note": "多选回答会把订单计入每个所选项，因此这些金额之和可能超过总额。",
     "capped_note": "基于最新的 {{limit}} 条回答。",
-    "download_failed": "下载未能开始，请稍后重试。"
+    "download_failed": "下载未能开始，请稍后重试。",
+    "score_nps": "净推荐值（NPS）",
+    "score_nps_help": "推荐者百分比减去贬损者百分比，范围 −100 到 +100。",
+    "score_promoters": "推荐者（9–10）",
+    "score_passives": "被动者（7–8）",
+    "score_detractors": "贬损者（0–6）",
+    "score_csat": "客户满意度（CSAT）",
+    "score_csat_help": "5 分制中给出 4 或 5 分的回答占比。",
+    "score_average": "平均 {{average}} 分（满分 5 分）",
+    "score_based_on_one": "基于 {{count}} 条回答。",
+    "score_based_on_other": "基于 {{count}} 条回答。",
+    "score_share": "{{percent}}% ({{count}})",
+    "score_share_percent": "{{percent}}%"
   },
   "responses": {
     "title": "回答",
@@ -1116,7 +1128,11 @@
     "languages_help_one": "买家会以其结账语言看到问卷。{{count}} 种语言已有翻译。",
     "languages_help_other": "买家会以其结账语言看到问卷。{{count}} 种语言已有翻译。",
     "language": "语言",
-    "languages_frame": "标题、简介和按钮"
+    "languages_frame": "标题、简介和按钮",
+    "survey_id_label": "问卷 ID",
+    "survey_id_help": "有多个问卷？在结账编辑器中选择“SourceTrac survey”区块，并将此 ID 粘贴到其“Survey ID”设置中。该区块将只显示此问卷，编辑器也会预览它。将设置留空则显示优先级最高的已发布问卷。",
+    "survey_id_copied": "已复制问卷 ID",
+    "survey_id_copy_failed": "无法复制。请选中 ID 后手动复制。"
   },
   "preview": {
     "title": "预览",

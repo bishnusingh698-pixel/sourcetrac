@@ -1329,3 +1329,33 @@ surveys put their shop on Scale first.
   survey always read "Updated today".
 - **An unknown billing cycle is `null`** on the Plans page (Shopify unreachable
   or no token). Guessing "monthly" offered a yearly subscriber a switch to yearly.
+
+## Which survey a checkout block shows, and the editor preview (2026-10-15)
+
+- **Each block has a `survey_id` setting** (`[extensions.settings]` in both
+  checkout TOMLs, read as `shopify.settings.value.survey_id`, cleaned by
+  `cleanSurveyId`). Settings choices can only be static, so the merchant pastes
+  the ID; the survey editor shows it with a copy button (`SurveyIdBox`, in
+  "Show it in your store").
+- **`/api/survey` with `surveyId`:** a pinned block shows that survey or
+  **nothing** (paused, draft, other page, targeting miss). Never another survey
+  in its place. An id naming no survey **of this shop** falls back to the normal
+  pick, so a stale setting never empties the page or reaches another shop.
+  `tests/db-survey-pinning.test.ts` covers it.
+- **The editor shows the real survey** via `/api/survey-preview` (any status
+  when pinned, else the top live survey for the page), with banners for draft,
+  paused, wrong page, not found and none live. Preview mode in
+  `useMultiSurvey` never POSTs. If the fetch fails the block shows the sample
+  with `editorUnavailable`. Whether `sessionToken.get()` works inside the
+  checkout editor was not verifiable here; that fallback is the safety net.
+- These are extension changes: they need `shopify app deploy`, not only a
+  Render redeploy.
+
+## NPS and CSAT scores (2026-10-15)
+
+`npsResult` / `csatResult` in `shared/survey-rules.ts`; `questionScore` in
+`survey-analytics.server.ts` attaches one to each breakdown (`nps` for NPS,
+`csat` for `rating_5` and `satisfaction_5`, from the fixed option ids). CSAT is
+the share of 4–5 answers. Values outside the scale are ignored, and no answers
+means `null` (no score shown), never 0. The `customer-satisfaction` template is
+the CSAT counterpart of `loyalty-pulse`. Tests: `tests/unit/scores.test.ts`.

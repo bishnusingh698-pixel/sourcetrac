@@ -20,6 +20,15 @@
     "satisfaction_neutral": "Neutre",
     "satisfaction_satisfied": "Satisfait",
     "satisfaction_very_satisfied": "Très satisfait",
-    "previewTitle": "Question rapide"
+    "previewTitle": "Question rapide",
+    "editorShowing": "Enquête SourceTrac : {{name}}",
+    "editorDraft": "Brouillon. Les acheteurs ne la verront pas tant que vous ne l'aurez pas mise en ligne dans SourceTrac.",
+    "editorPaused": "En pause. Les acheteurs ne la verront pas tant que vous ne l'aurez pas relancée dans SourceTrac.",
+    "editorNotFound": "Aucune enquête n'a cet identifiant. Copiez à nouveau l'identifiant depuis l'enquête dans SourceTrac.",
+    "editorNoneLive": "Aucune enquête n'est encore en ligne sur cette page. Les acheteurs ne voient rien ici tant qu'une enquête n'est pas en ligne dans SourceTrac.",
+    "editorUnavailable": "Votre enquête n'a pas pu être chargée dans l'éditeur : ceci est un exemple. Les acheteurs voient toujours l'enquête définie dans SourceTrac.",
+    "editorPinnedNote": "Aperçu. Rien n'est envoyé depuis l'éditeur. Les règles de ciblage s'appliquent aux vraies commandes.",
+    "editorPriorityNote": "Aperçu. Ce bloc affiche votre enquête en ligne la plus prioritaire. Pour en choisir une, collez son identifiant d'enquête dans les paramètres de ce bloc.",
+    "editorOtherPage": "Cette enquête n'est pas configurée pour s'afficher sur cette page. Activez cette page dans « Où il s'affiche » dans SourceTrac."
   }
 }

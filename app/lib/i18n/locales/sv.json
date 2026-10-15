@@ -667,7 +667,19 @@
     "filter_product": "Produkt",
     "multi_credit_note": "Ett svar med flera val räknar ordern under varje val, så beloppen kan tillsammans bli mer än totalen.",
     "capped_note": "Baserat på de {{limit}} senaste svaren.",
-    "download_failed": "Nedladdningen startade inte. Försök igen om en stund."
+    "download_failed": "Nedladdningen startade inte. Försök igen om en stund.",
+    "score_nps": "Net Promoter Score (NPS)",
+    "score_nps_help": "Andel ambassadörer minus andel kritiker, från −100 till +100.",
+    "score_promoters": "Ambassadörer (9–10)",
+    "score_passives": "Passiva (7–8)",
+    "score_detractors": "Kritiker (0–6)",
+    "score_csat": "Kundnöjdhet (CSAT)",
+    "score_csat_help": "Andel svar som var 4 eller 5 av 5.",
+    "score_average": "Snitt {{average}} av 5",
+    "score_based_on_one": "Baserat på {{count}} svar.",
+    "score_based_on_other": "Baserat på {{count}} svar.",
+    "score_share": "{{percent}} % ({{count}})",
+    "score_share_percent": "{{percent}} %"
   },
   "responses": {
     "title": "Svar",
@@ -1116,7 +1128,11 @@
     "languages_help_one": "Köparna ser enkäten på sitt kassaspråk. {{count}} språk har en översättning.",
     "languages_help_other": "Köparna ser enkäten på sitt kassaspråk. {{count}} språk har en översättning.",
     "language": "Språk",
-    "languages_frame": "Rubrik, inledning och knappar"
+    "languages_frame": "Rubrik, inledning och knappar",
+    "survey_id_label": "Enkät-ID",
+    "survey_id_help": "Har du fler än en enkät? Markera blocket ”SourceTrac survey” i kassaredigeraren och klistra in det här ID:t i inställningen ”Survey ID”. Blocket visar då bara den här enkäten, och redigeraren förhandsvisar den. Lämna inställningen tom för att visa din aktiva enkät med högst prioritet.",
+    "survey_id_copied": "Enkät-ID kopierat",
+    "survey_id_copy_failed": "Det gick inte att kopiera. Markera ID:t och kopiera det."
   },
   "preview": {
     "title": "Förhandsvisning",

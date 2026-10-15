@@ -20,6 +20,15 @@
     "satisfaction_neutral": "Neutral",
     "satisfaction_satisfied": "Nöjd",
     "satisfaction_very_satisfied": "Mycket nöjd",
-    "previewTitle": "Snabb fråga"
+    "previewTitle": "Snabb fråga",
+    "editorShowing": "SourceTrac-enkät: {{name}}",
+    "editorDraft": "Utkast. Köpare ser den inte förrän du publicerar den i SourceTrac.",
+    "editorPaused": "Pausad. Köpare ser den inte förrän du återupptar den i SourceTrac.",
+    "editorNotFound": "Ingen enkät har detta ID. Kopiera ID:t igen från enkäten i SourceTrac.",
+    "editorNoneLive": "Ingen enkät är aktiv på den här sidan än. Köpare ser ingenting här förrän en enkät är aktiv i SourceTrac.",
+    "editorUnavailable": "Din enkät kunde inte laddas i redigeraren, så det här är ett exempel. Köpare ser fortfarande enkäten du har ställt in i SourceTrac.",
+    "editorPinnedNote": "Förhandsvisning. Ingenting skickas från redigeraren. Målgruppsregler gäller för riktiga beställningar.",
+    "editorPriorityNote": "Förhandsvisning. Det här blocket visar din aktiva enkät med högst prioritet. Klistra in enkätens ID i blockets inställningar för att välja en.",
+    "editorOtherPage": "Den här enkäten är inte inställd att visas på den här sidan. Slå på sidan under ”Var den visas” i SourceTrac."
   }
 }

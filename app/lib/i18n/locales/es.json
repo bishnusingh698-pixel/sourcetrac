@@ -667,7 +667,19 @@
     "filter_product": "Producto",
     "multi_credit_note": "Una respuesta con varias opciones cuenta su pedido en cada una, así que estos importes pueden sumar más que el total.",
     "capped_note": "Basado en las {{limit}} respuestas más recientes.",
-    "download_failed": "La descarga no se inició. Inténtalo de nuevo en un momento."
+    "download_failed": "La descarga no se inició. Inténtalo de nuevo en un momento.",
+    "score_nps": "Net Promoter Score (NPS)",
+    "score_nps_help": "Porcentaje de promotores menos porcentaje de detractores, de −100 a +100.",
+    "score_promoters": "Promotores (9–10)",
+    "score_passives": "Pasivos (7–8)",
+    "score_detractors": "Detractores (0–6)",
+    "score_csat": "Satisfacción del cliente (CSAT)",
+    "score_csat_help": "Proporción de respuestas con 4 o 5 de 5.",
+    "score_average": "Media de {{average}} sobre 5",
+    "score_based_on_one": "Según {{count}} respuesta.",
+    "score_based_on_other": "Según {{count}} respuestas.",
+    "score_share": "{{percent}} % ({{count}})",
+    "score_share_percent": "{{percent}} %"
   },
   "responses": {
     "title": "Respuestas",
@@ -1116,7 +1128,11 @@
     "languages_help_one": "Los compradores ven la encuesta en el idioma de su pantalla de pago. {{count}} idioma tiene traducción.",
     "languages_help_other": "Los compradores ven la encuesta en el idioma de su pantalla de pago. {{count}} idiomas tienen traducción.",
     "language": "Idioma",
-    "languages_frame": "Título, introducción y botones"
+    "languages_frame": "Título, introducción y botones",
+    "survey_id_label": "ID de la encuesta",
+    "survey_id_help": "¿Tienes más de una encuesta? En el editor del checkout, selecciona el bloque «SourceTrac survey» y pega este ID en su ajuste «Survey ID». Ese bloque mostrará solo esta encuesta y el editor mostrará su vista previa. Deja el ajuste vacío para mostrar tu encuesta activa de mayor prioridad.",
+    "survey_id_copied": "ID de la encuesta copiado",
+    "survey_id_copy_failed": "No se pudo copiar. Selecciona el ID y cópialo."
   },
   "preview": {
     "title": "Vista previa",
