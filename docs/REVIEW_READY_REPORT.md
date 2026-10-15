@@ -15,7 +15,7 @@ Date: 2026-10-13
 | Email support button | Icon button in the page header of every admin page, a labelled panel on Help, and a link on both error screens. | `app/components/support-button.tsx`, `app/routes/app.tsx`, `app/routes/app.help.tsx`, `app/root.tsx` |
 | Prefilled mail body | Shop, plan, app version and current page are prefilled so a support request arrives with context. | `shared/support.ts` → `buildSupportMailto`, `app/routes/app.tsx` loader |
 | Translations | New `support.*` keys in all ten locales. | `app/lib/i18n/locales/*.json` |
-| Privacy policy | Rewritten to match what the app actually stores (country, buyer language, customer ID for returning-buyer surveys; retention periods; uninstall window). | `app/routes/privacy.tsx` |
+| Privacy policy | Rewritten to match what the app actually stores (country, buyer language, customer ID for returning-buyer surveys; retention periods; uninstall window). Two claims were corrected against the code: retention is **fixed**, not merchant-configurable, and uninstall deletes tokens immediately with data removed on Shopify's redaction request. | `app/routes/privacy.tsx` |
 | Config | `SUPPORT_EMAIL` env var marked deprecated and ignored; removed from `.env.example`. | `app/lib/env.ts`, `.env.example`, `docs/04-file-tree.md` |
 
 ## 2. Requirements checked
@@ -38,8 +38,9 @@ JPEG/PNG; screenshots and category are set in the listing form.
 ## 3. Verification
 
 - `npm run check` — typecheck, extension typecheck, extension config check, build-deps check, full test suite.
-- Result on 2026-10-13: **63 test files, 863 tests, all passing** (includes 10 new support tests).
+- Result on 2026-10-13: **63 test files, 867 tests, all passing** (includes 10 new support tests).
 - `npm run build` succeeds; `build/client` is 1.6 MB.
+- `npm audit --omit=dev` reports 16 advisories, all in **dev-only** build/test tooling (`tinypool` under `vitest`, `@shopify/cli`); the runtime bundle ships none of them. No production dependency is affected.
 
 ## 4. Founder actions before submitting
 
