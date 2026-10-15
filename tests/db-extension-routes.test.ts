@@ -47,11 +47,11 @@ function sessionToken(): string {
   return `${header}.${payload}.${signature}`;
 }
 
-function request(path: string, init: RequestInit = {}): Request {
+function request(path: string, init: RequestInit = {}, token = sessionToken()): Request {
   return new Request(`https://sourcetrac.test${path}`, {
     ...init,
     headers: {
-      Authorization: `Bearer ${sessionToken()}`,
+      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
       Origin: "https://extensions.shopifycdn.com",
       "User-Agent": UA,
@@ -189,6 +189,27 @@ describe("extension routes, as the checkout extension calls them", () => {
     const res = await call(configLoader, request(`/api/survey-config?orderId=abc`));
     expect(res.status).toBe(400);
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+  });
+
+  it("caps submissions per session token, like the multi-question route", async () => {
+    // One lifted checkout token plus a fresh made-up order id each time used to
+    // get a fresh per-order bucket, so a script could write unlimited forged
+    // answers on the legacy route. MAX_SUBMISSIONS_PER_TOKEN is 2.
+    const token = sessionToken();
+    const posts = ["7310000010001", "7310000010002", "7310000010003"].map((orderId) =>
+      call(
+        submitAction,
+        request("/api/responses", { method: "POST", body: JSON.stringify({ orderId, channel: "instagram" }) }, token),
+      ),
+    );
+    const results = await Promise.all(posts);
+    const statuses = results.map((r) => r.status).sort();
+    expect(statuses).toEqual([200, 200, 429]);
+
+    const rows = await prisma.surveyResponse.findMany({
+      where: { shop: { shopDomain: DOMAIN }, orderId: { in: ["7310000010001", "7310000010002", "7310000010003"] } },
+    });
+    expect(rows).toHaveLength(2);
   });
 });
 

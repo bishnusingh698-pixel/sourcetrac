@@ -12,6 +12,7 @@ import { isEnabled } from "@shared/feature-flags";
 import {
   CATEGORY_ORDER,
   catalogCards,
+  catalogPlanFromKey,
   currentSpotlight,
   filterCards,
   templatePlacements,
@@ -21,6 +22,7 @@ import {
 import { buildSurveyDefinition } from "@shared/templates/resolve";
 import { regionPackFor } from "@shared/templates/packs";
 import { templateById } from "@shared/templates";
+import { effectivePlan } from "~/lib/plans";
 import { fetchShopLocaleInfo } from "~/lib/shopify-graphql.server";
 import type { TemplateCategory } from "@shared/templates/types";
 
@@ -40,16 +42,12 @@ export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "library.
 
 type CatalogSource = "survey_link";
 
-function planForShop(plan: string): CatalogPlan {
-  return plan === "growth" ? "growth" : plan === "scale" ? "scale" : "free";
-}
-
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
 
   const { countryCode, timeZone } = await fetchShopLocaleInfo(shop.shopDomain, session.accessToken);
-  const plan = planForShop(shop.plan);
+  const plan = catalogPlanFromKey(effectivePlan(shop));
   const surveyLinkEnabled = isEnabled("SURVEY_LINK_PAGE");
 
   const options = {

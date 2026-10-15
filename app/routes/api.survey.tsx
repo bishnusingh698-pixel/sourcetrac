@@ -37,6 +37,10 @@ const querySchema = z.object({
   locale: z.string().max(32).optional(),
   /** Comma-separated payment option types, e.g. "manualPayment". */
   paymentTypes: z.string().max(200).optional(),
+  /** "1"/"0" — the buyer's first completed order with this shop. */
+  isFirstOrder: z.enum(["0", "1"]).optional(),
+  /** ISO 3166-1 alpha-2, from the checkout/customer-account localization API. */
+  country: z.string().length(2).optional(),
 });
 
 export const loader = async ({ request }: { request: Request }) => {
@@ -53,6 +57,8 @@ export const loader = async ({ request }: { request: Request }) => {
       placement: url.searchParams.get("placement") ?? undefined,
       locale: url.searchParams.get("locale") ?? undefined,
       paymentTypes: url.searchParams.get("paymentTypes") ?? undefined,
+      isFirstOrder: url.searchParams.get("isFirstOrder") ?? undefined,
+      country: url.searchParams.get("country") ?? undefined,
     });
 
     if (!parsed.success) {
@@ -102,11 +108,16 @@ export const loader = async ({ request }: { request: Request }) => {
         orderTotalMinor,
         currency: order?.currency ?? null,
         currencyDigits: order ? minorUnitDigits(order.currency) : 2,
-        isFirstOrder: null,
-        country: null,
+        // Both come from the extension's host API. Absent means the rule stays
+        // inert rather than excluding every buyer, which is what the old
+        // hardcoded `null` did for first/returning and country targeting.
+        isFirstOrder: parsed.data.isFirstOrder === undefined ? null : parsed.data.isFirstOrder === "1",
+        country: parsed.data.country?.toUpperCase() ?? null,
         language: parsed.data.locale ?? null,
         now,
-        responseCount: 0,
+        // The survey's own collected count, so `maxResponses` can fire. It was
+        // hardcoded to 0, so "pause after N responses" never triggered.
+        responseCount: candidate.responseCount,
       });
 
     // T11: the highest-priority match wins, unless it is in the rotation group,

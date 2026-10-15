@@ -653,7 +653,8 @@
     "required": "Obbligatoria",
     "optional": "Facoltativa",
     "only_if": "Solo se la risposta è «{{option}}»",
-    "spotlight_dismiss": "Nascondi"
+    "spotlight_dismiss": "Nascondi",
+    "no_free_version": "Questo modello non ha una versione gratuita."
   },
   "setup": {
     "title": "Configura il tuo sondaggio",

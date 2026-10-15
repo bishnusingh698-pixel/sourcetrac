@@ -653,7 +653,8 @@
     "required": "Required",
     "optional": "Optional",
     "only_if": "Only if the answer is “{{option}}”",
-    "spotlight_dismiss": "Dismiss"
+    "spotlight_dismiss": "Dismiss",
+    "no_free_version": "This template has no Free version."
   },
   "setup": {
     "title": "Set up your survey",

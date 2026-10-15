@@ -215,6 +215,16 @@ export interface ApiBinding {
    * order-status and admin blocks need not implement it.
    */
   getPaymentTypes?: () => readonly string[];
+  /**
+   * Whether this is the buyer's first completed order, and the buyer's country
+   * (ISO 3166-1 alpha-2). Both feed server-side targeting; without them the
+   * route passed `null` and any survey targeting first/returning customers or a
+   * country never matched, so it silently never appeared. Optional: an
+   * unavailable value is simply not sent, which keeps the rule inert rather
+   * than wrongly excluding the buyer.
+   */
+  getIsFirstOrder?: () => boolean | null | undefined;
+  getCountry?: () => string | null | undefined;
 }
 
 /**
@@ -345,6 +355,13 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
     // matched against the real selection rather than always seeing an empty list.
     const paymentTypes = binding.getPaymentTypes?.() ?? [];
     if (paymentTypes.length > 0) query.set("paymentTypes", paymentTypes.join(","));
+    // First/returning and country targeting. Only sent when the host actually
+    // exposes the value: an absent signal must leave the rule inert, not hide
+    // the survey from every buyer.
+    const isFirstOrder = safeRead(() => binding.getIsFirstOrder?.());
+    if (typeof isFirstOrder === "boolean") query.set("isFirstOrder", isFirstOrder ? "1" : "0");
+    const country = safeRead(() => binding.getCountry?.());
+    if (typeof country === "string" && country.length > 0) query.set("country", country.slice(0, 2).toUpperCase());
     return withRetries("survey_fetch", "thank-you", () =>
       attempt<SurveyConfigV2>(`/api/survey?${query.toString()}`, { method: "GET" }),
     );
@@ -389,6 +406,15 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
     );
   }
 
+  /** Read a host value without letting a throwing signal break the request. */
+  function safeRead<T>(read: () => T): T | undefined {
+    try {
+      return read();
+    } catch {
+      return undefined;
+    }
+  }
+
   /** Never throws: a missing localization API must not block the answer. */
   function buyerLocale(): string | null {
     try {
@@ -409,5 +435,5 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
     }
   }
 
-  return { fetchSurveyConfig, fetchSurvey, submitResponse, submitAnswers, t };
+  return { fetchSurveyConfig, fetchSurvey, submitResponse, submitAnswers, getLocale: buyerLocale, t };
 }

@@ -147,6 +147,28 @@ describe("order verification", () => {
     expect(decideSurveyRevenue(responses[0]!).included).toBe(false);
   });
 
+  it("recovers revenue when an order arrives after the response was written off", async () => {
+    await answer(shopId, "9600005");
+    // The 24h sweep writes the answer off while no order exists.
+    const marked = await markUnverifiedFailedResponses(24, new Date(Date.now() + 48 * 60 * 60 * 1000));
+    expect(marked).toBe(1);
+
+    // The order lands later (a late webhook, or the dashboard backfill).
+    await processWebhook({
+      topic: "orders/create",
+      shopDomain: DOMAIN,
+      payload: orderPayload(9600005, "77.00") as never,
+      accessToken: null,
+    });
+
+    const row = await prisma.response.findFirstOrThrow({ where: { shopId } });
+    expect(row.orderTotal?.toString()).toBe("77");
+    // The write-off must be cleared, or the now-known order is excluded forever.
+    expect(row.unverifiedFailed).toBe(false);
+    const responses = await fetchSurveyResponses({ shopId, surveyId });
+    expect(decideSurveyRevenue(responses[0]!)).toEqual({ included: true, minor: 7700 });
+  });
+
   it("does not write a total when the order total is unparseable", async () => {
     await answer(shopId, "9600004");
     // An order cached with no parseable total must not be faked as $0.00.

@@ -27,9 +27,10 @@ import { buildSurveyDefinition } from "@shared/templates/resolve";
 import { regionPackFor } from "@shared/templates/packs";
 import { templateById } from "@shared/templates";
 import { SMART_ACTION_PRESETS } from "@shared/templates/smart-actions";
-import { templatePlacements, type CatalogPlan } from "@shared/templates/catalog";
+import { templatePlacements, catalogPlanFromKey, templateLockedForPlan, type CatalogPlan } from "@shared/templates/catalog";
 import { getReadiness, readinessBlocksGoLive } from "@shared/templates/readiness";
 import { buildWizardSyncOptions, buildWizardTargeting, type WizardConfig } from "@shared/templates/setup";
+import { effectivePlan } from "~/lib/plans";
 import { fetchShopLocaleInfo } from "~/lib/shopify-graphql.server";
 import type { Placement, Targeting } from "@shared/survey-config";
 import type { PackFamily, TemplateDefinition } from "@shared/templates/types";
@@ -49,9 +50,6 @@ import type { PackFamily, TemplateDefinition } from "@shared/templates/types";
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "setup.title");
 
-function planForShop(plan: string): CatalogPlan {
-  return plan === "growth" ? "growth" : plan === "scale" ? "scale" : "free";
-}
 
 const PROFILE_FAMILIES: Array<{ id: PackFamily; labelKey: string }> = [
   { id: "profiles_beauty", labelKey: "packs.profile_beauty_question" },
@@ -83,13 +81,16 @@ export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) =>
   const packQuestion = template.questions.find((q) => q.pack);
   const packFamily = packQuestion?.pack ?? null;
   const isProfile = Boolean(packFamily && packFamily.startsWith("profiles_"));
-  const lite = new URL(request.url).searchParams.get("lite") === "1";
+  const plan = catalogPlanFromKey(effectivePlan(shop));
+  // Force the Lite subset on a plan that cannot use the full template, so a
+  // direct visit to this URL cannot build a Growth-only survey on Free.
+  const lite = new URL(request.url).searchParams.get("lite") === "1" || templateLockedForPlan(template, plan);
 
   return {
     templateId: template.id,
     templateName: template.nameKey,
     templateVersion: template.version,
-    plan: planForShop(shop.plan),
+    plan,
     region: regionPackFor(countryCode),
     locale,
     lite,
@@ -134,11 +135,14 @@ export const action = guarded(async ({ request, params }: ActionFunctionArgs) =>
   const { countryCode } = await fetchShopLocaleInfo(shop.shopDomain, session.accessToken);
   const locale = shop.language ?? "en";
 
+  const plan = catalogPlanFromKey(effectivePlan(shop));
   const definition = buildSurveyDefinition({
     template,
     locale,
     region: regionPackFor(countryCode),
-    lite: config.lite === true,
+    // Never let a crafted payload build the full Growth template on a plan
+    // that cannot use it; the create gate would reject it anyway.
+    lite: config.lite === true || templateLockedForPlan(template, plan),
     toggles: config.toggles,
     overrides: config.overrides,
     profileFamily: config.profileFamily,

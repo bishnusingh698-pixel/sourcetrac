@@ -105,6 +105,12 @@ export type CompiledSurvey = {
   rotation?: boolean;
   /** T11: 1 (low) / 2 (normal) / 3 (high). */
   rotationWeight?: number;
+  /**
+   * How many answers this survey has collected. Carried so the server can
+   * enforce `targeting.maxResponses`; without it the route had no count and the
+   * "pause after N responses" rule silently never fired.
+   */
+  responseCount: number;
   /** T7: show only on orders paid with a manual payment method. */
   paymentManualOnly?: boolean;
 };

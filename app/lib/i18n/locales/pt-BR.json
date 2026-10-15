@@ -653,7 +653,8 @@
     "required": "Obrigatória",
     "optional": "Opcional",
     "only_if": "Somente se a resposta for “{{option}}”",
-    "spotlight_dismiss": "Ocultar"
+    "spotlight_dismiss": "Ocultar",
+    "no_free_version": "Este modelo não tem versão gratuita."
   },
   "setup": {
     "title": "Configure sua pesquisa",

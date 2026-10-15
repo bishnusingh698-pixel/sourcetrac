@@ -653,7 +653,8 @@
     "required": "必須",
     "optional": "任意",
     "only_if": "回答が「{{option}}」の場合のみ",
-    "spotlight_dismiss": "閉じる"
+    "spotlight_dismiss": "閉じる",
+    "no_free_version": "このテンプレートには無料版がありません。"
   },
   "setup": {
     "title": "アンケートを設定",

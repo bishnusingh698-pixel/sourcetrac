@@ -27,6 +27,55 @@ function planAtLeast(plan: CatalogPlan, required: CatalogPlan): boolean {
   return PLAN_RANK[plan] >= PLAN_RANK[required];
 }
 
+/** Normalise a stored plan value into a `CatalogPlan` (unknown -> free). */
+export function catalogPlanFromKey(plan: unknown): CatalogPlan {
+  return plan === "growth" ? "growth" : plan === "scale" ? "scale" : "free";
+}
+
+/** Whether a plan includes the paid (Growth and above) feature set. */
+export function planIncludesGrowth(plan: CatalogPlan): boolean {
+  return planAtLeast(plan, "growth");
+}
+
+/**
+ * Whether the template's FULL version is out of reach for a plan.
+ *
+ * The server create paths must use this (with the effective plan) so a crafted
+ * request cannot create a Growth template — an exclusive option (T6) or a
+ * by-product breakdown (T8) — on the Free plan. The gallery only hides the
+ * button; that is a suggestion, not enforcement.
+ */
+export function templateLockedForPlan(template: TemplateDefinition, plan: CatalogPlan): boolean {
+  return !planAtLeast(plan, templateRequiredPlan(template));
+}
+
+/**
+ * Whether the definition's own content uses a Growth-only feature.
+ *
+ * Content-based so the Lite version (which strips the exclusive option) passes
+ * on Free while the full version does not. The by-product breakdown is not a
+ * question-level feature, so it is checked separately by template id.
+ */
+export function definitionHasExclusiveOption(definition: {
+  questions: ReadonlyArray<{ options?: ReadonlyArray<{ exclusive?: boolean }> }>;
+}): boolean {
+  return definition.questions.some((q) => (q.options ?? []).some((o) => o.exclusive === true));
+}
+
+/**
+ * Whether a template actually has a Free version.
+ *
+ * A Lite subset exists AND the template has no by-product breakdown, which
+ * cannot be subset away (it is a results feature tied to the template id). An
+ * exclusive option does not block Free: the Lite build strips it.
+ */
+export function templateHasFreeVersion(template: TemplateDefinition): boolean {
+  if (template.liteQuestionKeys.length === 0) return false;
+  if (template.liteQuestionKeys.length > LIMITS.RECOMMENDED_MAX_QUESTIONS) return false;
+  if (template.resultsHints?.byProduct) return false;
+  return true;
+}
+
 /**
  * The plan a template's FULL version needs.
  *
@@ -120,7 +169,7 @@ export function catalogCards(options: CatalogOptions): CatalogCard[] {
       seconds: t.questions.length * SECONDS_PER_QUESTION,
       planLocked: !planAtLeast(plan, requiredPlan),
       requiredPlan,
-      hasLite: t.liteQuestionKeys.length > 0 && t.liteQuestionKeys.length <= LIMITS.RECOMMENDED_MAX_QUESTIONS,
+      hasLite: templateHasFreeVersion(t),
       popularIn: t.popularIn ?? [],
       thankYou: t.defaults.placements.includes("thank_you"),
       surveyLink: t.defaults.placements.includes("survey_link"),
@@ -239,6 +288,8 @@ export type CatalogDetail = {
   planLocked: boolean;
   requiredPlan: CatalogPlan;
   liteQuestionCount: number;
+  /** Whether a Free (Lite) version exists. */
+  hasLite: boolean;
 };
 
 function questionFromTemplate(
@@ -300,6 +351,7 @@ export function catalogDetail(options: CatalogOptions & { id: string }): Catalog
     planLocked: card?.planLocked ?? false,
     requiredPlan: templateRequiredPlan(template),
     liteQuestionCount: template.liteQuestionKeys.length,
+    hasLite: card?.hasLite ?? templateHasFreeVersion(template),
   };
 }
 

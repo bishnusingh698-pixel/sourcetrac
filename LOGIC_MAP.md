@@ -49,8 +49,22 @@ flowchart TD
 | Payment rule (T7) | `shared/survey-config.ts` → `matchesPaymentRule` (`manualPayment`); extension sends `paymentTypes` |
 | Client-side show-if | `extensions/shared/src/use-multi-survey.ts` → `questionVisible` (mirrors `isQuestionVisible`) |
 
-Status, placement, dates, first/returning, order value + currency, country,
-language, sample are all evaluated inside `matchesTargeting`.
+Status, placement, dates, order value + currency, language, sample and the
+per-survey response count are evaluated inside `matchesTargeting` from facts the
+server already has. First/returning and country are evaluated there too, but the
+facts come from the extension: the Thank-you block sends `isFirstOrder` (from
+the `orderConfirmation` signal) and `country` (from `localization`), the
+Order-status block sends `country` only (its order object has no first-order
+flag). A missing fact leaves the rule inert rather than excluding the buyer.
+
+The buyer's **language** travels the same way: `useMultiSurvey` reads it from
+`api.getLocale()` (the block's `shopify.localization.language.isoCode`), sends
+it as the `locale` query param, and then overlays the matching pack from
+`Survey.translations` onto the survey it renders via `localizeSurvey`. Before
+this the config fetch hardcoded `locale = null`, so language targeting never
+matched and per-language text was never applied (DH-006). Option labels are
+translated for display only — the answer still stores the option **id**, so
+revenue and reporting are unaffected by the buyer's language.
 
 - **Rotation (T11):** when the highest-priority matching survey has
   `rotation = true`, one member of the rotation group (same placement, targeting

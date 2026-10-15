@@ -653,7 +653,8 @@
     "required": "必答",
     "optional": "选答",
     "only_if": "仅当回答为“{{option}}”时",
-    "spotlight_dismiss": "关闭"
+    "spotlight_dismiss": "关闭",
+    "no_free_version": "此模板没有免费版。"
   },
   "setup": {
     "title": "设置你的问卷",

@@ -29,7 +29,7 @@ const SURFACES = [
     target: "purchase.thank-you.block.render",
     module: "./src/ThankYouBlock.tsx",
     signal: "orderConfirmation",
-    value: { order: { id: "gid://shopify/OrderIdentity/5551234" } },
+    value: { order: { id: "gid://shopify/OrderIdentity/5551234" }, isFirstOrder: true },
   },
   {
     name: "order-status",
@@ -103,6 +103,12 @@ async function mount(code: string, surface: (typeof SURFACES)[number], editor: b
             thankYouText: "Thanks for your feedback!",
             channelReportQuestionId: "q1",
             targeting: {},
+            translations: {
+              de: {
+                title: "Kurze Frage",
+                questions: { q1: { text: "Wie hast du uns gefunden?" } },
+              },
+            },
             questions: [
               {
                 id: "q1",
@@ -113,7 +119,7 @@ async function mount(code: string, surface: (typeof SURFACES)[number], editor: b
                 randomizeOptions: false,
                 allowOther: false,
                 options: [
-                  { id: "google", label: "Google search", isOther: false },
+                  { id: "google", label: "Google search", isOther: false, translations: { de: "Google Suche" } },
                   { id: "instagram", label: "Instagram", isOther: false },
                 ],
               },
@@ -145,6 +151,12 @@ async function mount(code: string, surface: (typeof SURFACES)[number], editor: b
     },
     sessionToken: { get: async () => "token-123" },
     i18n: { translate: (key: string) => `t:${key}` },
+    // The buyer's localization context. Both surfaces expose the order's
+    // country here; the extension forwards it for country targeting.
+    localization: {
+      language: { value: { isoCode: "en" } },
+      country: { value: { isoCode: "US" } },
+    },
     extension: { editor: editor ? { type: "checkout" } : undefined },
   };
   (globalThis as { shopify?: unknown }).shopify = host;
@@ -165,6 +177,9 @@ async function mount(code: string, surface: (typeof SURFACES)[number], editor: b
     setPaymentTypes(types: string[]) {
       if (!paymentSignal) throw new Error("this surface does not expose payment options");
       paymentSignal.value = types.map((type, i) => ({ handle: `h${i}`, type }));
+    },
+    setLocale(code: string) {
+      (host.localization as { language: { value: { isoCode: string } } }).language.value = { isoCode: code };
     },
     click(element: Element) {
       element.dispatchEvent(new win.Event("click", { bubbles: true }) as unknown as Event);
@@ -238,6 +253,50 @@ describe.each(SURFACES)("$name extension bundle", (surface) => {
     expect(new URL(config!.url, "https://example.test").searchParams.get("paymentTypes")).toBe(
       "manualPayment,creditCard",
     );
+  });
+
+  it("sends the first-order flag and country on the config fetch", async () => {
+    // Regression guard: the route passed `isFirstOrder: null` and `country:
+    // null`, so first/returning and country targeting never matched and the
+    // survey silently never appeared. The facts now travel as query params.
+    const page = await mount(await bundle(surface), surface, false);
+    page.setOrder(surface.value);
+    await page.settle();
+    await page.settle();
+
+    const config = page.calls.find((call) => call.url.includes("/api/survey?"));
+    expect(config).toBeDefined();
+    const params = new URL(config!.url, "https://example.test").searchParams;
+    expect(params.get("country")).toBe("US");
+    if (surface.name === "thank-you") {
+      // The order-confirmation signal carries `isFirstOrder`; the
+      // customer-account order object does not, so only the thank-you surface
+      // can supply it.
+      expect(params.get("isFirstOrder")).toBe("1");
+    } else {
+      expect(params.get("isFirstOrder")).toBeNull();
+    }
+  });
+
+  it("sends the buyer's language and renders the translated survey", async () => {
+    // Regression guard: the config fetch hardcoded `locale = null`, so language
+    // targeting never matched and the merchant's per-language text was never
+    // applied — every buyer saw the default language.
+    const page = await mount(await bundle(surface), surface, false);
+    page.setLocale("de");
+    page.setOrder(surface.value);
+    await page.settle();
+    await page.settle();
+
+    const config = page.calls.find((call) => call.url.includes("/api/survey?"));
+    expect(config).toBeDefined();
+    expect(new URL(config!.url, "https://example.test").searchParams.get("locale")).toBe("de");
+
+    // The fake config carries a German pack; with the locale applied the German
+    // title and question text are what render.
+    expect(page.body().querySelector("s-heading")?.textContent).toBe("Kurze Frage");
+    expect(page.body().textContent).toContain("Wie hast du uns gefunden?");
+    expect(page.body().textContent).toContain("Google Suche");
   });
 });
 

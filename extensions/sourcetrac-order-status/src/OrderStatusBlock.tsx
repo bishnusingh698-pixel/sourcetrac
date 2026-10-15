@@ -50,6 +50,9 @@ function OrderStatusBlock() {
         getSessionToken: () => shopify.sessionToken.get(),
         translate: (key) => shopify.i18n.translate(key),
         getLocale: () => shopify.localization?.language?.value?.isoCode,
+        // Country targeting. The order-status surface exposes the order's
+        // country on `localization`, not on the order object.
+        getCountry: () => shopify.localization?.country?.value?.isoCode,
       }),
     [shopify],
   );

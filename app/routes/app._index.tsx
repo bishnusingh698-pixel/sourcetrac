@@ -11,7 +11,7 @@ import { LanguageForm } from "~/components/language-selector";
 import { db } from "~/db.server";
 import { isSupportedLanguage, type LanguageCode } from "~/lib/i18n";
 import { MAX_OPTIONS, MIN_OPTIONS } from "~/lib/settings";
-import { loadHomeSurveys, type HomeSurvey } from "~/lib/home.server";
+import { hasAnyResponse, loadHomeSurveys, type HomeSurvey } from "~/lib/home.server";
 import { ensureShop } from "~/lib/provision.server";
 import { backfillMissingOrders } from "~/lib/order-backfill.server";
 import { maybeRunPendingSync } from "~/lib/sync.server";
@@ -53,14 +53,14 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
 
   const locale = intlLocaleFor(resolveAdminLanguage(request, shop.language, shop.adminLocale));
 
-  const [firstResponse, firstOrder] = await Promise.all([
+  const [anyResponse, firstOrder] = await Promise.all([
     // Ever, not in a window: a quiet week must not send an established
     // merchant back to the setup guide.
-    db.surveyResponse.findFirst({ where: { shopId: shop.id }, select: { id: true } }),
+    hasAnyResponse(shop.id),
     db.orderCache.findFirst({ where: { shopId: shop.id }, select: { id: true } }),
   ]);
 
-  const homeSurveys = firstResponse === null ? [] : await loadHomeSurveys(shop.id, locale);
+  const homeSurveys = anyResponse ? await loadHomeSurveys(shop.id, locale) : [];
 
   // The seasonal spotlight (T15) is the fallback next step when nothing more
   // urgent applies. Evaluated in the admin from the date and the shop's region:
@@ -82,7 +82,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
 
   return {
     setup:
-      firstResponse === null
+      !anyResponse
         ? {
             shopHandle: shop.shopDomain.replace(/\.myshopify\.com$/, ""),
             hasOrders: firstOrder !== null,

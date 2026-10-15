@@ -16,11 +16,12 @@ import { authenticate } from "~/shopify.server";
 import { definitionToPreview } from "~/lib/preview-model";
 import { NotFoundError, ValidationError } from "~/lib/errors";
 import { isEnabled } from "@shared/feature-flags";
-import { catalogDetail, catalogCards, templatePlacements, type CatalogPlan } from "@shared/templates/catalog";
+import { catalogDetail, catalogCards, catalogPlanFromKey, templatePlacements, type CatalogPlan } from "@shared/templates/catalog";
 import { buildSurveyDefinition } from "@shared/templates/resolve";
 import { regionPackFor } from "@shared/templates/packs";
 import type { Placement } from "@shared/survey-config";
 import { templateById } from "@shared/templates";
+import { effectivePlan } from "~/lib/plans";
 import { fetchShopLocaleInfo } from "~/lib/shopify-graphql.server";
 import { LANGUAGES } from "~/lib/i18n";
 
@@ -35,10 +36,6 @@ import { LANGUAGES } from "~/lib/i18n";
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "library.title");
 
-function planForShop(plan: string): CatalogPlan {
-  return plan === "growth" ? "growth" : plan === "scale" ? "scale" : "free";
-}
-
 export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
@@ -49,7 +46,7 @@ export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) =>
   const detail = catalogDetail({
     id,
     locale,
-    plan: planForShop(shop.plan),
+    plan: catalogPlanFromKey(effectivePlan(shop)),
     country: countryCode,
     surveyLinkEnabled: isEnabled("SURVEY_LINK_PAGE"),
   });
@@ -208,16 +205,20 @@ export default function TemplateDetail() {
         <s-stack gap="small">
           <Banner tone="info" heading={t("library.available_on", { plan: t(`library.plan_${detail.requiredPlan}`) })}>
             <s-text>
-              {t("library.lite_note", { n: detail.liteQuestionCount, extra: liteExtra })}
+              {detail.hasLite
+                ? t("library.lite_note", { n: detail.liteQuestionCount, extra: liteExtra })
+                : t("library.no_free_version")}
             </s-text>
           </Banner>
           <s-stack direction="inline" gap="small">
-            <Form method="post">
-              <input type="hidden" name="lite" value="1" />
-              <s-button variant="primary" type="submit">
-                {t("library.use_lite")}
-              </s-button>
-            </Form>
+            {detail.hasLite ? (
+              <Form method="post">
+                <input type="hidden" name="lite" value="1" />
+                <s-button variant="primary" type="submit">
+                  {t("library.use_lite")}
+                </s-button>
+              </Form>
+            ) : null}
             <s-link href="/app/plans">{t("library.see_plans")}</s-link>
           </s-stack>
         </s-stack>

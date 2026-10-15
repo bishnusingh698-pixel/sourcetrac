@@ -653,7 +653,8 @@
     "required": "Obligatoire",
     "optional": "Facultatif",
     "only_if": "Uniquement si la réponse est « {{option}} »",
-    "spotlight_dismiss": "Masquer"
+    "spotlight_dismiss": "Masquer",
+    "no_free_version": "Ce modèle n'a pas de version gratuite."
   },
   "setup": {
     "title": "Configurer votre sondage",

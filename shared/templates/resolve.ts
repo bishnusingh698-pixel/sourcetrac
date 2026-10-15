@@ -73,12 +73,18 @@ export function buildSurveyDefinition(params: {
 }): SurveyDefinition {
   const { template, locale, region, lite = false } = params;
   const incoming = includedQuestions(template, lite);
+  // Lite is the Free-plan subset, so it must not carry a Growth-only feature.
+  // An exclusive option (T6) is what makes the FULL version Growth; keeping it
+  // in Lite would hand the paid feature to a Free merchant.
+  const liteOptions = lite
+    ? incoming.map((q) => (q.options ? { ...q, options: q.options.filter((o) => !o.exclusive) } : q))
+    : incoming;
   // A profile question's pack is an industry the merchant picks in Quick setup,
   // so a `profileFamily` replaces the template's default beauty pack. The
   // question text then comes from the chosen pack, not the template's copy.
   const questions = params.profileFamily
-    ? incoming.map((q) => (q.pack && q.pack.startsWith("profiles_") ? { ...q, pack: params.profileFamily } : q))
-    : incoming;
+    ? liteOptions.map((q) => (q.pack && q.pack.startsWith("profiles_") ? { ...q, pack: params.profileFamily } : q))
+    : liteOptions;
   const t = (key: string) => templateText(locale, key);
 
   const includedKeys = new Set(questions.map((q) => q.key));

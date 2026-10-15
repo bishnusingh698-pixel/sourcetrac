@@ -653,7 +653,8 @@
     "required": "Obligatoria",
     "optional": "Opcional",
     "only_if": "Solo si la respuesta es «{{option}}»",
-    "spotlight_dismiss": "Ocultar"
+    "spotlight_dismiss": "Ocultar",
+    "no_free_version": "Esta plantilla no tiene versión gratuita."
   },
   "setup": {
     "title": "Configura tu encuesta",

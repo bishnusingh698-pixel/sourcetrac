@@ -7,7 +7,7 @@ import { readBodyText, toResponse } from "~/lib/http.server";
 import { serialiseError, ValidationError } from "~/lib/errors";
 import { logger } from "~/lib/logger";
 import { effectivePlan } from "~/lib/plans";
-import { BUCKETS, consumeShopBackstop, consumeToken } from "~/lib/rate-limit.server";
+import { BUCKETS, consumeShopBackstop, consumeToken, consumeTokenSubmission } from "~/lib/rate-limit.server";
 import { submitResponse } from "~/lib/responses.server";
 import { DEFAULT_OPTIONS, OTHER_CHANNEL_VALUE, parseSurveySettings } from "~/lib/settings";
 import { findShopByDomain, isKnownOrder } from "~/lib/shop.server";
@@ -88,6 +88,13 @@ export const action = async ({ request }: { request: Request }) => {
     // by the caller, so on its own it cannot stop a flood of made-up order ids.
     // The backstop never refuses an order Shopify has sent us, so draining it
     // cannot lock real buyers out.
+    // Per session token, before the per-order bucket: one lifted checkout token
+    // cannot be reused to write many forged orders. This route mirrors
+    // `/api/survey-responses`, which already carries this ceiling.
+    consumeTokenSubmission(
+      `token:${shopDomain}:${sessionToken.jti ?? sessionToken.sub ?? "anon"}`,
+      (sessionToken.exp ?? 0) * 1000,
+    );
     consumeToken(
       `response:${shopDomain}:${parsed.data.orderId}`,
       usesOther ? BUCKETS.otherResponse : BUCKETS.response,
