@@ -220,11 +220,56 @@ export interface ApiBinding {
    * (ISO 3166-1 alpha-2). Both feed server-side targeting; without them the
    * route passed `null` and any survey targeting first/returning customers or a
    * country never matched, so it silently never appeared. Optional: an
-   * unavailable value is simply not sent, which keeps the rule inert rather
-   * than wrongly excluding the buyer.
+   * unavailable value is simply not sent, and the server then treats a
+   * first/returning or country rule as not met (the Order-status page has no
+   * first-order signal), so a targeted survey is never shown to an unknown
+   * audience.
    */
   getIsFirstOrder?: () => boolean | null | undefined;
   getCountry?: () => string | null | undefined;
+}
+
+/** The log label for a placement; only Order-status is not the Thank-you page. */
+function surfaceOf(placement: Placement): SurveySurface {
+  return placement === "order_status" ? "order-status" : "thank-you";
+}
+
+/**
+ * Answer options in display order: the non-"Other" options shuffled with a
+ * Fisher–Yates shuffle seeded by the order id when the merchant turned
+ * randomisation on, "Other" always last. Mirrors `orderOptions` in
+ * shared/survey-rules.ts (this bundle cannot import it); the two are pinned to
+ * identical output by tests/unit/exclusive-option.test.ts.
+ */
+export function orderOptionsForBuyer<T extends { isOther?: boolean }>(
+  options: readonly T[],
+  randomize: boolean,
+  seed: string,
+): T[] {
+  const other = options.filter((o) => o.isOther);
+  const rest = options.filter((o) => !o.isOther);
+  if (!randomize || rest.length < 2) return [...rest, ...other];
+
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  let a = h >>> 0;
+  const rand = () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const shuffled = [...rest];
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rand() * (i + 1));
+    const x = shuffled[i] as T;
+    shuffled[i] = shuffled[j] as T;
+    shuffled[j] = x;
+  }
+  return [...shuffled, ...other];
 }
 
 /**
@@ -254,7 +299,21 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
           Authorization: `Bearer ${token}`,
         },
       });
+
+      if (response.ok) {
+        // Read the body under the same timer: a stalled body otherwise left the
+        // block on "sending" forever. A body that cannot be read or parsed is
+        // retried like any transient failure; the server treats the retry of a
+        // committed answer as a duplicate success.
+        try {
+          return (await response.json()) as T;
+        } catch (bodyError) {
+          const aborted = bodyError instanceof Error && bodyError.name === "AbortError";
+          throw new TransientError(true, aborted ? "attempt timed out" : "unreadable response body");
+        }
+      }
     } catch (error) {
+      if (error instanceof TransientError) throw error;
       // Network failure, DNS, TLS or our own abort. All retryable: the most
       // common cause by far is a service still booting.
       const aborted = error instanceof Error && error.name === "AbortError";
@@ -269,12 +328,8 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
       throw new TransientError(false, `request rejected with ${response.status}`);
     }
 
-    if (!response.ok) {
-      // 429 and 5xx mean slow down or the server is unwell.
-      throw new TransientError(true, `server returned ${response.status}`);
-    }
-
-    return (await response.json()) as T;
+    // 429 and 5xx mean slow down or the server is unwell.
+    throw new TransientError(true, `server returned ${response.status}`);
   }
 
   /**
@@ -353,7 +408,7 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
     // T7: only the Thank-you block binds this. Sending it here keeps the payment
     // rule server-side, so a survey that targets manual payment methods is
     // matched against the real selection rather than always seeing an empty list.
-    const paymentTypes = binding.getPaymentTypes?.() ?? [];
+    const paymentTypes = safeRead(() => binding.getPaymentTypes?.()) ?? [];
     if (paymentTypes.length > 0) query.set("paymentTypes", paymentTypes.join(","));
     // First/returning and country targeting. Only sent when the host actually
     // exposes the value: an absent signal must leave the rule inert, not hide
@@ -362,7 +417,7 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
     if (typeof isFirstOrder === "boolean") query.set("isFirstOrder", isFirstOrder ? "1" : "0");
     const country = safeRead(() => binding.getCountry?.());
     if (typeof country === "string" && country.length > 0) query.set("country", country.slice(0, 2).toUpperCase());
-    return withRetries("survey_fetch", "thank-you", () =>
+    return withRetries("survey_fetch", surfaceOf(placement), () =>
       attempt<SurveyConfigV2>(`/api/survey?${query.toString()}`, { method: "GET" }),
     );
   }
@@ -387,16 +442,18 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
   /** Submit a full multi-question answer set. */
   function submitAnswers(params: {
     surveyId: string;
+    surveyVersion?: number;
     orderId: string | null;
     placement: Placement;
     answers: AnswerInput[];
   }) {
-    return withRetries("survey_answers", "thank-you", () =>
+    return withRetries("survey_answers", surfaceOf(params.placement), () =>
       attempt<SubmitResult>("/api/survey-responses", {
         method: "POST",
         // Field names must match app/routes/api.survey-responses.tsx exactly.
         body: JSON.stringify({
           surveyId: params.surveyId,
+          surveyVersion: params.surveyVersion,
           orderId: params.orderId,
           placement: params.placement,
           locale: buyerLocale(),

@@ -17,10 +17,11 @@ import { logger } from "~/lib/logger";
 import { minorToDecimalString, parseMoneyToMinor } from "~/lib/money";
 import { currentUtcPeriod, evaluateCap, planFor, type PlanKey } from "~/lib/plans";
 import { withRetry } from "~/lib/retry.server";
+import { invalidateConfig } from "~/lib/surveys.server";
 import { enqueueSync, hasSyncWork, parseSyncOptions, processPendingSync } from "~/lib/sync.server";
 import { shouldLearnAndStop } from "@shared/templates/confidence";
 import {
-  isQuestionVisible,
+  normalizeResponseAnswers,
   OTHER_CHANNEL_VALUE,
   validateResponse,
   type AnswerInput,
@@ -31,7 +32,10 @@ import type { Placement } from "@shared/survey-config";
 export type AnswerSubmitInput = {
   shopId: string;
   surveyId: string;
+  /** The published version the buyer answered. */
   surveyVersion: number;
+  /** The survey's current published version; a lower `surveyVersion` is stale. */
+  currentVersion?: number;
   orderId: string | null;
   placement: Placement;
   locale: string | null;
@@ -100,9 +104,18 @@ async function isCountableOrder(shopId: string, orderId: string | null): Promise
  * landed at or past the cap (the answer is still stored, just flagged).
  */
 export async function claimUsageSlot(shopId: string, cap: number | null): Promise<{ count: number; withinCap: boolean }> {
-  const { periodStart, periodEnd } = currentUtcPeriod();
+  return retryDb(() => claimUsageSlotWith(db, shopId, cap));
+}
 
-  return retryDb(async () => {
+/** `claimUsageSlot` on a given client, so the submit transaction can include it. */
+async function claimUsageSlotWith(
+  client: Prisma.TransactionClient | typeof db,
+  shopId: string,
+  cap: number | null,
+): Promise<{ count: number; withinCap: boolean }> {
+  const { periodStart, periodEnd } = currentUtcPeriod();
+  const db = client;
+  {
     // Insert-or-ignore rather than `upsert`: Prisma's `upsert` is a
     // select-then-insert under the hood, so twenty simultaneous first-of-month
     // claims raced and one lost with a P2002. A single `ON CONFLICT DO NOTHING`
@@ -137,7 +150,7 @@ export async function claimUsageSlot(shopId: string, cap: number | null): Promis
       select: { responsesCount: true },
     });
     return { count: (current?.responsesCount ?? 0) + 1, withinCap: false };
-  });
+  }
 }
 
 function randomId(): string {
@@ -177,23 +190,37 @@ function channelAnswer(
 /**
  * Record a full set of answers.
  *
- * Validation runs here as well as in the route: the route validates against the
- * compiled config the buyer answered from, but between that read and this write
- * the merchant can edit the survey, so the definition is re-checked under the
- * same rules before anything is stored. An invalid submission is refused; it is
- * never partially written.
+ * The answers are first normalised against the published definition
+ * (`normalizeResponseAnswers`): archived questions and answers to hidden
+ * questions are dropped, each answer keeps only its type's fields, and a buyer
+ * who answered an older published version is not refused for a question added
+ * since. Then the same rules as the editor validate it. An invalid submission is
+ * refused; it is never partially written.
+ *
+ * The write is one transaction: a per-order advisory lock, the "already answered
+ * on any survey" check, the usage claim, the insert and the survey's response
+ * count. Either all of it lands or none of it does, so a retry after a dropped
+ * commit finds the row and reports a duplicate instead of counting twice, and a
+ * failed usage claim fails the request (the extension retries) instead of
+ * storing an answer that was neither counted nor flagged.
  */
 export async function submitAnswers(input: AnswerSubmitInput): Promise<AnswerSubmitResult> {
-  const issues = validateResponse(input.definition, input.answers);
+  const stale = input.currentVersion != null && input.surveyVersion < input.currentVersion;
+  const normalized = normalizeResponseAnswers(input.definition, input.answers, { stale });
+  let issues = [...normalized.issues, ...validateResponse(normalized.definition, normalized.answers)];
+  // A question added (or made required) after the buyer loaded the survey could
+  // not have been answered; everything else is still enforced.
+  if (stale) issues = issues.filter((i) => i.code !== "required");
   if (issues.length > 0) {
     return { outcome: "invalid", issues: issues.map((i) => `${i.path}: ${i.code}`) };
   }
+  const answers = normalized.answers;
 
   const usedBefore = await getUsageCount(input.shopId);
   const capStatus = evaluateCap(input.plan, usedBefore);
   const shouldLock = capStatus.shouldFlag;
 
-  const { channel, otherText } = channelAnswer(input.definition, input.answers);
+  const { channel } = channelAnswer(normalized.definition, answers);
   const orderTotal = await orderTotalFor(input.shopId, input.orderId);
 
   // Order verification: a known, countable order is "verified"; anything else is
@@ -202,145 +229,181 @@ export async function submitAnswers(input: AnswerSubmitInput): Promise<AnswerSub
   // authoritative revenue decision is still `decideSurveyRevenue` at read time.
   const verified = await isCountableOrder(input.shopId, input.orderId);
 
+  let written: { kind: "created" | "duplicate"; id: string; flagged: boolean; surveyId: string };
   try {
-    const created = await retryDb(() =>
-      db.response.create({
-        data: {
-          shopId: input.shopId,
-          surveyId: input.surveyId,
-          surveyVersion: input.surveyVersion,
-          orderId: input.orderId,
-          orderTotal: orderTotal?.decimal ?? null,
-          currency: orderTotal?.currency ?? null,
-          placement: input.placement,
-          locale: input.locale,
-          productIds: JSON.stringify((input.productIds ?? []).slice(0, 10)),
-          flagged: shouldLock,
-          verified,
-          // The legacy channel column lives on SurveyResponse, not Response;
-          // the new model keeps the channel in the Answer row. `channel`/`
-          // otherText` are stored here only to keep the compiled channel report
-          // cheap to query alongside the answer rows.
-          answers: {
-            create: input.answers.map((answer) => ({
-              shopId: input.shopId,
-              questionId: answer.questionId,
-              optionIds: JSON.stringify(answer.optionIds ?? []),
-              numberValue: answer.numberValue ?? null,
-              textValue: answer.textValue?.slice(0, 500) ?? null,
-              otherText: answer.otherText?.slice(0, 500) ?? null,
-            })),
+    written = await retryDb(() =>
+      db.$transaction(async (tx) => {
+        if (input.orderId) {
+          // One order, one answer set, across every survey and surface. The lock
+          // serialises the Thank-you and Order-status pages submitting together,
+          // which a plain read-then-insert could not.
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`answer:${input.shopId}:${input.orderId}`}))`;
+          const existing = await tx.response.findFirst({
+            where: { shopId: input.shopId, orderId: input.orderId },
+            select: { id: true, flagged: true, surveyId: true },
+          });
+          if (existing) return { kind: "duplicate" as const, ...existing };
+        }
+
+        // Atomic claim so 20 simultaneous submissions cannot exceed the cap: the
+        // conditional UPDATE lets exactly one take the last slot.
+        const claimed = await claimUsageSlotWith(tx, input.shopId, capOf(input.plan));
+
+        const created = await tx.response.create({
+          data: {
+            shopId: input.shopId,
+            surveyId: input.surveyId,
+            surveyVersion: input.surveyVersion,
+            orderId: input.orderId,
+            orderTotal: orderTotal?.decimal ?? null,
+            currency: orderTotal?.currency ?? null,
+            placement: input.placement,
+            locale: input.locale,
+            productIds: JSON.stringify((input.productIds ?? []).slice(0, 10)),
+            flagged: shouldLock || !claimed.withinCap,
+            verified,
+            answers: {
+              create: answers.map((answer) => ({
+                shopId: input.shopId,
+                questionId: answer.questionId,
+                optionIds: JSON.stringify(answer.optionIds ?? []),
+                numberValue: answer.numberValue ?? null,
+                textValue: answer.textValue?.slice(0, 500) ?? null,
+                otherText: answer.otherText?.slice(0, 500) ?? null,
+              })),
+            },
           },
-        },
-        select: { id: true, flagged: true },
+          select: { id: true, flagged: true, surveyId: true },
+        });
+
+        // Keep the denormalised per-survey count in step with the response rows.
+        await tx.survey.update({ where: { id: input.surveyId }, data: { responseCount: { increment: 1 } } });
+
+        return { kind: "created" as const, ...created };
       }),
     );
+  } catch (error) {
+    if (!isUniqueViolation(error)) throw error;
+    // Only reachable when another writer bypassed the lock (the legacy path).
+    const existing = input.orderId
+      ? await retryDb(() =>
+          db.response.findFirst({
+            where: { shopId: input.shopId, orderId: input.orderId },
+            select: { id: true, flagged: true, surveyId: true },
+          }),
+        )
+      : null;
+    if (!existing) throw error;
+    written = { kind: "duplicate", ...existing };
+  }
 
-    let isLocked = created.flagged;
-    try {
-      // Atomic claim so 20 simultaneous submissions cannot exceed the cap: the
-      // conditional UPDATE lets exactly one take the last slot.
-      const claimed = await claimUsageSlot(input.shopId, capOf(input.plan));
-      if (!isLocked && !claimed.withinCap) {
-        await retryDb(() => db.response.update({ where: { id: created.id }, data: { flagged: true } }));
-        isLocked = true;
-      }
-    } catch (usageError) {
-      logger.warn("answer_usage_increment_failed", {
-        shop_id: input.shopId,
-        response_id: created.id,
-        error_message: usageError instanceof Error ? usageError.message : String(usageError),
-      });
-    }
+  if (written.kind === "duplicate") {
+    logger.info("answer_duplicate_ignored", {
+      shop_id: input.shopId,
+      survey_id: input.surveyId,
+      response_id: written.id,
+    });
+  }
 
-    await bumpSurveyResponseCount(input.surveyId);
+  // A duplicate of this same survey is a retry of a write whose response never
+  // reached the buyer: finish the follow-up work it may have missed. Every step
+  // below is idempotent. A duplicate from another survey (the other surface
+  // answered first) has its own follow-ups.
+  if (written.kind === "created" || written.surveyId === input.surveyId) {
+    await afterAnswerStored(input, written.id, orderTotal === null);
+  }
 
-    // T10: Learn & stop. Once this response makes the main question reliable,
-    // pause the survey. The pause lives in the same path as a manual pause, and
-    // recompiling the config is what makes shoppers stop seeing it. Best-effort:
-    // a failure here must never fail the buyer's submission.
-    if (input.learnAndStop && input.mainQuestionId) {
-      try {
-        await maybeLearnAndStop(input.shopId, input.surveyId, input.mainQuestionId);
-      } catch (learnError) {
-        logger.warn("answer_learn_stop_failed", {
-          shop_id: input.shopId,
-          survey_id: input.surveyId,
-          error_message: learnError instanceof Error ? learnError.message : String(learnError),
-        });
-      }
-    }
-
-    // Optional Shopify write-back (Phase 7). Off unless the survey configured
-    // it. Recorded, then attempted inline; anything that cannot run yet
-    // (order not created, throttled) stays pending for the lazy sweep. This
-    // never fails the buyer's submission.
-    try {
-      const options = parseSyncOptions(input.syncOptions);
-      // T13 smart actions are Pro-only. A downgraded shop may still carry the
-      // presets in its stored config, so drop them unless the plan grants them.
-      if (input.plan !== "scale" && options.presets) {
-        delete options.presets;
-      }
-      if (hasSyncWork(options)) {
-        await enqueueSync(input.shopId, created.id, options);
-        await processPendingSync(input.shopId, 5);
-      }
-    } catch (syncError) {
-      logger.warn("answer_sync_failed", {
-        shop_id: input.shopId,
-        response_id: created.id,
-        error_message: syncError instanceof Error ? syncError.message : String(syncError),
-      });
-    }
-
+  if (written.kind === "created") {
     logger.info("answer_created", {
       shop_id: input.shopId,
       survey_id: input.surveyId,
-      response_id: created.id,
+      response_id: written.id,
       channel,
-      is_locked: isLocked,
-      answer_count: input.answers.length,
+      is_locked: written.flagged,
+      answer_count: answers.length,
     });
+  }
 
-    return { outcome: "created", id: created.id, isLocked, counted: !isLocked };
-  } catch (error) {
-    if (isUniqueViolation(error)) {
-      // A duplicate is a success. When there is no order id (on-site/link) the
-      // unique constraint cannot apply, so this is only reached for orders.
-      const existing = input.orderId
-        ? await retryDb(() =>
-            db.response.findFirst({
-              where: { shopId: input.shopId, surveyId: input.surveyId, orderId: input.orderId },
-              select: { id: true, flagged: true },
-            }),
-          )
-        : null;
+  return { outcome: written.kind, id: written.id, isLocked: written.flagged, counted: !written.flagged };
+}
 
-      if (existing) {
-        logger.info("answer_duplicate_ignored", {
-          shop_id: input.shopId,
-          survey_id: input.surveyId,
-          response_id: existing.id,
-        });
-        return { outcome: "duplicate", id: existing.id, isLocked: existing.flagged, counted: !existing.flagged };
-      }
+/** Best-effort follow-ups after an answer is stored. None of them fails the buyer. */
+async function afterAnswerStored(input: AnswerSubmitInput, responseId: string, totalMissing: boolean): Promise<void> {
+  // The order webhook can land between our OrderCache read and the insert; its
+  // reconcile then found no Response to fill. Re-run it now that the row exists.
+  if (totalMissing && input.orderId) {
+    try {
+      await reconcileFromCachedOrder(input.shopId, input.orderId);
+    } catch (reconcileError) {
+      logger.warn("answer_post_insert_reconcile_failed", {
+        shop_id: input.shopId,
+        response_id: responseId,
+        error_message: reconcileError instanceof Error ? reconcileError.message : String(reconcileError),
+      });
+    }
+  }
 
-      logger.warn("answer_duplicate_row_missing", {
+  // T10: Learn & stop. Once this response makes the main question reliable,
+  // pause the survey. The pause lives in the same path as a manual pause, and
+  // recompiling the config is what makes shoppers stop seeing it.
+  if (input.learnAndStop && input.mainQuestionId) {
+    try {
+      await maybeLearnAndStop(input.shopId, input.surveyId, input.mainQuestionId);
+    } catch (learnError) {
+      logger.warn("answer_learn_stop_failed", {
         shop_id: input.shopId,
         survey_id: input.surveyId,
-        order_id: input.orderId,
+        error_message: learnError instanceof Error ? learnError.message : String(learnError),
       });
-      return { outcome: "duplicate", id: "", isLocked: shouldLock, counted: !shouldLock };
     }
+  }
 
-    throw error;
+  // Optional Shopify write-back (Phase 7). Off unless the survey configured it.
+  // Recorded here; the Shopify calls run in the background so the buyer's
+  // request never waits on Shopify (a throttled shop could otherwise hold it
+  // past the extension's 60s budget and trigger retries). Anything that cannot
+  // run yet stays pending for the lazy sweep.
+  try {
+    const options = parseSyncOptions(input.syncOptions);
+    // T13 smart actions are Pro-only. A downgraded shop may still carry the
+    // presets in its stored config, so drop them unless the plan grants them.
+    if (input.plan !== "scale" && options.presets) {
+      delete options.presets;
+    }
+    if (hasSyncWork(options)) {
+      await enqueueSync(input.shopId, responseId, options);
+      void processPendingSync(input.shopId, 5, { responseId }).catch((syncError: unknown) => {
+        logger.warn("answer_sync_failed", {
+          shop_id: input.shopId,
+          response_id: responseId,
+          error_message: syncError instanceof Error ? syncError.message : String(syncError),
+        });
+      });
+    }
+  } catch (syncError) {
+    logger.warn("answer_sync_failed", {
+      shop_id: input.shopId,
+      response_id: responseId,
+      error_message: syncError instanceof Error ? syncError.message : String(syncError),
+    });
   }
 }
 
-/** Keep the denormalised per-survey count in step with the response rows. */
-async function bumpSurveyResponseCount(surveyId: string): Promise<void> {
-  await retryDb(() => db.survey.update({ where: { id: surveyId }, data: { responseCount: { increment: 1 } } }));
+/** Fill a just-stored Response from an order row that landed meanwhile. */
+async function reconcileFromCachedOrder(shopId: string, orderId: string): Promise<void> {
+  const order = await retryDb(() =>
+    db.orderCache.findUnique({
+      where: { shopId_orderId: { shopId, orderId } },
+      select: { totalPrice: true, currency: true },
+    }),
+  );
+  if (!order || order.totalPrice === null) return;
+  await reconcileOrderForResponses({
+    shopId,
+    orderId,
+    currency: order.currency,
+    totalPrice: order.totalPrice.toString(),
+  });
 }
 
 /**
@@ -387,6 +450,8 @@ async function maybeLearnAndStop(shopId: string, surveyId: string, questionId: s
     data: { status: "paused" },
   });
   if (paused.count > 0) {
+    // Recompile now: the cached config would keep serving the paused survey.
+    await invalidateConfig(shopId);
     logger.info("survey_learn_stop_paused", { shop_id: shopId, survey_id: surveyId, answers: n });
   }
 }

@@ -141,7 +141,7 @@ the shop endpoint") is stale.
 - **Why the test missed it:** `tests/db-migration-backfill.test.ts:83` seeds a single shop.
 - **Related:** even if this were worked around, `sync.server.ts:259` and `admin-survey-context.server.ts:44` look up labels by option id alone, with no shop scope.
 
-### [ ] C2. A required question that was removed still blocks every submission (SUBMIT) — CONFIRMED
+### [x] C2. A required question that was removed still blocks every submission (SUBMIT) — CONFIRMED
 
 - **Where:** `shared/survey-rules.ts:663-685`, with `app/lib/surveys.server.ts:481-486`, `:140-145` and `:262-270`.
 - **Defect:** on a survey with answers, removing a question archives it but keeps `required: true`. `getSurveyRow` loads archived questions, `rowToEditor` passes them into the submit definition (`api.survey-responses.tsx:127-136`), and `validateResponse` checks every question, archived ones included. Buyers never see the archived question, because `compileSurvey` hides it.
@@ -151,7 +151,7 @@ the shop endpoint") is stale.
   3. The extension treats a 400 as permanent and drops the answer.
 - **Result:** 100% of answers for that survey are lost silently.
 
-### [ ] C3. Buyer answers are validated against the merchant's unpublished draft (SUBMIT) — CONFIRMED
+### [x] C3. Buyer answers are validated against the merchant's unpublished draft (SUBMIT) — CONFIRMED
 
 - **Where:** `app/routes/api.survey-responses.tsx:127` and `app/lib/surveys.server.ts:197-215`.
 - **Defect:** `rowToEditor` returns the draft whenever `row.draft` is set. Saving a live or paused survey always creates a draft (`surveys.server.ts:640-645`), while buyers keep being served the published version.
@@ -191,7 +191,7 @@ the shop endpoint") is stale.
 
 ### Survey submission (buyer side)
 
-- [ ] **H1 (CONFIRMED): single-question surveys submit on the first keystroke or tick.**
+- [x] **H1 (CONFIRMED): single-question surveys submit on the first keystroke or tick.**
   - Where: `extensions/shared/src/use-multi-survey.ts:253-264` (inputs at `MultiSurveyView.tsx:276,284,292`).
   - Defect: with layout `all`, every `onAnswer` on a single-question survey submits immediately, and text inputs call `onAnswer` on every keystroke.
   - Scenarios:
@@ -201,7 +201,7 @@ the shop endpoint") is stale.
 
 ### Order webhooks and revenue
 
-- [ ] **H2 (CONFIRMED): an answer can stay Pending forever when the order lands mid-submit.**
+- [x] **H2 (CONFIRMED): an answer can stay Pending forever when the order lands mid-submit.**
   - Where: `app/lib/answers.server.ts:197-206`; the only v2 reconcile is `webhooks.server.ts:472`.
   - Defect: the v2 submit reads `OrderCache`, then inserts, and never reconciles after the insert. There is no v2 orphan sweep, unlike legacy `responses.server.ts:130,290`.
   - Scenario:
@@ -319,33 +319,33 @@ the shop endpoint") is stale.
 
 ### Survey submission
 
-- [ ] **M1 (CONFIRMED): stale answers on hidden questions get the submission rejected.**
+- [x] **M1 (CONFIRMED): stale answers on hidden questions get the submission rejected.**
   - Where: `extensions/shared/src/use-multi-survey.ts:41-59` and `:213`, versus `shared/survey-rules.ts:666`.
   - Defect: the extension's visibility check reads answers left on questions that are now hidden.
   - Scenario: Q2 shows if Q1=a, and Q3 shows if Q2=x. The buyer answers Q1=a, Q2=x and Q3, then changes Q1 to b. The extension still sends Q3, the server returns `hidden_answered` (400), and the answer is lost.
-- [ ] **M2 (CONFIRMED): the client completeness check misses rules the server enforces.**
+- [x] **M2 (CONFIRMED): the client completeness check misses rules the server enforces.**
   - Where: `extensions/shared/src/use-multi-survey.ts:269-285`.
   - Defect: `complete` never checks multi-choice "Other" text, `minSelections` or `maxSelections`.
   - Scenario: Submit is enabled, the server rejects with `other_required`, `min_selections` or `max_selections` (400), and the answer is lost.
-- [ ] **M3 (CONFIRMED; token reuse across retries is PLAUSIBLE): failed attempts burn the per-token submit cap.**
+- [x] **M3 (CONFIRMED; token reuse across retries is PLAUSIBLE): failed attempts burn the per-token submit cap.**
   - Where: `app/routes/api.survey-responses.tsx:106`; `app/lib/rate-limit.server.ts:183-201`.
   - Defect: the per-token cap of 2 is consumed before any other check, and failed attempts count against it.
   - Scenarios:
     - Two 5xx responses while Neon wakes, then every retry gets 429 until the 5-minute token expires, which outlasts the 60s budget, so the answer is lost.
     - The backstop refuses attempts 1–2 before the order lands. Attempt 3 still gets the token-cap 429, so the "known orders always pass" exemption never helps.
-- [ ] **M4 (CONFIRMED): one order can be answered twice across the two surfaces.**
+- [x] **M4 (CONFIRMED): one order can be answered twice across the two surfaces.**
   - Where: `prisma/schema.prisma:426`, `app/routes/api.survey.tsx:84`, `shared/survey-config.ts:195` and `:295`.
   - Defect: the unique key is (shop, survey, order), but thank-you and order-status can resolve to different surveys (payment and first-order targeting apply only on thank-you), and `alreadyAnswered` is a check-then-act read.
   - Scenario: thank-you and order-status are open together. Two Responses are written for one order, and usage and `responseCount` are double-incremented.
-- [ ] **M5 (CONFIRMED): duplicate and off-type answer fields are stored unvalidated.**
+- [x] **M5 (CONFIRMED): duplicate and off-type answer fields are stored unvalidated.**
   - Where: `app/lib/answers.server.ts:225` versus `shared/survey-rules.ts:652`.
   - Defect: validation keeps only the last answer per `questionId`, but every element is stored. Fields foreign to the question type are also stored.
   - Scenario: a forged body `[{questionId:Q1, optionIds:["junk"]}, {questionId:Q1, optionIds:[valid]}]` passes validation and stores the junk row. This skews learn-and-stop.
-- [ ] **M6 (CONFIRMED): an edit or publish loses answers already in flight.**
+- [x] **M6 (CONFIRMED): an edit or publish loses answers already in flight.**
   - Where: `app/routes/api.survey-responses.tsx:122-139` (config cache at `surveys.server.ts:901-926`).
   - Defect: buyers answer against a config cached for up to 60s, but the submit is validated against the current definition.
   - Scenario: the merchant removes an option or adds a required question. In-flight answers fail with `unknown_option` or `required` (400) and are lost.
-- [ ] **M7 (CONFIRMED): omitting `orderId` skips the backstop and the duplicate guard.**
+- [x] **M7 (CONFIRMED): omitting `orderId` skips the backstop and the duplicate guard.**
   - Where: `app/routes/api.survey-responses.tsx:59` and `:111`.
   - Defect: `orderId` is optional, and NULL order ids are distinct in the unique index.
   - Scenario: a buyer token posts without `orderId` and writes unlimited rows, limited only by a shared bucket of about 10/min. This poisons reports and burns the Free cap.
@@ -411,7 +411,7 @@ the shop endpoint") is stale.
   - Where: `app/lib/sync.server.ts:604-610` and `app/lib/compliance.server.ts:267-273`.
   - Defect: one module-level timestamp throttles every shop's sweep.
   - Scenario: shop A's visit consumes the 5-minute slot, so shops B…N's pending sync and deferred redacts are skipped on their visits.
-- [ ] **M19 (CONFIRMED): the buyer's submit waits on Shopify writes.**
+- [x] **M19 (CONFIRMED): the buyer's submit waits on Shopify writes.**
   - Where: `app/lib/answers.server.ts:287`.
   - Defect: `await processPendingSync(shopId, 5)` runs inline in the buyer's submit request, including other responses' rows.
   - Scenario: a throttled shop or revoked token. Each submit waits up to 5 × (20s timeout or 4 retries), which exceeds the extension's 60s budget and triggers duplicate-submit retries.
@@ -524,41 +524,41 @@ the shop endpoint") is stale.
 
 ### Survey submission
 
-- [ ] **L10 (CONFIRMED): the shop backstop locks out real buyers whose order is not cached yet.**
+- [x] **L10 (CONFIRMED): the shop backstop locks out real buyers whose order is not cached yet.**
   - Where: `app/lib/rate-limit.server.ts:50` and `:129`.
   - Defect: under abuse, the backstop refuses real buyers whose order is not cached yet, which is the normal thank-you timing.
   - Scenario: they get 429 for 60s, and the answer is lost.
-- [ ] **L11 (CONFIRMED): retries and swallowed errors bypass usage counting and sync.**
+- [x] **L11 (CONFIRMED): retries and swallowed errors bypass usage counting and sync.**
   - Where: `app/lib/answers.server.ts:248`.
   - Defect: a failure in `claimUsageSlot` is only logged, so the answer is neither counted nor flagged, bypassing the cap.
   - Scenario: a retry after a committed-but-dropped insert takes the duplicate path, which skips usage, `responseCount` and sync.
-- [ ] **L12 (CONFIRMED): a failed counter bump leaves the answer half-processed.**
+- [x] **L12 (CONFIRMED): a failed counter bump leaves the answer half-processed.**
   - Where: `app/lib/answers.server.ts:256`.
   - Defect: if `bumpSurveyResponseCount` throws after commit, the buyer gets a 500 and the retry returns "duplicate".
   - Scenario: that answer's learn-and-stop check and sync enqueue never run.
-- [ ] **L13 (CONFIRMED): the learn-and-stop pause is served stale.**
+- [x] **L13 (CONFIRMED): the learn-and-stop pause is served stale.**
   - Where: `app/lib/answers.server.ts:385`.
   - Defect: the pause does not call `invalidateConfig`, so the paused survey is still served for 60s, and `maxResponses` uses the cached count.
-- [ ] **L14 (CONFIRMED): response-body errors are mishandled.**
+- [x] **L14 (CONFIRMED): response-body errors are mishandled.**
   - Where: `extensions/shared/src/survey-logic.ts:277`.
   - Defect: `response.json()` runs after the attempt timer is cleared and its errors are not transient.
   - Scenarios:
     - a stalled body leaves the block stuck on "sending";
     - a 200 with a non-JSON body is logged as `survey_submit_lost` although it was committed.
-- [ ] **L15 (PLAUSIBLE): a throwing host getter crashes the block.**
+- [x] **L15 (PLAUSIBLE): a throwing host getter crashes the block.**
   - Where: `extensions/shared/src/survey-logic.ts:356`.
   - Defect: `getPaymentTypes` is not wrapped in `safeRead`.
   - Scenario: the host getter throws, and the block crashes in the effect.
-- [ ] **L16 (CONFIRMED): text fields do not show their stored value.**
+- [x] **L16 (CONFIRMED): text fields do not show their stored value.**
   - Where: `extensions/shared/src/MultiSurveyView.tsx:270-296` (with `use-multi-survey.ts:196-197`).
   - Scenarios:
     - Back/Next in one-by-one mode shows an empty field while the old text is still submitted;
     - abandoned "Other" text is still stored on the chosen option (`answers.server.ts:231`).
-- [ ] **L17 (CONFIRMED): first-order targeting never matches on order-status.**
+- [x] **L17 (CONFIRMED): first-order targeting never matches on order-status.**
   - Where: `shared/survey-config.ts:195-196`.
   - Defect: order-status never sends `isFirstOrder`.
   - Scenario: first-order and returning-customer targeting never matches there, despite the comment at `survey-logic.ts:219-225`.
-- [ ] **L18 (CONFIRMED): any order id from the store can be answered.**
+- [x] **L18 (CONFIRMED): any order id from the store can be answered.**
   - Where: `app/routes/api.survey-responses.tsx:122`.
   - Defect: no survey status, placement or targeting check is made, and `orderId` is not bound to the token.
   - Scenario: a buyer answers another order id first, which hides the survey from the real buyer (`alreadyAnswered`). Paused surveys can also be answered. Data never crosses shops.
@@ -642,7 +642,7 @@ the shop endpoint") is stale.
   - Where: `app/lib/responses.server.ts:41-45`.
   - Defect: the upsert can race on P2002, which is not retryable, and the failure is only logged.
   - Scenario: a lost increment lets one extra answer through unlocked.
-- [ ] **L39 (PLAUSIBLE): a retried write can double-count usage.**
+- [x] **L39 (PLAUSIBLE): a retried write can double-count usage.**
   - Where: `app/lib/answers.server.ts:105-127`.
   - Defect: `claimUsageSlot` runs inside `retryDb`, so a committed-but-dropped UPDATE (P1017) is incremented twice.
   - Scenario: a Free shop hits the cap early.
@@ -788,7 +788,7 @@ the shop endpoint") is stale.
 - [ ] **I9:** `app/routes/jobs.retention.ts:20-28`: an unset secret returns a distinctive `503 not_configured`, not the 404 its comment promises. (CONFIRMED)
 - [ ] **I11:** `app/lib/order-backfill.server.ts:83`: the `lastAttempt` map is never pruned. (CONFIRMED)
 - [ ] **I14:** `app/routes/api.survey-responses.tsx:139`: `surveyVersion` stores the current version, not the one the buyer answered. `productIds`, `country`, `isFirstOrder` and `customerId` are never sent or stored, so "results by product" is always empty. (CONFIRMED)
-- [ ] **I15:** `extensions/shared/src/survey-logic.ts:365` and `:394`: retry logs say "thank-you" on order-status, and `randomizeOptions` is never applied by the extension. (CONFIRMED)
+- [x] **I15:** `extensions/shared/src/survey-logic.ts:365` and `:394`: retry logs say "thank-you" on order-status, and `randomizeOptions` is never applied by the extension. (CONFIRMED)
 - [ ] **I16:** `app/lib/settings.ts:339` assumes the number in `gid://shopify/OrderIdentity/<n>` equals the order id. If it does not, no thank-you answer reconciles. (PLAUSIBLE)
 - [ ] **I17:** `app/routes/api.survey.tsx:84`: `alreadyAnswered` checks only v2. A stale v1 client can answer the same order on both paths and count usage twice. (CONFIRMED)
 - [ ] **I18:** `shared/templates/smart-actions.ts:97-105`: the "first-order low rating" preset is not gated on first orders. (CONFIRMED)

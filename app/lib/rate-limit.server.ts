@@ -185,17 +185,31 @@ export function consumeTokenSubmission(
   expiresAtMs: number,
   now = Date.now(),
 ): void {
-  evictExpiredTokenSubs(now);
+  checkTokenSubmission(tokenKey, now);
+  recordTokenSubmission(tokenKey, expiresAtMs, now);
+}
 
+/**
+ * Refuse a token that has already written its allowance, without counting this
+ * attempt. Called before any database read; `recordTokenSubmission` counts only
+ * an answer that was actually stored, so failed attempts (a 5xx while the
+ * database wakes, a backstop 429 before the order lands) never burn the cap and
+ * lock a real buyer out of their own retries.
+ */
+export function checkTokenSubmission(tokenKey: string, now = Date.now()): void {
+  evictExpiredTokenSubs(now);
+  const existing = tokenSubs.get(tokenKey);
+  if (existing && existing.expiresAt > now && existing.count >= MAX_SUBMISSIONS_PER_TOKEN) {
+    throw new RateLimitError(60, { bucket: "token" });
+  }
+}
+
+/** Count one stored answer against the token. */
+export function recordTokenSubmission(tokenKey: string, expiresAtMs: number, now = Date.now()): void {
   const existing = tokenSubs.get(tokenKey);
   if (!existing || existing.expiresAt <= now) {
-    if (tokenSubs.size > MAX_BUCKETS * 2) evictExpiredTokenSubs(now);
     tokenSubs.set(tokenKey, { count: 1, expiresAt: expiresAtMs });
     return;
-  }
-
-  if (existing.count >= MAX_SUBMISSIONS_PER_TOKEN) {
-    throw new RateLimitError(60, { bucket: "token" });
   }
   existing.count += 1;
 }

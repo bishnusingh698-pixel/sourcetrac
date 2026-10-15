@@ -537,10 +537,19 @@ export async function runSyncKind(
  * failure bumps `attempts` and schedules the next try, a success deletes it.
  * Bounded so a request that triggers the sweep stays cheap.
  */
-export async function processPendingSync(shopId: string, limit = 10): Promise<{ done: number; failed: number }> {
+export async function processPendingSync(
+  shopId: string,
+  limit = 10,
+  filter: { responseId?: string } = {},
+): Promise<{ done: number; failed: number }> {
   const rows = await retryDb(() =>
     db.pendingSync.findMany({
-      where: { shopId, attempts: { lt: MAX_SYNC_ATTEMPTS }, nextAttemptAt: { lte: new Date() } },
+      where: {
+        shopId,
+        ...(filter.responseId ? { responseId: filter.responseId } : {}),
+        attempts: { lt: MAX_SYNC_ATTEMPTS },
+        nextAttemptAt: { lte: new Date() },
+      },
       orderBy: { createdAt: "asc" },
       take: limit,
     }),

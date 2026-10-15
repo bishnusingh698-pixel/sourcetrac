@@ -159,7 +159,15 @@ function parseJson<T>(raw: string | null | undefined, fallback: T): T {
   }
 }
 
-export function rowToEditor(row: SurveyWithQuestions): EditorSurvey {
+/**
+ * `view: "published"` ignores any unpublished draft. Buyers are served the
+ * published survey, so submit validation, Overview and Results must read it too;
+ * only the Studio shows the draft.
+ */
+export function rowToEditor(
+  row: SurveyWithQuestions,
+  { view = "draft" }: { view?: "draft" | "published" } = {},
+): EditorSurvey {
   const published: EditorSurvey = {
     id: row.id,
     name: row.name,
@@ -194,7 +202,7 @@ export function rowToEditor(row: SurveyWithQuestions): EditorSurvey {
   // editor, so the merchant keeps editing their latest work. Overview and
   // Results read the published structure instead (section 6.6); this is only
   // the Studio's view.
-  if (row.draft) {
+  if (row.draft && view === "draft") {
     const draft = parseJson<SurveyInput | null>(row.draft, null);
     if (draft) {
       return {

@@ -73,7 +73,12 @@ afterEach(() => {
 });
 
 /** Run a bundle against a fake host. Returns helpers to drive and inspect it. */
-async function mount(code: string, surface: (typeof SURFACES)[number], editor: boolean) {
+async function mount(
+  code: string,
+  surface: (typeof SURFACES)[number],
+  editor: boolean,
+  surveyOverride: Record<string, unknown> = {},
+) {
   const win = new Window();
   (globalThis as { document: unknown }).document = win.document;
 
@@ -124,6 +129,7 @@ async function mount(code: string, surface: (typeof SURFACES)[number], editor: b
                 ],
               },
             ],
+            ...surveyOverride,
           },
         }
       : { ok: true, counted: true };
@@ -184,6 +190,10 @@ async function mount(code: string, surface: (typeof SURFACES)[number], editor: b
     click(element: Element) {
       element.dispatchEvent(new win.Event("click", { bubbles: true }) as unknown as Event);
     },
+    type(element: Element, value: string) {
+      (element as unknown as { value: string }).value = value;
+      element.dispatchEvent(new win.Event("input", { bubbles: true }) as unknown as Event);
+    },
   };
 }
 
@@ -218,6 +228,35 @@ describe.each(SURFACES)("$name extension bundle", (surface) => {
       answers: [{ questionId: "q1", optionIds: ["instagram"] }],
     });
     expect(page.body().textContent).toContain("Thanks for your feedback!");
+  });
+
+  it("does not submit a single text question on the first keystroke (H1)", async () => {
+    const page = await mount(await bundle(surface), surface, false, {
+      questions: [
+        { id: "q1", type: "text", text: "Anything else?", textMultiline: false, required: true, randomizeOptions: false, allowOther: false, options: [] },
+      ],
+    });
+    page.setOrder(surface.value);
+    await page.settle();
+    await page.settle();
+
+    const field = page.body().querySelector("s-text-field");
+    expect(field).not.toBeNull();
+    page.type(field as unknown as Element, "a");
+    await page.settle();
+    page.type(field as unknown as Element, "a friend");
+    await page.settle();
+    expect(page.calls.filter((call) => call.method === "POST")).toHaveLength(0);
+
+    page.click(page.body().querySelector("s-button") as unknown as Element);
+    await page.settle();
+    await page.settle();
+    const posts = page.calls.filter((call) => call.method === "POST");
+    expect(posts).toHaveLength(1);
+    expect(JSON.parse(posts[0]?.body ?? "{}")).toMatchObject({
+      surveyVersion: 1,
+      answers: [{ questionId: "q1", textValue: "a friend" }],
+    });
   });
 
   it("shows a preview in the checkout editor and never calls the backend", async () => {
