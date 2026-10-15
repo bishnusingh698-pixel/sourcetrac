@@ -859,5 +859,14 @@
     "view": "Ansehen",
     "reliable_ideas": "Deine Ergebnisse für {{name}} sind verlässlich. Sieh dir Vorschläge an.",
     "unpublished": "{{name}} hat unveröffentlichte Änderungen. Prüfen und veröffentlichen."
+  },
+  "support": {
+    "button_label": "Support per E-Mail",
+    "copy": "Kopieren",
+    "copied": "E-Mail-Adresse kopiert",
+    "copy_failed": "Kopieren nicht möglich. Markieren Sie die Adresse und kopieren Sie sie manuell.",
+    "body": "Fragen oder Probleme? Schreiben Sie uns, wir helfen gern.",
+    "mail_subject": "Support-Anfrage: SourceTrac",
+    "mail_body": "Shop: {shop}\nTarif: {plan}\nApp-Version: {version}\nSeite: {page}\n\n\nBeschreiben Sie hier Ihre Frage oder Ihr Problem:"
   }
 }

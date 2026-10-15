@@ -1190,4 +1190,30 @@ merchant writes: `updateSurvey`, `publishSurveyDraft`, `discardSurveyDraft`,
   and the false-conflict case (a `responseCount` increment must not move the
   token). Each fails when `assertRevision` is neutered.
 
+## Support contact is a code constant, and it is guarded (2026-10-13)
+
+The App Store listing needs a support contact, and the app must not show a
+placeholder. The address lives in `shared/support.ts` as `SUPPORT_EMAIL`; the
+`SUPPORT_EMAIL` env var is deprecated and ignored. `buildSupportMailto()` builds
+the `mailto:` link (URL-encoded subject and body) with shop, plan, app version
+and page prefilled so a support request arrives with context.
+
+`SupportIconButton` sits in the `s-page` `secondary-actions` slot in the shell
+(`app/routes/app.tsx`) **and** in that route's ErrorBoundary, so a merchant whose
+page fails can still reach support. The Help page uses `SupportContactPanel`, and
+`app/root.tsx`'s boundary renders a plain `mailto:` link because App Bridge is not
+mounted when the root fails.
+
+- **`s-page` and `s-section` both have a `secondary-actions` slot**, but the
+  admin shell owns the only `s-page`; child routes must not nest one.
+- **The `slot` prop is typed `Lowercase<string>`**, not `string`. Passing a plain
+  `string` fails `tsc` with a confusing error; the component prop is typed to
+  match.
+- **`process.env` must be read in the loader**, never the component (see the
+  root-boundary section above). The version comes from the shell loader.
+- **`tests/unit/support.test.ts` is the guard**: link encoding, per-locale
+  translation with no leftover placeholder, a scan that fails on any email other
+  than `SUPPORT_EMAIL` in `app/` or `shared/`, and source checks that each mount
+  point stays wired. A removed button is silent at build time, the same failure
+  class as the App Bridge wiring.
 

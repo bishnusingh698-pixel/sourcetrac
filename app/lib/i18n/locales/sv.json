@@ -859,5 +859,14 @@
     "view": "Visa",
     "reliable_ideas": "Dina resultat för {{name}} är tillförlitliga. Se idéer att prova.",
     "unpublished": "{{name}} har opublicerade ändringar. Granska och publicera."
+  },
+  "support": {
+    "button_label": "E-posta supporten",
+    "copy": "Kopiera",
+    "copied": "E-postadress kopierad",
+    "copy_failed": "Kunde inte kopiera. Markera adressen och kopiera den manuellt.",
+    "body": "Frågor eller problem? Mejla oss så hjälper vi till.",
+    "mail_subject": "Supportärende: SourceTrac",
+    "mail_body": "Butik: {shop}\nPlan: {plan}\nAppversion: {version}\nSida: {page}\n\n\nBeskriv din fråga eller ditt problem här:"
   }
 }

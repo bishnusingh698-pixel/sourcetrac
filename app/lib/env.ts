@@ -28,6 +28,12 @@ const schema = z.object({
   TOKEN_ENCRYPTION_KEY: HEX_32,
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   LOG_LEVEL: optional(z.enum(["debug", "info", "warn", "error"])),
+  /**
+   * Deprecated and ignored. The support email is the `SUPPORT_EMAIL` constant in
+   * `shared/support.ts`, not configuration: it is the only address the app may
+   * contain, and the email-scan test enforces that. Kept optional so an existing
+   * deployment that still sets it does not fail the boot check.
+   */
   SUPPORT_EMAIL: optional(z.string().email()),
   /**
    * Shared secret for POST /jobs/retention. Optional at boot so a developer can

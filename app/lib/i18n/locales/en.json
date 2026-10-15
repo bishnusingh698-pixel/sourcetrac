@@ -859,5 +859,14 @@
     "view": "View",
     "reliable_ideas": "Your {{name}} results are reliable. See ideas to try.",
     "unpublished": "{{name}} has unpublished changes. Review and publish."
+  },
+  "support": {
+    "button_label": "Email support",
+    "copy": "Copy",
+    "copied": "Email address copied",
+    "copy_failed": "Could not copy. Select the address and copy it manually.",
+    "body": "Questions or problems? Email us and we'll help.",
+    "mail_subject": "Support request: SourceTrac",
+    "mail_body": "Shop: {shop}\nPlan: {plan}\nApp version: {version}\nPage: {page}\n\n\nDescribe your question or problem here:"
   }
 }

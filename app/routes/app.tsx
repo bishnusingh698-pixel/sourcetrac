@@ -2,6 +2,7 @@ import {
   isRouteErrorResponse,
   Outlet,
   useLoaderData,
+  useLocation,
   useNavigate,
   useRouteError,
   useRouteLoaderData,
@@ -23,6 +24,7 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import type { loader as rootLoader } from "~/root";
 
 import { Banner } from "~/components/admin-ui";
+import { SupportIconButton } from "~/components/support-button";
 import { LanguageForm } from "~/components/language-selector";
 import {
   createTranslator,
@@ -37,6 +39,7 @@ import { ensureShop } from "~/lib/provision.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
 import { isShopifyAuthResponse } from "~/lib/shopify-boundary";
+import { APP_VERSION } from "@shared/support";
 
 /**
  * Authenticated shell for the embedded admin.
@@ -110,6 +113,11 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     cap: evaluateCap(enforcedPlan, used),
     language,
     /**
+     * Version stamped into the support mail body. `npm_package_version` is set
+     * by npm for `npm start`; the constant is the fallback for other runners.
+     */
+    version: process.env.npm_package_version ?? APP_VERSION,
+    /**
      * Whether the language came from the merchant's own choice. When false the
      * dashboard's setup guide offers the full picker, detected value preselected.
      */
@@ -128,9 +136,10 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
  */
 
 export default function AdminLayout() {
-  const { apiKey, shop, plan, cap, language, hasExplicitLanguage } =
+  const { apiKey, shop, plan, cap, language, version, hasExplicitLanguage } =
     useLoaderData<typeof loader>();
   const t = createTranslator(language);
+  const location = useLocation();
 
   return (
     <AppProvider apiKey={apiKey}>
@@ -148,6 +157,16 @@ export default function AdminLayout() {
         ))}
       </s-app-nav>
       <s-page>
+        {/* Always one click away, in the page title bar's secondary-actions
+            slot. `page` is the current path so the mail body says where the
+            merchant was when they asked for help. */}
+        <SupportIconButton
+          slot="secondary-actions"
+          shop={shop.shopDomain}
+          plan={t(`plans.${plan.key}`)}
+          version={version}
+          page={location.pathname}
+        />
         <s-stack gap="base">
           {/*
             Toolbar: plan usage and the language switcher. A query container so
@@ -280,10 +299,21 @@ function AdminErrorScreen({ error }: { error: unknown }) {
    * merchant sees a blank panel — the exact symptom the button exists to fix.
    */
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // The mail body carries the page and a short reference, never a stack trace.
+  const supportPage = typeof failure?.reference === "string"
+    ? `${location.pathname} (${failure.reference})`
+    : location.pathname;
 
   return (
     <AppProvider apiKey={root?.apiKey ?? ""}>
       <s-page>
+        <SupportIconButton
+          slot="secondary-actions"
+          version={APP_VERSION}
+          page={supportPage}
+        />
         <s-section heading={t("errors.boundary_title")}>
           <s-stack gap="base">
             <s-text>{detail}</s-text>
@@ -292,9 +322,12 @@ function AdminErrorScreen({ error }: { error: unknown }) {
                 {t("errors.reference", { reference: failure.reference })}
               </s-text>
             ) : null}
-            <s-button type="button" variant="primary" onClick={() => navigate("/app")}>
-              {t("errors.not_found_cta")}
-            </s-button>
+            <s-stack direction="inline" gap="small">
+              <s-button type="button" variant="primary" onClick={() => navigate("/app")}>
+                {t("errors.not_found_cta")}
+              </s-button>
+              <SupportIconButton version={APP_VERSION} page={supportPage} />
+            </s-stack>
           </s-stack>
         </s-section>
       </s-page>
