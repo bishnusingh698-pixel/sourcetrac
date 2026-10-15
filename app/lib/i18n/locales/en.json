@@ -13,7 +13,10 @@
     "help": "Help",
     "surveys": "Surveys",
     "results": "Results",
-    "responses": "Responses"
+    "responses": "Responses",
+    "home": "Home",
+    "channels": "Channel report",
+    "preferences": "Settings"
   },
   "common": {
     "cancel": "Cancel",
@@ -31,7 +34,7 @@
   },
   "dashboard": {
     "title": "Dashboard",
-    "subtitle": "How buyers found you, and what each channel is worth.",
+    "subtitle": "Which channels bring you buyers, and how much each one is worth.",
     "metric_responses": "Responses",
     "metric_revenue": "Revenue attributed",
     "metric_revenue_help": "Matched to real orders, by currency",
@@ -83,7 +86,21 @@
     "last_30": "Last 30 days",
     "last_90": "Last 90 days",
     "channel_other": "Other",
-    "edit_survey": "Edit your survey"
+    "edit_survey": "Edit your survey",
+    "top_channel": "Top channel",
+    "top_channel_revenue_one": "Brought in {{revenue}} from {{count}} answer, {{share}}% of all answers.",
+    "top_channel_revenue_other": "Brought in {{revenue}} from {{count}} answers, {{share}}% of all answers.",
+    "top_channel_answers_one": "{{count}} answer, {{share}}% of all answers. Revenue shows here once its orders are counted.",
+    "top_channel_answers_other": "{{count}} answers, {{share}}% of all answers. Revenue shows here once their orders are counted.",
+    "most_answers": "Most answers",
+    "notes_title": "About these numbers",
+    "note_locked_one": "{{count}} answer came in after the Free plan's monthly limit. It is saved and already counted above.",
+    "note_locked_other": "{{count}} answers came in after the Free plan's monthly limit. They are saved and already counted above.",
+    "note_pending_one": "{{count}} answer is waiting for its order details from Shopify, usually for less than a minute. Its revenue appears then.",
+    "note_pending_other": "{{count}} answers are waiting for their order details from Shopify, usually for less than a minute. Their revenue appears then.",
+    "note_test_orders_one": "{{count}} answer is from a Shopify test order. Test orders never count as revenue; real orders count as soon as they arrive.",
+    "note_test_orders_other": "{{count}} answers are from Shopify test orders. Test orders never count as revenue; real orders count as soon as they arrive.",
+    "no_answers_in_range": "No answers in this period ({{range}}). Try a longer range."
   },
   "settings": {
     "title": "Settings",
@@ -159,7 +176,7 @@
   },
   "plans": {
     "title": "Plans",
-    "subtitle": "Choose how many answers you collect each month.",
+    "subtitle": "Every plan includes the full channel report. Paid plans remove the monthly answer limit.",
     "current_label": "Current plan",
     "free": "Free",
     "growth": "Growth",
@@ -186,14 +203,14 @@
     "current_banner": "You are on {{plan}}",
     "on_free": "You are on the free plan.",
     "switch_free": "Switch to Free",
-    "feature_responses": "{{cap}} survey responses per month",
-    "feature_revenue": "Revenue and average order value by channel",
-    "feature_trends": "7, 30 and 90 day trends",
-    "feature_csv": "CSV export",
-    "feature_unlimited": "Unlimited survey responses",
-    "feature_everything_free": "Everything in Free",
-    "feature_everything_growth": "Everything in Growth",
-    "feature_priority_support": "Priority support",
+    "feature_responses": "Collect up to {{cap}} answers a month",
+    "feature_revenue": "See which channels bring in sales, with revenue and average order value for each",
+    "feature_trends": "Compare the last 7, 30 or 90 days",
+    "feature_csv": "Download every answer as a spreadsheet (CSV)",
+    "feature_unlimited": "Unlimited answers, no monthly limit",
+    "feature_everything_free": "Everything in Free, plus:",
+    "feature_everything_growth": "Everything in Growth, plus:",
+    "feature_priority_support": "Priority email support",
     "billing_title": "How billing works",
     "billing_body": "Charges appear on your Shopify invoice alongside your other app subscriptions. SourceTrac never stores your card details — Shopify handles the payment and tells us when a subscription starts, changes or ends.",
     "msg_shopify_unreachable": "We could not reach Shopify to manage billing. Reopen the app from Shopify admin and try again.",
@@ -204,7 +221,28 @@
     "msg_subscribe_failed": "Shopify could not start the subscription: {{error}}",
     "msg_subscription_created": "Subscription created. If you were not sent to a confirmation page, check the billing page in your Shopify admin.",
     "msg_plan_unavailable": "That plan is not available.",
-    "msg_already_on_plan": "You're already on this plan."
+    "msg_already_on_plan": "You're already on this plan.",
+    "feature_templates_lite": "Ready-made survey templates, short versions",
+    "feature_templates_full": "Full survey templates, including “None of these” answers and results by product",
+    "feature_smart_actions": "Smart actions: tag orders and customers automatically from their answers, ready for segments and marketing",
+    "best_for_free": "For trying SourceTrac, or stores with a few orders a month.",
+    "best_for_growth": "For most stores: ask every buyer, with no monthly limit.",
+    "best_for_scale": "For stores that want answers to tag orders and customers automatically.",
+    "recommended": "Recommended",
+    "forever": "Free forever, no card needed",
+    "per_year_equivalent": "per year, {{price}} a month",
+    "billed_monthly": "Billed monthly",
+    "billed_yearly": "Billed yearly",
+    "cycle_label": "Billing cycle",
+    "cycle_monthly": "Monthly",
+    "cycle_yearly": "Yearly",
+    "save_percent": "Save {{percent}}% with yearly",
+    "switch_yearly": "Switch to yearly billing",
+    "switch_monthly": "Switch to monthly billing",
+    "legacy_title": "You are paying an older, higher price ({{price}})",
+    "legacy_body": "{{plan}} now costs {{price}}. Shopify keeps charging the price you approved until you approve the new one. Approve it and the new price replaces your current charge.",
+    "legacy_cta": "Switch to the new price",
+    "yearly_note": "Yearly billing costs {{percent}}% less than paying monthly and is charged once a year. Switching between monthly and yearly replaces your current charge once you approve it in Shopify."
   },
   "help": {
     "title": "Help",
@@ -248,7 +286,8 @@
     "cap_warning_cta": "Upgrade plan",
     "cap_reached_title": "Your free response limit is reached",
     "cap_reached_body": "Every answer is still saved and still counted in your dashboard. Nothing is hidden or held back — upgrade to lift the monthly limit.",
-    "cap_reached_cta": "Upgrade to keep collecting"
+    "cap_reached_cta": "Upgrade to keep collecting",
+    "see_plans": "See plans"
   },
   "language": {
     "picker_label": "Language",
@@ -468,7 +507,9 @@
     "sync_metafield": "Save the answer to an order metafield (sourcetrac.channel)",
     "sync_flow": "Start a Shopify Flow workflow when someone answers",
     "sync_flow_help": "Uses the SourceTrac survey trigger. Build the workflow in the Flow app.",
-    "section_advanced": "Advanced"
+    "section_advanced": "Advanced",
+    "view_results": "Results",
+    "updated_on": "Updated {{date}}"
   },
   "templates": {
     "how_did_you_hear": {
@@ -572,7 +613,9 @@
     "status_voided": "Voided",
     "status_refunded": "Refunded",
     "status_total_unreadable": "Total unreadable",
-    "status_no_order": "No order"
+    "status_no_order": "No order",
+    "survey_label": "Survey",
+    "export_cta": "Export CSV"
   },
   "logic": {
     "tab": "Logic map",
@@ -876,7 +919,9 @@
     "start_with": "Start with {{name}}",
     "view": "View",
     "reliable_ideas": "Your {{name}} results are reliable. See ideas to try.",
-    "unpublished": "{{name}} has unpublished changes. Review and publish."
+    "unpublished": "{{name}} has unpublished changes. Review and publish.",
+    "open_report": "Open channel report",
+    "do_it": "Go"
   },
   "support": {
     "button_label": "Email support",
@@ -885,6 +930,9 @@
     "copy_failed": "Could not copy. Select the address and copy it manually.",
     "body": "Questions or problems? Email us and we'll help.",
     "mail_subject": "Support request: SourceTrac",
-    "mail_body": "Shop: {shop}\nPlan: {plan}\nApp version: {version}\nPage: {page}\n\n\nDescribe your question or problem here:"
+    "mail_body": "Shop: {shop}\nPlan: {plan}\nApp version: {version}\nPage: {page}\n\n\nDescribe your question or problem here:",
+    "button_aria": "Email support. Opens a message in Gmail in a new tab.",
+    "open_gmail": "Write in Gmail",
+    "open_mail_app": "Use my email app"
   }
 }

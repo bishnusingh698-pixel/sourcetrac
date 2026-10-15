@@ -6,7 +6,9 @@ import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 
 import { Banner, Panel } from "~/components/admin-ui";
+import { KpiGrid, TopChannelCallout } from "~/components/channel-report";
 import { ConfidenceBadge } from "~/components/insights";
+import { loadChannelReport } from "~/lib/channel-report.server";
 import { LanguageForm } from "~/components/language-selector";
 import { db } from "~/db.server";
 import { isSupportedLanguage, type LanguageCode } from "~/lib/i18n";
@@ -26,18 +28,24 @@ import { getShopLocaleInfo } from "~/lib/studio.server";
 import { authenticate } from "~/shopify.server";
 
 /**
- * Home (T16) — the minimal landing page.
+ * Home — the landing page.
  *
- * Exactly three cards: status, up to three active surveys with one key number
- * each, and one rule-based next step. Everything else (the full channel report,
- * the trend, the range switcher) moved to `/app/dashboard`, which is linked from
- * the status card. Until the first answer arrives this page is the setup guide.
+ * Answers "how is it going, and what should I do next?" in one screen: the best
+ * channel of the last 30 days in one sentence, the four headline numbers (each a
+ * link to the full channel report), the live surveys with one key number each,
+ * and exactly one next step. The range switcher, table and trend live on the
+ * channel report. Until the first answer arrives this page is the setup guide.
  *
  * All money is formatted here on the server and shipped as strings, so the
  * browser never sees minor-unit integers.
  */
 
-export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "dashboard.title");
+export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "nav.home");
+
+export const handle = { titleKey: "nav.home" };
+
+/** Home's numbers cover the last 30 days, the channel report's default range. */
+const HOME_DAYS = 30;
 
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -65,7 +73,9 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     db.orderCache.findFirst({ where: { shopId: shop.id }, select: { id: true } }),
   ]);
 
-  const homeSurveys = anyResponse ? await loadHomeSurveys(shop.id, locale) : [];
+  const [homeSurveys, report] = anyResponse
+    ? await Promise.all([loadHomeSurveys(shop.id, locale), loadChannelReport({ shop, days: HOME_DAYS, locale })])
+    : [[], null];
 
   // The seasonal spotlight (T15) is the fallback next step when nothing more
   // urgent applies. Evaluated in the admin from the date and the shop's region:
@@ -98,6 +108,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
           }
         : null,
     homeSurveys,
+    report,
     spotlightTemplateName,
     // Template names live in the shared template bundle, not the admin i18n
     // bundle, so the fallback "Start with Channel Compass" name is resolved here.
@@ -155,9 +166,9 @@ function SetupGuide({ setup, t, language }: { setup: Setup; t: TFunction; langua
         <Panel title={t("onboarding.language_step_title")}>
           <s-stack gap="base">
             <s-text color="subdued">{t("onboarding.language_step_body")}</s-text>
-            {/* The full grid, not the toolbar's dropdown: a first-time visitor
-                who cannot read the current language cannot operate a dropdown
-                they cannot read either. */}
+            {/* The full grid, not a dropdown: a first-time visitor who cannot
+                read the current language cannot operate a dropdown they cannot
+                read either. */}
             <LanguageForm language={language} detected />
           </s-stack>
         </Panel>
@@ -166,33 +177,32 @@ function SetupGuide({ setup, t, language }: { setup: Setup; t: TFunction; langua
       <s-section heading={t("onboarding.title")}>
         <s-stack gap="base">
           <s-text color="subdued">{t("onboarding.subtitle")}</s-text>
-          <s-progress
-            value={0}
-            max={steps.length}
-            accessibilityLabel={t("onboarding.progress_aria", { done: 0, total: steps.length })}
-          />
           {steps.map((step, index) => (
-            <s-box key={step.title} padding="base" border="base" borderRadius="base">
-              <s-stack gap="small">
-                <s-text type="strong">
-                  {index + 1}. {step.title}
-                </s-text>
-                <s-text color="subdued">{step.body}</s-text>
-                {step.action ? (
-                  <div>
-                    {/* Shopify admin pages refuse to render inside the app's
-                        iframe, so the checkout editor opens in the top window.
-                        In-app links stay in the frame. */}
-                    <s-button
-                      href={step.action.href}
-                      target={step.action.href.startsWith("https://") ? "_top" : "auto"}
-                      variant={index === 0 ? "primary" : "secondary"}
-                    >
-                      {step.action.label}
-                    </s-button>
-                  </div>
-                ) : null}
-              </s-stack>
+            <s-box key={step.title} padding="base" border="base" borderRadius="large">
+              {/* Number on the left, text on the right: the text column can
+                  shrink, so long translations wrap instead of overflowing. */}
+              <s-grid gridTemplateColumns="auto minmax(0, 1fr)" gap="base" alignItems="start">
+                <s-badge tone={index === 0 ? "info" : "neutral"}>{String(index + 1)}</s-badge>
+                <s-stack gap="small">
+                  <s-text type="strong">{step.title}</s-text>
+                  <s-text color="subdued">{step.body}</s-text>
+                  {step.action ? (
+                    <div>
+                      {/* Shopify admin pages refuse to render inside the app's
+                          iframe, so the checkout editor opens in the top window.
+                          In-app links stay in the frame. One primary action on
+                          the page: the step that unblocks everything else. */}
+                      <s-button
+                        href={step.action.href}
+                        target={step.action.href.startsWith("https://") ? "_top" : "auto"}
+                        variant={index === 0 ? "primary" : "secondary"}
+                      >
+                        {step.action.label}
+                      </s-button>
+                    </div>
+                  ) : null}
+                </s-stack>
+              </s-grid>
             </s-box>
           ))}
         </s-stack>
@@ -207,58 +217,84 @@ function SetupGuide({ setup, t, language }: { setup: Setup; t: TFunction; langua
 
 export default function Home() {
   const data = useLoaderData<typeof loader>();
-  const { t, language } = useAdminI18n();
+  const { t, language, locale } = useAdminI18n();
 
   if (data.setup) return <SetupGuide setup={data.setup} t={t} language={language} />;
 
   const surveys = data.homeSurveys;
+  const rangeLabel = t("dashboard.last_30");
 
   return (
     <s-stack gap="base">
-      {/* Card 1: status. One sentence, or one action. */}
-      <Panel title={t("dashboard.title")} description={t("home.status_live")}>
-        <s-link href="/app/dashboard">{t("dashboard.channels_title")}</s-link>
-      </Panel>
+      {/* 1. The headline: the best channel, in one sentence. */}
+      {data.report ? (
+        <TopChannelCallout
+          report={data.report}
+          t={t}
+          rangeLabel={rangeLabel}
+          action={{ href: "/app/dashboard", label: t("home.open_report") }}
+        />
+      ) : null}
 
-      {/* Card 2: up to three active surveys, one key number each. */}
-      <Panel title={t("home.your_surveys")}>
-        {surveys.length === 0 ? (
-          <s-text color="subdued">{t("surveys.empty_body")}</s-text>
-        ) : (
-          <s-stack gap="base">
-            {surveys.map((survey) => (
-              <HomeSurveyRow key={survey.id} survey={survey} t={t} />
-            ))}
-            <s-link href="/app/surveys">{t("home.view_all")}</s-link>
-          </s-stack>
-        )}
-      </Panel>
+      {/* 2. The four numbers behind it; each tile opens the full report. */}
+      {data.report ? (
+        <KpiGrid report={data.report} t={t} locale={locale} rangeLabel={rangeLabel} href="/app/dashboard" />
+      ) : null}
 
-      {/* Card 3: exactly one rule-based next step. */}
-      <NextStep
-        surveys={surveys}
-        spotlightTemplateName={data.spotlightTemplateName}
-        channelCompassName={data.channelCompassName}
-        t={t}
-      />
+      {/* 3. Next step and live surveys, side by side on desktop. The next step
+          comes first on a phone: it is the one thing to do. */}
+      <s-query-container>
+        <s-grid gridTemplateColumns="@container (inline-size > 760px) minmax(0, 1fr) minmax(0, 2fr), minmax(0, 1fr)" gap="base">
+          <NextStep
+            surveys={surveys}
+            spotlightTemplateName={data.spotlightTemplateName}
+            channelCompassName={data.channelCompassName}
+            t={t}
+          />
+
+          <s-section heading={t("home.your_surveys")}>
+            {surveys.length === 0 ? (
+              <s-stack gap="base">
+                <s-text color="subdued">{t("surveys.empty_body")}</s-text>
+                <div>
+                  <s-button href="/app/surveys/library">{t("surveys.use_template")}</s-button>
+                </div>
+              </s-stack>
+            ) : (
+              <s-stack gap="small">
+                {surveys.map((survey) => (
+                  <HomeSurveyRow key={survey.id} survey={survey} t={t} />
+                ))}
+                <div>
+                  <s-link href="/app/surveys">{t("home.view_all")}</s-link>
+                </div>
+              </s-stack>
+            )}
+          </s-section>
+        </s-grid>
+      </s-query-container>
     </s-stack>
   );
 }
 
 function HomeSurveyRow({ survey, t }: { survey: HomeSurvey; t: TFunction }) {
   return (
-    <s-box padding="base" border="base" borderRadius="base">
-      <s-stack gap="small">
-        <s-stack direction="inline" justifyContent="space-between" gap="small" alignItems="center">
+    <s-clickable href={`/app/surveys/${survey.id}`} padding="base" border="base" borderRadius="large">
+      {/* Name and key number in a grid whose text column can shrink: a long
+          survey name wraps instead of pushing the number out of the card. */}
+      <s-grid gridTemplateColumns="minmax(0, 1fr) auto" gap="small" alignItems="center">
+        <s-stack gap="small-200">
           <s-text type="strong">{survey.name}</s-text>
-          <s-heading>{survey.keyNumber}</s-heading>
+          <s-stack direction="inline" gap="small" alignItems="center">
+            <s-badge tone="success">{t("surveys.status_active")}</s-badge>
+            <ConfidenceBadge level={survey.confidence} n={survey.responseCount} t={t} />
+          </s-stack>
         </s-stack>
-        <s-stack direction="inline" justifyContent="space-between" gap="small" alignItems="center">
-          <ConfidenceBadge level={survey.confidence} n={survey.responseCount} t={t} />
-          <s-link href={`/app/surveys/${survey.id}`}>{t("home.view")}</s-link>
-        </s-stack>
-      </s-stack>
-    </s-box>
+        <s-text fontWeight="bold" fontVariantNumeric="tabular-nums">
+          {survey.keyNumber}
+        </s-text>
+      </s-grid>
+    </s-clickable>
   );
 }
 
@@ -302,8 +338,18 @@ function NextStep({
   }
 
   return (
-    <Panel title={t("home.next_step")} description={body}>
-      <s-link href={href}>{t("home.view")}</s-link>
-    </Panel>
+    <s-section heading={t("home.next_step")}>
+      <s-stack gap="base">
+        <s-grid gridTemplateColumns="auto minmax(0, 1fr)" gap="small" alignItems="start">
+          <s-icon type="lightbulb" tone="info" />
+          <s-text>{body}</s-text>
+        </s-grid>
+        <div>
+          <s-button href={href} variant="primary">
+            {t("home.do_it")}
+          </s-button>
+        </div>
+      </s-stack>
+    </s-section>
   );
 }

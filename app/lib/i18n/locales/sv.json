@@ -13,7 +13,10 @@
     "help": "Hjälp",
     "surveys": "Enkäter",
     "results": "Resultat",
-    "responses": "Svar"
+    "responses": "Svar",
+    "home": "Hem",
+    "channels": "Kanalrapport",
+    "preferences": "Inställningar"
   },
   "common": {
     "cancel": "Avbryt",
@@ -31,7 +34,7 @@
   },
   "dashboard": {
     "title": "Översikt",
-    "subtitle": "Hur kunderna hittade dig och vad varje kanal är värd.",
+    "subtitle": "Vilka kanaler som ger dig köpare och hur mycket varje kanal är värd.",
     "metric_responses": "Svar",
     "metric_revenue": "Attributed intäkt",
     "metric_revenue_help": "Matchad mot riktiga ordrar, per valuta",
@@ -83,7 +86,21 @@
     "last_30": "Senaste 30 dagarna",
     "last_90": "Senaste 90 dagarna",
     "channel_other": "Annat",
-    "edit_survey": "Redigera enkäten"
+    "edit_survey": "Redigera enkäten",
+    "top_channel": "Bästa kanal",
+    "top_channel_revenue_one": "Gav {{revenue}} från {{count}} svar, {{share}} % av alla svar.",
+    "top_channel_revenue_other": "Gav {{revenue}} från {{count}} svar, {{share}} % av alla svar.",
+    "top_channel_answers_one": "{{count}} svar, {{share}} % av alla svar. Intäkterna visas när ordrarna har räknats.",
+    "top_channel_answers_other": "{{count}} svar, {{share}} % av alla svar. Intäkterna visas när ordrarna har räknats.",
+    "most_answers": "Flest svar",
+    "notes_title": "Om de här siffrorna",
+    "note_locked_one": "{{count}} svar kom in efter gratisplanens månadsgräns. Det är sparat och redan räknat ovan.",
+    "note_locked_other": "{{count}} svar kom in efter gratisplanens månadsgräns. De är sparade och redan räknade ovan.",
+    "note_pending_one": "{{count}} svar väntar på orderuppgifter från Shopify, oftast i mindre än en minut. Sedan visas intäkterna.",
+    "note_pending_other": "{{count}} svar väntar på orderuppgifter från Shopify, oftast i mindre än en minut. Sedan visas intäkterna.",
+    "note_test_orders_one": "{{count}} svar kommer från en testorder i Shopify. Testordrar räknas aldrig som intäkter; riktiga ordrar räknas så fort de kommer in.",
+    "note_test_orders_other": "{{count}} svar kommer från testordrar i Shopify. Testordrar räknas aldrig som intäkter; riktiga ordrar räknas så fort de kommer in.",
+    "no_answers_in_range": "Inga svar under den här perioden ({{range}}). Prova en längre period."
   },
   "settings": {
     "title": "Inställningar",
@@ -159,12 +176,12 @@
   },
   "plans": {
     "title": "Planer",
-    "subtitle": "Välj hur många svar du samlar in varje månad.",
+    "subtitle": "Alla planer har hela kanalrapporten. Betalda planer tar bort månadsgränsen för svar.",
     "current_label": "Nuvarande plan",
     "free": "Gratis",
     "growth": "Tillväxt",
     "scale": "Skala",
-    "unlimited": "Obestämda svar",
+    "unlimited": "Obegränsat antal svar",
     "usage_one": "{{count}} av {{cap}} svar denna månad",
     "usage_other": "{{count}} av {{cap}} svar denna månad",
     "usage_aria": "{{count}} av {{cap}} svar använda denna månad",
@@ -179,21 +196,21 @@
     "status_frozen": "Fryst",
     "status_expired": "Utgången",
     "cancel_title": "Vill du säga upp din plan?",
-    "cancel_body": "Dina svar förblir sparade och undersökningen fungerar fortfarande. Du förlorar obestämda antal svar.",
+    "cancel_body": "Dina svar förblir sparade och undersökningen fungerar fortfarande. Du förlorar obegränsat antal svar.",
     "cancel_confirm": "Säg upp plan",
     "keep_plan": "Behåll min plan",
     "not_available": "Faktureringen är otillgänglig just nu. Försök igen om en stund.",
     "current_banner": "Du har {{plan}}",
     "on_free": "Du har gratisplanen.",
     "switch_free": "Byt till Gratis",
-    "feature_responses": "{{cap}} enkätsvar per månad",
-    "feature_revenue": "Intäkter och genomsnittligt ordervärde per kanal",
-    "feature_trends": "Trender för 7, 30 och 90 dagar",
-    "feature_csv": "CSV-export",
-    "feature_unlimited": "Obegränsat antal enkätsvar",
-    "feature_everything_free": "Allt i Gratis",
-    "feature_everything_growth": "Allt i Tillväxt",
-    "feature_priority_support": "Prioriterad support",
+    "feature_responses": "Samla in upp till {{cap}} svar i månaden",
+    "feature_revenue": "Se vilka kanaler som ger försäljning, med intäkter och snittordervärde för varje kanal",
+    "feature_trends": "Jämför de senaste 7, 30 eller 90 dagarna",
+    "feature_csv": "Ladda ner alla svar som kalkylark (CSV)",
+    "feature_unlimited": "Obegränsat antal svar, ingen månadsgräns",
+    "feature_everything_free": "Allt i Gratis, plus:",
+    "feature_everything_growth": "Allt i Tillväxt, plus:",
+    "feature_priority_support": "Prioriterad e-postsupport",
     "billing_title": "Så fungerar faktureringen",
     "billing_body": "Avgifterna visas på din Shopify-faktura tillsammans med dina andra app-abonnemang. SourceTrac sparar aldrig dina kortuppgifter — Shopify hanterar betalningen och meddelar oss när ett abonnemang startar, ändras eller avslutas.",
     "msg_shopify_unreachable": "Vi kunde inte nå Shopify för att hantera faktureringen. Öppna appen igen från Shopify-admin och försök på nytt.",
@@ -204,7 +221,28 @@
     "msg_subscribe_failed": "Shopify kunde inte starta abonnemanget: {{error}}",
     "msg_subscription_created": "Abonnemanget har skapats. Om du inte skickades till en bekräftelsesida kan du kontrollera faktureringssidan i Shopify-admin.",
     "msg_plan_unavailable": "Den planen är inte tillgänglig.",
-    "msg_already_on_plan": "Du har redan den här planen."
+    "msg_already_on_plan": "Du har redan den här planen.",
+    "feature_templates_lite": "Färdiga enkätmallar i kort version",
+    "feature_templates_full": "Fullständiga mallar, med svaret ”Inget av dessa” och resultat per produkt",
+    "feature_smart_actions": "Smarta åtgärder: tagga ordrar och kunder automatiskt utifrån deras svar, redo för segment och marknadsföring",
+    "best_for_free": "För att prova SourceTrac, eller butiker med några få ordrar i månaden.",
+    "best_for_growth": "För de flesta butiker: fråga varje köpare, utan månadsgräns.",
+    "best_for_scale": "För butiker som vill att svaren automatiskt taggar ordrar och kunder.",
+    "recommended": "Rekommenderas",
+    "forever": "Gratis för alltid, inget kort behövs",
+    "per_year_equivalent": "per år, {{price}} i månaden",
+    "billed_monthly": "Faktureras månadsvis",
+    "billed_yearly": "Faktureras årsvis",
+    "cycle_label": "Faktureringsperiod",
+    "cycle_monthly": "Månadsvis",
+    "cycle_yearly": "Årsvis",
+    "save_percent": "Spara {{percent}} % med årsvis",
+    "switch_yearly": "Byt till årsvis fakturering",
+    "switch_monthly": "Byt till månadsvis fakturering",
+    "legacy_title": "Du betalar ett äldre, högre pris ({{price}})",
+    "legacy_body": "{{plan}} kostar nu {{price}}. Shopify fortsätter att ta betalt enligt det pris du godkände tills du godkänner det nya. Då ersätter det nya priset din nuvarande debitering.",
+    "legacy_cta": "Byt till det nya priset",
+    "yearly_note": "Årsvis fakturering kostar {{percent}} % mindre än månadsvis och debiteras en gång om året. Att byta mellan månadsvis och årsvis ersätter din nuvarande debitering när du godkänner det i Shopify."
   },
   "help": {
     "title": "Hjälp",
@@ -248,7 +286,8 @@
     "cap_warning_cta": "Uppgradera plan",
     "cap_reached_title": "Du har nått din gratisgräns för svar",
     "cap_reached_body": "Alla svar sparas fortfarande och räknas fortfarande med i din översikt. Inget döljs eller undanhålls — uppgradera för att häva månadsgränsen.",
-    "cap_reached_cta": "Uppgradera för att fortsätta samla in"
+    "cap_reached_cta": "Uppgradera för att fortsätta samla in",
+    "see_plans": "Se planer"
   },
   "language": {
     "picker_label": "Språk",
@@ -522,7 +561,9 @@
     "sync_metafield": "Spara svaret i ett metafält på beställningen (sourcetrac.channel)",
     "sync_flow": "Starta ett Shopify Flow-arbetsflöde när någon svarar",
     "sync_flow_help": "Använder SourceTrac-utlösaren för undersökningar. Bygg arbetsflödet i Flow-appen.",
-    "section_advanced": "Avancerat"
+    "section_advanced": "Avancerat",
+    "view_results": "Resultat",
+    "updated_on": "Uppdaterad {{date}}"
   },
   "templates": {
     "how_did_you_hear": {
@@ -626,7 +667,9 @@
     "status_voided": "Makulerad",
     "status_refunded": "Återbetald",
     "status_total_unreadable": "Totalen kan inte läsas",
-    "status_no_order": "Ingen order"
+    "status_no_order": "Ingen order",
+    "survey_label": "Enkät",
+    "export_cta": "Exportera CSV"
   },
   "library": {
     "title": "Mallbibliotek",
@@ -876,7 +919,9 @@
     "start_with": "Börja med {{name}}",
     "view": "Visa",
     "reliable_ideas": "Dina resultat för {{name}} är tillförlitliga. Se idéer att prova.",
-    "unpublished": "{{name}} har opublicerade ändringar. Granska och publicera."
+    "unpublished": "{{name}} har opublicerade ändringar. Granska och publicera.",
+    "open_report": "Öppna kanalrapporten",
+    "do_it": "Gå dit"
   },
   "support": {
     "button_label": "E-posta supporten",
@@ -885,6 +930,9 @@
     "copy_failed": "Kunde inte kopiera. Markera adressen och kopiera den manuellt.",
     "body": "Frågor eller problem? Mejla oss så hjälper vi till.",
     "mail_subject": "Supportärende: SourceTrac",
-    "mail_body": "Butik: {shop}\nPlan: {plan}\nAppversion: {version}\nSida: {page}\n\n\nBeskriv din fråga eller ditt problem här:"
+    "mail_body": "Butik: {shop}\nPlan: {plan}\nAppversion: {version}\nSida: {page}\n\n\nBeskriv din fråga eller ditt problem här:",
+    "button_aria": "Mejla supporten. Öppnar ett meddelande i Gmail i en ny flik.",
+    "open_gmail": "Skriv i Gmail",
+    "open_mail_app": "Använd min e-postapp"
   }
 }

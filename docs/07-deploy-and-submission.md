@@ -74,7 +74,7 @@ drive revenue.
 - Export every answer to CSV (order ID, timestamp, channel, order total, currency).
 - Currencies are always kept separate and summed correctly.
 
-**Pricing:** Free up to 50 responses/month. Growth $19/month. Scale $49/month.
+**Pricing:** Free up to 50 responses/month. Growth $4.99/month or $53.89/year. Scale $9.99/month or $107.89/year (yearly saves 10%).
 Billing is handled by Shopify — no separate account.
 
 ---

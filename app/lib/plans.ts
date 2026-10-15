@@ -17,11 +17,38 @@ export type PlanKey = typeof PLAN_FREE | typeof PLAN_GROWTH | typeof PLAN_SCALE;
 export const FREE_RESPONSE_CAP = 50;
 export const CAP_WARNING_RATIO = 0.8;
 
+/**
+ * How often a paid plan is billed. Monthly is Shopify's `EVERY_30_DAYS`, yearly
+ * is `ANNUAL`. Free has no interval: it is the absence of a charge.
+ */
+export type BillingCycle = "monthly" | "yearly";
+
+export const BILLING_CYCLES: readonly BillingCycle[] = ["monthly", "yearly"];
+
+export function isBillingCycle(value: unknown): value is BillingCycle {
+  return value === "monthly" || value === "yearly";
+}
+
+/**
+ * Discount on the yearly price versus twelve monthly payments, in percent.
+ *
+ * 10% rather than 8%: both give an odd-cent yearly price on a .99 monthly
+ * price, so neither is "cleaner", and "save 10%" is the figure a merchant can
+ * check in their head.
+ */
+export const YEARLY_DISCOUNT_PERCENT = 10;
+
 export type PlanDefinition = {
   key: PlanKey;
   name: string;
   /** Monthly price in the smallest currency unit, to avoid float money. */
   priceMinor: number;
+  /**
+   * Yearly price in minor units: twelve months less `YEARLY_DISCOUNT_PERCENT`,
+   * rounded to the cent. Derived, never typed in, so it cannot drift from the
+   * monthly price.
+   */
+  yearlyPriceMinor: number;
   currencyCode: "USD";
   /** null = unlimited. */
   responseCap: number | null;
@@ -30,15 +57,25 @@ export type PlanDefinition = {
    * by every request, so it cannot hold one merchant's language.
    */
   features: Array<{ key: string; params?: Record<string, number> }>;
-  /** Name shown to the merchant on the Shopify charge confirmation page. */
+  /**
+   * Name shown to the merchant on the Shopify charge confirmation page, for the
+   * monthly charge. The yearly charge appends " (yearly)". Both must keep the
+   * "SourceTrac" prefix and the plan name: `matchPlanByDisplayName` and
+   * `paidPlanFromSubscriptions` identify a subscription by them.
+   */
   displayName: string;
 };
+
+function yearlyFromMonthly(priceMinor: number): number {
+  return Math.round((priceMinor * 12 * (100 - YEARLY_DISCOUNT_PERCENT)) / 100);
+}
 
 export const PLANS: Record<PlanKey, PlanDefinition> = {
   free: {
     key: "free",
     name: "Free",
     priceMinor: 0,
+    yearlyPriceMinor: 0,
     currencyCode: "USD",
     responseCap: FREE_RESPONSE_CAP,
     displayName: "SourceTrac — Free",
@@ -47,31 +84,36 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
       { key: "plans.feature_revenue" },
       { key: "plans.feature_trends" },
       { key: "plans.feature_csv" },
+      { key: "plans.feature_templates_lite" },
     ],
   },
   growth: {
     key: "growth",
     name: "Growth",
-    priceMinor: 1900,
+    priceMinor: 499,
+    yearlyPriceMinor: yearlyFromMonthly(499),
     currencyCode: "USD",
     responseCap: null,
     displayName: "SourceTrac — Growth",
     features: [
       { key: "plans.feature_unlimited" },
       { key: "plans.feature_everything_free" },
+      { key: "plans.feature_templates_full" },
       { key: "plans.feature_priority_support" },
     ],
   },
   scale: {
     key: "scale",
     name: "Scale",
-    priceMinor: 4900,
+    priceMinor: 999,
+    yearlyPriceMinor: yearlyFromMonthly(999),
     currencyCode: "USD",
     responseCap: null,
     displayName: "SourceTrac — Scale",
     features: [
       { key: "plans.feature_unlimited" },
       { key: "plans.feature_everything_growth" },
+      { key: "plans.feature_smart_actions" },
       { key: "plans.feature_priority_support" },
     ],
   },
@@ -87,17 +129,38 @@ export function planFor(key: unknown): PlanDefinition {
   return isPlanKey(key) ? PLANS[key] : PLANS[PLAN_FREE];
 }
 
-/** Shopify's recurring interval enum value. */
-export const BILLING_INTERVAL = "EVERY_30_DAYS" as const;
+/** Shopify's `AppPricingInterval` value for each billing cycle. */
+export const BILLING_INTERVALS: Record<BillingCycle, "EVERY_30_DAYS" | "ANNUAL"> = {
+  monthly: "EVERY_30_DAYS",
+  yearly: "ANNUAL",
+};
+
+/** The cycle a Shopify `AppPricingInterval` stands for, or null if unknown. */
+export function cycleFromInterval(interval: string | null | undefined): BillingCycle | null {
+  if (interval === "ANNUAL") return "yearly";
+  if (interval === "EVERY_30_DAYS") return "monthly";
+  return null;
+}
+
+/** Price in minor units for one cycle. */
+export function planPriceMinor(key: PlanKey, cycle: BillingCycle = "monthly"): number {
+  const plan = PLANS[key];
+  return cycle === "yearly" ? plan.yearlyPriceMinor : plan.priceMinor;
+}
 
 /**
  * The price as Shopify's money `amount` expects it: a decimal string in MAJOR
- * units ("19.00"). `priceMinor` is minor units, and sending it directly bills
+ * units ("4.99"). `priceMinor` is minor units, and sending it directly bills
  * 100x the advertised price.
  */
-export function planPriceAmount(key: PlanKey): string {
-  const plan = PLANS[key];
-  return minorToDecimalString(plan.priceMinor, plan.currencyCode);
+export function planPriceAmount(key: PlanKey, cycle: BillingCycle = "monthly"): string {
+  return minorToDecimalString(planPriceMinor(key, cycle), PLANS[key].currencyCode);
+}
+
+/** Name for the Shopify charge. Keeps the prefix and plan name the matchers need. */
+export function subscriptionName(key: PlanKey, cycle: BillingCycle = "monthly"): string {
+  const base = PLANS[key].displayName;
+  return cycle === "yearly" ? `${base} (yearly)` : base;
 }
 
 export type CapStatus = {

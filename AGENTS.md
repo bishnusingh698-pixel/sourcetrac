@@ -1217,3 +1217,31 @@ mounted when the root fails.
   point stays wired. A removed button is silent at build time, the same failure
   class as the App Bridge wiring.
 
+
+## Pricing, navigation and support button (2026-10-15)
+
+- **Prices are $4.99 (Growth) and $9.99 (Scale) a month**, with a yearly cycle at
+  `YEARLY_DISCOUNT_PERCENT` (10%) off, derived in `app/lib/plans.ts`
+  (`yearlyPriceMinor`), never typed in. Yearly bills on Shopify's `ANNUAL`
+  interval; the charge name gets " (yearly)" so `matchPlanByDisplayName` and
+  `paidPlanFromSubscriptions` still match on "sourcetrac" + plan name. Do not
+  rename the monthly `displayName`: live subscriptions are matched by it.
+- **Shopify never re-prices an approved subscription.** Merchants who approved
+  $19 / $49 keep paying that until they approve a new charge. `PLANS_QUERY`
+  reads each subscription's line-item price and interval, `isOnLegacyPrice`
+  flags an above-list price, and the Plans page offers a one-click switch (the
+  "already on this plan" guard lets that re-subscribe through).
+- **The support button opens Gmail compose with `window.open`**, not an `href`.
+  A Polaris button `href` is treated by App Bridge as in-app navigation, so the
+  old `mailto:` button did nothing inside the admin. Do not pass the
+  `noopener` feature to `window.open`: it then returns null even on success.
+  `tests/unit/support.test.ts` pins this.
+- **Nav is six items** (Shopify's limit is seven, and no item may repeat the
+  home page): Channel report, Surveys, Responses, Plans, Settings, Help.
+  `/app/results` and `/app/export` still work; they are reached from survey
+  cards and the Responses page.
+- **Page titles come from `export const handle = { titleKey }`**, read by the
+  shell's `<s-page heading>`. Child routes must not draw their own title.
+- Home and the channel report share `loadChannelReport`
+  (`app/lib/channel-report.server.ts`) and the components in
+  `app/components/channel-report.tsx`, so their numbers cannot disagree.

@@ -1,7 +1,8 @@
 import { useLoaderData, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 import { useState } from "react";
 
-import { Banner, MoneyList, Panel } from "~/components/admin-ui";
+import { Banner, MoneyList, Panel, PageIntro, Metric, BigNumber } from "~/components/admin-ui";
+import { SurveyPicker } from "~/components/survey-picker";
 import { intlLocaleFor } from "~/lib/i18n";
 import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
@@ -31,6 +32,8 @@ import { authenticate } from "~/shopify.server";
  */
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "results.title");
+
+export const handle = { titleKey: "results.title" };
 
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -156,7 +159,7 @@ export default function Results() {
   if (data.surveys.length === 0 || !data.selected || !data.summary) {
     return (
       <s-stack gap="base">
-        <s-section heading={t("results.title")} subheading={t("results.subtitle")} padding="none" />
+        <PageIntro>{t("results.subtitle")}</PageIntro>
         <Banner tone="info" heading={t("results.empty_title")}>
           {t("results.empty_body")}
         </Banner>
@@ -169,55 +172,46 @@ export default function Results() {
 
   return (
     <s-stack gap="base">
-      <s-section heading={t("results.title")} subheading={t("results.subtitle")} padding="none" />
-
-      <s-stack direction="inline" gap="small">
-        <s-button icon="download" loading={downloading} onClick={download}>
-          {t("results.download")}
-        </s-button>
-        {downloadFailed ? <s-text tone="critical">{t("results.download_failed")}</s-text> : null}
-      </s-stack>
+      <PageIntro
+        actions={
+          <s-button icon="download" loading={downloading} onClick={download}>
+            {t("results.download")}
+          </s-button>
+        }
+      >
+        {t("results.subtitle")}
+      </PageIntro>
+      {downloadFailed ? (
+        <Banner tone="critical" heading={t("results.download_failed")} />
+      ) : null}
 
       {data.capped !== null ? (
         <s-text color="subdued">{t("results.capped_note", { limit: data.capped })}</s-text>
       ) : null}
 
-      {data.surveys.length > 1 ? (
-        <s-stack direction="inline" gap="small">
-          {data.surveys.map((survey) => (
-            <s-button
-              key={survey.id}
-              href={`/app/results?survey=${survey.id}`}
-              variant={survey.id === data.selected ? "primary" : "secondary"}
-            >
-              {survey.name}
-            </s-button>
-          ))}
-        </s-stack>
-      ) : null}
+      <SurveyPicker
+        surveys={data.surveys}
+        selected={data.selected}
+        basePath="/app/results"
+        label={t("responses.survey_label")}
+      />
 
-      <Panel title={t("results.summary_title")}>
-        <s-stack direction="inline" gap="base">
-          <s-stack gap="small-200">
-            <s-text type="strong" fontSize="small">
-              {t("results.total")}
-            </s-text>
-            <s-heading>{String(summary.totalResponses)}</s-heading>
-          </s-stack>
-          <s-stack gap="small-200">
-            <s-text type="strong" fontSize="small">
-              {t("results.pending")}
-            </s-text>
-            <s-heading>{String(summary.pendingResponses)}</s-heading>
-          </s-stack>
-          <s-stack gap="small-200">
-            <s-text type="strong" fontSize="small">
-              {t("results.revenue")}
-            </s-text>
-            <MoneyList amounts={data.revenue} />
-          </s-stack>
-        </s-stack>
-      </Panel>
+      <s-query-container>
+        <s-grid
+          gridTemplateColumns="@container (inline-size > 560px) repeat(3, minmax(0, 1fr)), minmax(0, 1fr)"
+          gap="base"
+        >
+          <Metric label={t("results.revenue")}>
+            <MoneyList amounts={data.revenue} size="large" tone="success" />
+          </Metric>
+          <Metric label={t("results.total")}>
+            <BigNumber>{summary.totalResponses}</BigNumber>
+          </Metric>
+          <Metric label={t("results.pending")}>
+            <BigNumber>{summary.pendingResponses}</BigNumber>
+          </Metric>
+        </s-grid>
+      </s-query-container>
 
       {data.breakdowns.map((breakdown) => {
         const question = questionById.get(breakdown.questionId);
@@ -230,7 +224,7 @@ export default function Results() {
               <s-stack gap="small">
                 {breakdown.options.map((option) => (
                   <s-stack key={option.optionId} gap="small-200">
-                    <s-stack direction="inline" justifyContent="space-between" gap="small">
+                    <s-grid gridTemplateColumns="minmax(0, 1fr) auto" gap="small" alignItems="center">
                       <s-text type="strong">
                         {data.optionLabel[option.optionId] ?? fixedOptionLabel(option.optionId, t) ?? option.optionId}
                         {question?.options.find((o) => o.id === option.optionId)?.archived
@@ -238,7 +232,7 @@ export default function Results() {
                           : ""}
                       </s-text>
                       <s-text fontVariantNumeric="tabular-nums">{String(option.count)}</s-text>
-                    </s-stack>
+                    </s-grid>
                     <s-progress value={Math.round((option.count / max) * 100)} max={100} />
                     {option.revenue.length > 0 ? (
                       <MoneyList
@@ -266,15 +260,13 @@ export default function Results() {
             <Panel key={breakdown.questionId} title={title} description={t("results.answered", { count: breakdown.total })}>
               <s-stack gap="small">
                 {breakdown.distribution.map((bucket) => (
-                  <s-stack key={bucket.value} direction="inline" gap="small" alignItems="center">
+                  <s-grid key={bucket.value} gridTemplateColumns="2.5rem minmax(0, 1fr) auto" gap="small" alignItems="center">
                     <s-text fontVariantNumeric="tabular-nums" type="strong">
                       {String(bucket.value)}
                     </s-text>
-                    <s-box>
-                      <s-progress value={Math.round((bucket.count / max) * 100)} max={100} />
-                    </s-box>
+                    <s-progress value={Math.round((bucket.count / max) * 100)} max={100} />
                     <s-text fontVariantNumeric="tabular-nums">{String(bucket.count)}</s-text>
-                  </s-stack>
+                  </s-grid>
                 ))}
               </s-stack>
             </Panel>

@@ -13,7 +13,10 @@
     "help": "Help",
     "surveys": "Enquêtes",
     "results": "Resultaten",
-    "responses": "Antwoorden"
+    "responses": "Antwoorden",
+    "home": "Start",
+    "channels": "Kanaalrapport",
+    "preferences": "Instellingen"
   },
   "common": {
     "cancel": "Annuleren",
@@ -31,7 +34,7 @@
   },
   "dashboard": {
     "title": "Overzicht",
-    "subtitle": "Hoe klanten je hebben gevonden en wat elk kanaal waard is.",
+    "subtitle": "Welke kanalen je kopers opleveren en hoeveel elk kanaal waard is.",
     "metric_responses": "Antwoorden",
     "metric_revenue": "Toegeschreven omzet",
     "metric_revenue_help": "Gekoppeld aan echte bestellingen, per valuta",
@@ -83,7 +86,21 @@
     "last_30": "Laatste 30 dagen",
     "last_90": "Laatste 90 dagen",
     "channel_other": "Overig",
-    "edit_survey": "Enquête bewerken"
+    "edit_survey": "Enquête bewerken",
+    "top_channel": "Beste kanaal",
+    "top_channel_revenue_one": "Leverde {{revenue}} op uit {{count}} antwoord, {{share}}% van alle antwoorden.",
+    "top_channel_revenue_other": "Leverde {{revenue}} op uit {{count}} antwoorden, {{share}}% van alle antwoorden.",
+    "top_channel_answers_one": "{{count}} antwoord, {{share}}% van alle antwoorden. De omzet verschijnt zodra de bestellingen zijn meegeteld.",
+    "top_channel_answers_other": "{{count}} antwoorden, {{share}}% van alle antwoorden. De omzet verschijnt zodra de bestellingen zijn meegeteld.",
+    "most_answers": "Meeste antwoorden",
+    "notes_title": "Over deze cijfers",
+    "note_locked_one": "{{count}} antwoord kwam binnen na de maandlimiet van het gratis abonnement. Het is opgeslagen en hierboven al meegeteld.",
+    "note_locked_other": "{{count}} antwoorden kwamen binnen na de maandlimiet van het gratis abonnement. Ze zijn opgeslagen en hierboven al meegeteld.",
+    "note_pending_one": "{{count}} antwoord wacht op de bestelgegevens van Shopify, meestal minder dan een minuut. Daarna verschijnt de omzet.",
+    "note_pending_other": "{{count}} antwoorden wachten op de bestelgegevens van Shopify, meestal minder dan een minuut. Daarna verschijnt de omzet.",
+    "note_test_orders_one": "{{count}} antwoord komt van een Shopify-testbestelling. Testbestellingen tellen nooit als omzet; echte bestellingen tellen zodra ze binnenkomen.",
+    "note_test_orders_other": "{{count}} antwoorden komen van Shopify-testbestellingen. Testbestellingen tellen nooit als omzet; echte bestellingen tellen zodra ze binnenkomen.",
+    "no_answers_in_range": "Geen antwoorden in deze periode ({{range}}). Probeer een langere periode."
   },
   "settings": {
     "title": "Instellingen",
@@ -159,7 +176,7 @@
   },
   "plans": {
     "title": "Abonnementen",
-    "subtitle": "Kies hoeveel antwoorden je elke maand verzamelt.",
+    "subtitle": "Elk abonnement bevat het volledige kanaalrapport. Betaalde abonnementen heffen de maandlimiet op antwoorden op.",
     "current_label": "Huidig abonnement",
     "free": "Gratis",
     "growth": "Groei",
@@ -186,14 +203,14 @@
     "current_banner": "Je gebruikt {{plan}}",
     "on_free": "Je gebruikt het gratis abonnement.",
     "switch_free": "Overstappen naar Gratis",
-    "feature_responses": "{{cap}} enquêteantwoorden per maand",
-    "feature_revenue": "Omzet en gemiddelde orderwaarde per kanaal",
-    "feature_trends": "Trends over 7, 30 en 90 dagen",
-    "feature_csv": "CSV-export",
-    "feature_unlimited": "Onbeperkt enquêteantwoorden",
-    "feature_everything_free": "Alles uit Gratis",
-    "feature_everything_growth": "Alles uit Groei",
-    "feature_priority_support": "Voorrang bij support",
+    "feature_responses": "Verzamel tot {{cap}} antwoorden per maand",
+    "feature_revenue": "Zie welke kanalen verkopen opleveren, met omzet en gemiddelde bestelwaarde per kanaal",
+    "feature_trends": "Vergelijk de afgelopen 7, 30 of 90 dagen",
+    "feature_csv": "Download alle antwoorden als spreadsheet (CSV)",
+    "feature_unlimited": "Onbeperkt antwoorden, geen maandlimiet",
+    "feature_everything_free": "Alles van Gratis, plus:",
+    "feature_everything_growth": "Alles van Groei, plus:",
+    "feature_priority_support": "Voorrang bij e-mailsupport",
     "billing_title": "Zo werkt facturering",
     "billing_body": "Kosten verschijnen op je Shopify-factuur naast je andere app-abonnementen. SourceTrac slaat nooit je kaartgegevens op — Shopify verwerkt de betaling en laat ons weten wanneer een abonnement begint, verandert of eindigt.",
     "msg_shopify_unreachable": "We konden Shopify niet bereiken om de facturering te beheren. Open de app opnieuw vanuit je Shopify-beheer en probeer het nog eens.",
@@ -204,7 +221,28 @@
     "msg_subscribe_failed": "Shopify kon het abonnement niet starten: {{error}}",
     "msg_subscription_created": "Abonnement aangemaakt. Kwam je niet op een bevestigingspagina terecht? Controleer dan de factureringspagina in je Shopify-beheer.",
     "msg_plan_unavailable": "Dat abonnement is niet beschikbaar.",
-    "msg_already_on_plan": "Je hebt dit abonnement al."
+    "msg_already_on_plan": "Je hebt dit abonnement al.",
+    "feature_templates_lite": "Kant-en-klare enquêtesjablonen, korte versies",
+    "feature_templates_full": "Volledige sjablonen, met ‘Geen van deze’-antwoorden en resultaten per product",
+    "feature_smart_actions": "Slimme acties: tag bestellingen en klanten automatisch op basis van hun antwoorden, klaar voor segmenten en marketing",
+    "best_for_free": "Om SourceTrac uit te proberen, of voor winkels met weinig bestellingen per maand.",
+    "best_for_growth": "Voor de meeste winkels: vraag het elke koper, zonder maandlimiet.",
+    "best_for_scale": "Voor winkels die bestellingen en klanten automatisch willen taggen op basis van antwoorden.",
+    "recommended": "Aanbevolen",
+    "forever": "Altijd gratis, geen kaart nodig",
+    "per_year_equivalent": "per jaar, {{price}} per maand",
+    "billed_monthly": "Maandelijks gefactureerd",
+    "billed_yearly": "Jaarlijks gefactureerd",
+    "cycle_label": "Factureringsperiode",
+    "cycle_monthly": "Maandelijks",
+    "cycle_yearly": "Jaarlijks",
+    "save_percent": "Bespaar {{percent}}% met jaarlijks",
+    "switch_yearly": "Overstappen op jaarlijks",
+    "switch_monthly": "Overstappen op maandelijks",
+    "legacy_title": "Je betaalt een oudere, hogere prijs ({{price}})",
+    "legacy_body": "{{plan}} kost nu {{price}}. Shopify blijft de goedgekeurde prijs rekenen tot je de nieuwe goedkeurt. Daarna vervangt de nieuwe prijs je huidige betaling.",
+    "legacy_cta": "Overstappen op de nieuwe prijs",
+    "yearly_note": "Jaarlijks betalen kost {{percent}}% minder dan maandelijks en wordt één keer per jaar gerekend. Wisselen tussen maandelijks en jaarlijks vervangt je huidige betaling zodra je het in Shopify goedkeurt."
   },
   "help": {
     "title": "Help",
@@ -248,7 +286,8 @@
     "cap_warning_cta": "Abonnement upgraden",
     "cap_reached_title": "Je hebt je gratis antwoordlimiet bereikt",
     "cap_reached_body": "Elk antwoord is nog steeds opgeslagen en telt nog steeds mee in je overzicht. Er wordt niets verborgen of vastgehouden — upgrade om de maandlimiet op te heffen.",
-    "cap_reached_cta": "Upgrade om verder te verzamelen"
+    "cap_reached_cta": "Upgrade om verder te verzamelen",
+    "see_plans": "Bekijk abonnementen"
   },
   "language": {
     "picker_label": "Taal",
@@ -522,7 +561,9 @@
     "sync_metafield": "Sla het antwoord op in een metafield van de bestelling (sourcetrac.channel)",
     "sync_flow": "Start een Shopify Flow-workflow wanneer iemand antwoordt",
     "sync_flow_help": "Gebruikt de SourceTrac-enquêtriger. Bouw de workflow in de Flow-app.",
-    "section_advanced": "Geavanceerd"
+    "section_advanced": "Geavanceerd",
+    "view_results": "Resultaten",
+    "updated_on": "Bijgewerkt op {{date}}"
   },
   "templates": {
     "how_did_you_hear": {
@@ -626,7 +667,9 @@
     "status_voided": "Vervallen",
     "status_refunded": "Terugbetaald",
     "status_total_unreadable": "Totaal onleesbaar",
-    "status_no_order": "Geen bestelling"
+    "status_no_order": "Geen bestelling",
+    "survey_label": "Enquête",
+    "export_cta": "CSV exporteren"
   },
   "library": {
     "title": "Sjablonenbibliotheek",
@@ -876,7 +919,9 @@
     "start_with": "Begin met {{name}}",
     "view": "Bekijken",
     "reliable_ideas": "Je resultaten voor {{name}} zijn betrouwbaar. Bekijk ideeën om te proberen.",
-    "unpublished": "{{name}} heeft niet-gepubliceerde wijzigingen. Bekijk en publiceer."
+    "unpublished": "{{name}} heeft niet-gepubliceerde wijzigingen. Bekijk en publiceer.",
+    "open_report": "Kanaalrapport openen",
+    "do_it": "Ga"
   },
   "support": {
     "button_label": "E-mail support",
@@ -885,6 +930,9 @@
     "copy_failed": "Kopiëren mislukt. Selecteer het adres en kopieer het handmatig.",
     "body": "Vragen of problemen? Mail ons en we helpen je verder.",
     "mail_subject": "Supportverzoek: SourceTrac",
-    "mail_body": "Winkel: {shop}\nAbonnement: {plan}\nApp-versie: {version}\nPagina: {page}\n\n\nBeschrijf hier je vraag of probleem:"
+    "mail_body": "Winkel: {shop}\nAbonnement: {plan}\nApp-versie: {version}\nPagina: {page}\n\n\nBeschrijf hier je vraag of probleem:",
+    "button_aria": "Support per e-mail. Opent een bericht in Gmail in een nieuw tabblad.",
+    "open_gmail": "Schrijven in Gmail",
+    "open_mail_app": "Mijn e-mailapp gebruiken"
   }
 }

@@ -13,7 +13,10 @@
     "help": "ヘルプ",
     "surveys": "アンケート",
     "results": "結果",
-    "responses": "回答"
+    "responses": "回答",
+    "home": "ホーム",
+    "channels": "チャネルレポート",
+    "preferences": "設定"
   },
   "common": {
     "cancel": "キャンセル",
@@ -31,7 +34,7 @@
   },
   "dashboard": {
     "title": "ダッシュボード",
-    "subtitle": "お客様がどのようにして当店を見つけたのか、どのチャンネルの価値が高いのか。",
+    "subtitle": "どのチャネルから購入者が来ているか、それぞれの価値はどれくらいか。",
     "metric_responses": "回答数",
     "metric_revenue": "紐づく売上",
     "metric_revenue_help": "実際の注文と突き合わせる（通貨別）",
@@ -83,7 +86,21 @@
     "last_30": "過去 30 日間",
     "last_90": "過去 90 日間",
     "channel_other": "その他",
-    "edit_survey": "アンケートを編集"
+    "edit_survey": "アンケートを編集",
+    "top_channel": "トップチャネル",
+    "top_channel_revenue_one": "{{count}} 件の回答（全体の {{share}}%）から {{revenue}} の売上。",
+    "top_channel_revenue_other": "{{count}} 件の回答（全体の {{share}}%）から {{revenue}} の売上。",
+    "top_channel_answers_one": "{{count}} 件の回答（全体の {{share}}%）。注文が集計されると売上が表示されます。",
+    "top_channel_answers_other": "{{count}} 件の回答（全体の {{share}}%）。注文が集計されると売上が表示されます。",
+    "most_answers": "回答数トップ",
+    "notes_title": "この数値について",
+    "note_locked_one": "{{count}} 件の回答が無料プランの月間上限を超えて届きました。保存済みで、上の数値にも含まれています。",
+    "note_locked_other": "{{count}} 件の回答が無料プランの月間上限を超えて届きました。保存済みで、上の数値にも含まれています。",
+    "note_pending_one": "{{count}} 件の回答が Shopify からの注文情報を待っています（通常 1 分以内）。届き次第、売上が表示されます。",
+    "note_pending_other": "{{count}} 件の回答が Shopify からの注文情報を待っています（通常 1 分以内）。届き次第、売上が表示されます。",
+    "note_test_orders_one": "{{count}} 件の回答は Shopify のテスト注文です。テスト注文は売上に含まれません。実際の注文は届いた時点で集計されます。",
+    "note_test_orders_other": "{{count}} 件の回答は Shopify のテスト注文です。テスト注文は売上に含まれません。実際の注文は届いた時点で集計されます。",
+    "no_answers_in_range": "この期間（{{range}}）の回答はありません。期間を広げてみてください。"
   },
   "settings": {
     "title": "設定",
@@ -159,7 +176,7 @@
   },
   "plans": {
     "title": "プラン",
-    "subtitle": "1 か月あたりに収集する回答数を選んでください。",
+    "subtitle": "すべてのプランにチャネルレポートが含まれます。有料プランでは月間の回答上限がなくなります。",
     "current_label": "現在のプラン",
     "free": "無料",
     "growth": "グロース",
@@ -186,14 +203,14 @@
     "current_banner": "現在のプランは {{plan}} です",
     "on_free": "現在は無料プランです。",
     "switch_free": "無料プランに切り替える",
-    "feature_responses": "1 か月あたり {{cap}} 件のアンケート回答",
-    "feature_revenue": "チャネル別の売上と平均注文額",
-    "feature_trends": "7 日・30 日・90 日のトレンド",
-    "feature_csv": "CSV エクスポート",
-    "feature_unlimited": "アンケート回答数無制限",
-    "feature_everything_free": "無料プランのすべての機能",
-    "feature_everything_growth": "グロースのすべての機能",
-    "feature_priority_support": "優先サポート",
+    "feature_responses": "毎月最大 {{cap}} 件の回答を収集",
+    "feature_revenue": "どのチャネルが売上につながっているかを、チャネルごとの売上と平均注文額で確認",
+    "feature_trends": "過去 7 日・30 日・90 日を比較",
+    "feature_csv": "すべての回答をスプレッドシート（CSV）でダウンロード",
+    "feature_unlimited": "回答数無制限、月間上限なし",
+    "feature_everything_free": "無料プランのすべてに加えて：",
+    "feature_everything_growth": "グロースのすべてに加えて：",
+    "feature_priority_support": "優先メールサポート",
     "billing_title": "請求のしくみ",
     "billing_body": "料金はほかのアプリのサブスクリプションと一緒に Shopify の請求書に記載されます。SourceTrac がカード情報を保存することはありません — 支払いは Shopify が処理し、サブスクリプションの開始・変更・終了を当社に通知します。",
     "msg_shopify_unreachable": "請求を管理するために Shopify に接続できませんでした。Shopify 管理画面からアプリを開き直して、もう一度お試しください。",
@@ -204,7 +221,28 @@
     "msg_subscribe_failed": "Shopify でサブスクリプションを開始できませんでした：{{error}}",
     "msg_subscription_created": "サブスクリプションを作成しました。確認ページに移動しなかった場合は、Shopify 管理画面の請求ページをご確認ください。",
     "msg_plan_unavailable": "このプランは利用できません。",
-    "msg_already_on_plan": "すでにこのプランをご利用中です。"
+    "msg_already_on_plan": "すでにこのプランをご利用中です。",
+    "feature_templates_lite": "すぐに使えるアンケートテンプレート（簡易版）",
+    "feature_templates_full": "「どれにも当てはまらない」回答や商品別の結果を含む、完全版のテンプレート",
+    "feature_smart_actions": "スマートアクション：回答に応じて注文と顧客に自動でタグ付けし、セグメントやマーケティングに活用",
+    "best_for_free": "SourceTrac のお試しや、月の注文数が少ないストアに。",
+    "best_for_growth": "ほとんどのストアに。すべての購入者に、月間上限なしで質問できます。",
+    "best_for_scale": "回答をもとに注文や顧客へ自動でタグ付けしたいストアに。",
+    "recommended": "おすすめ",
+    "forever": "ずっと無料、カード不要",
+    "per_year_equivalent": "年額（月あたり {{price}}）",
+    "billed_monthly": "月払い",
+    "billed_yearly": "年払い",
+    "cycle_label": "請求サイクル",
+    "cycle_monthly": "月払い",
+    "cycle_yearly": "年払い",
+    "save_percent": "年払いで {{percent}}% お得",
+    "switch_yearly": "年払いに切り替える",
+    "switch_monthly": "月払いに切り替える",
+    "legacy_title": "以前の高い料金（{{price}}）が請求されています",
+    "legacy_body": "{{plan}} は現在 {{price}} です。新しい料金を承認するまで、Shopify は承認済みの料金を請求し続けます。承認すると新しい料金に切り替わります。",
+    "legacy_cta": "新しい料金に切り替える",
+    "yearly_note": "年払いは月払いより {{percent}}% 安く、年に 1 回請求されます。月払いと年払いを切り替えると、Shopify で承認した時点で現在の請求が置き換わります。"
   },
   "help": {
     "title": "ヘルプ",
@@ -248,7 +286,8 @@
     "cap_warning_cta": "プランをアップグレード",
     "cap_reached_title": "無料プランの回答数の上限に達しました",
     "cap_reached_body": "すべての回答は保存され、ダッシュボードに含まれています。 非表示にされることも、保留されることもありません。上限を解除するにはプランをアップグレードしてください。",
-    "cap_reached_cta": "アップグレードして収集を継続"
+    "cap_reached_cta": "アップグレードして収集を継続",
+    "see_plans": "プランを見る"
   },
   "language": {
     "picker_label": "言語",
@@ -522,7 +561,9 @@
     "sync_metafield": "回答を注文メタフィールドに保存 (sourcetrac.channel)",
     "sync_flow": "回答時に Shopify Flow ワークフローを開始する",
     "sync_flow_help": "SourceTrac のアンケートトリガーを使用します。ワークフローは Flow アプリで作成してください。",
-    "section_advanced": "詳細設定"
+    "section_advanced": "詳細設定",
+    "view_results": "結果",
+    "updated_on": "{{date}} に更新"
   },
   "templates": {
     "how_did_you_hear": {
@@ -626,7 +667,9 @@
     "status_voided": "無効",
     "status_refunded": "返金済み",
     "status_total_unreadable": "合計を読み取れません",
-    "status_no_order": "注文なし"
+    "status_no_order": "注文なし",
+    "survey_label": "アンケート",
+    "export_cta": "CSV をエクスポート"
   },
   "library": {
     "title": "テンプレートライブラリ",
@@ -876,7 +919,9 @@
     "start_with": "{{name}} から始める",
     "view": "表示",
     "reliable_ideas": "{{name}} の結果は信頼できます。試せるアイデアを見てください。",
-    "unpublished": "{{name}} に未公開の変更があります。確認して公開してください。"
+    "unpublished": "{{name}} に未公開の変更があります。確認して公開してください。",
+    "open_report": "チャネルレポートを開く",
+    "do_it": "開く"
   },
   "support": {
     "button_label": "メールでサポート",
@@ -885,6 +930,9 @@
     "copy_failed": "コピーできませんでした。アドレスを選択して手動でコピーしてください。",
     "body": "ご不明な点や問題がありますか？メールでお問い合わせください。",
     "mail_subject": "サポート依頼: SourceTrac",
-    "mail_body": "ストア: {shop}\nプラン: {plan}\nアプリのバージョン: {version}\nページ: {page}\n\n\nご質問や問題をここにご記入ください:"
+    "mail_body": "ストア: {shop}\nプラン: {plan}\nアプリのバージョン: {version}\nページ: {page}\n\n\nご質問や問題をここにご記入ください:",
+    "button_aria": "メールでサポートに連絡。新しいタブで Gmail のメッセージを開きます。",
+    "open_gmail": "Gmail で書く",
+    "open_mail_app": "メールアプリを使う"
   }
 }

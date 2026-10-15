@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLoaderData, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 
-import { Panel } from "~/components/admin-ui";
+import { Panel, PageIntro } from "~/components/admin-ui";
 import { countChannelAnswers, fetchResponsesInWindow, toExportRows } from "~/lib/analytics-queries.server";
 import { CSV_HEADERS } from "~/lib/csv";
 import { loadExportContext } from "~/lib/export.server";
@@ -23,6 +23,8 @@ import { authenticate } from "~/shopify.server";
  */
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "export.title");
+
+export const handle = { titleKey: "export.title" };
 
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -102,7 +104,7 @@ export default function Export() {
 
   return (
     <s-stack gap="base">
-      <s-section heading={t("export.title")} subheading={t("export.subtitle")} padding="none" />
+      <PageIntro>{t("export.subtitle")}</PageIntro>
 
       <Panel title={t("export.panel_title")}>
         <s-stack gap="base">

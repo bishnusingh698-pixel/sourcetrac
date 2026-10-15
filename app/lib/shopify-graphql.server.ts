@@ -149,6 +149,20 @@ export const PLANS_QUERY = `#graphql
         status
         test
         currentPeriodEnd
+        lineItems {
+          plan {
+            pricingDetails {
+              __typename
+              ... on AppRecurringPricing {
+                interval
+                price {
+                  amount
+                  currencyCode
+                }
+              }
+            }
+          }
+        }
       }
     }
   }

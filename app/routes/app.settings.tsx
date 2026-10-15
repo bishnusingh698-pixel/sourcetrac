@@ -1,6 +1,6 @@
 import { useLoaderData, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 
-import { Banner, Panel } from "~/components/admin-ui";
+import { Panel, PageIntro } from "~/components/admin-ui";
 import { LanguageForm } from "~/components/language-selector";
 import { db } from "~/db.server";
 import { isSupportedLanguage } from "~/lib/i18n";
@@ -26,6 +26,8 @@ import { grantedSyncScopes } from "~/lib/scopes.server";
  */
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "settings.title");
+
+export const handle = { titleKey: "settings.title" };
 
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -82,18 +84,7 @@ export default function Settings() {
 
   return (
     <s-stack gap="base">
-      <s-section heading={t("settings.title")} subheading={t("settings.subtitle")} padding="none" />
-
-      <Banner tone="info" heading={t("settings.survey_moved_title")}>
-        <s-stack gap="small">
-          <s-text>{t("settings.survey_moved_body")}</s-text>
-          <div>
-            <s-button href="/app/surveys" variant="primary">
-              {t("settings.survey_moved_cta")}
-            </s-button>
-          </div>
-        </s-stack>
-      </Banner>
+      <PageIntro>{t("settings.subtitle")}</PageIntro>
 
       <Panel title={t("settings.language_title")} description={t("settings.language_description")}>
         <LanguageForm language={data.language ?? language} />

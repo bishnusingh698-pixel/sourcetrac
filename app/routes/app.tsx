@@ -3,6 +3,7 @@ import {
   Outlet,
   useLoaderData,
   useLocation,
+  useMatches,
   useNavigate,
   useRouteError,
   useRouteLoaderData,
@@ -25,7 +26,6 @@ import type { loader as rootLoader } from "~/root";
 
 import { Banner } from "~/components/admin-ui";
 import { SupportIconButton } from "~/components/support-button";
-import { LanguageForm } from "~/components/language-selector";
 import {
   createTranslator,
   DEFAULT_LANGUAGE,
@@ -61,9 +61,11 @@ import { APP_VERSION } from "@shared/support";
  * stored here without leaking one merchant's language into the next tenant's
  * page. Keys are resolved per render.
  *
- * The dashboard is listed again now that Home (T16) is the minimal landing
- * page: the full channel report moved to `/app/dashboard`, so it needs its own
- * nav entry. Home itself is still the app's `rel="home"` page below.
+ * Shopify's navigation guidelines: at most seven items (the rest collapse into
+ * "View more"), short nouns, and no entry that repeats the home page, which
+ * is the app name itself (`rel="home"` below). So the list is the six places a
+ * merchant actually goes. Per-survey results live on each survey's Results tab,
+ * and the CSV export is a button on Responses; both old URLs still work.
  *
  * There is deliberately no in-frame sidebar any more. Shopify already renders
  * these links in its admin sidebar on desktop and in the app title menu on
@@ -71,14 +73,28 @@ import { APP_VERSION } from "@shared/support";
  * phone left the dashboard squeezed into the remaining sliver.
  */
 const NAV = [
-  { to: "/app/dashboard", key: "nav.dashboard" },
+  { to: "/app/dashboard", key: "nav.channels" },
   { to: "/app/surveys", key: "nav.surveys" },
-  { to: "/app/results", key: "nav.results" },
   { to: "/app/responses", key: "nav.responses" },
-  { to: "/app/export", key: "nav.export" },
   { to: "/app/plans", key: "nav.plans" },
+  { to: "/app/settings", key: "nav.preferences" },
   { to: "/app/help", key: "nav.help" },
 ] as const;
+
+/**
+ * The page title shown in the page header, from the deepest route that
+ * declares one (`export const handle = { titleKey }`). The shell owns the only
+ * `<s-page>`, so child routes name their title this way instead of drawing a
+ * heading of their own.
+ */
+function usePageTitleKey(): string | null {
+  const matches = useMatches();
+  for (let i = matches.length - 1; i >= 0; i -= 1) {
+    const handle = matches[i]?.handle as { titleKey?: unknown } | undefined;
+    if (handle && typeof handle.titleKey === "string") return handle.titleKey;
+  }
+  return null;
+}
 
 /**
  * App Bridge reads `rel="home"` off the first `s-link`, but Polaris's `s-link`
@@ -138,10 +154,10 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
  */
 
 export default function AdminLayout() {
-  const { apiKey, shop, plan, cap, language, version, hasExplicitLanguage } =
-    useLoaderData<typeof loader>();
+  const { apiKey, shop, plan, cap, language, version } = useLoaderData<typeof loader>();
   const t = createTranslator(language);
   const location = useLocation();
+  const titleKey = usePageTitleKey();
 
   return (
     <AppProvider apiKey={apiKey}>
@@ -150,7 +166,7 @@ export default function AdminLayout() {
           survey editor is only reachable through the in-page menu below. */}
       <s-app-nav>
         <s-link href="/app" {...HOME_LINK}>
-          {t("nav.dashboard")}
+          {t("nav.home")}
         </s-link>
         {NAV.map((item) => (
           <s-link key={item.to} href={item.to}>
@@ -158,7 +174,7 @@ export default function AdminLayout() {
           </s-link>
         ))}
       </s-app-nav>
-      <s-page>
+      <s-page heading={titleKey ? t(titleKey) : undefined}>
         {/* Always one click away, in the page title bar's secondary-actions
             slot. `page` is the current path so the mail body says where the
             merchant was when they asked for help. */}
@@ -169,35 +185,42 @@ export default function AdminLayout() {
           version={version}
           page={location.pathname}
         />
+        {/* `st-page` makes long words, shop domains and translations wrap
+            inside their card instead of running past its edge. */}
+        <div className="st-page">
         <s-stack gap="base">
-          {/*
-            Toolbar: plan usage and the language switcher. A query container so
-            the grid can respond to the width the admin actually gives the
-            iframe, not the device viewport: on a phone the two halves stack,
-            on desktop they sit on one line.
-          */}
-          <s-query-container>
-            <s-grid
-              gridTemplateColumns="@container (inline-size > 560px) 1fr minmax(12rem, 16rem), 1fr"
-              gap="small"
-              alignItems="center"
-            >
-              <s-stack direction="inline" gap="small" alignItems="center">
-                <s-badge tone={cap.atCap ? "critical" : cap.atWarning ? "warning" : "neutral"}>
-                  {t(`plans.${plan.key}`)}
-                </s-badge>
-                <s-text color="subdued" fontSize="small" fontVariantNumeric="tabular-nums">
-                  {cap.cap === null
-                    ? t("plans.unlimited")
-                    : t("plans.usage", { count: cap.used, cap: cap.cap })}
-                </s-text>
-              </s-stack>
-              <LanguageForm language={language} detected={!hasExplicitLanguage} inline />
-            </s-grid>
-          </s-query-container>
+          {/* Plan strip: only on the Free plan, where the monthly limit is
+              something to watch. A paid merchant has nothing to act on here,
+              and an always-on toolbar was clutter on every page. */}
+          {cap.cap !== null && !cap.atWarning && shop.checkoutSupported !== false ? (
+            <s-box padding="small" border="base" borderRadius="base" background="base">
+              <s-query-container>
+                <s-grid
+                  gridTemplateColumns="@container (inline-size > 560px) auto minmax(0, 1fr) auto, minmax(0, 1fr) auto"
+                  gap="small"
+                  alignItems="center"
+                >
+                  <s-stack direction="inline" gap="small" alignItems="center">
+                    <s-badge tone="neutral">{t(`plans.${plan.key}`)}</s-badge>
+                    <s-text color="subdued" fontSize="small" fontVariantNumeric="tabular-nums">
+                      {t("plans.usage", { count: cap.used, cap: cap.cap })}
+                    </s-text>
+                  </s-stack>
+                  <s-progress
+                    value={Math.min(cap.used, cap.cap)}
+                    max={cap.cap}
+                    tone="success"
+                    accessibilityLabel={t("plans.usage_aria", { count: cap.used, cap: cap.cap })}
+                  />
+                  <s-link href="/app/plans">{t("shell.see_plans")}</s-link>
+                </s-grid>
+              </s-query-container>
+            </s-box>
+          ) : null}
 
-          {/* Plan-blocked takes precedence: the survey cannot appear at all,
-              so explaining the cap would be a distraction. */}
+          {/* One banner at a time (Shopify's guideline). Plan-blocked takes
+              precedence: the survey cannot appear at all, so explaining the
+              cap would be a distraction. */}
           {shop.checkoutSupported === false ? (
             <Banner tone="warning" heading={t("shell.plan_blocked_title")}>
               {t("shell.plan_blocked_body")}
@@ -238,6 +261,7 @@ export default function AdminLayout() {
 
           <Outlet />
         </s-stack>
+        </div>
       </s-page>
     </AppProvider>
   );

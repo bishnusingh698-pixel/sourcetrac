@@ -10,7 +10,7 @@ import {
   type MetaFunction,
 } from "react-router";
 
-import { Banner, Panel } from "~/components/admin-ui";
+import { Banner, Panel, PageIntro } from "~/components/admin-ui";
 import { SurveyPreview } from "~/components/survey-preview";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import { ensureShop } from "~/lib/provision.server";
@@ -50,6 +50,8 @@ import type { PackFamily, TemplateDefinition } from "@shared/templates/types";
  */
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "setup.title");
+
+export const handle = { titleKey: "setup.title" };
 
 
 const PROFILE_FAMILIES: Array<{ id: PackFamily; labelKey: string }> = [
@@ -313,7 +315,7 @@ export default function QuickSetup() {
     <s-stack gap="base">
       {failureText ? <Banner tone="critical" heading={failureText} /> : null}
       <s-link href={`/app/surveys/library/${template.id}`}>{t("library.back")}</s-link>
-      <s-section heading={t("setup.title")} subheading={t("setup.subtitle")} padding="none" />
+      <PageIntro>{t("setup.subtitle")}</PageIntro>
       <s-text color="subdued">{t("setup.step_of", { step })}</s-text>
 
       {step === 1 ? (

@@ -266,3 +266,40 @@ export function buildTrend(params: {
 export function toUtcDateKey(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
+
+/**
+ * The channel to headline: the one that brought in the most revenue.
+ *
+ * Revenue is never compared across currencies, so the comparison is made in
+ * the shop's main currency, the one with the most revenue overall. A window
+ * with no counted revenue yet (every order pending, or a test store) falls back
+ * to the channel with the most answers, flagged `byRevenue: false` so the copy
+ * does not claim money it cannot show. Ties keep the busier channel first.
+ */
+export function pickTopChannel(
+  channels: ReadonlyArray<Pick<ChannelStat, "channel" | "responses" | "revenueByCurrency">>,
+  revenueByCurrency: ReadonlyArray<{ currency: CurrencyCode; minor: number }>,
+): { channel: string; byRevenue: boolean; currency: CurrencyCode | null; minor: number | null } | null {
+  if (channels.length === 0) return null;
+
+  const main = revenueByCurrency.reduce<{ currency: CurrencyCode; minor: number } | undefined>(
+    (best, entry) => (!best || entry.minor > best.minor ? entry : best),
+    undefined,
+  );
+
+  if (main && main.minor > 0) {
+    let best: { channel: string; minor: number; responses: number } | undefined;
+    for (const channel of channels) {
+      const minor = channel.revenueByCurrency.find((e) => e.currency === main.currency)?.minor ?? 0;
+      if (!best || minor > best.minor || (minor === best.minor && channel.responses > best.responses)) {
+        best = { channel: channel.channel, minor, responses: channel.responses };
+      }
+    }
+    if (best && best.minor > 0) {
+      return { channel: best.channel, byRevenue: true, currency: main.currency, minor: best.minor };
+    }
+  }
+
+  const busiest = channels.reduce((best, c) => (c.responses > best.responses ? c : best));
+  return { channel: busiest.channel, byRevenue: false, currency: null, minor: null };
+}
