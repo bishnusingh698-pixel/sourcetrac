@@ -203,7 +203,8 @@
     "msg_cancelled": "订阅已取消。您已回到免费套餐，每月 {{cap}} 条回答。",
     "msg_subscribe_failed": "Shopify 无法开始订阅：{{error}}",
     "msg_subscription_created": "订阅已创建。如果您没有被带到确认页面，请查看 Shopify 后台的账单页面。",
-    "msg_plan_unavailable": "该套餐不可用。"
+    "msg_plan_unavailable": "该套餐不可用。",
+    "msg_already_on_plan": "您已在使用此套餐。"
   },
   "help": {
     "title": "帮助",

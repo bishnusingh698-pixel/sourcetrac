@@ -203,7 +203,8 @@
     "msg_cancelled": "Abbonamento annullato. Sei tornato al piano Gratuito con {{cap}} risposte al mese.",
     "msg_subscribe_failed": "Shopify non è riuscito ad avviare l'abbonamento: {{error}}",
     "msg_subscription_created": "Abbonamento creato. Se non sei stato portato a una pagina di conferma, controlla la pagina di fatturazione nel pannello di Shopify.",
-    "msg_plan_unavailable": "Questo piano non è disponibile."
+    "msg_plan_unavailable": "Questo piano non è disponibile.",
+    "msg_already_on_plan": "Hai già questo piano."
   },
   "help": {
     "title": "Assistenza",

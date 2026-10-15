@@ -223,7 +223,9 @@ export async function clearAccessToken(internalShopId: string): Promise<void> {
         // plan meant a reinstall came back on Growth/Scale with nothing billed,
         // because no later notice ever corrected it.
         plan: "free",
-        planStatus: "active",
+        // The paid charge ended with the uninstall; recorded the same way the
+        // Plans page records a charge it no longer finds.
+        planStatus: "cancelled",
         subscriptionGid: null,
         planDisplayName: null,
       },
@@ -282,6 +284,19 @@ export async function setPlan(
 ): Promise<void> {
   await retryDb(() =>
     db.shop.update({ where: { id: internalShopId }, data }),
+  );
+  if (data.plan !== "free" && data.planStatus === "active") await unlockAnswers(internalShopId);
+}
+
+/**
+ * Clear the over-cap flag once a shop is on a paid plan. The flag exists to
+ * prompt an upgrade; after one, the answers are simply the merchant's data, and
+ * a retried submit must report them as counted.
+ */
+async function unlockAnswers(internalShopId: string): Promise<void> {
+  await retryDb(() => db.response.updateMany({ where: { shopId: internalShopId, flagged: true }, data: { flagged: false } }));
+  await retryDb(() =>
+    db.surveyResponse.updateMany({ where: { shopId: internalShopId, isLocked: true }, data: { isLocked: false } }),
   );
 }
 

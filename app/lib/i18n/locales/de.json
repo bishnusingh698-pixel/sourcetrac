@@ -203,7 +203,8 @@
     "msg_cancelled": "Abo gekündigt. Sie sind wieder im Tarif Kostenlos mit {{cap}} Antworten pro Monat.",
     "msg_subscribe_failed": "Shopify konnte das Abo nicht starten: {{error}}",
     "msg_subscription_created": "Abo erstellt. Falls Sie nicht zu einer Bestätigungsseite weitergeleitet wurden, prüfen Sie die Abrechnungsseite in Ihrer Shopify-Administration.",
-    "msg_plan_unavailable": "Dieser Tarif ist nicht verfügbar."
+    "msg_plan_unavailable": "Dieser Tarif ist nicht verfügbar.",
+    "msg_already_on_plan": "Sie nutzen diesen Tarif bereits."
   },
   "help": {
     "title": "Hilfe",

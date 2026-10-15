@@ -2,6 +2,7 @@ import { env } from "./env";
 import { logger } from "./logger";
 import { BILLING_INTERVAL, PLANS, isPlanKey, planPriceAmount, type PlanKey } from "./plans";
 import { PLANS_QUERY, shopifyGraphql } from "./shopify-graphql.server";
+import { fetchIsDevelopmentStore } from "./shopify-rest.server";
 
 /**
  * Shopify Billing API.
@@ -87,6 +88,7 @@ export async function createSubscription(params: {
   shopDomain: string;
   accessToken: string;
   plan: PlanKey;
+  test?: boolean;
 }): Promise<SubscriptionResult> {
   const definition = PLANS[params.plan];
   const returnUrl = billingReturnUrl(params.shopDomain);
@@ -101,7 +103,9 @@ export async function createSubscription(params: {
     }>(params.shopDomain, params.accessToken, CREATE_MUTATION, {
       name: definition.displayName,
       returnUrl,
-      test: env().NODE_ENV !== "production",
+      // A test charge outside production, and on a development store (the only
+      // kind of charge such a store can approve; App Store review uses one).
+      test: params.test ?? env().NODE_ENV !== "production",
       lineItems: [
         {
           plan: {
@@ -197,7 +201,10 @@ export async function fetchActiveSubscriptions(params: {
       } | null;
     }>(params.shopDomain, params.accessToken, PLANS_QUERY);
 
-    return response.data.appInstallation?.activeSubscriptions ?? [];
+    // No installation in the answer is not "no subscriptions": treating it so
+    // downgraded a paying merchant to Free on a partial response.
+    if (!response.data.appInstallation) throw new Error("Shopify returned no app installation.");
+    return response.data.appInstallation.activeSubscriptions ?? [];
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error("billing_fetch_subscriptions_failed", { error_message: message });
@@ -205,18 +212,53 @@ export async function fetchActiveSubscriptions(params: {
   }
 }
 
-/** The live paid SourceTrac subscription on Shopify, or null. Source of truth for cancelling. */
-export function activeSourceTracSubscription(subscriptions: ActiveSubscription[]): ActiveSubscription | null {
+/**
+ * The live paid SourceTrac subscription on Shopify, or null. Source of truth for
+ * cancelling. Uses the same test-charge rule as `paidPlanFromSubscriptions`, so
+ * the subscription stored or cancelled is the one actually billed.
+ */
+export function activeSourceTracSubscription(
+  subscriptions: ActiveSubscription[],
+  { allowTest = process.env.NODE_ENV !== "production" }: { allowTest?: boolean } = {},
+): ActiveSubscription | null {
   return (
     subscriptions.find((subscription) => {
       const name = subscription.name.toLowerCase();
       return (
+        !(subscription.test && !allowTest) &&
         name.startsWith("sourcetrac") &&
         subscription.status.toUpperCase() === "ACTIVE" &&
         (name.includes("growth") || name.includes("scale"))
       );
     }) ?? null
   );
+}
+
+/** Development-store answers, cached per shop: one Admin call per hour at most. */
+const devStoreCache = new Map<string, { value: boolean; expiresAt: number }>();
+
+/**
+ * Whether test charges count for this shop: always outside production, and on
+ * a development store (which can approve nothing else). A failed lookup counts
+ * as "not a development store", the stricter choice.
+ */
+export async function testChargesAllowed(shopDomain: string, accessToken: string): Promise<boolean> {
+  if (process.env.NODE_ENV !== "production") return true;
+  const cached = devStoreCache.get(shopDomain);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  let value = false;
+  try {
+    value = await fetchIsDevelopmentStore(shopDomain, accessToken);
+  } catch (error) {
+    logger.warn("billing_dev_store_lookup_failed", {
+      shop_domain: shopDomain,
+      error_message: error instanceof Error ? error.message : String(error),
+    });
+    return false;
+  }
+  if (devStoreCache.size > 10_000) devStoreCache.clear();
+  devStoreCache.set(shopDomain, { value, expiresAt: Date.now() + 60 * 60 * 1000 });
+  return value;
 }
 
 /**

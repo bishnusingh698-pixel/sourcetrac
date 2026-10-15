@@ -203,7 +203,8 @@
     "msg_cancelled": "Subscription cancelled. You are back on the Free plan with {{cap}} responses a month.",
     "msg_subscribe_failed": "Shopify could not start the subscription: {{error}}",
     "msg_subscription_created": "Subscription created. If you were not sent to a confirmation page, check the billing page in your Shopify admin.",
-    "msg_plan_unavailable": "That plan is not available."
+    "msg_plan_unavailable": "That plan is not available.",
+    "msg_already_on_plan": "You're already on this plan."
   },
   "help": {
     "title": "Help",

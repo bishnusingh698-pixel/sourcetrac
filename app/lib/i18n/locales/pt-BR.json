@@ -203,7 +203,8 @@
     "msg_cancelled": "Assinatura cancelada. Você voltou ao plano Gratuito com {{cap}} respostas por mês.",
     "msg_subscribe_failed": "A Shopify não conseguiu iniciar a assinatura: {{error}}",
     "msg_subscription_created": "Assinatura criada. Se você não foi levado a uma página de confirmação, confira a página de cobrança no admin da Shopify.",
-    "msg_plan_unavailable": "Esse plano não está disponível."
+    "msg_plan_unavailable": "Esse plano não está disponível.",
+    "msg_already_on_plan": "Você já está neste plano."
   },
   "help": {
     "title": "Ajuda",

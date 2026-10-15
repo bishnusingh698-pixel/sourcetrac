@@ -43,6 +43,11 @@ first; otherwise the option safest for merchants and their data.
 - **L32** (`shop/redact` never arrives): retention deletes a shop uninstalled more than 30 days ago (sessions included) — well past Shopify's 48-hour redact, so it only acts when that delivery was lost.
 - **L30** (daily stats after redact): `SurveyDailyStats` is cleared for the shop on a customer redact. Nothing reads the table, and a day bucket can describe a single order.
 - **M12** (data request): `orders_requested` is now read; the full answers for those orders are stored in the data-request record and the Settings page lists which orders had answers.
+- **H18/M13/M14** (billing notices out of order, test charges): every `app_subscriptions/update` for a known subscription is checked against Shopify's current `activeSubscriptions` before it is applied (an ACTIVE notice must still be active there; a non-active one is ignored while Shopify still reports it active), the test flag comes from that answer, and a non-active status is written with one conditional update on the stored subscription id. A failed lookup returns 500 so Shopify retries.
+- **M15** (development stores): charges are created as test charges, and honoured, outside production *and* on a development store (`shop.plan.partnerDevelopment`, cached an hour), which can approve nothing else. A failed lookup counts as "not a development store".
+- **L37** (two usage counters): the v2 counter now counts every answer like the legacy one (an atomic upsert), and an answer past the cap is flagged by its position; the shared `BillingUsage` row shows true volume.
+- **I20** (locked answers after upgrade): moving to an active paid plan clears the over-cap flag on the shop's answers. Uninstall records Free as `cancelled` (the charge ended); Shopify's `ACCEPTED` maps to the pending status, not `expired`.
+- **I21** (choosing the current plan): refused server-side ("already on this plan") instead of creating a duplicate charge; `replacementBehavior` is left at Shopify's default.
 
 ## Steps for the repository owner (not done here: deploys or touching real data)
 

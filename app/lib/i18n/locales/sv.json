@@ -203,7 +203,8 @@
     "msg_cancelled": "Abonnemanget är avslutat. Du är tillbaka på Gratis med {{cap}} svar per månad.",
     "msg_subscribe_failed": "Shopify kunde inte starta abonnemanget: {{error}}",
     "msg_subscription_created": "Abonnemanget har skapats. Om du inte skickades till en bekräftelsesida kan du kontrollera faktureringssidan i Shopify-admin.",
-    "msg_plan_unavailable": "Den planen är inte tillgänglig."
+    "msg_plan_unavailable": "Den planen är inte tillgänglig.",
+    "msg_already_on_plan": "Du har redan den här planen."
   },
   "help": {
     "title": "Hjälp",

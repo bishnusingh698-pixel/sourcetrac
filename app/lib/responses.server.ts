@@ -37,20 +37,17 @@ async function incrementUsage(shopId: string): Promise<number> {
   const { periodStart, periodEnd } = currentUtcPeriod();
 
   return retryDb(async () => {
-    // upsert-then-increment so the first response of a period creates the row.
-    await db.billingUsage.upsert({
-      where: { shopId_periodStart: { shopId, periodStart } },
-      create: { shopId, periodStart, periodEnd, responsesCount: 0 },
-      update: {},
-    });
-
-    const updated = await db.billingUsage.update({
-      where: { shopId_periodStart: { shopId, periodStart } },
-      data: { responsesCount: { increment: 1 } },
-      select: { responsesCount: true },
-    });
-
-    return updated.responsesCount;
+    // One statement, so two first-of-period answers cannot race on the insert
+    // (Prisma's upsert is a read-then-write and lost one with a P2002).
+    const id = `usage_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+    const rows = await db.$queryRaw<Array<{ responsesCount: number }>>`
+      INSERT INTO "BillingUsage" ("id", "shopId", "periodStart", "periodEnd", "responsesCount", "updatedAt")
+      VALUES (${id}, ${shopId}, ${periodStart}, ${periodEnd}, 1, now())
+      ON CONFLICT ("shopId", "periodStart") DO UPDATE
+        SET "responsesCount" = "BillingUsage"."responsesCount" + 1, "updatedAt" = now()
+      RETURNING "responsesCount"
+    `;
+    return rows[0]?.responsesCount ?? 1;
   });
 }
 

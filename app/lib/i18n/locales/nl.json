@@ -203,7 +203,8 @@
     "msg_cancelled": "Abonnement opgezegd. Je zit weer op Gratis met {{cap}} antwoorden per maand.",
     "msg_subscribe_failed": "Shopify kon het abonnement niet starten: {{error}}",
     "msg_subscription_created": "Abonnement aangemaakt. Kwam je niet op een bevestigingspagina terecht? Controleer dan de factureringspagina in je Shopify-beheer.",
-    "msg_plan_unavailable": "Dat abonnement is niet beschikbaar."
+    "msg_plan_unavailable": "Dat abonnement is niet beschikbaar.",
+    "msg_already_on_plan": "Je hebt dit abonnement al."
   },
   "help": {
     "title": "Help",

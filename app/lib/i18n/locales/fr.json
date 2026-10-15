@@ -203,7 +203,8 @@
     "msg_cancelled": "Abonnement annulé. Vous êtes de retour sur le forfait Gratuit avec {{cap}} réponses par mois.",
     "msg_subscribe_failed": "Shopify n'a pas pu démarrer l'abonnement : {{error}}",
     "msg_subscription_created": "Abonnement créé. Si vous n'avez pas été redirigé vers une page de confirmation, consultez la page de facturation de votre administration Shopify.",
-    "msg_plan_unavailable": "Ce forfait n'est pas disponible."
+    "msg_plan_unavailable": "Ce forfait n'est pas disponible.",
+    "msg_already_on_plan": "Vous avez déjà cette formule."
   },
   "help": {
     "title": "Aide",

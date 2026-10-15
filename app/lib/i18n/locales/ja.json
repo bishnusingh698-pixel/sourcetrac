@@ -203,7 +203,8 @@
     "msg_cancelled": "サブスクリプションを解約しました。1 か月あたり {{cap}} 件の回答が可能な無料プランに戻りました。",
     "msg_subscribe_failed": "Shopify でサブスクリプションを開始できませんでした：{{error}}",
     "msg_subscription_created": "サブスクリプションを作成しました。確認ページに移動しなかった場合は、Shopify 管理画面の請求ページをご確認ください。",
-    "msg_plan_unavailable": "このプランは利用できません。"
+    "msg_plan_unavailable": "このプランは利用できません。",
+    "msg_already_on_plan": "すでにこのプランをご利用中です。"
   },
   "help": {
     "title": "ヘルプ",

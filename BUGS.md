@@ -299,7 +299,7 @@ the shop endpoint") is stale.
 
 ### Billing
 
-- [ ] **H18 (CONFIRMED race): a paying merchant can drop to Free after an upgrade.**
+- [x] **H18 (CONFIRMED race): a paying merchant can drop to Free after an upgrade.**
   - Where: `app/lib/webhooks.server.ts:537-545`; also `app/routes/app.plans.tsx:91`.
   - Defect: the "superseded subscription" guard is a read followed by an unconditional `setPlan`.
   - Scenario: the merchant upgrades Growth (A) → Scale (B), and the A CANCELLED and B ACTIVE notices are processed concurrently.
@@ -388,17 +388,17 @@ the shop endpoint") is stale.
 
 ### Billing
 
-- [ ] **M13 (PLAUSIBLE): stale ACTIVE or out-of-order notices are applied.**
+- [x] **M13 (PLAUSIBLE): stale ACTIVE or out-of-order notices are applied.**
   - Where: `app/lib/webhooks.server.ts:536-545`.
   - Defect: ACTIVE notices are never compared with the stored gid or with `updated_at`.
   - Scenarios:
     - A Growth (A) ACTIVE retry lands after the move to Scale (B) and sets Growth. A's later CANCELLED then matches and moves the merchant to Free.
     - A PENDING or FROZEN notice for the same gid arriving after ACTIVE caps a paying merchant.
-- [ ] **M14 (PLAUSIBLE): the webhook's test-charge guard probably never fires.**
+- [x] **M14 (PLAUSIBLE): the webhook's test-charge guard probably never fires.**
   - Where: `app/lib/webhooks.server.ts:560` (type at `:494`).
   - Defect: `isIgnoredTestCharge` reads `payload.test`, which `app_subscriptions/update` likely does not carry.
   - Scenario: a staging build sharing the client id approves a test charge on a live store. Production grants Growth for free until the Plans page is opened.
-- [ ] **M15 (PLAUSIBLE): review and development stores may never reach a paid plan.**
+- [x] **M15 (PLAUSIBLE): review and development stores may never reach a paid plan.**
   - Where: `app/lib/billing.server.ts:104` and `:228`.
   - Defect: `test` derives only from `NODE_ENV`, with no development-store detection.
   - Scenario: App Store review installs on a dev store and cannot complete a paid plan. Either Shopify rejects a real charge on the dev store, or the test charge is rejected by `paidPlanFromSubscriptions`.
@@ -619,26 +619,26 @@ the shop endpoint") is stale.
 
 ### Billing
 
-- [ ] **L33 (CONFIRMED): the Plans page can show a plan that is not enforced.**
+- [x] **L33 (CONFIRMED): the Plans page can show a plan that is not enforced.**
   - Where: `app/routes/app.plans.tsx:77` versus `:91-98`.
   - Defect: the displayed plan is assigned before `setPlan`, and a failed write is only logged.
   - Scenario: the page shows Growth while Free is enforced.
-- [ ] **L34 (PLAUSIBLE): an empty answer downgrades a paying merchant.**
+- [x] **L34 (PLAUSIBLE): an empty answer downgrades a paying merchant.**
   - Where: `app/lib/billing.server.ts:196`.
   - Defect: a null `appInstallation` is treated as "no subscriptions".
   - Scenario: the loader writes Free/expired for a paying merchant.
-- [ ] **L35 (PLAUSIBLE): a missing confirmation URL is reported as success.**
+- [x] **L35 (PLAUSIBLE): a missing confirmation URL is reported as success.**
   - Where: `app/routes/app.plans.tsx:191-193`.
   - Defect: `confirmationUrl: null` returns a success banner although nothing can be approved.
-- [ ] **L36 (CONFIRMED): cancel and display filter subscriptions differently.**
+- [x] **L36 (CONFIRMED): cancel and display filter subscriptions differently.**
   - Where: `app/lib/billing.server.ts:205-216` versus `:226-239`.
   - Defect: `activeSourceTracSubscription` does not skip test charges, while `paidPlanFromSubscriptions` does.
   - Scenario: a leftover test subscription id is stored or cancelled instead of the billed one.
-- [ ] **L37 (CONFIRMED): two usage counters use different rules.**
+- [x] **L37 (CONFIRMED): two usage counters use different rules.**
   - Where: `app/lib/answers.server.ts:125` and `:139` versus `app/lib/responses.server.ts:47-49`.
   - Defect: the v2 counter stops at the cap, while the legacy counter is unlimited, and both write one `BillingUsage` row.
   - Scenario: the displayed usage is frozen at 50/50 or jumps past it.
-- [ ] **L38 (PLAUSIBLE): the legacy counter can lose increments.**
+- [x] **L38 (PLAUSIBLE): the legacy counter can lose increments.**
   - Where: `app/lib/responses.server.ts:41-45`.
   - Defect: the upsert can race on P2002, which is not retryable, and the failure is only logged.
   - Scenario: a lost increment lets one extra answer through unlocked.
@@ -791,8 +791,8 @@ the shop endpoint") is stale.
 - [ ] **I17:** `app/routes/api.survey.tsx:84`: `alreadyAnswered` checks only v2. A stale v1 client can answer the same order on both paths and count usage twice. (CONFIRMED)
 - [x] **I18:** `shared/templates/smart-actions.ts:97-105`: the "first-order low rating" preset is not gated on first orders. (CONFIRMED)
 - [x] **I19:** `app/lib/sync.server.ts:507-528`: Flow can fire before the order exists, so `order_reference` may not resolve. (PLAUSIBLE)
-- [ ] **I20:** Locked answers are never unlocked after an upgrade, and a duplicate submit on a now-paid shop still returns `counted: false` (`app/lib/answers.server.ts:326`, `responses.server.ts:164`). Uninstall records Free as `active` (`shop.server.ts:190-191`), while the Plans sync records it as `expired` (`app.plans.tsx:93`). `ACCEPTED` maps to `expired` (`webhooks.server.ts:591`). (CONFIRMED)
-- [ ] **I21:** `app/routes/app.plans.tsx:175-191`: re-choosing the current plan is not blocked server-side and `replacementBehavior` is unset, so duplicate pending charges are possible. (CONFIRMED)
+- [x] **I20:** Locked answers are never unlocked after an upgrade, and a duplicate submit on a now-paid shop still returns `counted: false` (`app/lib/answers.server.ts:326`, `responses.server.ts:164`). Uninstall records Free as `active` (`shop.server.ts:190-191`), while the Plans sync records it as `expired` (`app.plans.tsx:93`). `ACCEPTED` maps to `expired` (`webhooks.server.ts:591`). (CONFIRMED)
+- [x] **I21:** `app/routes/app.plans.tsx:175-191`: re-choosing the current plan is not blocked server-side and `replacementBehavior` is unset, so duplicate pending charges are possible. (CONFIRMED)
 - [ ] **I22:** `app/routes/app.tsx:107`: the shell loader sends the whole shop record (including `subscriptionGid`) to the browser. (CONFIRMED)
 - [ ] **I24:** `app/routes/app.language.tsx:22`: the action is not wrapped in `guarded`. (CONFIRMED)
 - [x] **I25:** `app/lib/surveys.server.ts:362`: an absent `revision` skips the concurrency check, so any client can bypass it. (CONFIRMED)

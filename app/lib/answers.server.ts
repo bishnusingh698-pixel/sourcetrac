@@ -102,10 +102,10 @@ async function isCountableOrder(shopId: string, orderId: string | null): Promise
  *
  * The cap must be enforced on the server, not only by the pre-insert read: two
  * answers arriving together at cap-1 both pass an unlocked read and both write.
- * The increment is a single conditional UPDATE, so Postgres serialises it and
- * exactly one request can take the last slot. Returns `{ count, withinCap }`
- * where `count` is this answer's true position and `withinCap` is false when it
- * landed at or past the cap (the answer is still stored, just flagged).
+ * The increment is a single upsert, so Postgres serialises it and exactly one
+ * request can take the last slot. Returns `{ count, withinCap }` where `count`
+ * is this answer's true position and `withinCap` is false when it landed past
+ * the cap (the answer is still stored, just flagged).
  */
 export async function claimUsageSlot(shopId: string, cap: number | null): Promise<{ count: number; withinCap: boolean }> {
   return retryDb(() => claimUsageSlotWith(db, shopId, cap));
@@ -118,42 +118,24 @@ async function claimUsageSlotWith(
   cap: number | null,
 ): Promise<{ count: number; withinCap: boolean }> {
   const { periodStart, periodEnd } = currentUtcPeriod();
-  const db = client;
   {
-    // Insert-or-ignore rather than `upsert`: Prisma's `upsert` is a
-    // select-then-insert under the hood, so twenty simultaneous first-of-month
-    // claims raced and one lost with a P2002. A single `ON CONFLICT DO NOTHING`
-    // lets the database arbitrate. The id is generated here because the column
-    // has no database-side default (Prisma supplies cuids client-side).
+    // One statement: insert the period's row or count one more on it. Every
+    // answer is counted (the legacy single-question path does the same on the
+    // same row), so the displayed usage is the true volume, never frozen at
+    // the cap. Postgres serialises the row update, so each concurrent answer
+    // gets a distinct position and exactly the ones past the cap are flagged.
     const id = `usage_${randomId()}`;
-    await db.$executeRaw`
+    const rows = await client.$queryRaw<Array<{ responsesCount: number }>>`
       INSERT INTO "BillingUsage" ("id", "shopId", "periodStart", "periodEnd", "responsesCount", "cap", "updatedAt")
-      VALUES (${id}, ${shopId}, ${periodStart}, ${periodEnd}, 0, ${cap}, now())
-      ON CONFLICT ("shopId", "periodStart") DO NOTHING
-    `;
-
-    const rows = await db.$queryRaw<Array<{ responsesCount: number }>>`
-      UPDATE "BillingUsage"
-      SET "responsesCount" = "responsesCount" + 1,
-          "cap" = ${cap},
-          "updatedAt" = now()
-      WHERE "shopId" = ${shopId}
-        AND "periodStart" = ${periodStart}
-        AND (${cap}::int IS NULL OR "responsesCount" < ${cap})
+      VALUES (${id}, ${shopId}, ${periodStart}, ${periodEnd}, 1, ${cap}, now())
+      ON CONFLICT ("shopId", "periodStart") DO UPDATE
+        SET "responsesCount" = "BillingUsage"."responsesCount" + 1,
+            "cap" = ${cap},
+            "updatedAt" = now()
       RETURNING "responsesCount"
     `;
-
-    if (rows.length > 0) {
-      return { count: rows[0]!.responsesCount, withinCap: true };
-    }
-
-    // The conditional UPDATE matched nothing: the cap is reached. Read the true
-    // count so the caller can still report volume honestly.
-    const current = await db.billingUsage.findUnique({
-      where: { shopId_periodStart: { shopId, periodStart } },
-      select: { responsesCount: true },
-    });
-    return { count: (current?.responsesCount ?? 0) + 1, withinCap: false };
+    const count = rows[0]?.responsesCount ?? 1;
+    return { count, withinCap: cap === null || count <= cap };
   }
 }
 
