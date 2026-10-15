@@ -58,15 +58,16 @@ export default function PrivacyPolicy() {
 
       <h2>How long we keep it</h2>
       <p>
-        Survey answers and cached orders are deleted after 24 months. Raw webhook
-        payloads are deleted after 30 days. You can choose a shorter retention
-        period in the app's settings.
+        Survey answers and cached orders are deleted after 24 months, and raw
+        webhook payloads after 30 days. These periods are fixed and the same for
+        every store.
       </p>
 
       <h2>Deletion</h2>
       <p>
-        When you uninstall SourceTrac, we delete your shop's data and access tokens.
-        Shop data is removed within 48 hours of uninstall.
+        When you uninstall SourceTrac we delete your access tokens immediately.
+        Shopify then sends a redaction request, and we delete your shop&apos;s
+        stored data in response — within 48 hours of uninstall.
       </p>
       <p>
         A buyer can ask for their data to be removed through you, the merchant. We
