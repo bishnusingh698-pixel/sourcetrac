@@ -859,5 +859,14 @@
     "view": "Bekijken",
     "reliable_ideas": "Je resultaten voor {{name}} zijn betrouwbaar. Bekijk ideeën om te proberen.",
     "unpublished": "{{name}} heeft niet-gepubliceerde wijzigingen. Bekijk en publiceer."
+  },
+  "support": {
+    "button_label": "E-mail support",
+    "copy": "Kopiëren",
+    "copied": "E-mailadres gekopieerd",
+    "copy_failed": "Kopiëren mislukt. Selecteer het adres en kopieer het handmatig.",
+    "body": "Vragen of problemen? Mail ons en we helpen je verder.",
+    "mail_subject": "Supportverzoek: SourceTrac",
+    "mail_body": "Winkel: {shop}\nAbonnement: {plan}\nApp-versie: {version}\nPagina: {page}\n\n\nBeschrijf hier je vraag of probleem:"
   }
 }

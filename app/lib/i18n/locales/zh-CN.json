@@ -859,5 +859,14 @@
     "view": "查看",
     "reliable_ideas": "{{name}} 的结果已可靠。查看可尝试的想法。",
     "unpublished": "{{name}} 有未发布的更改。查看并发布。"
+  },
+  "support": {
+    "button_label": "邮件联系支持",
+    "copy": "复制",
+    "copied": "邮箱地址已复制",
+    "copy_failed": "无法复制。请选择地址并手动复制。",
+    "body": "有问题或疑问？给我们发邮件，我们会提供帮助。",
+    "mail_subject": "支持请求：SourceTrac",
+    "mail_body": "商店：{shop}\n方案：{plan}\n应用版本：{version}\n页面：{page}\n\n\n请在此描述你的问题："
   }
 }

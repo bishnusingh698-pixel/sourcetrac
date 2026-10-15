@@ -1,6 +1,7 @@
 import { type MetaFunction } from "react-router";
 
 import { Panel } from "~/components/admin-ui";
+import { SupportContactPanel } from "~/components/support-button";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import { FREE_RESPONSE_CAP } from "~/lib/plans";
 
@@ -13,8 +14,6 @@ import { FREE_RESPONSE_CAP } from "~/lib/plans";
  */
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "help.title");
-
-const SUPPORT_EMAIL = "support@sourcetrac.app";
 
 /**
  * Question/answer key pairs, in display order. Creating the survey comes first
@@ -66,17 +65,10 @@ export default function Help() {
       </Panel>
 
       <Panel title={t("help.contact_title")}>
-        <s-stack gap="small">
-          <s-text>{t("help.contact_body")}</s-text>
-          <div>
-            <s-link href={`mailto:${SUPPORT_EMAIL}`}>
-              {t("help.contact_cta")}: {SUPPORT_EMAIL}
-            </s-link>
-          </div>
-          <s-text color="subdued" fontSize="small">
-            {t("help.contact_tip")}
-          </s-text>
-        </s-stack>
+        <SupportContactPanel
+          intro={t("help.contact_body")}
+          note={t("help.contact_tip")}
+        />
       </Panel>
     </s-stack>
   );

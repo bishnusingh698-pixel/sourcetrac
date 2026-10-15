@@ -446,3 +446,33 @@ flowchart TD
 No ⚠ differs markers: the map is additive and does not touch the checkout
 extension bundle.
 
+---
+
+## 11. Support contact (App Store review)
+
+```mermaid
+flowchart TD
+  A["shared/support.ts\nSUPPORT_EMAIL + buildSupportMailto"] --> B["app/components/support-button.tsx"]
+  B -- SupportIconButton --> C["app.tsx: s-page secondary-actions slot"]
+  B -- SupportIconButton --> D["app.tsx ErrorBoundary"]
+  B -- SupportContactPanel --> E["app.help.tsx contact panel"]
+  A --> F["app/root.tsx RootErrorScreen (plain mailto link)"]
+  A --> G["privacy.tsx contact section"]
+  C --> H["mailto: opens the OS mail client via target=_top"]
+```
+
+| Decision | File / function |
+|---|---|
+| Address + link builder | `shared/support.ts` → `SUPPORT_EMAIL`, `buildSupportMailto` |
+| Version for the mail body | shell loader: `process.env.npm_package_version ?? APP_VERSION` |
+| Buttons / panel | `app/components/support-button.tsx` |
+| Header placement | `app/routes/app.tsx` (`s-page` `secondary-actions`) |
+| Help page | `app/routes/app.help.tsx` |
+| Error screens | `app/routes/app.tsx` boundary, `app/root.tsx` boundary |
+| Translations | `support.*` in all ten `app/lib/i18n/locales/*.json` |
+| Guard | `tests/unit/support.test.ts` (link, translations, one-address scan, wiring) |
+
+The address is a **code constant**, not configuration. `SUPPORT_EMAIL` in `.env`
+is deprecated and ignored; `tests/unit/support.test.ts` fails if any other
+address appears in `app/` or `shared/`.
+

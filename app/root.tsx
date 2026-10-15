@@ -15,6 +15,7 @@ import {
 import { createTranslator, resolveLanguage, DEFAULT_LANGUAGE } from "~/lib/i18n";
 import { resolveRequestLanguage } from "~/lib/i18n/resolve.server";
 import { boundary } from "@shopify/shopify-app-react-router/server";
+import { buildSupportMailto, SUPPORT_EMAIL } from "@shared/support";
 
 import { isShopifyAuthResponse } from "~/lib/shopify-boundary";
 import stylesheet from "~/styles/app.css?url";
@@ -194,6 +195,14 @@ function RootErrorScreen({ error }: { error: unknown }) {
   const location = useLocation();
   const dashboardHref = `/app${location.search}`;
 
+  // A plain mailto link, outside App Bridge. Enough on the error screen: the
+  // merchant's mail app opens with the page in the body.
+  const supportHref = buildSupportMailto({
+    page: location.pathname,
+    subject: t("support.mail_subject"),
+    body: t("support.mail_body"),
+  });
+
   return (
     <html lang={lang}>
       <head>
@@ -209,7 +218,13 @@ function RootErrorScreen({ error }: { error: unknown }) {
             {t("errors.boundary_title")}
           </h1>
           <p style={{ marginBottom: "1rem" }}>{message}</p>
-          <a href={dashboardHref}>{t("errors.not_found_cta")}</a>
+          <p style={{ marginBottom: "1rem" }}>
+            <a href={dashboardHref}>{t("errors.not_found_cta")}</a>
+          </p>
+          <p style={{ fontSize: "0.875rem" }}>
+            {t("support.body")}{" "}
+            <a href={supportHref}>{SUPPORT_EMAIL}</a>
+          </p>
         </main>
         <Scripts />
       </body>

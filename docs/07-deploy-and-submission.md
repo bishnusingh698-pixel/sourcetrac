@@ -49,7 +49,10 @@ npm run prisma:generate
       v1.0 does not require it (only order ID + total are cached).
 - [ ] Configure **App Store listing**: name, category, screenshots, and the copy in §4.
 - [ ] Submit for **App Store review**. Typical review turnaround is several days.
-- [ ] Set your **support email and privacy policy URL** in the listing.
+- [ ] Set your **support email and privacy policy URL** in the listing. The app
+      shows `sourcetracsupport@gmail.com` (the `SUPPORT_EMAIL` constant in
+      `shared/support.ts`); use the same address in the listing. The privacy
+      policy is served at `<APP_URL>/privacy`.
 
 ---
 

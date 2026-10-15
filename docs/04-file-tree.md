@@ -20,7 +20,7 @@ The annotated tree lives in `02-architecture-and-costs.md` §7. This file covers
 | `SHOPIFY_API_VERSION` | ✅ | `2026-07` | Keep identical to `shopify.app.toml`. |
 | `NODE_ENV` | ✅ | `production` | |
 | `LOG_LEVEL` | | `info` | `debug` in development. |
-| `SUPPORT_EMAIL` | | `support@example.com` | Shown on the Help page. |
+| `SUPPORT_EMAIL` | | (none) | Deprecated and ignored. The support email is the `SUPPORT_EMAIL` constant in `shared/support.ts`. |
 | `PUBLIC_EXTENSION_CHECKOUT_TARGET` | | `purchase.thank-you.block.render` | Sanity-check constant used in a startup assertion. |
 | `PUBLIC_EXTENSION_ORDER_STATUS_TARGET` | | `customer-account.order-status.block.render` | |
 
