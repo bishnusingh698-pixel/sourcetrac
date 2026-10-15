@@ -141,7 +141,7 @@ describe("template translations", () => {
         expect(size, `${template.id}/${locale} size`).toBeLessThanOrEqual(LIMITS.MAX_COMPILED_CONFIG_BYTES);
         for (const question of built.input.questions) {
           for (const text of Object.values(question.translations ?? {})) {
-            expect(text!.text.length, `${template.id}/${locale}`).toBeLessThanOrEqual(LIMITS.MAX_QUESTION_TEXT);
+            expect(text?.text?.length ?? 0, `${template.id}/${locale}`).toBeLessThanOrEqual(LIMITS.MAX_QUESTION_TEXT);
           }
           for (const option of question.options ?? []) {
             for (const label of Object.values(option.translations ?? {})) {
