@@ -1,6 +1,7 @@
 import { useLoaderData, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 
-import { Panel } from "~/components/admin-ui";
+import { Panel, PageIntro } from "~/components/admin-ui";
+import { SurveyPicker } from "~/components/survey-picker";
 import { orderAdminLink, resolveExportTimeZone, type RevenueStatus } from "~/lib/csv";
 import { intlLocaleFor } from "~/lib/i18n";
 import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
@@ -24,6 +25,8 @@ import { authenticate } from "~/shopify.server";
  */
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "responses.title");
+
+export const handle = { titleKey: "responses.title" };
 
 const PAGE_SIZE = 50;
 const MAX_PAGE = 10_000;
@@ -116,6 +119,17 @@ const STATUS_KEY: Record<RevenueStatus, string> = {
   "no order": "no_order",
 };
 
+/**
+ * Colour for an answer's revenue status: green when it counts, blue while the
+ * order is on its way, grey for the rest (test, cancelled, refunded...), which
+ * are expected outcomes rather than problems.
+ */
+function statusTone(status: string): "success" | "info" | "neutral" {
+  if (status === "counted") return "success";
+  if (status === "awaiting_order") return "info";
+  return "neutral";
+}
+
 export default function Responses() {
   const data = useLoaderData<typeof loader>();
   const { t } = useAdminI18n();
@@ -123,7 +137,7 @@ export default function Responses() {
   if (!data.selected) {
     return (
       <s-stack gap="base">
-        <s-section heading={t("responses.title")} subheading={t("responses.subtitle")} padding="none" />
+        <PageIntro>{t("responses.subtitle")}</PageIntro>
         <Panel title={t("responses.empty_title")}>
           <s-text>{t("responses.empty_body")}</s-text>
         </Panel>
@@ -133,21 +147,22 @@ export default function Responses() {
 
   return (
     <s-stack gap="base">
-      <s-section heading={t("responses.title")} subheading={t("responses.subtitle")} padding="none" />
+      <PageIntro
+        actions={
+          <s-button href="/app/export" icon="export">
+            {t("responses.export_cta")}
+          </s-button>
+        }
+      >
+        {t("responses.subtitle")}
+      </PageIntro>
 
-      {data.surveys.length > 1 ? (
-        <s-stack direction="inline" gap="small">
-          {data.surveys.map((survey) => (
-            <s-button
-              key={survey.id}
-              href={`/app/responses?survey=${survey.id}`}
-              variant={survey.id === data.selected ? "primary" : "secondary"}
-            >
-              {survey.name}
-            </s-button>
-          ))}
-        </s-stack>
-      ) : null}
+      <SurveyPicker
+        surveys={data.surveys}
+        selected={data.selected}
+        basePath="/app/responses"
+        label={t("responses.survey_label")}
+      />
 
       <Panel title={t("responses.table_title")}>
         {data.rows.length === 0 ? (
@@ -177,8 +192,14 @@ export default function Responses() {
                   <s-table-cell>{row.submittedAt}</s-table-cell>
                   <s-table-cell>{t(`surveys.placement_${row.placement}`)}</s-table-cell>
                   <s-table-cell>{row.answers.map((a) => a.text).filter(Boolean).join(" · ") || "—"}</s-table-cell>
-                  <s-table-cell>{row.total ? `${row.total} ${row.currency ?? ""}`.trim() : "—"}</s-table-cell>
-                  <s-table-cell>{t(`responses.status_${row.status}`)}</s-table-cell>
+                  <s-table-cell>
+                    <s-text fontVariantNumeric="tabular-nums">
+                      {row.total ? `${row.total} ${row.currency ?? ""}`.trim() : "—"}
+                    </s-text>
+                  </s-table-cell>
+                  <s-table-cell>
+                    <s-badge tone={statusTone(row.status)}>{t(`responses.status_${row.status}`)}</s-badge>
+                  </s-table-cell>
                 </s-table-row>
               ))}
             </s-table-body>

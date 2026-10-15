@@ -1,7 +1,7 @@
 import { redirect, useLoaderData, useSearchParams, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 import type { BadgeTone } from "~/components/admin-ui";
 
-import { Panel } from "~/components/admin-ui";
+import { Panel, PageIntro } from "~/components/admin-ui";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import { ensureShop } from "~/lib/provision.server";
 import { guarded } from "~/lib/admin-errors.server";
@@ -39,6 +39,8 @@ import type { TemplateCategory } from "@shared/templates/types";
  */
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "library.title");
+
+export const handle = { titleKey: "library.title" };
 
 type CatalogSource = "survey_link";
 
@@ -190,7 +192,7 @@ export default function TemplateLibrary() {
   return (
     <s-stack gap="base">
       <s-link href="/app/surveys">{t("library.back")}</s-link>
-      <s-section heading={t("library.title")} subheading={t("library.subtitle")} padding="none" />
+      <PageIntro>{t("library.subtitle")}</PageIntro>
 
       {spotlight && dismissSpotlight ? (
         <s-banner tone="info" heading={spotlight.banner}>

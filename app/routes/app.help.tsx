@@ -1,6 +1,6 @@
 import { type MetaFunction } from "react-router";
 
-import { Panel } from "~/components/admin-ui";
+import { Panel, PageIntro } from "~/components/admin-ui";
 import { SupportContactPanel } from "~/components/support-button";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import { FREE_RESPONSE_CAP } from "~/lib/plans";
@@ -14,6 +14,8 @@ import { FREE_RESPONSE_CAP } from "~/lib/plans";
  */
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "help.title");
+
+export const handle = { titleKey: "help.title" };
 
 /**
  * Question/answer key pairs, in display order. Creating the survey comes first
@@ -40,7 +42,7 @@ export default function Help() {
 
   return (
     <s-stack gap="base">
-      <s-section heading={t("help.title")} subheading={t("help.subtitle")} padding="none" />
+      <PageIntro>{t("help.subtitle")}</PageIntro>
 
       <Panel title={t("help.faq_title")}>
         <s-stack gap="small">

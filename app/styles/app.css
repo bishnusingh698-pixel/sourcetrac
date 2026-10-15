@@ -232,3 +232,26 @@
   white-space: normal;
   text-align: start;
 }
+
+/* --- Page wrapper --------------------------------------------------------- */
+
+/*
+ * Wraps every admin page. `overflow-wrap` is inherited, including into the
+ * Polaris components' shadow trees, so a long shop domain, email address,
+ * channel label or German compound breaks inside its card instead of running
+ * past the edge. `break-word` (not `anywhere`) leaves table column sizing alone.
+ */
+.st-page {
+  overflow-wrap: break-word;
+  min-inline-size: 0;
+}
+
+/* --- Charts ---------------------------------------------------------------- */
+
+/*
+ * Hand-drawn SVG charts use `currentColor`; this gives them the admin's own
+ * accent colour, with the text colour as the fallback where the token is absent.
+ */
+.st-chart {
+  color: var(--p-color-text-emphasis, var(--p-color-text-info, currentColor));
+}

@@ -13,7 +13,10 @@
     "help": "Assistenza",
     "surveys": "Sondaggi",
     "results": "Risultati",
-    "responses": "Risposte"
+    "responses": "Risposte",
+    "home": "Home",
+    "channels": "Report canali",
+    "preferences": "Impostazioni"
   },
   "common": {
     "cancel": "Annulla",
@@ -31,7 +34,7 @@
   },
   "dashboard": {
     "title": "Dashboard",
-    "subtitle": "Come ti hanno trovato i clienti e quanto vale ogni canale.",
+    "subtitle": "Quali canali ti portano acquirenti e quanto vale ciascuno.",
     "metric_responses": "Risposte",
     "metric_revenue": "Ricavi attribuiti",
     "metric_revenue_help": "Abbinati a ordini reali, per valuta",
@@ -83,7 +86,21 @@
     "last_30": "Ultimi 30 giorni",
     "last_90": "Ultimi 90 giorni",
     "channel_other": "Altro",
-    "edit_survey": "Modifica il sondaggio"
+    "edit_survey": "Modifica il sondaggio",
+    "top_channel": "Canale migliore",
+    "top_channel_revenue_one": "Ha portato {{revenue}} da {{count}} risposta, il {{share}}% di tutte.",
+    "top_channel_revenue_other": "Ha portato {{revenue}} da {{count}} risposte, il {{share}}% di tutte.",
+    "top_channel_answers_one": "{{count}} risposta, il {{share}}% di tutte. I ricavi compaiono quando gli ordini vengono conteggiati.",
+    "top_channel_answers_other": "{{count}} risposte, il {{share}}% di tutte. I ricavi compaiono quando gli ordini vengono conteggiati.",
+    "most_answers": "Più risposte",
+    "notes_title": "Informazioni su questi numeri",
+    "note_locked_one": "{{count}} risposta è arrivata dopo il limite mensile del piano Gratuito. È salvata e già conteggiata sopra.",
+    "note_locked_other": "{{count}} risposte sono arrivate dopo il limite mensile del piano Gratuito. Sono salvate e già conteggiate sopra.",
+    "note_pending_one": "{{count}} risposta attende i dati del suo ordine da Shopify, di solito per meno di un minuto. Poi compaiono i ricavi.",
+    "note_pending_other": "{{count}} risposte attendono i dati dei loro ordini da Shopify, di solito per meno di un minuto. Poi compaiono i ricavi.",
+    "note_test_orders_one": "{{count}} risposta proviene da un ordine di prova Shopify. Gli ordini di prova non contano mai come ricavi; quelli reali contano appena arrivano.",
+    "note_test_orders_other": "{{count}} risposte provengono da ordini di prova Shopify. Gli ordini di prova non contano mai come ricavi; quelli reali contano appena arrivano.",
+    "no_answers_in_range": "Nessuna risposta in questo periodo ({{range}}). Prova un intervallo più lungo."
   },
   "settings": {
     "title": "Impostazioni",
@@ -159,7 +176,7 @@
   },
   "plans": {
     "title": "Piani",
-    "subtitle": "Scegli quante risposte raccogli ogni mese.",
+    "subtitle": "Ogni piano include il report canali completo. I piani a pagamento eliminano il limite mensile di risposte.",
     "current_label": "Piano attuale",
     "free": "Gratuito",
     "growth": "Crescita",
@@ -186,14 +203,14 @@
     "current_banner": "Il tuo piano è {{plan}}",
     "on_free": "Stai usando il piano gratuito.",
     "switch_free": "Passa a Gratuito",
-    "feature_responses": "{{cap}} risposte al sondaggio al mese",
-    "feature_revenue": "Fatturato e valore medio dell'ordine per canale",
-    "feature_trends": "Andamenti a 7, 30 e 90 giorni",
-    "feature_csv": "Esportazione CSV",
-    "feature_unlimited": "Risposte al sondaggio illimitate",
-    "feature_everything_free": "Tutto quello che c'è in Gratuito",
-    "feature_everything_growth": "Tutto quello che c'è in Crescita",
-    "feature_priority_support": "Assistenza prioritaria",
+    "feature_responses": "Raccogli fino a {{cap}} risposte al mese",
+    "feature_revenue": "Scopri quali canali portano vendite, con ricavi e valore medio dell'ordine per ciascuno",
+    "feature_trends": "Confronta gli ultimi 7, 30 o 90 giorni",
+    "feature_csv": "Scarica tutte le risposte come foglio di calcolo (CSV)",
+    "feature_unlimited": "Risposte illimitate, senza limite mensile",
+    "feature_everything_free": "Tutto il piano Gratuito, più:",
+    "feature_everything_growth": "Tutto il piano Crescita, più:",
+    "feature_priority_support": "Supporto prioritario via email",
     "billing_title": "Come funziona la fatturazione",
     "billing_body": "Gli addebiti compaiono nella tua fattura Shopify insieme agli altri abbonamenti alle app. SourceTrac non memorizza mai i dati della tua carta — Shopify gestisce il pagamento e ci avvisa quando un abbonamento inizia, cambia o termina.",
     "msg_shopify_unreachable": "Non siamo riusciti a contattare Shopify per gestire la fatturazione. Riapri l'app dal pannello di Shopify e riprova.",
@@ -204,7 +221,25 @@
     "msg_subscribe_failed": "Shopify non è riuscito ad avviare l'abbonamento: {{error}}",
     "msg_subscription_created": "Abbonamento creato. Se non sei stato portato a una pagina di conferma, controlla la pagina di fatturazione nel pannello di Shopify.",
     "msg_plan_unavailable": "Questo piano non è disponibile.",
-    "msg_already_on_plan": "Hai già questo piano."
+    "msg_already_on_plan": "Hai già questo piano.",
+    "feature_templates_lite": "Modelli di sondaggio pronti all'uso, in versione breve",
+    "feature_templates_full": "Modelli completi, con risposte “Nessuna di queste” e risultati per prodotto",
+    "feature_smart_actions": "Azioni intelligenti: tagga ordini e clienti automaticamente in base alle risposte, pronti per segmenti e marketing",
+    "best_for_free": "Per provare SourceTrac o per negozi con pochi ordini al mese.",
+    "best_for_growth": "Per la maggior parte dei negozi: chiedi a ogni acquirente, senza limite mensile.",
+    "best_for_scale": "Per i negozi che vogliono che le risposte taggino automaticamente ordini e clienti.",
+    "recommended": "Consigliato",
+    "forever": "Gratis per sempre, senza carta",
+    "per_year_equivalent": "all'anno, {{price}} al mese",
+    "billed_monthly": "Fatturazione mensile",
+    "billed_yearly": "Fatturazione annuale",
+    "cycle_label": "Ciclo di fatturazione",
+    "cycle_monthly": "Mensile",
+    "cycle_yearly": "Annuale",
+    "save_percent": "Risparmia il {{percent}}% con l'annuale",
+    "switch_yearly": "Passa alla fatturazione annuale",
+    "switch_monthly": "Passa alla fatturazione mensile",
+    "yearly_note": "La fatturazione annuale costa il {{percent}}% in meno di quella mensile ed è addebitata una volta l'anno. Passare da mensile ad annuale sostituisce l'addebito attuale quando lo approvi in Shopify."
   },
   "help": {
     "title": "Assistenza",
@@ -248,7 +283,8 @@
     "cap_warning_cta": "Effettua l'upgrade del piano",
     "cap_reached_title": "Hai raggiunto il limite gratuito di risposte",
     "cap_reached_body": "Ogni risposta è ancora salvata e ancora conteggiata nella dashboard. Nulla viene nascosto o trattenuto — effettua l'upgrade per rimuovere il limite mensile.",
-    "cap_reached_cta": "Effettua l'upgrade per continuare"
+    "cap_reached_cta": "Effettua l'upgrade per continuare",
+    "see_plans": "Vedi i piani"
   },
   "language": {
     "picker_label": "Lingua",
@@ -522,7 +558,9 @@
     "sync_metafield": "Salva la risposta in un metafield dell'ordine (sourcetrac.channel)",
     "sync_flow": "Avvia un workflow Shopify Flow quando qualcuno risponde",
     "sync_flow_help": "Usa il trigger del sondaggio SourceTrac. Crea il workflow nell'app Flow.",
-    "section_advanced": "Avanzate"
+    "section_advanced": "Avanzate",
+    "view_results": "Risultati",
+    "updated_on": "Aggiornato il {{date}}"
   },
   "templates": {
     "how_did_you_hear": {
@@ -626,7 +664,9 @@
     "status_voided": "Stornato",
     "status_refunded": "Rimborsato",
     "status_total_unreadable": "Totale illeggibile",
-    "status_no_order": "Nessun ordine"
+    "status_no_order": "Nessun ordine",
+    "survey_label": "Sondaggio",
+    "export_cta": "Esporta CSV"
   },
   "library": {
     "title": "Libreria di modelli",
@@ -876,7 +916,9 @@
     "start_with": "Inizia con {{name}}",
     "view": "Vedi",
     "reliable_ideas": "I risultati di {{name}} sono affidabili. Vedi le idee da provare.",
-    "unpublished": "{{name}} ha modifiche non pubblicate. Rivedi e pubblica."
+    "unpublished": "{{name}} ha modifiche non pubblicate. Rivedi e pubblica.",
+    "open_report": "Apri il report canali",
+    "do_it": "Vai"
   },
   "support": {
     "button_label": "Scrivi al supporto",
@@ -885,6 +927,9 @@
     "copy_failed": "Copia non riuscita. Seleziona l'indirizzo e copialo manualmente.",
     "body": "Domande o problemi? Scrivici e ti aiuteremo.",
     "mail_subject": "Richiesta di supporto: SourceTrac",
-    "mail_body": "Negozio: {shop}\nPiano: {plan}\nVersione app: {version}\nPagina: {page}\n\n\nDescrivi qui la tua domanda o il tuo problema:"
+    "mail_body": "Negozio: {shop}\nPiano: {plan}\nVersione app: {version}\nPagina: {page}\n\n\nDescrivi qui la tua domanda o il tuo problema:",
+    "button_aria": "Supporto via email. Apre un messaggio in Gmail in una nuova scheda.",
+    "open_gmail": "Scrivi in Gmail",
+    "open_mail_app": "Usa la mia app email"
   }
 }

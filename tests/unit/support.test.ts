@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { createTranslator } from "~/lib/i18n";
 import { LANGUAGES, type LanguageCode } from "~/lib/i18n/languages";
 import {
+  buildSupportGmailUrl,
   buildSupportMailto,
   SUPPORT_BODY_KEY,
   SUPPORT_EMAIL,
@@ -54,6 +55,19 @@ describe("support mailto link", () => {
   });
 });
 
+describe("support Gmail link", () => {
+  it("opens Gmail's compose window addressed to support", () => {
+    const url = new URL(buildSupportGmailUrl({ shop: "a+b&c.myshopify.com", page: "/app/plans" }));
+    expect(url.origin).toBe("https://mail.google.com");
+    expect(url.searchParams.get("view")).toBe("cm");
+    expect(url.searchParams.get("to")).toBe(SUPPORT_EMAIL);
+    expect(url.searchParams.get("su")).toBe("Support request: SourceTrac");
+    // Decoded back intact: a `&` in the shop domain did not end the query.
+    expect(url.searchParams.get("body")).toContain("Shop: a+b&c.myshopify.com");
+    expect(url.searchParams.get("body")).toContain("Page: /app/plans");
+  });
+});
+
 describe("support translations", () => {
   it("resolves in every locale with no raw key or leftover placeholder", () => {
     for (const { code } of LANGUAGES) {
@@ -89,6 +103,18 @@ describe("support is reachable from the UI", () => {
     const shell = read("app/routes/app.tsx");
     expect(shell).toMatch(/<SupportIconButton/);
     expect(shell).toContain('slot="secondary-actions"');
+  });
+
+  /**
+   * The old button was `<s-button href="mailto:…">`. App Bridge routes a
+   * Polaris button's `href` as in-app navigation, so in the admin it did
+   * nothing. The buttons must open the link from a click handler instead.
+   */
+  it("opens support from a click handler, never a Polaris href", () => {
+    const button = read("app/components/support-button.tsx");
+    expect(button).toContain("buildSupportGmailUrl");
+    expect(button).toMatch(/window\.open\(/);
+    expect(button).not.toMatch(/<s-button[^>]*\bhref=/);
   });
 
   it("renders the contact panel on the Help page", () => {

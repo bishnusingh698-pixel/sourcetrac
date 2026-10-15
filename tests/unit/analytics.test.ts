@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildTrend, computeStats, previousWindowBounds, toUtcDateKey, windowBounds } from "~/lib/analytics";
+import { buildTrend, computeStats, pickTopChannel, previousWindowBounds, toUtcDateKey, windowBounds } from "~/lib/analytics";
 import { CAP_WARNING_RATIO, currentUtcPeriod, evaluateCap, isPlanKey, planFor } from "~/lib/plans";
 
 /**
@@ -367,5 +367,52 @@ describe("currentUtcPeriod", () => {
   it("handles a December boundary by rolling the year", () => {
     const { periodEnd } = currentUtcPeriod(new Date("2026-12-20T00:00:00.000Z"));
     expect(periodEnd.toISOString()).toBe("2027-01-01T00:00:00.000Z");
+  });
+});
+
+describe("pickTopChannel", () => {
+  const usd = (minor: number) => [{ currency: "USD" as const, minor }];
+
+  it("headlines the channel with the most revenue, not the most answers", () => {
+    const top = pickTopChannel(
+      [
+        { channel: "instagram", responses: 10, revenueByCurrency: usd(5_000) },
+        { channel: "google", responses: 4, revenueByCurrency: usd(9_000) },
+      ],
+      usd(14_000),
+    );
+    expect(top).toEqual({ channel: "google", byRevenue: true, currency: "USD", minor: 9_000 });
+  });
+
+  it("compares in the main currency only, never across currencies", () => {
+    const top = pickTopChannel(
+      [
+        { channel: "a", responses: 3, revenueByCurrency: [{ currency: "JPY", minor: 900_000 }] },
+        { channel: "b", responses: 2, revenueByCurrency: usd(2_000) },
+      ],
+      [
+        { currency: "USD", minor: 2_000 },
+        { currency: "JPY", minor: 900_000 },
+      ],
+    );
+    // JPY has the larger number, so it is the main currency here; a USD
+    // amount is never weighed against it.
+    expect(top?.channel).toBe("a");
+    expect(top?.currency).toBe("JPY");
+  });
+
+  it("falls back to the busiest channel, flagged, when nothing is counted yet", () => {
+    const top = pickTopChannel(
+      [
+        { channel: "tiktok", responses: 2, revenueByCurrency: [] },
+        { channel: "friend", responses: 5, revenueByCurrency: [] },
+      ],
+      [],
+    );
+    expect(top).toEqual({ channel: "friend", byRevenue: false, currency: null, minor: null });
+  });
+
+  it("returns null with no channels", () => {
+    expect(pickTopChannel([], [])).toBeNull();
   });
 });

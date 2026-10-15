@@ -13,7 +13,10 @@
     "help": "帮助",
     "surveys": "问卷",
     "results": "结果",
-    "responses": "回答"
+    "responses": "回答",
+    "home": "首页",
+    "channels": "渠道报告",
+    "preferences": "设置"
   },
   "common": {
     "cancel": "取消",
@@ -31,7 +34,7 @@
   },
   "dashboard": {
     "title": "概览",
-    "subtitle": "顾客是如何找到您的，以及每个渠道的价值。",
+    "subtitle": "哪些渠道为你带来买家，以及每个渠道的价值。",
     "metric_responses": "回答数",
     "metric_revenue": "已归因收入",
     "metric_revenue_help": "按币种与真实订单匹配",
@@ -83,7 +86,21 @@
     "last_30": "最近 30 天",
     "last_90": "最近 90 天",
     "channel_other": "其他",
-    "edit_survey": "编辑调查问卷"
+    "edit_survey": "编辑调查问卷",
+    "top_channel": "最佳渠道",
+    "top_channel_revenue_one": "来自 {{count}} 条回答（占全部的 {{share}}%），带来 {{revenue}}。",
+    "top_channel_revenue_other": "来自 {{count}} 条回答（占全部的 {{share}}%），带来 {{revenue}}。",
+    "top_channel_answers_one": "{{count}} 条回答，占全部的 {{share}}%。订单计入后即显示收入。",
+    "top_channel_answers_other": "{{count}} 条回答，占全部的 {{share}}%。订单计入后即显示收入。",
+    "most_answers": "回答最多",
+    "notes_title": "关于这些数字",
+    "note_locked_one": "有 {{count}} 条回答在免费套餐的月度上限之后提交。它已保存，并已计入上方数据。",
+    "note_locked_other": "有 {{count}} 条回答在免费套餐的月度上限之后提交。它们已保存，并已计入上方数据。",
+    "note_pending_one": "{{count}} 条回答正在等待 Shopify 的订单信息，通常不到一分钟。之后会显示收入。",
+    "note_pending_other": "{{count}} 条回答正在等待 Shopify 的订单信息，通常不到一分钟。之后会显示收入。",
+    "note_test_orders_one": "{{count}} 条回答来自 Shopify 测试订单。测试订单从不计入收入；真实订单一到即计入。",
+    "note_test_orders_other": "{{count}} 条回答来自 Shopify 测试订单。测试订单从不计入收入；真实订单一到即计入。",
+    "no_answers_in_range": "此期间（{{range}}）没有回答。请尝试更长的时间范围。"
   },
   "settings": {
     "title": "设置",
@@ -159,7 +176,7 @@
   },
   "plans": {
     "title": "套餐",
-    "subtitle": "选择您每月收集多少条回答。",
+    "subtitle": "所有套餐都包含完整的渠道报告。付费套餐取消每月回答数上限。",
     "current_label": "当前套餐",
     "free": "免费",
     "growth": "成长版",
@@ -186,14 +203,14 @@
     "current_banner": "您当前使用的是 {{plan}}",
     "on_free": "您当前使用的是免费套餐。",
     "switch_free": "切换到免费套餐",
-    "feature_responses": "每月 {{cap}} 条调查回答",
-    "feature_revenue": "按渠道查看收入和平均订单价值",
-    "feature_trends": "7 天、30 天和 90 天趋势",
-    "feature_csv": "CSV 导出",
-    "feature_unlimited": "不限数量的调查回答",
-    "feature_everything_free": "包含免费套餐的全部功能",
-    "feature_everything_growth": "包含成长版的全部功能",
-    "feature_priority_support": "优先支持",
+    "feature_responses": "每月最多收集 {{cap}} 条回答",
+    "feature_revenue": "查看哪些渠道带来销售，并显示每个渠道的收入和平均订单价值",
+    "feature_trends": "比较最近 7 天、30 天或 90 天",
+    "feature_csv": "将所有回答下载为表格（CSV）",
+    "feature_unlimited": "回答数不限，无月度上限",
+    "feature_everything_free": "包含免费套餐的全部功能，另加：",
+    "feature_everything_growth": "包含成长版的全部功能，另加：",
+    "feature_priority_support": "优先邮件支持",
     "billing_title": "计费方式",
     "billing_body": "费用会和您的其他应用订阅一起显示在 Shopify 账单上。SourceTrac 从不存储您的银行卡信息 — 付款由 Shopify 处理，并在订阅开始、变更或结束时通知我们。",
     "msg_shopify_unreachable": "无法连接 Shopify 来管理计费。请从 Shopify 后台重新打开应用后重试。",
@@ -204,7 +221,25 @@
     "msg_subscribe_failed": "Shopify 无法开始订阅：{{error}}",
     "msg_subscription_created": "订阅已创建。如果您没有被带到确认页面，请查看 Shopify 后台的账单页面。",
     "msg_plan_unavailable": "该套餐不可用。",
-    "msg_already_on_plan": "您已在使用此套餐。"
+    "msg_already_on_plan": "您已在使用此套餐。",
+    "feature_templates_lite": "现成的问卷模板（精简版）",
+    "feature_templates_full": "完整版问卷模板，包括“以上都不是”选项和按商品划分的结果",
+    "feature_smart_actions": "智能操作：根据回答自动为订单和客户添加标签，便于细分和营销",
+    "best_for_free": "适合试用 SourceTrac，或每月订单不多的店铺。",
+    "best_for_growth": "适合大多数店铺：询问每位买家，没有月度上限。",
+    "best_for_scale": "适合希望根据回答自动为订单和客户打标签的店铺。",
+    "recommended": "推荐",
+    "forever": "永久免费，无需银行卡",
+    "per_year_equivalent": "每年，相当于每月 {{price}}",
+    "billed_monthly": "按月计费",
+    "billed_yearly": "按年计费",
+    "cycle_label": "计费周期",
+    "cycle_monthly": "按月",
+    "cycle_yearly": "按年",
+    "save_percent": "按年支付节省 {{percent}}%",
+    "switch_yearly": "切换为按年计费",
+    "switch_monthly": "切换为按月计费",
+    "yearly_note": "按年计费比按月便宜 {{percent}}%，每年收费一次。在按月和按年之间切换后，一旦你在 Shopify 中批准，就会替换当前费用。"
   },
   "help": {
     "title": "帮助",
@@ -248,7 +283,8 @@
     "cap_warning_cta": "升级套餐",
     "cap_reached_title": "您已达到免费回答上限",
     "cap_reached_body": "每一条回答都仍然保存，并仍然计入您的概览。没有任何内容被隐藏或暂扣——升级即可解除每月上限。",
-    "cap_reached_cta": "升级以继续收集"
+    "cap_reached_cta": "升级以继续收集",
+    "see_plans": "查看套餐"
   },
   "language": {
     "picker_label": "语言",
@@ -522,7 +558,9 @@
     "sync_metafield": "将回答保存到订单元字段 (sourcetrac.channel)",
     "sync_flow": "有人回答时启动 Shopify Flow 工作流",
     "sync_flow_help": "使用 SourceTrac 调查触发器。请在 Flow 应用中构建工作流。",
-    "section_advanced": "高级"
+    "section_advanced": "高级",
+    "view_results": "结果",
+    "updated_on": "更新于 {{date}}"
   },
   "templates": {
     "how_did_you_hear": {
@@ -626,7 +664,9 @@
     "status_voided": "已作废",
     "status_refunded": "已退款",
     "status_total_unreadable": "总额无法读取",
-    "status_no_order": "无订单"
+    "status_no_order": "无订单",
+    "survey_label": "问卷",
+    "export_cta": "导出 CSV"
   },
   "library": {
     "title": "模板库",
@@ -876,7 +916,9 @@
     "start_with": "从 {{name}} 开始",
     "view": "查看",
     "reliable_ideas": "{{name}} 的结果已可靠。查看可尝试的想法。",
-    "unpublished": "{{name}} 有未发布的更改。查看并发布。"
+    "unpublished": "{{name}} 有未发布的更改。查看并发布。",
+    "open_report": "打开渠道报告",
+    "do_it": "前往"
   },
   "support": {
     "button_label": "邮件联系支持",
@@ -885,6 +927,9 @@
     "copy_failed": "无法复制。请选择地址并手动复制。",
     "body": "有问题或疑问？给我们发邮件，我们会提供帮助。",
     "mail_subject": "支持请求：SourceTrac",
-    "mail_body": "商店：{shop}\n方案：{plan}\n应用版本：{version}\n页面：{page}\n\n\n请在此描述你的问题："
+    "mail_body": "商店：{shop}\n方案：{plan}\n应用版本：{version}\n页面：{page}\n\n\n请在此描述你的问题：",
+    "button_aria": "通过邮件联系支持。在新标签页中打开 Gmail 邮件。",
+    "open_gmail": "用 Gmail 写信",
+    "open_mail_app": "使用我的邮件应用"
   }
 }

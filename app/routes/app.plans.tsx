@@ -11,9 +11,20 @@ import {
 } from "react-router";
 
 import { Banner, Panel } from "~/components/admin-ui";
-import { createSubscription, cancelSubscription } from "~/lib/billing.server";
+import { createSubscription, cancelSubscription, cycleOf } from "~/lib/billing.server";
 import { logger } from "~/lib/logger";
-import { effectivePlan, evaluateCap, FREE_RESPONSE_CAP, isPlanKey, PLAN_ORDER, planFor, PLANS } from "~/lib/plans";
+import {
+  effectivePlan,
+  evaluateCap,
+  FREE_RESPONSE_CAP,
+  isBillingCycle,
+  isPlanKey,
+  PLAN_ORDER,
+  planFor,
+  PLANS,
+  YEARLY_DISCOUNT_PERCENT,
+  type BillingCycle,
+} from "~/lib/plans";
 import { formatMoney } from "~/lib/money";
 import { getUsageCount } from "~/lib/responses.server";
 import {
@@ -46,6 +57,8 @@ import { authenticate } from "~/shopify.server";
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "plans.title");
 
+export const handle = { titleKey: "plans.title" };
+
 /**
  * Action results carry a translation key rather than English. The action cannot
  * know which language the page is in, so the component translates.
@@ -61,11 +74,15 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const shop = await ensureShop(session);
 
   const used = await getUsageCount(shop.id);
+  const locale = intlLocaleFor(resolveAdminLanguage(request, shop.language, shop.adminLocale));
+  const requestedCycle = new URL(request.url).searchParams.get("cycle");
 
   // Reconcile from Shopify rather than trusting our own column, so a charge
   // approved or cancelled outside the app is reflected here immediately.
   let activePlan = effectivePlan(shop);
   let synced = false;
+  // The live charge's cycle, when Shopify answered, so the page opens on it.
+  let activeCycle: BillingCycle = "monthly";
   if (session.accessToken) {
     try {
       const subscriptions = await fetchActiveSubscriptions({
@@ -76,6 +93,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
       const paid = paidPlanFromSubscriptions(subscriptions, { allowTest });
       const live = activeSourceTracSubscription(subscriptions, { allowTest });
       const reconciled: "free" | "growth" | "scale" = paid ?? "free";
+      activeCycle = cycleOf(live);
       if (needsPlanSync(shop, reconciled)) {
         // `planStatus` records whether a charge is actually live, and the
         // `app_subscriptions/*` webhooks own it. This page only sees
@@ -109,8 +127,6 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     }
   }
 
-  const locale = intlLocaleFor(resolveAdminLanguage(request, shop.language, shop.adminLocale));
-
   return {
     activePlan,
     // The shell loader ran in parallel with this one and read the old plan, so
@@ -119,12 +135,23 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     synced,
     used,
     cap: evaluateCap(activePlan, used),
+    activeCycle,
+    // The cycle the cards show: the URL's choice, else the merchant's own.
+    cycle: isBillingCycle(requestedCycle) ? requestedCycle : activeCycle,
+    discountPercent: YEARLY_DISCOUNT_PERCENT,
     plans: PLAN_ORDER.map((key) => {
       const plan = PLANS[key];
+      const free = plan.priceMinor === 0;
       return {
         key,
         // null for the free plan: the component renders the translated "Free".
-        price: plan.priceMinor === 0 ? null : formatMoney(plan.priceMinor, plan.currencyCode, locale),
+        monthly: free ? null : formatMoney(plan.priceMinor, plan.currencyCode, locale),
+        yearly: free ? null : formatMoney(plan.yearlyPriceMinor, plan.currencyCode, locale),
+        // What the yearly price works out to per month, rounded down so the
+        // figure is never more than the merchant actually pays.
+        yearlyPerMonth: free
+          ? null
+          : formatMoney(Math.floor(plan.yearlyPriceMinor / 12), plan.currencyCode, locale),
         features: plan.features,
       };
     }),
@@ -186,20 +213,30 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
       return cancelActiveSubscription({ shopDomain: shop.shopDomain, accessToken });
     }
 
+    const rawCycle = String(form.get("cycle") ?? "monthly");
+    const cycle: BillingCycle = isBillingCycle(rawCycle) ? rawCycle : "monthly";
     const allowTest = await testChargesAllowed(shop.shopDomain, accessToken);
 
-    // Choosing the plan already held would create a second, duplicate charge
-    // for the merchant to approve.
+    // Choosing the plan and cycle already held would create a second,
+    // duplicate charge for the merchant to approve.
     try {
-      const current = paidPlanFromSubscriptions(await fetchActiveSubscriptions({ shopDomain: shop.shopDomain, accessToken }), {
-        allowTest,
-      });
-      if (current === plan) return result(true, "plans.msg_already_on_plan");
+      const subscriptions = await fetchActiveSubscriptions({ shopDomain: shop.shopDomain, accessToken });
+      const current = paidPlanFromSubscriptions(subscriptions, { allowTest });
+      const live = activeSourceTracSubscription(subscriptions, { allowTest });
+      if (current === plan && cycleOf(live) === cycle) {
+        return result(true, "plans.msg_already_on_plan");
+      }
     } catch {
       return result(false, "plans.msg_lookup_failed");
     }
 
-    const created = await createSubscription({ shopDomain: shop.shopDomain, accessToken, plan, test: allowTest });
+    const created = await createSubscription({
+      shopDomain: shop.shopDomain,
+      accessToken,
+      plan,
+      cycle,
+      test: allowTest,
+    });
 
     if (!created.ok) {
       return result(false, "plans.msg_subscribe_failed", { error: created.error });
@@ -210,7 +247,7 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
     if (created.confirmationUrl) return redirect(created.confirmationUrl, { target: "_top" });
 
     // Without a confirmation URL there is nothing the merchant can approve.
-    logger.warn("billing_no_confirmation_url", { shop_domain: shop.shopDomain, plan });
+    logger.warn("billing_no_confirmation_url", { shop_domain: shop.shopDomain, plan, cycle });
     return result(false, "plans.msg_subscribe_failed", { error: "—" });
   }
 
@@ -239,11 +276,11 @@ export default function Plans() {
   const pendingPlan = navigation.state !== "idle" ? String(navigation.formData?.get("plan") ?? "cancel") : null;
 
   const current = planFor(data.activePlan);
+  const yearly = data.cycle === "yearly";
+  const currentName = t(`plans.${current.key}`);
 
   return (
     <s-stack gap="base">
-      <s-section heading={t("plans.title")} subheading={t("plans.subtitle")} padding="none" />
-
       {outcome ? (
         <Banner
           tone={outcome.ok ? "success" : "critical"}
@@ -253,40 +290,108 @@ export default function Plans() {
         </Banner>
       ) : null}
 
-      <Banner tone="info" heading={t("plans.current_banner", { plan: t(`plans.${current.key}`) })}>
-        {data.cap.cap === null
-          ? t("plans.unlimited")
-          : t("plans.usage_aria", { count: data.cap.used, cap: data.cap.cap })}
-      </Banner>
+      {/* Where the merchant stands, in one card: plan, cycle and usage. */}
+      <s-section>
+        <s-query-container>
+          <s-grid gridTemplateColumns="@container (inline-size > 560px) minmax(0, 1fr) auto, minmax(0, 1fr)" gap="base" alignItems="center">
+            <s-stack gap="small-200">
+              <s-text color="subdued" fontSize="small">
+                {t("plans.current_label")}
+              </s-text>
+              <s-stack direction="inline" gap="small" alignItems="center">
+                <s-heading>{currentName}</s-heading>
+                {current.key === "free" ? null : (
+                  <s-badge tone="success">
+                    {data.activeCycle === "yearly" ? t("plans.billed_yearly") : t("plans.billed_monthly")}
+                  </s-badge>
+                )}
+              </s-stack>
+              <s-text color="subdued">
+                {data.cap.cap === null
+                  ? t("plans.unlimited_help")
+                  : t("plans.usage_aria", { count: data.cap.used, cap: data.cap.cap })}
+              </s-text>
+            </s-stack>
+            {data.cap.cap === null ? null : (
+              <s-box minInlineSize="0">
+                <s-progress
+                  value={Math.min(data.cap.used, data.cap.cap)}
+                  max={data.cap.cap}
+                  tone={data.cap.atCap ? "critical" : data.cap.atWarning ? "warning" : "success"}
+                  accessibilityLabel={t("plans.usage_aria", { count: data.cap.used, cap: data.cap.cap })}
+                />
+              </s-box>
+            )}
+          </s-grid>
+        </s-query-container>
+      </s-section>
 
-      <s-grid gridTemplateColumns="repeat(auto-fit, minmax(min(100%, 16rem), 1fr))" gap="base">
+      {/* Monthly / yearly switch. A link, so the choice survives a refresh. */}
+      <s-stack direction="inline" gap="small" alignItems="center">
+        <s-button-group accessibilityLabel={t("plans.cycle_label")}>
+          <s-button href="/app/plans?cycle=monthly" variant={yearly ? "secondary" : "primary"}>
+            {t("plans.cycle_monthly")}
+          </s-button>
+          <s-button href="/app/plans?cycle=yearly" variant={yearly ? "primary" : "secondary"}>
+            {t("plans.cycle_yearly")}
+          </s-button>
+        </s-button-group>
+        <s-badge tone="success">{t("plans.save_percent", { percent: data.discountPercent })}</s-badge>
+      </s-stack>
+
+      <s-grid gridTemplateColumns="repeat(auto-fit, minmax(min(100%, 15rem), 1fr))" gap="base">
         {data.plans.map((plan) => {
-          const isCurrent = plan.key === data.activePlan;
+          const isCurrent = plan.key === data.activePlan && (plan.key === "free" || data.activeCycle === data.cycle);
+          const recommended = plan.key === "growth";
+          const price = plan.monthly === null ? t("plans.free") : yearly ? plan.yearly : plan.monthly;
+          const name = t(`plans.${plan.key}`);
           return (
             <s-box
               key={plan.key}
               padding="base"
-              border={isCurrent ? "base" : "none"}
-              borderRadius="base"
-              background={isCurrent ? "subdued" : undefined}
+              border={isCurrent || recommended ? "base strong" : "base"}
+              borderRadius="large"
+              background={isCurrent ? "subdued" : "base"}
             >
               <s-stack gap="base">
-                <s-stack gap="small">
-                  <s-text type="strong">{t(`plans.${plan.key}`)}</s-text>
-                  <s-heading>{plan.price === null ? t("plans.free") : plan.price}</s-heading>
-                  {plan.price === null ? null : (
-                    <s-text color="subdued" fontSize="small">
-                      {t("plans.per_month")}
-                    </s-text>
-                  )}
-                  {isCurrent ? <s-badge tone="info">{t("plans.current_label")}</s-badge> : null}
+                <s-stack gap="small-200">
+                  <s-stack direction="inline" gap="small" alignItems="center" justifyContent="space-between">
+                    <s-text type="strong">{name}</s-text>
+                    {isCurrent ? (
+                      <s-badge tone="info">{t("plans.current_badge")}</s-badge>
+                    ) : recommended ? (
+                      <s-badge tone="success" icon="star">
+                        {t("plans.recommended")}
+                      </s-badge>
+                    ) : null}
+                  </s-stack>
+                  <s-text color="subdued">{t(`plans.best_for_${plan.key}`)}</s-text>
                 </s-stack>
 
-                <s-unordered-list>
+                <s-stack gap="small-200">
+                  <s-text fontSize="large-100" fontWeight="bold" fontVariantNumeric="tabular-nums">
+                    {price}
+                  </s-text>
+                  <s-text color="subdued" fontSize="small">
+                    {plan.monthly === null
+                      ? t("plans.forever")
+                      : yearly
+                        ? t("plans.per_year_equivalent", { price: plan.yearlyPerMonth ?? "" })
+                        : t("plans.per_month")}
+                  </s-text>
+                </s-stack>
+
+                <s-divider />
+
+                {/* What the merchant gets, one outcome per line. */}
+                <s-stack gap="small">
                   {plan.features.map((feature) => (
-                    <li key={feature.key}>{t(feature.key, feature.params)}</li>
+                    <s-grid key={feature.key} gridTemplateColumns="auto minmax(0, 1fr)" gap="small" alignItems="start">
+                      <s-icon type="check-circle" tone="success" size="small" />
+                      <s-text>{t(feature.key, feature.params)}</s-text>
+                    </s-grid>
                   ))}
-                </s-unordered-list>
+                </s-stack>
 
                 {/* One primary action per card. Anything that ends a paid
                     subscription asks for confirmation first: on a phone a
@@ -297,11 +402,7 @@ export default function Plans() {
                       {t("plans.on_free")}
                     </s-text>
                   ) : (
-                    <ConfirmCancel
-                      label={t("plans.cancel_confirm")}
-                      busy={pendingPlan === "cancel"}
-                      t={t}
-                    >
+                    <ConfirmCancel label={t("plans.cancel_confirm")} busy={pendingPlan === "cancel"} t={t}>
                       <input type="hidden" name="intent" value="cancel" />
                     </ConfirmCancel>
                   )
@@ -314,8 +415,18 @@ export default function Plans() {
                   <Form method="post">
                     <input type="hidden" name="intent" value="subscribe" />
                     <input type="hidden" name="plan" value={plan.key} />
-                    <s-button type="submit" variant="primary" loading={pendingPlan === plan.key}>
-                      {t("plans.choose_plan", { plan: t(`plans.${plan.key}`) })}
+                    <input type="hidden" name="cycle" value={data.cycle} />
+                    <s-button
+                      type="submit"
+                      variant={recommended ? "primary" : "secondary"}
+                      inlineSize="fill"
+                      loading={pendingPlan === plan.key}
+                    >
+                      {plan.key === data.activePlan
+                        ? yearly
+                          ? t("plans.switch_yearly")
+                          : t("plans.switch_monthly")
+                        : t("plans.choose_plan", { plan: name })}
                     </s-button>
                   </Form>
                 )}
@@ -326,7 +437,10 @@ export default function Plans() {
       </s-grid>
 
       <Panel title={t("plans.billing_title")}>
-        <s-text>{t("plans.billing_body")}</s-text>
+        <s-stack gap="small">
+          <s-text>{t("plans.billing_body")}</s-text>
+          <s-text color="subdued">{t("plans.yearly_note", { percent: data.discountPercent })}</s-text>
+        </s-stack>
       </Panel>
     </s-stack>
   );

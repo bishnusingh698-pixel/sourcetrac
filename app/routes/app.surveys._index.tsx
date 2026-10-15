@@ -1,7 +1,7 @@
 import { Form, redirect, useActionData, useLoaderData, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 import { useState } from "react";
 
-import { Panel, type BadgeTone } from "~/components/admin-ui";
+import { Panel, type BadgeTone, PageIntro } from "~/components/admin-ui";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import { ensureShop } from "~/lib/provision.server";
 import { guarded } from "~/lib/admin-errors.server";
@@ -28,6 +28,8 @@ import { NotFoundError, ValidationError } from "~/lib/errors";
  */
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "surveys.title");
+
+export const handle = { titleKey: "surveys.title" };
 
 function statusTone(status: SurveyListItem["status"]): BadgeTone {
   if (status === "active") return "success";
@@ -159,133 +161,147 @@ export default function Surveys() {
   const failureKey = actionData && actionData.ok === false ? `surveys.validation_${actionData.code}` : null;
   const failureText = failureKey ? (t(failureKey) === failureKey ? actionData!.ok === false && actionData!.message : t(failureKey)) : null;
 
+  const createActions = (
+    <>
+      <s-button href="/app/surveys/library" variant="primary">
+        {t("surveys.use_template")}
+      </s-button>
+      <Form method="post">
+        <input type="hidden" name="intent" value="create-blank" />
+        <s-button type="submit">{t("surveys.start_scratch")}</s-button>
+      </Form>
+    </>
+  );
+
   return (
     <s-stack gap="base">
-      <s-section heading={t("surveys.title")} subheading={t("surveys.subtitle")} padding="none" />
+      <PageIntro actions={createActions}>{t("surveys.subtitle")}</PageIntro>
       {failureText ? <s-banner tone="critical">{failureText}</s-banner> : null}
 
       {surveys.length === 0 ? (
         <Panel title={t("surveys.empty_title")} description={t("surveys.empty_body")}>
-          <s-stack gap="base">
-            <s-stack direction="inline" gap="small">
-              <s-link href="/app/surveys/library">
-                <s-button variant="primary">{t("surveys.use_template")}</s-button>
-              </s-link>
-              <Form method="post">
-                <input type="hidden" name="intent" value="create-blank" />
-                <s-button type="submit">{t("surveys.start_scratch")}</s-button>
-              </Form>
-            </s-stack>
+          <s-stack direction="inline" gap="small">
+            {createActions}
           </s-stack>
         </Panel>
       ) : (
-        <s-stack gap="base">
-          <s-stack direction="inline" gap="small">
-            <s-link href="/app/surveys/library">
-              <s-button variant="primary">{t("surveys.use_template")}</s-button>
-            </s-link>
-            <Form method="post">
-              <input type="hidden" name="intent" value="create-blank" />
-              <s-button type="submit">{t("surveys.start_scratch")}</s-button>
-            </Form>
-          </s-stack>
+        <s-section>
+          <s-stack gap="base">
+            {surveys.length > 1 ? (
+              <s-text color="subdued" fontSize="small">
+                {t("surveys.priority_help")}
+              </s-text>
+            ) : null}
 
-          <s-banner tone="info">{t("surveys.priority_help")}</s-banner>
-
-          <s-table>
-            <s-table-header-row>
-              <s-table-header listSlot="primary">{t("surveys.col_name")}</s-table-header>
-              <s-table-header>{t("surveys.col_status")}</s-table-header>
-              <s-table-header>{t("surveys.col_placement")}</s-table-header>
-              <s-table-header>{t("surveys.col_responses")}</s-table-header>
-              <s-table-header>{t("surveys.col_updated")}</s-table-header>
-              <s-table-header>{t("surveys.col_actions")}</s-table-header>
-            </s-table-header-row>
-            <s-table-body>
-              {surveys.map((survey, index) => (
-                <s-table-row key={survey.id}>
-                  <s-table-cell>
-                    <s-link href={`/app/surveys/${survey.id}`}>{survey.name}</s-link>
-                  </s-table-cell>
-                  <s-table-cell>
-                    <StatusBadge status={survey.status} />
-                  </s-table-cell>
-                  <s-table-cell>
-                    {survey.placements.length > 0
-                      ? survey.placements.map((p) => t(`surveys.placement_${p}`)).join(", ")
-                      : t("surveys.placement_none")}
-                  </s-table-cell>
-                  <s-table-cell>
-                    <s-text fontVariantNumeric="tabular-nums">{survey.responseCount}</s-text>
-                  </s-table-cell>
-                  <s-table-cell>
-                    <s-text color="subdued" fontSize="small">
-                      {survey.updatedAt.slice(0, 10)}
-                    </s-text>
-                  </s-table-cell>
-                  <s-table-cell>
-                    <s-stack direction="inline" gap="small" alignItems="center">
-                      <Form method="post">
-                        <input type="hidden" name="intent" value="reorder" />
-                        <input
-                          type="hidden"
-                          name="orderedIds"
-                          value={move(surveys, index, index - 1).map((s) => s.id).join(",")}
-                        />
-                        <s-button
-                          type="submit"
-                          disabled={index === 0 || undefined}
-                          accessibilityLabel={t("surveys.move_up")}
-                        >
-                          ↑
-                        </s-button>
-                      </Form>
-                      <Form method="post">
-                        <input type="hidden" name="intent" value="reorder" />
-                        <input
-                          type="hidden"
-                          name="orderedIds"
-                          value={move(surveys, index, index + 1).map((s) => s.id).join(",")}
-                        />
-                        <s-button
-                          type="submit"
-                          disabled={index === surveys.length - 1 || undefined}
-                          accessibilityLabel={t("surveys.move_down")}
-                        >
-                          ↓
-                        </s-button>
-                      </Form>
-                      <s-link href={`/app/surveys/${survey.id}`}>{t("common.edit")}</s-link>
-                      <Form method="post">
-                        <input type="hidden" name="intent" value="duplicate" />
-                        <input type="hidden" name="surveyId" value={survey.id} />
-                        <s-button type="submit">{t("surveys.duplicate")}</s-button>
-                      </Form>
-                      {survey.status === "active" ? (
-                        <Form method="post">
-                          <input type="hidden" name="intent" value="pause" />
-                          <input type="hidden" name="surveyId" value={survey.id} />
-                          <s-button type="submit">{t("surveys.pause")}</s-button>
-                        </Form>
-                      ) : (
-                        <Form method="post">
-                          <input type="hidden" name="intent" value="activate" />
-                          <input type="hidden" name="surveyId" value={survey.id} />
-                          <s-button type="submit">{t("surveys.activate")}</s-button>
-                        </Form>
-                      )}
-                      <Form method="post">
-                        <input type="hidden" name="intent" value="delete" />
-                        <input type="hidden" name="surveyId" value={survey.id} />
-                        <ConfirmDelete t={t} name={survey.name} />
-                      </Form>
+            {/* One card per survey instead of a six-column table: on a phone
+                the table squeezed every column, and the row of seven buttons
+                ran off the edge. The card leads with what a merchant scans for
+                (name, status, answers) and keeps the actions on their own row. */}
+            {surveys.map((survey, index) => (
+              <s-box key={survey.id} padding="base" border="base" borderRadius="large">
+                <s-stack gap="base">
+                  <s-grid gridTemplateColumns="minmax(0, 1fr) auto" gap="base" alignItems="start">
+                    <s-stack gap="small-200">
+                      <s-stack direction="inline" gap="small" alignItems="center">
+                        <s-link href={`/app/surveys/${survey.id}`}>
+                          <s-text type="strong">{survey.name}</s-text>
+                        </s-link>
+                        <StatusBadge status={survey.status} />
+                      </s-stack>
+                      <s-text color="subdued" fontSize="small">
+                        {survey.placements.length > 0
+                          ? survey.placements.map((p) => t(`surveys.placement_${p}`)).join(", ")
+                          : t("surveys.placement_none")}
+                        {" · "}
+                        {t("surveys.updated_on", { date: survey.updatedAt.slice(0, 10) })}
+                      </s-text>
                     </s-stack>
-                  </s-table-cell>
-                </s-table-row>
-              ))}
-            </s-table-body>
-          </s-table>
-        </s-stack>
+                    <s-stack gap="small-200" alignItems="end">
+                      <s-text fontWeight="bold" fontVariantNumeric="tabular-nums">
+                        {survey.responseCount}
+                      </s-text>
+                      <s-text color="subdued" fontSize="small">
+                        {t("surveys.col_responses")}
+                      </s-text>
+                    </s-stack>
+                  </s-grid>
+
+                  <s-stack direction="inline" gap="small" alignItems="center">
+                    <s-button href={`/app/surveys/${survey.id}`} icon="edit">
+                      {t("common.edit")}
+                    </s-button>
+                    <s-button href={`/app/surveys/${survey.id}?tab=results`} variant="tertiary" icon="chart-vertical">
+                      {t("surveys.view_results")}
+                    </s-button>
+                    {survey.status === "active" ? (
+                      <Form method="post">
+                        <input type="hidden" name="intent" value="pause" />
+                        <input type="hidden" name="surveyId" value={survey.id} />
+                        <s-button type="submit" variant="tertiary" icon="pause-circle">
+                          {t("surveys.pause")}
+                        </s-button>
+                      </Form>
+                    ) : (
+                      <Form method="post">
+                        <input type="hidden" name="intent" value="activate" />
+                        <input type="hidden" name="surveyId" value={survey.id} />
+                        <s-button type="submit" variant="tertiary" icon="play-circle">
+                          {t("surveys.activate")}
+                        </s-button>
+                      </Form>
+                    )}
+                    <Form method="post">
+                      <input type="hidden" name="intent" value="duplicate" />
+                      <input type="hidden" name="surveyId" value={survey.id} />
+                      <s-button type="submit" variant="tertiary" icon="duplicate">
+                        {t("surveys.duplicate")}
+                      </s-button>
+                    </Form>
+                    {surveys.length > 1 ? (
+                      <>
+                        <Form method="post">
+                          <input type="hidden" name="intent" value="reorder" />
+                          <input
+                            type="hidden"
+                            name="orderedIds"
+                            value={move(surveys, index, index - 1).map((s) => s.id).join(",")}
+                          />
+                          <s-button
+                            type="submit"
+                            variant="tertiary"
+                            icon="arrow-up"
+                            disabled={index === 0 || undefined}
+                            accessibilityLabel={t("surveys.move_up")}
+                          />
+                        </Form>
+                        <Form method="post">
+                          <input type="hidden" name="intent" value="reorder" />
+                          <input
+                            type="hidden"
+                            name="orderedIds"
+                            value={move(surveys, index, index + 1).map((s) => s.id).join(",")}
+                          />
+                          <s-button
+                            type="submit"
+                            variant="tertiary"
+                            icon="arrow-down"
+                            disabled={index === surveys.length - 1 || undefined}
+                            accessibilityLabel={t("surveys.move_down")}
+                          />
+                        </Form>
+                      </>
+                    ) : null}
+                    <Form method="post">
+                      <input type="hidden" name="intent" value="delete" />
+                      <input type="hidden" name="surveyId" value={survey.id} />
+                      <ConfirmDelete t={t} name={survey.name} />
+                    </Form>
+                  </s-stack>
+                </s-stack>
+              </s-box>
+            ))}
+          </s-stack>
+        </s-section>
       )}
     </s-stack>
   );
@@ -309,7 +325,7 @@ function ConfirmDelete({ t, name }: { t: ReturnType<typeof useAdminI18n>["t"]; n
 
   if (!asking) {
     return (
-      <s-button type="button" tone="critical" onClick={() => setAsking(true)}>
+      <s-button type="button" variant="tertiary" tone="critical" icon="delete" onClick={() => setAsking(true)}>
         {t("surveys.delete")}
       </s-button>
     );

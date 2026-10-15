@@ -63,6 +63,35 @@ function fill(template: string, values: Record<string, string>): string {
   return template.replace(/\{(shop|plan|version|page)\}/g, (_, key: string) => values[key] ?? "");
 }
 
+function filled(context: SupportMailtoContext): { subject: string; body: string } {
+  const values = {
+    shop: context.shop ?? "",
+    plan: context.plan ?? "",
+    version: context.version ?? "",
+    page: context.page ?? "",
+  };
+  return {
+    subject: fill(context.subject ?? DEFAULT_SUBJECT, values),
+    body: fill(context.body ?? DEFAULT_BODY, values),
+  };
+}
+
+/**
+ * Gmail's web compose window, prefilled with the address, subject and body.
+ *
+ * This is what the support button opens. A `mailto:` link depends on the
+ * merchant having a desktop mail app registered, and from inside the admin
+ * iframe it was routed through App Bridge's in-app navigation instead of the
+ * browser, so in practice the button did nothing. A normal https URL opened in
+ * a new tab works in every browser; a merchant without Gmail can still use the
+ * `mailto:` link or copy the address from the Help page.
+ */
+export function buildSupportGmailUrl(context: SupportMailtoContext = {}): string {
+  const { subject, body } = filled(context);
+  const params = new URLSearchParams({ view: "cm", fs: "1", to: SUPPORT_EMAIL, su: subject, body });
+  return `https://mail.google.com/mail/?${params.toString()}`;
+}
+
 /**
  * Build the `mailto:` URL for the support button.
  *
@@ -70,13 +99,6 @@ function fill(template: string, values: Record<string, string>): string {
  * translated string containing `&`, `?` or a space cannot break the link.
  */
 export function buildSupportMailto(context: SupportMailtoContext = {}): string {
-  const values = {
-    shop: context.shop ?? "",
-    plan: context.plan ?? "",
-    version: context.version ?? "",
-    page: context.page ?? "",
-  };
-  const subject = fill(context.subject ?? DEFAULT_SUBJECT, values);
-  const body = fill(context.body ?? DEFAULT_BODY, values);
+  const { subject, body } = filled(context);
   return `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }

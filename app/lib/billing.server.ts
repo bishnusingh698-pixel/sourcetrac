@@ -1,6 +1,15 @@
 import { env } from "./env";
 import { logger } from "./logger";
-import { BILLING_INTERVAL, PLANS, isPlanKey, planPriceAmount, type PlanKey } from "./plans";
+import {
+  BILLING_INTERVALS,
+  PLANS,
+  cycleFromInterval,
+  isPlanKey,
+  planPriceAmount,
+  subscriptionName,
+  type BillingCycle,
+  type PlanKey,
+} from "./plans";
 import { PLANS_QUERY, shopifyGraphql } from "./shopify-graphql.server";
 import { fetchIsDevelopmentStore } from "./shopify-rest.server";
 
@@ -88,9 +97,12 @@ export async function createSubscription(params: {
   shopDomain: string;
   accessToken: string;
   plan: PlanKey;
+  /** Monthly unless the merchant chose yearly billing. */
+  cycle?: BillingCycle;
   test?: boolean;
 }): Promise<SubscriptionResult> {
   const definition = PLANS[params.plan];
+  const cycle = params.cycle ?? "monthly";
   const returnUrl = billingReturnUrl(params.shopDomain);
 
   try {
@@ -101,7 +113,7 @@ export async function createSubscription(params: {
         userErrors: BillingError[];
       };
     }>(params.shopDomain, params.accessToken, CREATE_MUTATION, {
-      name: definition.displayName,
+      name: subscriptionName(params.plan, cycle),
       returnUrl,
       // A test charge outside production, and on a development store (the only
       // kind of charge such a store can approve; App Store review uses one).
@@ -110,9 +122,9 @@ export async function createSubscription(params: {
         {
           plan: {
             appRecurringPricingDetails: {
-              // Major-unit decimal string ("19.00"), not minor units.
-              price: { amount: planPriceAmount(params.plan), currencyCode: definition.currencyCode },
-              interval: BILLING_INTERVAL,
+              // Major-unit decimal string ("4.99"), not minor units.
+              price: { amount: planPriceAmount(params.plan, cycle), currencyCode: definition.currencyCode },
+              interval: BILLING_INTERVALS[cycle],
             },
           },
         },
@@ -178,6 +190,21 @@ export type ActiveSubscription = {
   status: string;
   test: boolean;
   currentPeriodEnd: string | null;
+  /** Billing cycle of the recurring line item; null when Shopify sent none. */
+  cycle?: BillingCycle | null;
+  /** Price per cycle as Shopify reports it (major units, e.g. "19.0"). */
+  priceAmount?: string | null;
+  currencyCode?: string | null;
+};
+
+type RawLineItem = {
+  plan?: {
+    pricingDetails?: {
+      __typename?: string;
+      interval?: string;
+      price?: { amount?: string; currencyCode?: string };
+    } | null;
+  } | null;
 };
 
 /**
@@ -197,6 +224,7 @@ export async function fetchActiveSubscriptions(params: {
           status: string;
           test: boolean;
           currentPeriodEnd: string | null;
+          lineItems?: RawLineItem[] | null;
         }>;
       } | null;
     }>(params.shopDomain, params.accessToken, PLANS_QUERY);
@@ -204,7 +232,20 @@ export async function fetchActiveSubscriptions(params: {
     // No installation in the answer is not "no subscriptions": treating it so
     // downgraded a paying merchant to Free on a partial response.
     if (!response.data.appInstallation) throw new Error("Shopify returned no app installation.");
-    return response.data.appInstallation.activeSubscriptions ?? [];
+    return (response.data.appInstallation.activeSubscriptions ?? []).map(({ lineItems, ...subscription }) => {
+      // The recurring line item carries the price and interval. A subscription
+      // created before yearly billing existed is monthly, which is also what an
+      // absent line item is read as by `cycleOf`.
+      const recurring = (lineItems ?? [])
+        .map((item) => item.plan?.pricingDetails)
+        .find((details) => details?.__typename === "AppRecurringPricing" || details?.interval);
+      return {
+        ...subscription,
+        cycle: cycleFromInterval(recurring?.interval),
+        priceAmount: recurring?.price?.amount ?? null,
+        currencyCode: recurring?.price?.currencyCode ?? null,
+      };
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error("billing_fetch_subscriptions_failed", { error_message: message });
@@ -285,6 +326,11 @@ export function paidPlanFromSubscriptions(
 }
 
 export { isPlanKey };
+
+/** The billing cycle of a subscription; monthly when Shopify did not say. */
+export function cycleOf(subscription: Pick<ActiveSubscription, "cycle"> | null | undefined): BillingCycle {
+  return subscription?.cycle ?? "monthly";
+}
 
 /**
  * Whether the Plans page must rewrite the stored plan to match Shopify.

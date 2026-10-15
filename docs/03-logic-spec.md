@@ -432,8 +432,12 @@ Never log: access tokens, session tokens, JWTs, customer email/phone, `other_tex
 | Plan | Price | Cap |
 |---|---|---|
 | Free | $0 | 50 responses / month |
-| Growth | $19/mo | unlimited |
-| Scale | $49/mo | unlimited |
+| Growth | $4.99/mo, or $53.89/yr (10% off) | unlimited |
+| Scale | $9.99/mo, or $107.89/yr (10% off) | unlimited |
+
+Prices changed on 2026-10-15 (from $19 / $49). Shopify never re-prices an
+approved charge, so earlier subscribers keep the old price until they approve
+the new one; the Plans page detects that and offers the switch.
 
 Implemented with the **Shopify Billing API** (`appSubscriptionCreate`), which is still supported and satisfies App Store requirement 1.2.1.
 
