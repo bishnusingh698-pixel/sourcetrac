@@ -46,6 +46,19 @@ function retryDb<T>(operation: () => Promise<T>): Promise<T> {
   });
 }
 
+/**
+ * Two first loads of a new shop can both try to create its row; the loser's
+ * P2002 means the row now exists, so the upsert is simply run again.
+ */
+async function retryUniqueRace<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await retryDb(operation);
+  } catch (error) {
+    if ((error as { code?: unknown } | null)?.code !== "P2002") throw error;
+    return retryDb(operation);
+  }
+}
+
 /** Upsert on shopDomain. Used by OAuth and by reinstall. */
 export async function upsertShop(params: {
   shopDomain: string;
@@ -61,7 +74,7 @@ export async function upsertShop(params: {
   );
   const startsInstallation = !prior || prior.installState !== "installed" || prior.installedAt === null;
 
-  const row = await retryDb(() =>
+  const row = await retryUniqueRace(() =>
     db.shop.upsert({
       where: { shopDomain },
       create: {
@@ -309,10 +322,13 @@ async function unlockAnswers(internalShopId: string): Promise<void> {
  * free of survey-response dependencies.
  */
 export async function hasResponseFor(internalShopId: string, orderId: string): Promise<boolean> {
-  const count = await retryDb(() =>
-    db.surveyResponse.count({ where: { shopId: internalShopId, orderId } }),
-  );
-  return count > 0;
+  // Both stores: the multi-question blocks write `Response`, so an order
+  // answered there must also hide the single-question survey.
+  const [legacy, v2] = await Promise.all([
+    retryDb(() => db.surveyResponse.count({ where: { shopId: internalShopId, orderId } })),
+    retryDb(() => db.response.count({ where: { shopId: internalShopId, orderId } })),
+  ]);
+  return legacy + v2 > 0;
 }
 
 /**

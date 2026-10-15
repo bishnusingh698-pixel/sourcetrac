@@ -1,6 +1,7 @@
 import { ApiVersion, shopifyApp } from "@shopify/shopify-app-react-router/server";
 
 import { env } from "~/lib/env";
+import { logger } from "~/lib/logger";
 import { provisionShop } from "~/lib/provision.server";
 import { sessionStorage } from "~/session-storage.server";
 
@@ -25,10 +26,19 @@ const shopify = shopifyApp({
   hooks: {
     // Token-exchange installs never hit /auth/callback, so create the shops row here.
     afterAuth: async ({ session }) => {
-      await provisionShop(session);
+      // Never fail the merchant's auth over our own bookkeeping: the admin
+      // loaders call `ensureShop`, which provisions on the next request.
+      try {
+        await provisionShop(session);
+      } catch (error) {
+        logger.error("after_auth_provision_failed", {
+          shop_domain: session.shop,
+          error_message: error instanceof Error ? error.message : String(error),
+        });
+      }
     },
   },
 });
 
-export const { addDocumentResponseHeaders, authenticate, registerWebhooks, unauthenticated } = shopify;
+export const { addDocumentResponseHeaders, authenticate, login, registerWebhooks, unauthenticated } = shopify;
 export default shopify;

@@ -103,14 +103,14 @@ the shop endpoint") is stale.
 
 ### Step 1 findings
 
-- [ ] **S1-1 Low (CONFIRMED): a deprecated field is still queried.**
+- [x] **S1-1 Low (CONFIRMED): a deprecated field is still queried.**
   - Where: `app/lib/shopify-graphql.server.ts:182` (consumed at `:210-216`).
   - Defect: `Product.featuredImage` is deprecated.
   - Scenario: when Shopify removes the field in a future version, the whole
     `SourceTracShopDisplay` query errors. That query also returns the shop name
     and currency, so all three go blank in the Studio mock. The query is caught
     and returns nulls, so the failure is safe.
-- [ ] **S1-2 Low (CONFIRMED): the API version is not pinned in code.**
+- [x] **S1-2 Low (CONFIRMED): the API version is not pinned in code.**
   - Where: `app/lib/env.ts:25` and `app/shopify.server.ts:18`.
   - Defect: `SHOPIFY_API_VERSION` is validated only by the regex
     `^\d{4}-\d{2}$` and then cast with `as ApiVersion`. Nothing checks it
@@ -118,13 +118,13 @@ the shop endpoint") is stale.
   - Scenario: a deploy sets `SHOPIFY_API_VERSION=2025-07`, or a typo like
     `2026-08`. The admin calls then run against a different schema than the
     webhooks and extensions, or 404 on every Admin call.
-- [ ] **S1-4 Info (PLAUSIBLE): an unrecognised config key.**
+- [x] **S1-4 Info (PLAUSIBLE): an unrecognised config key.**
   - Where: `shopify.app.toml:23`.
   - Defect: `scopes_api_version` is not a known app-configuration key. It is
     either ignored or rejected by the CLI.
   - Related: the `SCOPES` env var is never compared with `[access_scopes]`;
     `assertStartupInvariants` only allowlists scope names.
-- [ ] **S1-5 Info (CONFIRMED): the declared scopes contradict the stated posture.**
+- [x] **S1-5 Info (CONFIRMED): the declared scopes contradict the stated posture.**
   - Where: `shopify.app.toml:19`.
   - Defect: the app requests `write_orders`, `write_customers` and
     `read_products`, but the toml comment and project notes say `read_orders`
@@ -500,31 +500,31 @@ the shop endpoint") is stale.
   - Where: `app/lib/webhooks.server.ts:49-55` with `app/lib/shop.server.ts:85-86`; the same pattern is in `app/lib/provision.server.ts:69-71`.
   - Defect: `resolveInstalledShop` checks `installState`, then `upsertShop` unconditionally sets `installed` and writes the token.
   - Scenario: an `orders/updated` delivery runs concurrently with `app/uninstalled`. The shop is flipped back to installed with the revoked token stored, and after `shop/redact` the Shop row is recreated.
-- [ ] **L2 (CONFIRMED): a failed plan lookup erases known checkout support.**
+- [x] **L2 (CONFIRMED): a failed plan lookup erases known checkout support.**
   - Where: `app/lib/provision.server.ts:44-46` with `app/lib/shopify-rest.server.ts:464-470`.
   - Defect: `fetchShopPlanName` swallows errors and returns null, so `setCheckoutSupport(null)` overwrites a known true/false and stamps `checkoutCheckedAt`.
   - Scenario: a 5xx during reinstall makes a Starter shop lose its "plan blocked" banner.
-- [ ] **L3 (CONFIRMED): legacy Session tokens stay plaintext.**
+- [x] **L3 (CONFIRMED): legacy Session tokens stay plaintext.**
   - Where: `app/session-storage.server.ts:19-20` and `:30-31`.
   - Defect: legacy plaintext tokens are claimed to be re-encrypted "on the next store", but non-expiring offline sessions are never re-stored.
-- [ ] **L4 (CONFIRMED): token decryption failures are silent, and key rotation is all-or-nothing.**
+- [x] **L4 (CONFIRMED): token decryption failures are silent, and key rotation is all-or-nothing.**
   - Where: `app/lib/sync.server.ts:551-553` and `app/session-storage.server.ts:37`.
   - Defect: an undecryptable or missing token returns `{done:0, failed:0}` with no log, and the decrypt-failure log has no context. `enc:v1:` has no key id.
   - Scenario: rotating `TOKEN_ENCRYPTION_KEY` invalidates every token at once, and background work stalls silently.
-- [ ] **L5 (CONFIRMED): the post-auth redirect drops the embedded parameters.**
+- [x] **L5 (CONFIRMED): the post-auth redirect drops the embedded parameters.**
   - Where: `app/routes/auth.$.tsx:23-24`.
   - Defect: the redirect to `/app` drops `shop`, `host` and `embedded`, which causes an extra App Bridge bounce. There is no `/auth/login` route, so `/auth/login` returns the library's 500.
-- [ ] **L6 (CONFIRMED): the first page load after install waits on two Admin API calls.**
+- [x] **L6 (CONFIRMED): the first page load after install waits on two Admin API calls.**
   - Where: `app/shopify.server.ts:27-29` and `app/lib/provision.server.ts:28-46`.
   - Defect: `afterAuth` makes two sequential Admin calls, each with a 20s timeout and retries, and an exception becomes a bare 500.
   - Scenario: the first load after install blocks for 40s+ when Shopify is slow.
-- [ ] **L7 (CONFIRMED): a placeholder shop id is never corrected.**
+- [x] **L7 (CONFIRMED): a placeholder shop id is never corrected.**
   - Where: `app/lib/provision.server.ts:27-37` and `app/lib/shop.server.ts:74`.
   - Defect: if the identity query fails on first provision, `Shop.shopId` (unique) is set to the domain instead of the GID, and it is never corrected while the token stays valid. The impact is latent.
-- [ ] **L8 (PLAUSIBLE): a slow database at boot can disable session storage.**
+- [x] **L8 (PLAUSIBLE): a slow database at boot can disable session storage.**
   - Where: `app/session-storage.server.ts:79`.
   - Defect: `PrismaSessionStorage` polls for the table twice at module load. If the DB is unreachable then, the stored rejected `ready` promise either crashes the process or makes every session call throw until restart.
-- [ ] **L9 (PLAUSIBLE): parallel first loads can hit P2002.**
+- [x] **L9 (PLAUSIBLE): parallel first loads can hit P2002.**
   - Where: `app/lib/shop.server.ts:54` and `app/db.server.ts:57`.
   - Defect: parallel first-load `ensureShop` → `provisionShop` can hit P2002 if Prisma does not use a native upsert, and P2002 is not retryable. Each parallel loader also duplicates the GraphQL calls.
 
@@ -783,16 +783,16 @@ the shop endpoint") is stale.
 - [x] **I2:** `markUnverifiedFailedResponses` (`app/lib/answers.server.ts:480-486`) has no `shopId` filter and no `orderId IS NOT NULL` filter. It runs only from `api.survey-config.tsx:84` (the legacy route), not on a dashboard visit as the project notes claim. It also flags order-less on-site/link answers. (CONFIRMED)
 - [x] **I5:** `app/routes/app.dashboard.tsx:79` vs `:87`: two `new Date()` calls can straddle UTC midnight and shift the trend by a day. (PLAUSIBLE)
 - [x] **I6:** `app/lib/compliance.server.ts:73-79`: the data-request channel breakdown reads only legacy `SurveyResponse`, while the total includes v2. (CONFIRMED)
-- [ ] **I8:** `app/lib/crypto.server.ts:72`: `safeEqual` leaks the secret length. Also, `/readyz` (`app/routes/readyz.tsx:23`) shares `RETENTION_JOB_SECRET` with the data-deleting `/jobs/retention`. (CONFIRMED)
-- [ ] **I9:** `app/routes/jobs.retention.ts:20-28`: an unset secret returns a distinctive `503 not_configured`, not the 404 its comment promises. (CONFIRMED)
+- [x] **I8:** `app/lib/crypto.server.ts:72`: `safeEqual` leaks the secret length. Also, `/readyz` (`app/routes/readyz.tsx:23`) shares `RETENTION_JOB_SECRET` with the data-deleting `/jobs/retention`. (CONFIRMED)
+- [x] **I9:** `app/routes/jobs.retention.ts:20-28`: an unset secret returns a distinctive `503 not_configured`, not the 404 its comment promises. (CONFIRMED)
 - [x] **I11:** `app/lib/order-backfill.server.ts:83`: the `lastAttempt` map is never pruned. (CONFIRMED)
 - [x] **I14:** `app/routes/api.survey-responses.tsx:139`: `surveyVersion` stores the current version, not the one the buyer answered. `productIds`, `country`, `isFirstOrder` and `customerId` are never sent or stored, so "results by product" is always empty. (CONFIRMED)
 - [x] **I15:** `extensions/shared/src/survey-logic.ts:365` and `:394`: retry logs say "thank-you" on order-status, and `randomizeOptions` is never applied by the extension. (CONFIRMED)
-- [ ] **I17:** `app/routes/api.survey.tsx:84`: `alreadyAnswered` checks only v2. A stale v1 client can answer the same order on both paths and count usage twice. (CONFIRMED)
+- [x] **I17:** `app/routes/api.survey.tsx:84`: `alreadyAnswered` checks only v2. A stale v1 client can answer the same order on both paths and count usage twice. (CONFIRMED)
 - [x] **I18:** `shared/templates/smart-actions.ts:97-105`: the "first-order low rating" preset is not gated on first orders. (CONFIRMED)
 - [x] **I19:** `app/lib/sync.server.ts:507-528`: Flow can fire before the order exists, so `order_reference` may not resolve. (PLAUSIBLE)
 - [x] **I20:** Locked answers are never unlocked after an upgrade, and a duplicate submit on a now-paid shop still returns `counted: false` (`app/lib/answers.server.ts:326`, `responses.server.ts:164`). Uninstall records Free as `active` (`shop.server.ts:190-191`), while the Plans sync records it as `expired` (`app.plans.tsx:93`). `ACCEPTED` maps to `expired` (`webhooks.server.ts:591`). (CONFIRMED)
 - [x] **I21:** `app/routes/app.plans.tsx:175-191`: re-choosing the current plan is not blocked server-side and `replacementBehavior` is unset, so duplicate pending charges are possible. (CONFIRMED)
-- [ ] **I22:** `app/routes/app.tsx:107`: the shell loader sends the whole shop record (including `subscriptionGid`) to the browser. (CONFIRMED)
-- [ ] **I24:** `app/routes/app.language.tsx:22`: the action is not wrapped in `guarded`. (CONFIRMED)
+- [x] **I22:** `app/routes/app.tsx:107`: the shell loader sends the whole shop record (including `subscriptionGid`) to the browser. (CONFIRMED)
+- [x] **I24:** `app/routes/app.language.tsx:22`: the action is not wrapped in `guarded`. (CONFIRMED)
 - [x] **I25:** `app/lib/surveys.server.ts:362`: an absent `revision` skips the concurrency check, so any client can bypass it. (CONFIRMED)

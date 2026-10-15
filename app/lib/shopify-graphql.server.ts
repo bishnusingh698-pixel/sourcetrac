@@ -5,9 +5,8 @@
  * narrow queries (shop plan, app installation status), and pulling in the whole
  * SDK for that would add install weight and a second session-storage path.
  *
- * Uses the Admin REST API for the shop endpoint, because shop.plan is only
- * readable there — see docs/01-verification-report.md §A9 for why the GraphQL
- * Shop.plan field is not used.
+ * Every call goes to the Admin GraphQL endpoint (no REST), at the pinned
+ * `API_VERSION` (app/lib/env.ts).
  *
  * Docs:
  *   - Throttling: https://shopify.dev/docs/api/usage/limits
@@ -188,9 +187,12 @@ export const SHOP_DISPLAY_QUERY = `#graphql
     products(first: 1, query: "status:active") {
       nodes {
         title
-        featuredImage {
-          url
-          altText
+        featuredMedia {
+          preview {
+            image {
+              url
+            }
+          }
         }
       }
     }
@@ -216,13 +218,16 @@ export async function fetchShopDisplay(
   try {
     const result = await shopifyGraphql<{
       shop: { name: string | null; currencyCode: string | null } | null;
-      products: { nodes: Array<{ title: string; featuredImage: { url: string; altText: string | null } | null }> } | null;
+      // `featuredImage` is deprecated; `featuredMedia.preview.image` replaces it.
+      products: {
+        nodes: Array<{ title: string; featuredMedia: { preview: { image: { url: string } | null } | null } | null }>;
+      } | null;
     }>(shopDomain, accessToken, SHOP_DISPLAY_QUERY);
     const node = result.data.products?.nodes?.[0];
     return {
       name: result.data.shop?.name ?? null,
       currencyCode: result.data.shop?.currencyCode ?? null,
-      product: node ? { title: node.title, imageUrl: node.featuredImage?.url ?? null } : null,
+      product: node ? { title: node.title, imageUrl: node.featuredMedia?.preview?.image?.url ?? null } : null,
     };
   } catch (error) {
     logger.warn("shop_display_lookup_failed", {

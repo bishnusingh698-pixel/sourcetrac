@@ -28,12 +28,10 @@ export const action = async ({ request }: { request: Request }) => {
 
   if (!RETENTION_JOB_SECRET) {
     // Never run unauthenticated. Failing closed is the whole point: an open
-    // delete endpoint is worse than no endpoint at all.
+    // delete endpoint is worse than no endpoint at all. The answer looks like
+    // any other unknown path, as promised above; the log says why.
     logger.error("retention_job_unconfigured", {});
-    return new Response(JSON.stringify({ error: "not_configured" }), {
-      status: 503,
-      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-    });
+    return unauthorized();
   }
 
   const provided = request.headers.get("x-retention-secret") ?? "";

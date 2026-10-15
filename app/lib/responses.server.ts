@@ -81,6 +81,17 @@ export async function submitResponse(input: SubmitInput): Promise<SubmitResult> 
   // state would be worse than free overage — but flag it for the merchant.
   const shouldLock = capStatus.shouldFlag;
 
+  // The multi-question blocks answer into `Response`. An order already
+  // answered there must not be answered again (and counted twice) by a stale
+  // single-question client.
+  const v2 = await retryDb(() =>
+    db.response.findFirst({ where: { shopId: input.shopId, orderId: input.orderId }, select: { id: true, flagged: true } }),
+  );
+  if (v2) {
+    logger.info("response_duplicate_v2_ignored", { shop_id: input.shopId, response_id: v2.id });
+    return { outcome: "duplicate", id: v2.id, isLocked: v2.flagged };
+  }
+
   try {
     const created = await retryDb(() =>
       db.surveyResponse.create({

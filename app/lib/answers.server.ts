@@ -236,6 +236,12 @@ export async function submitAnswers(input: AnswerSubmitInput): Promise<AnswerSub
             select: { id: true, flagged: true, surveyId: true },
           });
           if (existing) return { kind: "duplicate" as const, ...existing };
+          // An answer from the single-question path counts too (I17).
+          const legacy = await tx.surveyResponse.findFirst({
+            where: { shopId: input.shopId, orderId: input.orderId },
+            select: { id: true, isLocked: true },
+          });
+          if (legacy) return { kind: "duplicate" as const, id: legacy.id, flagged: legacy.isLocked, surveyId: "" };
         }
 
         // Atomic claim so 20 simultaneous submissions cannot exceed the cap: the
@@ -486,8 +492,12 @@ async function orderTotalFor(
  * stay mutually exclusive.
  */
 export async function hasAnyAnswerForOrder(shopId: string, orderId: string): Promise<boolean> {
-  const count = await retryDb(() => db.response.count({ where: { shopId, orderId } }));
-  return count > 0;
+  // Both stores: a stale single-question client may have answered first.
+  const [v2, legacy] = await Promise.all([
+    retryDb(() => db.response.count({ where: { shopId, orderId } })),
+    retryDb(() => db.surveyResponse.count({ where: { shopId, orderId } })),
+  ]);
+  return v2 + legacy > 0;
 }
 
 /**

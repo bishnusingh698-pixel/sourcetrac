@@ -5,6 +5,17 @@ import { z } from "zod";
  * a missing secret is a deploy-time error, not a 3am incident.
  */
 
+/**
+ * The Admin API version this code is written and tested against. It must equal
+ * `shopify.app.toml` `[webhooks] api_version` and every extension's
+ * `api_version` (tests/unit/api-version.test.ts checks them). A deploy cannot
+ * point the admin calls at a different schema through the environment.
+ */
+export const API_VERSION = "2026-07";
+
+/** The scopes `shopify.app.toml` declares under [access_scopes]. */
+export const DECLARED_SCOPES = ["read_orders", "write_orders", "write_customers", "read_products"] as const;
+
 const HEX_32 = z
   .string()
   .regex(/^[0-9a-fA-F]{64}$/, "Must be a 32-byte hex string. Generate with: openssl rand -hex 32");
@@ -22,10 +33,17 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1, "Required."),
   SHOPIFY_API_KEY: z.string().min(1, "Required."),
   SHOPIFY_API_SECRET: z.string().min(1, "Required."),
-  SHOPIFY_API_VERSION: z.string().regex(/^\d{4}-\d{2}$/, "Must look like 2026-07."),
+  SHOPIFY_API_VERSION: optional(
+    z.literal(API_VERSION, { errorMap: () => ({ message: `Must be ${API_VERSION}, the version the app is built for.` }) }),
+  ).transform((value) => value ?? API_VERSION),
   SCOPES: z.string().min(1, "Required."),
   APP_URL: z.string().url("Must be an absolute URL."),
   TOKEN_ENCRYPTION_KEY: HEX_32,
+  /**
+   * The previous key while rotating: tokens sealed with it still decrypt, and
+   * are re-sealed with the current key when next stored. Remove once rotated.
+   */
+  TOKEN_ENCRYPTION_KEY_PREVIOUS: optional(HEX_32),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   LOG_LEVEL: optional(z.enum(["debug", "info", "warn", "error"])),
   /**
@@ -41,6 +59,12 @@ const schema = z.object({
    * runs an unauthenticated delete.
    */
   RETENTION_JOB_SECRET: optional(z.string().min(16, "Must be at least 16 characters.")),
+  /**
+   * Secret for GET /readyz, so an uptime monitor does not need the secret that
+   * authorises the data-deleting retention job. Falls back to
+   * RETENTION_JOB_SECRET when unset.
+   */
+  READYZ_SECRET: optional(z.string().min(16, "Must be at least 16 characters.")),
 });
 
 export type Env = z.infer<typeof schema>;
@@ -90,13 +114,19 @@ export function assertStartupInvariants(): string[] {
   // and product collection targeting; each such feature is gated at runtime on
   // the *granted* scopes (see app/lib/scopes.server.ts), so a store that has not
   // re-approved keeps working. Anything outside this set is a mistake.
-  const allowed = new Set(["read_orders", "write_orders", "write_customers", "read_products"]);
+  const allowed = new Set<string>(DECLARED_SCOPES);
   const extra = scopes.filter((s) => !allowed.has(s));
   if (extra.length > 0) {
     warnings.push(
       `SCOPES contains ${extra.join(", ")} which SourceTrac does not use. ` +
         `Requesting extra scopes risks App Store rejection under requirement 3.2.`,
     );
+  }
+  // SCOPES must say what shopify.app.toml declares; otherwise the scopes the
+  // library asks for at auth differ from the installed app's configuration.
+  const missing = DECLARED_SCOPES.filter((scope) => !scopes.includes(scope));
+  if (missing.length > 0) {
+    warnings.push(`SCOPES is missing ${missing.join(", ")}, which shopify.app.toml declares. Keep them identical.`);
   }
 
   if (e.TOKEN_ENCRYPTION_KEY === "0".repeat(64)) {

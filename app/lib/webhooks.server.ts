@@ -83,6 +83,8 @@ export async function refreshCheckoutSupport(internalShopId: string): Promise<vo
   if (!token) return;
 
   const planName = await fetchShopPlanName(shop.shopDomain, token);
+  // A failed lookup must not erase a known answer.
+  if (planName === null) return;
   const supported = checkoutSurfacesSupported(planName);
   await setCheckoutSupport(internalShopId, supported);
 }

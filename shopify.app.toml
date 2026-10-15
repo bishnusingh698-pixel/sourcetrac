@@ -8,7 +8,9 @@ application_url = "https://sourcetrac.onrender.com"
 embedded = true
 
 # read_orders is the only scope the survey itself needs: order totals arrive by
-# webhook and we never mutate an order for Core.
+# webhook and we never mutate an order for Core. The optional sync below makes
+# the app request write_customers too, which puts it in protected customer
+# data review: the listing and privacy docs must say so.
 # Phase 7 adds write scopes for optional sync (tag orders/customers, target by
 # collection). Every such feature is gated at runtime on the *granted* scopes
 # (app/lib/scopes.server.ts), so a merchant who has not re-approved keeps a
@@ -18,9 +20,9 @@ embedded = true
 [access_scopes]
 scopes = "read_orders,write_orders,write_customers,read_products"
 
-# Version 2026-07 is the latest stable as of 2026-10-01.
-# Keep this in sync with SHOPIFY_API_VERSION and each extension's api_version.
-scopes_api_version = "2026-07"
+# There is no API-version key under [access_scopes]; the version is pinned by
+# [webhooks] api_version below, each extension's api_version, and API_VERSION
+# in app/lib/env.ts (tests/unit/api-version.test.ts keeps all of them equal).
 
 [auth]
 redirect_urls = [

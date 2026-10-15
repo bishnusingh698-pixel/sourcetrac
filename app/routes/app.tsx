@@ -107,7 +107,9 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
      * publishable Partner Dashboard key, never the API secret.
      */
     apiKey: process.env.SHOPIFY_API_KEY ?? "",
-    shop,
+    // Only what the shell renders. Loader data is sent to the browser, and the
+    // full record carried the billing subscription id and internal fields.
+    shop: { shopDomain: shop.shopDomain, checkoutSupported: shop.checkoutSupported },
     used,
     plan: planFor(enforcedPlan),
     cap: evaluateCap(enforcedPlan, used),

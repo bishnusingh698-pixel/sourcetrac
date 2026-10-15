@@ -1,6 +1,7 @@
 import { data } from "react-router";
 
 import { isSupportedLanguage, type LanguageCode } from "~/lib/i18n";
+import { guarded } from "~/lib/admin-errors.server";
 import { ensureShop } from "~/lib/provision.server";
 import { setLanguage } from "~/lib/shop.server";
 import { authenticate } from "~/shopify.server";
@@ -19,7 +20,7 @@ import { authenticate } from "~/shopify.server";
  * revalidates all active loaders after the fetcher submit, which re-reads the
  * merchant's saved preference and re-renders the app in the new language.
  */
-export async function action({ request }: { request: Request }) {
+export const action = guarded(async ({ request }: { request: Request }) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
 
@@ -35,7 +36,7 @@ export async function action({ request }: { request: Request }) {
   await setLanguage(shop.id, requested as LanguageCode);
 
   return data({ ok: true as const, language: requested as LanguageCode });
-}
+});
 
 /**
  * A GET to this URL is not meaningful. Loaders run for prefetches and for

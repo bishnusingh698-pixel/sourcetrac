@@ -48,6 +48,12 @@ first; otherwise the option safest for merchants and their data.
 - **L37** (two usage counters): the v2 counter now counts every answer like the legacy one (an atomic upsert), and an answer past the cap is flagged by its position; the shared `BillingUsage` row shows true volume.
 - **I20** (locked answers after upgrade): moving to an active paid plan clears the over-cap flag on the shop's answers. Uninstall records Free as `cancelled` (the charge ended); Shopify's `ACCEPTED` maps to the pending status, not `expired`.
 - **I21** (choosing the current plan): refused server-side ("already on this plan") instead of creating a duplicate charge; `replacementBehavior` is left at Shopify's default.
+- **S1-2** (API version): pinned as `API_VERSION` in `app/lib/env.ts`; `SHOPIFY_API_VERSION` is optional and any other value refuses to boot. A test keeps the code, `shopify.app.toml` and every extension on the same version.
+- **S1-4/S1-5** (config and docs): the ignored `scopes_api_version` key was removed; a boot warning fires when `SCOPES` differs from the declared scopes; the deployment and privacy docs now list the four scopes and the protected-customer-data review that `write_customers` brings.
+- **L4** (key rotation): an optional `TOKEN_ENCRYPTION_KEY_PREVIOUS` is tried after the current key, and undecryptable-session logs name the session and shop. Adding a key id to the `enc:v1:` format was not needed for this.
+- **I8** (`/readyz` sharing the retention secret): an optional `READYZ_SECRET` (header `x-readyz-secret`) separates them; without it the old header still works, so existing monitors keep working.
+- **L5** (`/auth/login`): added the library's standard login route (a minimal shop-domain form outside the admin) instead of leaving the path to the `/auth/*` splat.
+- **L7** (placeholder shop id): replaced on the next admin load once Shopify answers, at most one retry per shop per process.
 
 ## Steps for the repository owner (not done here: deploys or touching real data)
 
@@ -58,3 +64,4 @@ first; otherwise the option safest for merchants and their data.
 4. **Deploy note:** migration `20261015100000_order_triggered_at` adds one nullable column to `OrderCache` (additive). `npm run start` applies it.
 5. **After deploying, run `shopify app deploy`** so the checkout and admin extensions ship (the admin blocks gained `locales/`, the Thank-you block sends order facts). Shopify then re-runs the extensions' review-free update; nothing else is required.
 6. **Deploy note:** migration `20261015110000_install_time_and_redacted_orders` adds `Shop.installedAt` (seeded from `createdAt` for installed shops) and the `RedactedOrder` table. Additive; `npm run start` applies it.
+7. **Optional hardening:** set `READYZ_SECRET` in Render and switch the `/readyz` monitor (if any) to send `x-readyz-secret`, so it no longer holds the secret that authorises `/jobs/retention`.
