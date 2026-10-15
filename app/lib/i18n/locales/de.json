@@ -108,7 +108,9 @@
     "privacy_description": "Was SourceTrac speichert und welche Anfragen wir bearbeitet haben.",
     "privacy_body": "SourceTrac speichert nur eine Bestell-ID, die Antwort, den Kanal und einen Zeitstempel. Kein Name, keine E-Mail, keine Telefonnummer und keine Adresse werden gespeichert.",
     "privacy_requests_title": "Aktuelle Datenanfragen",
-    "remove_option": "{{label}} entfernen"
+    "remove_option": "{{label}} entfernen",
+    "sync_failed_one": "{{count}} Schreibvorgang bei Shopify konnte nach mehreren Versuchen nicht abgeschlossen werden. Letzter Fehler: {{error}}",
+    "sync_failed_other": "{{count}} Schreibvorgänge bei Shopify konnten nach mehreren Versuchen nicht abgeschlossen werden. Letzter Fehler: {{error}}"
   },
   "onboarding": {
     "title": "Erste Schritte",

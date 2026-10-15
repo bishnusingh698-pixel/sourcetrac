@@ -1,0 +1,9 @@
+{
+  "sourcetrac": {
+    "heading": "SourceTrac 来源归因",
+    "loading": "正在查找问卷回答…",
+    "missing_order": "此订单没有问卷回答记录。",
+    "missing_customer": "此客户没有问卷回答记录。",
+    "found_prefix": "了解我们的渠道："
+  }
+}

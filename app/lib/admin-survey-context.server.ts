@@ -1,4 +1,5 @@
 import { db } from "~/db.server";
+import { logger } from "~/lib/logger";
 import { shopifyGraphql } from "~/lib/shopify-graphql.server";
 
 /**
@@ -90,7 +91,7 @@ export async function lookupByOrder(shopId: string, orderId: string): Promise<Ad
 
 const CUSTOMER_ORDERS = `#graphql
   query SourceTracCustomerOrders($query: String!) {
-    orders(first: 20, sortKey: CREATED_AT, reverse: true, query: $query) {
+    orders(first: 100, sortKey: CREATED_AT, reverse: true, query: $query) {
       nodes { id }
     }
   }
@@ -125,7 +126,11 @@ export async function lookupByCustomer(params: {
     orderIds = (result.data.orders.nodes ?? [])
       .map((node) => node.id.match(/(\d+)$/)?.[1])
       .filter((id): id is string => Boolean(id));
-  } catch {
+  } catch (error) {
+    logger.warn("admin_context_customer_orders_failed", {
+      shop_id: params.shopId,
+      error_message: error instanceof Error ? error.message : String(error),
+    });
     return EMPTY;
   }
   if (orderIds.length === 0) return EMPTY;

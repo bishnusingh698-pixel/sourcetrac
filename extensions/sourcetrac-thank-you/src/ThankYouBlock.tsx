@@ -61,6 +61,14 @@ function ThankYouBlock() {
         // country comes from the buyer's localization context.
         getIsFirstOrder: () => shopify.orderConfirmation.value?.isFirstOrder,
         getCountry: () => shopify.localization?.country?.value?.isoCode,
+        // T8: the order's product ids, so Results can break answers down by
+        // product. Numeric ids only; up to ten.
+        getProductIds: () =>
+          (shopify.lines?.value ?? []).flatMap((line) => {
+            const merchandise = line.merchandise as { product?: { id?: string } } | undefined;
+            const id = merchandise?.product?.id?.split("/").pop();
+            return id && /^\d+$/.test(id) ? [id] : [];
+          }),
       }),
     [shopify],
   );

@@ -108,7 +108,9 @@
     "privacy_description": "Wat SourceTrac bewaart en welke verzoeken we hebben afgehandeld.",
     "privacy_body": "SourceTrac bewaart alleen een bestel-ID, het antwoord, het kanaal en een tijdstempel. Nooit een naam, e-mail, telefoonnummer of adres.",
     "privacy_requests_title": "Recente gegevensverzoeken",
-    "remove_option": "{{label}} verwijderen"
+    "remove_option": "{{label}} verwijderen",
+    "sync_failed_one": "{{count}} schrijfactie naar Shopify is na meerdere pogingen niet gelukt. Laatste fout: {{error}}",
+    "sync_failed_other": "{{count}} schrijfacties naar Shopify zijn na meerdere pogingen niet gelukt. Laatste fout: {{error}}"
   },
   "onboarding": {
     "title": "Aan de slag",

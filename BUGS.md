@@ -279,15 +279,15 @@ the shop endpoint") is stale.
 
 ### Shopify sync and admin blocks
 
-- [ ] **H15 (CONFIRMED): the admin blocks can never load data.**
+- [x] **H15 (CONFIRMED): the admin blocks can never load data.**
   - Where: `app/routes/api.admin-survey-context.tsx:33-43`.
   - Defect: the OPTIONS response sets only `Access-Control-Allow-Origin`, with no `Access-Control-Allow-Headers: Authorization, Content-Type`. The block's POST (`extensions/shared/src/admin-response-block.tsx:67-71`) sends both non-safelisted headers.
   - Scenario: the browser rejects the preflight, so the order and customer admin blocks always show "No survey answer recorded".
-- [ ] **H16 (CONFIRMED): concurrent drains can fire Flow twice.**
+- [x] **H16 (CONFIRMED): concurrent drains can fire Flow twice.**
   - Where: `app/lib/sync.server.ts:541-547` and `:563-574`.
   - Defect: `processPendingSync` reads rows with a plain `findMany`, with no claim, lease or `SKIP LOCKED`.
   - Scenario: two buyers submit together. `answers.server.ts:287` drains inline on both requests, so both process the same `flow` rows and the merchant's workflow runs twice (duplicate emails or discounts). The loser's `delete` hits P2025 and abandons the rest of the batch.
-- [ ] **H17 (CONFIRMED): `app/scopes_update` never updates the stored scope.**
+- [x] **H17 (CONFIRMED): `app/scopes_update` never updates the stored scope.**
   - Where: `app/lib/webhooks.server.ts:319-323`.
   - Defect: the handler only logs and never updates `Session.scope`, and nothing else writes that column. An active offline session is never re-exchanged.
   - Readers of the stale value: `sync.server.ts:555-558`, `app.settings.tsx:53`, `app.surveys.$id.tsx:111`, `app.surveys.library.$id.setup.tsx:113`.
@@ -401,15 +401,15 @@ the shop endpoint") is stale.
 
 ### Shopify sync and admin blocks
 
-- [ ] **M16 (CONFIRMED in code; `iss` absence on checkout tokens is PLAUSIBLE): checkout session tokens pass admin ID-token verification.**
+- [x] **M16 (CONFIRMED in code; `iss` absence on checkout tokens is PLAUSIBLE): checkout session tokens pass admin ID-token verification.**
   - Where: `app/lib/id-token.server.ts:158-170`.
   - Defect: only alg, HMAC, `exp`/`nbf` and `aud` are checked. `iss` (`https://<shop>/admin`) is not checked, nor is `iss` matched against `dest`.
   - Scenario: a buyer takes their own checkout or customer-account session token, POSTs `{orderId: N}` to `/api/admin-survey-context` for a range of N, and reads other buyers' answers, including free text. There is no rate limit.
-- [ ] **M17 (CONFIRMED): customer writes are dropped on transient errors.**
+- [x] **M17 (CONFIRMED): customer writes are dropped on transient errors.**
   - Where: `app/lib/sync.server.ts:318-323` (callers `:417-418`, `:469-470`).
   - Defect: `fetchOrderCustomerId` swallows all errors and returns null, and a null is treated as "no customer → success".
   - Scenario: an inline thank-you sync runs before the order exists, or hits a timeout or 5xx. The customer tags and metafields are lost permanently.
-- [ ] **M18 (CONFIRMED): process-wide sweep throttles starve other shops.**
+- [x] **M18 (CONFIRMED): process-wide sweep throttles starve other shops.**
   - Where: `app/lib/sync.server.ts:604-610` and `app/lib/compliance.server.ts:267-273`.
   - Defect: one module-level timestamp throttles every shop's sweep.
   - Scenario: shop A's visit consumes the 5-minute slot, so shops B…N's pending sync and deferred redacts are skipped on their visits.
@@ -417,7 +417,7 @@ the shop endpoint") is stale.
   - Where: `app/lib/answers.server.ts:287`.
   - Defect: `await processPendingSync(shopId, 5)` runs inline in the buyer's submit request, including other responses' rows.
   - Scenario: a throttled shop or revoked token. Each submit waits up to 5 × (20s timeout or 4 retries), which exceeds the extension's 60s budget and triggers duplicate-submit retries.
-- [ ] **M20 (PLAUSIBLE): non-idempotent mutations are retried.**
+- [x] **M20 (PLAUSIBLE): non-idempotent mutations are retried.**
   - Where: `app/lib/shopify-graphql.server.ts:46`, `:93-94` and `:117-122`.
   - Defect: 5xx and `INTERNAL_SERVER_ERROR` are retried up to 4 times for every operation, including `flowTriggerReceive` and `appSubscriptionCreate`.
   - Scenario: Shopify processes the trigger but returns 502. Flow runs up to 4 times, or duplicate pending charges are created.
@@ -651,44 +651,44 @@ the shop endpoint") is stale.
 
 ### Shopify sync and admin blocks
 
-- [ ] **L40 (CONFIRMED): poison rows are never cleared or shown.**
+- [x] **L40 (CONFIRMED): poison rows are never cleared or shown.**
   - Where: `app/lib/sync.server.ts:543` and `:579`.
   - Defect: rows at `MAX_SYNC_ATTEMPTS` are never cleared or surfaced, and backoff caps at about 32s.
   - Scenario: any permanent userError leaves a stuck row the merchant never sees.
-- [ ] **L41 (PLAUSIBLE): a newline in a buyer's answer breaks the whole metafield write.**
+- [x] **L41 (PLAUSIBLE): a newline in a buyer's answer breaks the whole metafield write.**
   - Where: `app/lib/sync.server.ts:447` and `:476`.
   - Defect: free text with a newline goes into a `single_line_text_field`.
   - Scenario: the whole atomic `metafieldsSet` fails, order metafield included, and the row is poisoned.
-- [ ] **L42 (CONFIRMED): metafield types and fields are not validated.**
+- [x] **L42 (CONFIRMED): metafield types and fields are not validated.**
   - Where: `app/lib/sync.server.ts:487` and `:81-83`.
   - Defect: numeric preset values are written as `single_line_text_field`, and merchant namespace, key and type are not validated.
   - Scenario: a merchant-defined `number_integer` definition makes every write fail.
-- [ ] **L43 (CONFIRMED): an empty tag is written when the channel is unanswered.**
+- [x] **L43 (CONFIRMED): an empty tag is written when the channel is unanswered.**
   - Where: `app/lib/sync.server.ts:399` and `:420`.
   - Defect: an empty channel produces the tag `sourcetrac:`, and only the first `{channel}` is replaced.
-- [ ] **L44 (CONFIRMED): the buyer controls part of a tag.**
+- [x] **L44 (CONFIRMED): the buyer controls part of a tag.**
   - Where: `app/lib/sync.server.ts:256` and `:399`.
   - Defect: the buyer's free-text "Other" answer becomes the tag suffix, and colons survive sanitising.
   - Scenario: `sourcetrac:wholesale:approved` drives a merchant Flow.
-- [ ] **L45 (CONFIRMED): the Flow `Channel` field carries an internal id.**
+- [x] **L45 (CONFIRMED): the Flow `Channel` field carries an internal id.**
   - Where: `app/lib/sync.server.ts:255` and `:509`.
   - Defect: `Channel` is a raw option cuid.
   - Scenario: a merchant condition `Channel == instagram` never matches for new surveys.
-- [ ] **L46 (CONFIRMED): tokens without `exp` never expire.**
+- [x] **L46 (CONFIRMED): tokens without `exp` never expire.**
   - Where: `app/lib/id-token.server.ts:161-163`.
   - Defect: `exp` and `nbf` are optional, so a token without `exp` never expires (compounds M16).
-- [ ] **L47 (CONFIRMED): the customer block misses older orders and hides its failures.**
+- [x] **L47 (CONFIRMED): the customer block misses older orders and hides its failures.**
   - Where: `app/lib/admin-survey-context.server.ts:88` and `:123-125`.
   - Defect: only the 20 latest orders within the 60-day `read_orders` window are read, and the catch swallows the error with no log.
-- [ ] **L48 (CONFIRMED): the admin block can spin forever.**
+- [x] **L48 (CONFIRMED): the admin block can spin forever.**
   - Where: `extensions/shared/src/admin-response-block.tsx:61`.
   - Defect: `await getToken()` is outside the try/finally.
   - Scenario: the block spins forever if `idToken()` rejects. The admin blocks also have no `locales/` folder.
-- [ ] **L49 (PLAUSIBLE): old pending writes fire after a reinstall.**
+- [x] **L49 (PLAUSIBLE): old pending writes fire after a reinstall.**
   - Where: `app/lib/sync.server.ts:551-553`.
   - Defect: pending rows survive uninstall.
   - Scenario: Flow triggers and tags fire for answers that are months old.
-- [ ] **L50 (CONFIRMED): nothing in the database prevents duplicate sync rows.**
+- [x] **L50 (CONFIRMED): nothing in the database prevents duplicate sync rows.**
   - Where: `prisma/schema.prisma:478-491` and `app/lib/sync.server.ts:137-149`.
   - Defect: `PendingSync` has no `@@unique([responseId, kind])`, and enqueue is check-then-insert.
   - Scenario: duplicate rows, and so duplicate Flow runs.
@@ -789,11 +789,11 @@ the shop endpoint") is stale.
 - [ ] **I8:** `app/lib/crypto.server.ts:72`: `safeEqual` leaks the secret length. Also, `/readyz` (`app/routes/readyz.tsx:23`) shares `RETENTION_JOB_SECRET` with the data-deleting `/jobs/retention`. (CONFIRMED)
 - [ ] **I9:** `app/routes/jobs.retention.ts:20-28`: an unset secret returns a distinctive `503 not_configured`, not the 404 its comment promises. (CONFIRMED)
 - [x] **I11:** `app/lib/order-backfill.server.ts:83`: the `lastAttempt` map is never pruned. (CONFIRMED)
-- [ ] **I14:** `app/routes/api.survey-responses.tsx:139`: `surveyVersion` stores the current version, not the one the buyer answered. `productIds`, `country`, `isFirstOrder` and `customerId` are never sent or stored, so "results by product" is always empty. (CONFIRMED)
+- [x] **I14:** `app/routes/api.survey-responses.tsx:139`: `surveyVersion` stores the current version, not the one the buyer answered. `productIds`, `country`, `isFirstOrder` and `customerId` are never sent or stored, so "results by product" is always empty. (CONFIRMED)
 - [x] **I15:** `extensions/shared/src/survey-logic.ts:365` and `:394`: retry logs say "thank-you" on order-status, and `randomizeOptions` is never applied by the extension. (CONFIRMED)
 - [ ] **I17:** `app/routes/api.survey.tsx:84`: `alreadyAnswered` checks only v2. A stale v1 client can answer the same order on both paths and count usage twice. (CONFIRMED)
-- [ ] **I18:** `shared/templates/smart-actions.ts:97-105`: the "first-order low rating" preset is not gated on first orders. (CONFIRMED)
-- [ ] **I19:** `app/lib/sync.server.ts:507-528`: Flow can fire before the order exists, so `order_reference` may not resolve. (PLAUSIBLE)
+- [x] **I18:** `shared/templates/smart-actions.ts:97-105`: the "first-order low rating" preset is not gated on first orders. (CONFIRMED)
+- [x] **I19:** `app/lib/sync.server.ts:507-528`: Flow can fire before the order exists, so `order_reference` may not resolve. (PLAUSIBLE)
 - [ ] **I20:** Locked answers are never unlocked after an upgrade, and a duplicate submit on a now-paid shop still returns `counted: false` (`app/lib/answers.server.ts:326`, `responses.server.ts:164`). Uninstall records Free as `active` (`shop.server.ts:190-191`), while the Plans sync records it as `expired` (`app.plans.tsx:93`). `ACCEPTED` maps to `expired` (`webhooks.server.ts:591`). (CONFIRMED)
 - [ ] **I21:** `app/routes/app.plans.tsx:175-191`: re-choosing the current plan is not blocked server-side and `replacementBehavior` is unset, so duplicate pending charges are possible. (CONFIRMED)
 - [ ] **I22:** `app/routes/app.tsx:107`: the shell loader sends the whole shop record (including `subscriptionGid`) to the browser. (CONFIRMED)

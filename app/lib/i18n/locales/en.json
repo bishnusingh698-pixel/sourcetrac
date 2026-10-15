@@ -108,7 +108,9 @@
     "privacy_description": "What SourceTrac stores, and the requests we have handled.",
     "privacy_body": "SourceTrac stores only an order ID, the answer, the channel and a timestamp. No customer name, email, phone or address is ever stored.",
     "privacy_requests_title": "Recent data requests",
-    "remove_option": "Remove {{label}}"
+    "remove_option": "Remove {{label}}",
+    "sync_failed_one": "{{count}} Shopify write could not be completed after several tries. Last error: {{error}}",
+    "sync_failed_other": "{{count}} Shopify writes could not be completed after several tries. Last error: {{error}}"
   },
   "onboarding": {
     "title": "Get started",

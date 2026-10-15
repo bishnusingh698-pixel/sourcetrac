@@ -1,0 +1,9 @@
+{
+  "sourcetrac": {
+    "heading": "SourceTrac attribution",
+    "loading": "Checking for a survey answer…",
+    "missing_order": "No survey answer recorded for this order.",
+    "missing_customer": "No survey answer recorded for this customer.",
+    "found_prefix": "How they heard about us:"
+  }
+}

@@ -345,6 +345,18 @@ export async function processWebhook(params: {
     }
 
     case "app/scopes_update": {
+      // Store the newly granted scopes on the offline session, as Shopify's app
+      // template does. `canSync` and the Settings page read `Session.scope`,
+      // and nothing else updates it while the offline token stays valid, so a
+      // merchant who approved the write scopes kept "missing scopes" forever.
+      const current = Array.isArray(payload.current)
+        ? payload.current.filter((scope): scope is string => typeof scope === "string")
+        : null;
+      if (current) {
+        await retryDb(() =>
+          db.session.updateMany({ where: { shop: shopDomain, isOnline: false }, data: { scope: current.join(",") } }),
+        );
+      }
       const shop = await findShopByDomain(shopDomain);
       if (!shop) return { action: "scopes_updated", shopInternalId: "" };
       logger.info("scopes_updated", { shop_id: shop.id, current: payload.current });

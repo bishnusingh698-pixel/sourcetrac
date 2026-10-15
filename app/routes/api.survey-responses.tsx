@@ -63,7 +63,11 @@ const bodySchema = z.object({
   placement: z.enum(PLACEMENTS).optional(),
   locale: z.string().max(32).optional().nullable(),
   /** T8: numeric product ids on the order's lines. */
-  productIds: z.array(z.string().min(1).max(64)).max(10).optional(),
+  productIds: z.array(z.string().regex(/^\d+$/).max(20)).max(10).optional(),
+  /** The buyer's first completed order with this shop (Thank-you page only). */
+  isFirstOrder: z.boolean().optional(),
+  /** ISO 3166-1 alpha-2. */
+  country: z.string().regex(/^[A-Za-z]{2}$/).optional(),
   answers: z.array(answerSchema).min(1).max(MAX_ANSWERS),
 });
 
@@ -165,6 +169,8 @@ export const action = async ({ request }: { request: Request }) => {
       placement,
       locale: parsed.data.locale ?? null,
       productIds: parsed.data.productIds,
+      isFirstOrder: parsed.data.isFirstOrder ?? null,
+      country: parsed.data.country?.toUpperCase() ?? null,
       answers: parsed.data.answers as AnswerInput[],
       plan: effectivePlan(shop),
       definition,

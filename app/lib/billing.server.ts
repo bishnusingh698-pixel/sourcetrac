@@ -113,7 +113,11 @@ export async function createSubscription(params: {
           },
         },
       ],
-    });
+    },
+    // Not idempotent: retrying after a 5xx that Shopify did process created a
+    // second pending charge.
+    { idempotent: false },
+    );
 
     const payload = response.data.appSubscriptionCreate;
 

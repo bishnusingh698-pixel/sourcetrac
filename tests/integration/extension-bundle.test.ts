@@ -420,10 +420,14 @@ async function mountAdmin(code: string, surface: (typeof ADMIN_SURFACES)[number]
 
   new Function(code)();
   await run;
-  // Two ticks: the first lets Preact flush the initial render, the second lets
-  // the awaited idToken + fetch + setState chain settle.
-  await new Promise((resolve) => setTimeout(resolve, 20));
-  await new Promise((resolve) => setTimeout(resolve, 20));
+  // Wait for the idToken + fetch + setState chain to settle: poll until the
+  // loading copy is gone (bounded), rather than a fixed delay that a loaded
+  // machine can outrun.
+  for (let i = 0; i < 100; i += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const text = win.document.body.textContent ?? "";
+    if (text.length > 0 && !text.includes("t:sourcetrac.loading")) break;
+  }
   return { calls, body: () => win.document.body };
 }
 
@@ -431,7 +435,8 @@ describe.each(ADMIN_SURFACES)("$name admin extension bundle", (surface) => {
   it("posts the selected id with the ID token and shows the recorded answer", async () => {
     const page = await mountAdmin(await bundleAdmin(surface), surface, true);
 
-    expect(page.body().querySelector("s-admin-block")?.getAttribute("heading")).toBe("SourceTrac attribution");
+    // The block's text comes from its own locales through the host translator.
+    expect(page.body().querySelector("s-admin-block")?.getAttribute("heading")).toBe("t:sourcetrac.heading");
     expect(page.body().textContent).toContain("Instagram");
 
     const [call] = page.calls;
@@ -445,7 +450,7 @@ describe.each(ADMIN_SURFACES)("$name admin extension bundle", (surface) => {
   it("shows the no-answer copy rather than erroring when there is nothing recorded", async () => {
     const page = await mountAdmin(await bundleAdmin(surface), surface, false);
 
-    expect(page.body().textContent).toMatch(/No survey answer recorded/);
+    expect(page.body().textContent).toMatch(/t:sourcetrac\.missing_(order|customer)/);
   });
 
   it("bundles no React", async () => {

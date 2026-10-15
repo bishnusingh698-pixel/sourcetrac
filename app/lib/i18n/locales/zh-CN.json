@@ -108,7 +108,9 @@
     "privacy_description": "SourceTrac 存储的内容以及我们处理过的请求。",
     "privacy_body": "SourceTrac 仅存储订单 ID、回答、渠道和时间戳。绝不存储姓名、电子邮件、电话或地址。",
     "privacy_requests_title": "最近的数据请求",
-    "remove_option": "删除 {{label}}"
+    "remove_option": "删除 {{label}}",
+    "sync_failed_one": "有 {{count}} 项 Shopify 写入在多次重试后仍未完成。最近的错误：{{error}}",
+    "sync_failed_other": "有 {{count}} 项 Shopify 写入在多次重试后仍未完成。最近的错误：{{error}}"
   },
   "onboarding": {
     "title": "开始使用",

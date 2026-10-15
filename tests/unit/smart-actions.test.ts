@@ -86,8 +86,20 @@ describe("resolveSmartActionWrites (T13)", () => {
       templateId: "first-order-pulse",
       presetIds: ["first_order_low_rating_order_tag"],
       answers: [answer("first-order-pulse", "q_ease", undefined, 2)],
+      isFirstOrder: true,
     });
     expect(low.orderTags).toEqual(["first-order:low-rating"]);
+
+    // I18: not a first order (or unknown) never gets the first-order tag.
+    for (const isFirstOrder of [false, null]) {
+      const notFirst = resolveSmartActionWrites({
+        templateId: "first-order-pulse",
+        presetIds: ["first_order_low_rating_order_tag"],
+        answers: [answer("first-order-pulse", "q_ease", undefined, 2)],
+        isFirstOrder,
+      });
+      expect(notFirst.orderTags).toEqual([]);
+    }
 
     const high = resolveSmartActionWrites({
       templateId: "first-order-pulse",

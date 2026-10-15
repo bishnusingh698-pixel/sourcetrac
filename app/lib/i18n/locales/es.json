@@ -108,7 +108,9 @@
     "privacy_description": "Qué guarda SourceTrac y las solicitudes que hemos gestionado.",
     "privacy_body": "SourceTrac solo guarda un ID de pedido, la respuesta, el canal y una marca de tiempo. Nunca se guarda nombre, correo, teléfono ni dirección.",
     "privacy_requests_title": "Solicitudes de datos recientes",
-    "remove_option": "Eliminar {{label}}"
+    "remove_option": "Eliminar {{label}}",
+    "sync_failed_one": "{{count}} escritura en Shopify no se pudo completar tras varios intentos. Último error: {{error}}",
+    "sync_failed_other": "{{count}} escrituras en Shopify no se pudieron completar tras varios intentos. Último error: {{error}}"
   },
   "onboarding": {
     "title": "Primeros pasos",

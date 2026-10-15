@@ -26,7 +26,14 @@ function idToken(dest: string): string {
   const now = Math.floor(Date.now() / 1000);
   const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");
   const header = encode({ alg: "HS256", typ: "JWT" });
-  const payload = encode({ dest, aud: process.env.SHOPIFY_API_KEY, exp: now + 300, nbf: now - 5, iat: now - 5 });
+  const payload = encode({
+    iss: `https://${dest}/admin`,
+    dest: `https://${dest}`,
+    aud: process.env.SHOPIFY_API_KEY,
+    exp: now + 300,
+    nbf: now - 5,
+    iat: now - 5,
+  });
   const signature = crypto
     .createHmac("sha256", process.env.SHOPIFY_API_SECRET ?? "")
     .update(`${header}.${payload}`)
@@ -149,6 +156,32 @@ describe("admin survey-context endpoint", () => {
     expect(res.status).toBe(401);
     // Still CORS-readable: the block must read the 401, not an opaque failure.
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+  });
+
+  it("allows the block's headers in the preflight (H15)", async () => {
+    const res = await contextLoader();
+    expect(res.status).toBe(204);
+    expect(res.headers.get("Access-Control-Allow-Headers")).toMatch(/Authorization/);
+    expect(res.headers.get("Access-Control-Allow-Headers")).toMatch(/Content-Type/);
+  });
+
+  it("refuses a checkout session token and a token without expiry (M16, L46)", async () => {
+    const sign = (claims: object) => {
+      const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");
+      const header = encode({ alg: "HS256", typ: "JWT" });
+      const payload = encode(claims);
+      const signature = crypto
+        .createHmac("sha256", process.env.SHOPIFY_API_SECRET ?? "")
+        .update(`${header}.${payload}`)
+        .digest("base64url");
+      return `${header}.${payload}.${signature}`;
+    };
+    const now = Math.floor(Date.now() / 1000);
+    // A buyer's checkout token: same secret and audience, but not an admin token.
+    const checkout = sign({ dest: DOMAIN, aud: process.env.SHOPIFY_API_KEY, exp: now + 300 });
+    expect((await call(contextAction, request({ orderId: ORDER_ID }, {}, checkout))).status).toBe(401);
+    const noExpiry = sign({ iss: `https://${DOMAIN}/admin`, dest: `https://${DOMAIN}`, aud: process.env.SHOPIFY_API_KEY });
+    expect((await call(contextAction, request({ orderId: ORDER_ID }, {}, noExpiry))).status).toBe(401);
   });
 
   it("scopes the lookup to the shop in the token, not a body field", async () => {

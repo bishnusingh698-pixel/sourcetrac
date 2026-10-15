@@ -42,6 +42,9 @@ export type AnswerSubmitInput = {
   answers: AnswerInput[];
   /** T8: product ids on the order's lines, for results by product. */
   productIds?: string[];
+  /** From the Thank-you page; null when unknown. */
+  isFirstOrder?: boolean | null;
+  country?: string | null;
   plan: PlanKey;
   definition: SurveyDefinition;
   /** The survey's raw `syncOptions` JSON string, for the optional Phase 7 sync. */
@@ -260,6 +263,8 @@ export async function submitAnswers(input: AnswerSubmitInput): Promise<AnswerSub
             placement: input.placement,
             locale: input.locale,
             productIds: JSON.stringify((input.productIds ?? []).slice(0, 10)),
+            isFirstOrder: input.isFirstOrder ?? null,
+            country: input.country ?? null,
             flagged: shouldLock || !claimed.withinCap,
             verified,
             answers: {

@@ -108,7 +108,9 @@
     "privacy_description": "Vad SourceTrac sparar och vilka förfrågningar vi hanterat.",
     "privacy_body": "SourceTrac sparar bara ett order-ID, svaret, kanalen och en tidsstämpel. Namn, e-post, telefon eller adress sparas aldrig.",
     "privacy_requests_title": "Senaste dataförfrågningar",
-    "remove_option": "Ta bort {{label}}"
+    "remove_option": "Ta bort {{label}}",
+    "sync_failed_one": "{{count}} skrivning till Shopify kunde inte slutföras efter flera försök. Senaste fel: {{error}}",
+    "sync_failed_other": "{{count}} skrivningar till Shopify kunde inte slutföras efter flera försök. Senaste fel: {{error}}"
   },
   "onboarding": {
     "title": "Kom igång",

@@ -1,0 +1,9 @@
+{
+  "sourcetrac": {
+    "heading": "SourceTrac-Zuordnung",
+    "loading": "Umfrageantwort wird gesucht…",
+    "missing_order": "Für diese Bestellung wurde keine Umfrageantwort erfasst.",
+    "missing_customer": "Für diesen Kunden wurde keine Umfrageantwort erfasst.",
+    "found_prefix": "So wurde Ihr Shop gefunden:"
+  }
+}

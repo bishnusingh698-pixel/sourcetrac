@@ -108,7 +108,9 @@
     "privacy_description": "SourceTrac が保存するものと、対応したリクエスト。",
     "privacy_body": "SourceTrac は注文 ID、回答、チャネル、タイムスタンプのみを保存します。氏名・メール・電話番号・住所は一切保存しません。",
     "privacy_requests_title": "最近のデータリクエスト",
-    "remove_option": "{{label}} を削除"
+    "remove_option": "{{label}} を削除",
+    "sync_failed_one": "Shopify への書き込み {{count}} 件が、複数回の再試行後も完了しませんでした。最後のエラー: {{error}}",
+    "sync_failed_other": "Shopify への書き込み {{count}} 件が、複数回の再試行後も完了しませんでした。最後のエラー: {{error}}"
   },
   "onboarding": {
     "title": "はじめに",

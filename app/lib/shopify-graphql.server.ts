@@ -45,6 +45,11 @@ export class ShopifyThrottledError extends ShopifyGraphQLError {
 /** Throttle codes Shopify returns for rate limiting and token-bucket depletion. */
 const THROTTLE_CODES = new Set(["THROTTLED", "INTERNAL_SERVER_ERROR"]);
 
+function isRejectedBeforeRunning(error: unknown): boolean {
+  if (error instanceof ShopifyGraphQLError && error.errors.some((e) => e.extensions?.code === "THROTTLED")) return true;
+  return error instanceof ShopifyThrottledError && error.message.startsWith("429");
+}
+
 export function isThrottle(error: unknown): boolean {
   if (error instanceof ShopifyThrottledError) return true;
   return error instanceof ShopifyGraphQLError && error.errors.some((e) => e.extensions?.code && THROTTLE_CODES.has(e.extensions.code));
@@ -64,6 +69,7 @@ export async function shopifyGraphql<T>(
   accessToken: string,
   query: string,
   variables: Record<string, unknown> = {},
+  { idempotent = true }: { idempotent?: boolean } = {},
 ): Promise<GraphQLResponse<T>> {
   const { SHOPIFY_API_VERSION: apiVersion, SHOPIFY_API_KEY: apiKey } = env();
   const endpoint = `https://${shopDomain}/admin/api/${apiVersion}/graphql.json`;
@@ -117,7 +123,10 @@ export async function shopifyGraphql<T>(
       attempts: 4,
       baseDelayMs: 500,
       maxDelayMs: 8_000,
-      shouldRetry: isThrottle,
+      // A non-idempotent mutation (a Flow trigger, a new subscription) is only
+      // retried when Shopify certainly did not run it: a 429 or a THROTTLED
+      // error. A 5xx may have landed after the work was done.
+      shouldRetry: idempotent ? isThrottle : isRejectedBeforeRunning,
       // A 4xx is permanent; retrying wastes a webhook delivery.
       isAbort: (error) => error instanceof ShopifyGraphQLError && !isThrottle(error),
       onRetry: (error, attempt, delayMs) => {

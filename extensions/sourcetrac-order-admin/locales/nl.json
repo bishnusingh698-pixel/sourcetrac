@@ -1,0 +1,9 @@
+{
+  "sourcetrac": {
+    "heading": "SourceTrac-attributie",
+    "loading": "Zoeken naar een enquêteantwoord…",
+    "missing_order": "Geen enquêteantwoord vastgelegd voor deze bestelling.",
+    "missing_customer": "Geen enquêteantwoord vastgelegd voor deze klant.",
+    "found_prefix": "Hoe ze ons vonden:"
+  }
+}

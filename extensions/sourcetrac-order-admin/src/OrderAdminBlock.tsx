@@ -25,15 +25,25 @@ function OrderBlock() {
   const shopify = api();
   const orderId = numericId(shopify.data.selected[0]?.id);
 
+  // The merchant's admin language, with the English text as a fallback.
+  const t = (key: string, fallback: string) => {
+    try {
+      const value = shopify.i18n.translate(`sourcetrac.${key}`);
+      return typeof value === "string" && value.length > 0 ? value : fallback;
+    } catch {
+      return fallback;
+    }
+  };
+
   return (
     <AdminResponseBlock
       apiUrl={API_URL}
       getToken={() => shopify.auth.idToken()}
       context={{ orderId, customerId: null }}
-      heading="SourceTrac attribution"
-      loading="Checking for a survey answer…"
-      missing="No survey answer recorded for this order."
-      foundPrefix="How they heard about us:"
+      heading={t("heading", "SourceTrac attribution")}
+      loading={t("loading", "Checking for a survey answer…")}
+      missing={t("missing_order", "No survey answer recorded for this order.")}
+      foundPrefix={t("found_prefix", "How they heard about us:")}
     />
   );
 }

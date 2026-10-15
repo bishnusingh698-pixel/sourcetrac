@@ -108,7 +108,9 @@
     "privacy_description": "Ce que SourceTrac conserve et les demandes traitées.",
     "privacy_body": "SourceTrac ne conserve qu’un identifiant de commande, la réponse, le canal et un horodatage. Aucun nom, e-mail, téléphone ni adresse n’est jamais conservé.",
     "privacy_requests_title": "Demandes de données récentes",
-    "remove_option": "Supprimer {{label}}"
+    "remove_option": "Supprimer {{label}}",
+    "sync_failed_one": "{{count}} écriture dans Shopify n’a pas abouti après plusieurs essais. Dernière erreur : {{error}}",
+    "sync_failed_other": "{{count}} écritures dans Shopify n’ont pas abouti après plusieurs essais. Dernière erreur : {{error}}"
   },
   "onboarding": {
     "title": "Prise en main",

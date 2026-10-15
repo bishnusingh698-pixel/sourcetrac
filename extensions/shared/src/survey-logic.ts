@@ -227,6 +227,8 @@ export interface ApiBinding {
    */
   getIsFirstOrder?: () => boolean | null | undefined;
   getCountry?: () => string | null | undefined;
+  /** Numeric product ids on the order (Thank-you only), for results by product. */
+  getProductIds?: () => readonly string[];
 }
 
 /** The log label for a placement; only Order-status is not the Thank-you page. */
@@ -458,9 +460,24 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
           placement: params.placement,
           locale: buyerLocale(),
           answers: params.answers,
+          // Order facts stored with the answer: first-order presets and results
+          // by product read them. Sent only when the host exposes them.
+          ...submitFacts(),
         }),
       }),
     );
+  }
+
+  function submitFacts(): { isFirstOrder?: boolean; country?: string; productIds?: string[] } {
+    const facts: { isFirstOrder?: boolean; country?: string; productIds?: string[] } = {};
+    const isFirstOrder = safeRead(() => binding.getIsFirstOrder?.());
+    if (typeof isFirstOrder === "boolean") facts.isFirstOrder = isFirstOrder;
+    const country = safeRead(() => binding.getCountry?.());
+    if (typeof country === "string" && /^[A-Za-z]{2}$/.test(country)) facts.country = country.toUpperCase();
+    const productIds = safeRead(() => binding.getProductIds?.()) ?? [];
+    const unique = [...new Set(productIds)].filter((id) => /^\d+$/.test(id)).slice(0, 10);
+    if (unique.length > 0) facts.productIds = unique;
+    return facts;
   }
 
   /** Read a host value without letting a throwing signal break the request. */
