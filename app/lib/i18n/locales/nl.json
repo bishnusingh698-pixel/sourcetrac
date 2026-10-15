@@ -150,7 +150,8 @@
     "download": "CSV downloaden",
     "preview_title": "Voorbeeld",
     "preview_description": "Je {{count}} meest recente antwoorden, precies zoals ze worden geëxporteerd.",
-    "download_failed": "De download is niet gestart. Probeer het zo opnieuw."
+    "download_failed": "De download is niet gestart. Probeer het zo opnieuw.",
+    "truncated": "Dit bestand bevat alleen de nieuwste {{limit}} antwoorden. Oudere antwoorden zijn weggelaten."
   },
   "plans": {
     "title": "Abonnementen",
@@ -590,7 +591,10 @@
     "cross_caption": "{{row}} naar {{col}}",
     "cross_percent": "{{percent}}%",
     "ideas_title": "Ideeën om te proberen",
-    "filter_product": "Product"
+    "filter_product": "Product",
+    "multi_credit_note": "Een antwoord met meerdere keuzes telt de bestelling bij elke keuze mee, dus deze bedragen kunnen samen meer zijn dan het totaal.",
+    "capped_note": "Gebaseerd op de nieuwste {{limit}} antwoorden.",
+    "download_failed": "De download is niet gestart. Probeer het zo opnieuw."
   },
   "responses": {
     "title": "Antwoorden",
@@ -608,7 +612,16 @@
     "counted": "Geteld",
     "not_counted": "Niet geteld",
     "previous": "Vorige",
-    "next": "Volgende"
+    "next": "Volgende",
+    "status_counted": "Meegeteld",
+    "status_awaiting_order": "Wacht op bestelling",
+    "status_order_not_received": "Bestelling niet ontvangen",
+    "status_test_order": "Testbestelling",
+    "status_cancelled": "Geannuleerd",
+    "status_voided": "Vervallen",
+    "status_refunded": "Terugbetaald",
+    "status_total_unreadable": "Totaal onleesbaar",
+    "status_no_order": "Geen bestelling"
   },
   "library": {
     "title": "Sjablonenbibliotheek",

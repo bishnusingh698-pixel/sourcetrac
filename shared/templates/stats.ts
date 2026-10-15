@@ -11,6 +11,7 @@
  * flattens currencies. These functions deal in counts and shares only.
  */
 
+import { satisfactionValue } from "../survey-rules";
 import { confidenceFor, confidenceForNumeric } from "./confidence";
 import type { ConfidenceLevel, IdeaStats } from "./ideas";
 
@@ -79,6 +80,20 @@ function emptyStats(question: StatsQuestion): QuestionStats {
   };
 }
 
+/**
+ * A score answer's value. Satisfaction is chosen as a level id; older answers
+ * stored only that id (`numberValue` null), so the 1–5 value is derived from it
+ * rather than every satisfaction average reading as empty.
+ */
+function numericAnswer(type: string, answer: StatsAnswer | undefined): number | null {
+  if (!answer) return null;
+  if (typeof answer.numberValue === "number") return answer.numberValue;
+  if (type === "satisfaction_5" && answer.optionIds.length === 1) {
+    return satisfactionValue(answer.optionIds[0] as string) ?? null;
+  }
+  return null;
+}
+
 /** Aggregate one question's answers into counts, shares and a confidence label. */
 export function buildQuestionStats(
   responses: ReadonlyArray<StatsResponse>,
@@ -95,7 +110,7 @@ export function buildQuestionStats(
     let passives = 0;
     let detractors = 0;
     for (const response of answered) {
-      const value = response.answers.find((a) => a.questionId === question.id)?.numberValue;
+      const value = numericAnswer(question.type, response.answers.find((a) => a.questionId === question.id));
       if (typeof value !== "number" || !Number.isFinite(value)) continue;
       sum += value;
       count += 1;

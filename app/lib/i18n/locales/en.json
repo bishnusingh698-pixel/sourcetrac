@@ -150,7 +150,8 @@
     "download": "Download CSV",
     "preview_title": "Preview",
     "preview_description": "Your {{count}} most recent answers, exactly as they will export.",
-    "download_failed": "The download did not start. Please try again in a moment."
+    "download_failed": "The download did not start. Please try again in a moment.",
+    "truncated": "This file holds only the newest {{limit}} answers. Older answers were left out."
   },
   "plans": {
     "title": "Plans",
@@ -536,7 +537,10 @@
     "cross_caption": "{{row}} by {{col}}",
     "cross_percent": "{{percent}}%",
     "ideas_title": "Ideas to try",
-    "filter_product": "Product"
+    "filter_product": "Product",
+    "multi_credit_note": "An answer with several choices counts its order under each one, so these amounts can add up to more than the total.",
+    "capped_note": "Based on the newest {{limit}} answers.",
+    "download_failed": "The download did not start. Please try again in a moment."
   },
   "responses": {
     "title": "Responses",
@@ -554,7 +558,16 @@
     "counted": "Counted",
     "not_counted": "Not counted",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "status_counted": "Counted",
+    "status_awaiting_order": "Waiting for order",
+    "status_order_not_received": "Order not received",
+    "status_test_order": "Test order",
+    "status_cancelled": "Cancelled",
+    "status_voided": "Voided",
+    "status_refunded": "Refunded",
+    "status_total_unreadable": "Total unreadable",
+    "status_no_order": "No order"
   },
   "logic": {
     "tab": "Logic map",

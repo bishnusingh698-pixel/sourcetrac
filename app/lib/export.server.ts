@@ -1,5 +1,4 @@
-import type { ExportContext } from "~/lib/analytics-queries.server";
-import { parseSurveySettings } from "~/lib/settings";
+import { fetchChannelLabels, type ExportContext } from "~/lib/analytics-queries.server";
 import { getAccessToken, type ShopRecord } from "~/lib/shop.server";
 import { fetchShopTimeZone } from "~/lib/shopify-graphql.server";
 
@@ -18,15 +17,10 @@ export async function loadExportContext(
   const accessToken = session.accessToken ?? (await getAccessToken(shop.id));
   const timeZone = await fetchShopTimeZone(shop.shopDomain, accessToken);
 
-  const { options } = parseSurveySettings(shop.optionsJson, {
-    questionText: shop.questionText,
-    options: [],
-    allowOther: false,
-  });
-
   return {
     shopDomain: shop.shopDomain,
     timeZone,
-    labels: new Map(options.map((option) => [option.value, option.label] as const)),
+    // Legacy channel values and every survey option, so v2 answers are named.
+    labels: await fetchChannelLabels(shop),
   };
 }

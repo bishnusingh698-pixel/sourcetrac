@@ -7,7 +7,7 @@
  * cache keeps the Admin API cost off the critical path of every Studio load.
  */
 
-import { fetchProductTitles, fetchShopDisplay } from "~/lib/shopify-graphql.server";
+import { fetchProductTitles, fetchShopDisplay, fetchShopLocaleInfo } from "~/lib/shopify-graphql.server";
 
 export type ShopDisplay = {
   name: string | null;
@@ -73,8 +73,32 @@ export async function getProductTitles(
   return value;
 }
 
+/**
+ * The shop's IANA time zone and country, cached per shop. Home and the
+ * Responses page need them on every load; asking Shopify each time put a
+ * blocking Admin API call (with its timeout and retries) in front of the page.
+ */
+const LOCALE_TTL_MS = 60 * 60 * 1000;
+const localeCache = new Map<string, { value: { timeZone: string | null; countryCode: string | null }; expiresAt: number }>();
+
+export async function getShopLocaleInfo(
+  shopId: string,
+  shopDomain: string,
+  accessToken: string | null | undefined,
+): Promise<{ timeZone: string | null; countryCode: string | null }> {
+  const now = Date.now();
+  const cached = localeCache.get(shopId);
+  if (cached && cached.expiresAt > now) return cached.value;
+
+  const value = await fetchShopLocaleInfo(shopDomain, accessToken);
+  prune(localeCache, now);
+  localeCache.set(shopId, { value, expiresAt: now + (value.timeZone === null ? EMPTY_TTL_MS : LOCALE_TTL_MS) });
+  return value;
+}
+
 /** Test seam: drop the cache between cases. */
 export function clearShopDisplayCache(): void {
   cache.clear();
   titleCache.clear();
+  localeCache.clear();
 }

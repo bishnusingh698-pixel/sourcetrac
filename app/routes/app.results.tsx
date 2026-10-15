@@ -5,7 +5,13 @@ import { Banner, MoneyList, Panel } from "~/components/admin-ui";
 import { intlLocaleFor } from "~/lib/i18n";
 import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
-import { buildBreakdowns, fetchSurveyResponses, summariseSurvey } from "~/lib/survey-analytics.server";
+import {
+  buildBreakdowns,
+  fetchSurveyResponses,
+  RESULTS_RESPONSE_LIMIT,
+  summariseSurvey,
+} from "~/lib/survey-analytics.server";
+import { SATISFACTION_OPTIONS } from "@shared/survey-rules";
 import { listSurveys, getSurveyRow } from "~/lib/surveys.server";
 import { formatMoney } from "~/lib/money";
 import { ensureShop } from "~/lib/provision.server";
@@ -40,11 +46,18 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const amount = (minor: number, currency: string) => formatMoney(minor, currency, locale);
 
   if (!selectedId) {
-    return { surveys: [], selected: null, summary: null, breakdowns: [], questions: [], amount };
+    return { surveys: [], selected: null, summary: null, revenue: [], breakdowns: [], questions: [], capped: null };
   }
 
   const row = await getSurveyRow(shop.id, selectedId);
-  const responses = await fetchSurveyResponses({ shopId: shop.id, surveyId: selectedId });
+  // Bounded: the newest answers only, and the page says so when it is capped.
+  const responses = await fetchSurveyResponses({
+    shopId: shop.id,
+    surveyId: selectedId,
+    limit: RESULTS_RESPONSE_LIMIT + 1,
+  });
+  const capped = responses.length > RESULTS_RESPONSE_LIMIT ? RESULTS_RESPONSE_LIMIT : null;
+  if (capped !== null) responses.length = RESULTS_RESPONSE_LIMIT;
   const summary = summariseSurvey(responses);
   const questions = (row?.questions ?? []).map((q) => ({
     id: q.id,
@@ -63,6 +76,12 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     surveys: surveys.map((s) => ({ id: s.id, name: s.name, responseCount: s.responseCount })),
     selected: selectedId,
     summary,
+    capped,
+    // Formatted here: a function in loader data never reaches the browser.
+    revenue: summary.revenueByCurrency.map((entry) => ({
+      currency: entry.currency,
+      text: amount(entry.minor, entry.currency),
+    })),
     questions,
     optionLabel: Object.fromEntries(optionLabel),
     breakdowns: breakdowns.map((breakdown) => {
@@ -72,6 +91,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
           questionId: breakdown.questionId,
           total: breakdown.total,
           otherCount: breakdown.otherCount,
+          multiple: breakdown.multiple,
           options: breakdown.options.map((option) => ({
             optionId: option.optionId,
             count: option.count,
@@ -96,17 +116,25 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
         })),
       };
     }),
-    amount,
   };
 });
+
+/** Yes/No and satisfaction have fixed options with no stored label. */
+function fixedOptionLabel(optionId: string, t: (key: string) => string): string | null {
+  if (optionId === "yes" || optionId === "no") return t(`surveys.${optionId}`);
+  if (SATISFACTION_OPTIONS.some((option) => option.id === optionId)) return t(`surveys.satisfaction_${optionId}`);
+  return null;
+}
 
 export default function Results() {
   const data = useLoaderData<typeof loader>();
   const { t } = useAdminI18n();
   const [downloading, setDownloading] = useState(false);
+  const [downloadFailed, setDownloadFailed] = useState(false);
 
   async function download() {
     setDownloading(true);
+    setDownloadFailed(false);
     try {
       const response = await fetch(`/app/results/csv?survey=${data.selected}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -119,7 +147,7 @@ export default function Results() {
       link.remove();
       URL.revokeObjectURL(url);
     } catch {
-      // A failed download has no inline error slot; the button simply re-enables.
+      setDownloadFailed(true);
     } finally {
       setDownloading(false);
     }
@@ -147,7 +175,12 @@ export default function Results() {
         <s-button icon="download" loading={downloading} onClick={download}>
           {t("results.download")}
         </s-button>
+        {downloadFailed ? <s-text tone="critical">{t("results.download_failed")}</s-text> : null}
       </s-stack>
+
+      {data.capped !== null ? (
+        <s-text color="subdued">{t("results.capped_note", { limit: data.capped })}</s-text>
+      ) : null}
 
       {data.surveys.length > 1 ? (
         <s-stack direction="inline" gap="small">
@@ -181,12 +214,7 @@ export default function Results() {
             <s-text type="strong" fontSize="small">
               {t("results.revenue")}
             </s-text>
-            <MoneyList
-              amounts={summary.revenueByCurrency.map((entry) => ({
-                currency: entry.currency,
-                text: data.amount(entry.minor, entry.currency),
-              }))}
-            />
+            <MoneyList amounts={data.revenue} />
           </s-stack>
         </s-stack>
       </Panel>
@@ -204,7 +232,7 @@ export default function Results() {
                   <s-stack key={option.optionId} gap="small-200">
                     <s-stack direction="inline" justifyContent="space-between" gap="small">
                       <s-text type="strong">
-                        {data.optionLabel[option.optionId] ?? option.optionId}
+                        {data.optionLabel[option.optionId] ?? fixedOptionLabel(option.optionId, t) ?? option.optionId}
                         {question?.options.find((o) => o.id === option.optionId)?.archived
                           ? ` ${t("results.removed")}`
                           : ""}
@@ -222,6 +250,11 @@ export default function Results() {
                     ) : null}
                   </s-stack>
                 ))}
+                {breakdown.multiple ? (
+                  <s-text color="subdued" fontSize="small">
+                    {t("results.multi_credit_note")}
+                  </s-text>
+                ) : null}
               </s-stack>
             </Panel>
           );

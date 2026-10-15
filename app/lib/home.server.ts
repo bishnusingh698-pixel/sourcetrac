@@ -16,15 +16,18 @@ import { listSurveys } from "~/lib/surveys.server";
 export type HomeSurvey = {
   id: string;
   name: string;
-  /** One key number: the top answer's label and share, or a numeric mean. */
+  /** One key number: the top answer's label and share, a mean, or an NPS score. */
   keyNumber: string;
   confidence: string;
+  /** The answers the confidence label was computed from (the badge's n). */
   responseCount: number;
   hasDraft: boolean;
 };
 
 /** At most three active surveys get a row on Home. */
 const HOME_SURVEY_LIMIT = 3;
+/** Newest answers read per survey for its key number; Results has the full view. */
+const HOME_RESPONSE_LIMIT = 2_000;
 
 /**
  * Whether this shop has ever collected an answer.
@@ -46,15 +49,22 @@ export async function loadHomeSurveys(shopId: string, locale: string): Promise<H
   const surveys = (await listSurveys(shopId)).filter((s) => s.status === "active").slice(0, HOME_SURVEY_LIMIT);
   if (surveys.length === 0) return [];
 
-  const out: HomeSurvey[] = [];
-  for (const item of surveys) {
+  const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
+  const percent = new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 0 });
+
+  // In parallel: each survey is independent, and serial reads made Home wait
+  // for all of them back to back.
+  const rows = await Promise.all(surveys.map((item) => loadOne(item)));
+  return rows.filter((row): row is HomeSurvey => row !== null);
+
+  async function loadOne(item: (typeof surveys)[number]): Promise<HomeSurvey | null> {
     const row = await db.survey.findFirst({
       where: { id: item.id, shopId },
       include: { questions: { orderBy: { position: "asc" }, include: { options: { orderBy: { position: "asc" } } } } },
     });
-    if (!row) continue;
+    if (!row) return null;
 
-    const responses = await fetchSurveyResponses({ shopId, surveyId: item.id, limit: 5000 });
+    const responses = await fetchSurveyResponses({ shopId, surveyId: item.id, limit: HOME_RESPONSE_LIMIT });
     const insights = buildSurveyInsights({
       responses,
       questions: row.questions.map((q) => ({ id: q.id, type: q.type, text: q.text, options: q.options })),
@@ -63,22 +73,26 @@ export async function loadHomeSurveys(shopId: string, locale: string): Promise<H
     });
 
     const main = insights.main;
-    const keyNumber = main
-      ? main.average !== null
-        ? String(main.average)
-        : main.topOptionKey
-          ? `${insights.optionLabels[main.topOptionKey] ?? main.topOptionKey} · ${Math.round(main.topShare * 100)}%`
-          : "—"
-      : "—";
+    let keyNumber = "—";
+    if (main?.nps) {
+      // An NPS question's headline is the score (% promoters − % detractors),
+      // not the 0–10 mean.
+      keyNumber = number.format(Math.round((main.nps.promoter - main.nps.detractor) * 100));
+    } else if (main && main.average !== null) {
+      keyNumber = number.format(main.average);
+    } else if (main?.topOptionKey) {
+      keyNumber = `${insights.optionLabels[main.topOptionKey] ?? main.topOptionKey} · ${percent.format(main.topShare)}`;
+    }
 
-    out.push({
+    return {
       id: item.id,
       name: item.name,
       keyNumber,
       confidence: main?.confidence ?? "too_early",
-      responseCount: item.responseCount,
+      // The confidence label is computed from the main question's answers, so
+      // the badge shows that count, not the survey's lifetime total.
+      responseCount: main?.n ?? 0,
       hasDraft: row.draft !== null,
-    });
+    };
   }
-  return out;
 }

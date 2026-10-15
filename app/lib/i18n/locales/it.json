@@ -150,7 +150,8 @@
     "download": "Scarica CSV",
     "preview_title": "Anteprima",
     "preview_description": "Le tue {{count}} risposte più recenti, esattamente come verranno esportate.",
-    "download_failed": "Il download non è partito. Riprova tra un momento."
+    "download_failed": "Il download non è partito. Riprova tra un momento.",
+    "truncated": "Questo file contiene solo le {{limit}} risposte più recenti. Quelle più vecchie sono state escluse."
   },
   "plans": {
     "title": "Piani",
@@ -590,7 +591,10 @@
     "cross_caption": "{{row}} per {{col}}",
     "cross_percent": "{{percent}}%",
     "ideas_title": "Idee da provare",
-    "filter_product": "Prodotto"
+    "filter_product": "Prodotto",
+    "multi_credit_note": "Una risposta con più scelte conta il suo ordine per ciascuna, quindi questi importi possono superare il totale.",
+    "capped_note": "Basato sulle {{limit}} risposte più recenti.",
+    "download_failed": "Il download non è partito. Riprova tra un momento."
   },
   "responses": {
     "title": "Risposte",
@@ -608,7 +612,16 @@
     "counted": "Contata",
     "not_counted": "Non contata",
     "previous": "Precedente",
-    "next": "Successivo"
+    "next": "Successivo",
+    "status_counted": "Conteggiata",
+    "status_awaiting_order": "In attesa dell’ordine",
+    "status_order_not_received": "Ordine non ricevuto",
+    "status_test_order": "Ordine di prova",
+    "status_cancelled": "Annullato",
+    "status_voided": "Stornato",
+    "status_refunded": "Rimborsato",
+    "status_total_unreadable": "Totale illeggibile",
+    "status_no_order": "Nessun ordine"
   },
   "library": {
     "title": "Libreria di modelli",

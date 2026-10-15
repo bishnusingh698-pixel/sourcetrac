@@ -163,7 +163,7 @@ the shop endpoint") is stale.
   2. Every buyer submission fails with `required`, `unknown_question` or `unknown_option` (a 400) until publish.
 - **Result:** the answers are lost.
 
-### [ ] C4. Dashboard, Export and the main CSV never show answers collected by the current checkout blocks (REP) — CONFIRMED
+### [x] C4. Dashboard, Export and the main CSV never show answers collected by the current checkout blocks (REP) — CONFIRMED
 
 - **Where:** `app/lib/analytics-queries.server.ts:85` (`FROM "SurveyResponse"`), `app/routes/app.export.tsx:35` and `app/routes/app.export_.csv.tsx`.
 - **Defect:** these read only the legacy v1 `SurveyResponse` table. Both checkout blocks use `useMultiSurvey` (`ThankYouBlock.tsx:73`, `OrderStatusBlock.tsx:65`) and post to `/api/survey-responses`, which writes only v2 `Response`.
@@ -220,22 +220,22 @@ the shop endpoint") is stale.
 
 ### Reporting
 
-- [ ] **H5 (CONFIRMED that it cannot serialise; the exact symptom is PLAUSIBLE): the Results loader returns a function.**
+- [x] **H5 (CONFIRMED that it cannot serialise; the exact symptom is PLAUSIBLE): the Results loader returns a function.**
   - Where: `app/routes/app.results.tsx:39`, `:43` and `:99` (called at `:187`).
   - Defect: the loader returns `amount`, a function. A function cannot reach the client.
   - Scenario: open Results for a survey with any counted revenue. `data.amount(...)` is not a function in the browser, so either turbo-stream fails to encode or a TypeError hits the error boundary.
   - Same pattern: `app/routes/app.surveys.library.$id.tsx:70/76` returns `questionTypeLabel` (Info, PLAUSIBLE).
-- [ ] **H6 (CONFIRMED): Dashboard range buttons go to Home.**
+- [x] **H6 (CONFIRMED): Dashboard range buttons go to Home.**
   - Where: `app/routes/app.dashboard.tsx:385`.
   - Defect: the buttons link to `/app?range=N` (Home), not `/app/dashboard?range=N`.
   - Scenario: clicking "Last 7 days" or "Last 90 days" leaves the Dashboard, so it is stuck on 30 days.
-- [ ] **H7 (CONFIRMED): satisfaction stats are always empty.**
+- [x] **H7 (CONFIRMED): satisfaction stats are always empty.**
   - Where: `shared/templates/stats.ts:45` and `:98`.
   - Defect: `satisfaction_5` is aggregated from `numberValue`, but the extension stores it as `optionIds: [id], numberValue: null` (`MultiSurveyView.tsx:241`, `answers.server.ts:229`).
   - Scenario: a satisfaction main question gives an always-null `average`.
     - Home shows "—" yet still says "reliable" / "ideas ready".
     - Idea rules that depend on the average never fire.
-- [ ] **H8 (CONFIRMED): Results show no bars for yes/no and satisfaction questions.**
+- [x] **H8 (CONFIRMED): Results show no bars for yes/no and satisfaction questions.**
   - Where: `app/lib/survey-analytics.server.ts:280`.
   - Defect: breakdowns list only merchant `Option` rows. `yes_no` and `satisfaction_5` use fixed ids and have no Option rows.
   - Scenario: Results for any yes/no or satisfaction question shows "N answered" with no bars.
@@ -356,7 +356,7 @@ the shop endpoint") is stale.
   - Where: `app/lib/webhooks.server.ts:447-449` and `:453`.
   - Defect: when the guarded `updateMany` matches nothing and `create` hits P2002, the code assumes a newer row exists and returns `order_stale_ignored` with 200, without re-running the guarded update.
   - Scenario: `orders/create` (T1) and `orders/cancelled` (T2 > T1) arrive within milliseconds. The cancellation is lost, and the cancelled order counts as revenue. The same race exists between backfill and a webhook.
-- [ ] **M9 (CONFIRMED): v2 shows a total frozen at first reconcile.**
+- [x] **M9 (CONFIRMED): v2 shows a total frozen at first reconcile.**
   - Where: `app/lib/answers.server.ts:464`, `app/routes/app.results_.csv.tsx:98-101` and `app/routes/app.responses.tsx:88-91`.
   - Defect: `Response.orderTotal` is only filled when null and is never updated. The revenue decision reads the live `OrderCache` instead.
   - Scenario: a $100 order is refunded down to $60. The CSV and Responses page show 100.00 "counted", while Results counts 60.
@@ -464,7 +464,7 @@ the shop endpoint") is stale.
 
 ### Reporting
 
-- [ ] **M30 (CONFIRMED that it is unbounded; OOM is PLAUSIBLE): Results load every response into memory.**
+- [x] **M30 (CONFIRMED that it is unbounded; OOM is PLAUSIBLE): Results load every response into memory.**
   - Where: `app/routes/app.results.tsx:47`, `app/routes/app.results_.csv.tsx:74` and `app/lib/survey-analytics.server.ts:88`.
   - Defect: all responses and answers are loaded with no limit, and the order lookup uses an unbounded `IN (...)`.
   - Scenario: about 48k responses on a 512 MB instance makes the loader slow or OOM.
@@ -472,15 +472,15 @@ the shop endpoint") is stale.
   - Where: `app/lib/order-backfill.server.ts:132-137` and `app/lib/shopify-graphql.server.ts:82`.
   - Defect: backfill runs inline in five loaders: up to 10 sequential calls with a 20s timeout and 4 retries on 429/5xx.
   - Scenario: when Shopify is slow, admin pages block for minutes.
-- [ ] **M32 (CONFIRMED): rows that will never resolve show as "Pending" forever.**
+- [x] **M32 (CONFIRMED): rows that will never resolve show as "Pending" forever.**
   - Where: `app/lib/survey-analytics.server.ts:323`.
   - Defect: "Pending" is `orderTotal === null`, which includes order-less (on-site/link) and `unverifiedFailed` rows.
   - Scenario: those rows show "Pending" forever.
-- [ ] **M33 (PLAUSIBLE): the response rate can exceed 100%.**
+- [x] **M33 (PLAUSIBLE): the response rate can exceed 100%.**
   - Where: `app/lib/analytics-queries.server.ts:327` versus `:156`.
   - Defect: the numerator counts by `submittedAt`, the denominator by order `createdAtShop`.
   - Scenario: order-status answers given days later push the rate over 100% on 7-day windows.
-- [ ] **M34 (CONFIRMED): multi-choice revenue is credited in full to every option.**
+- [x] **M34 (CONFIRMED): multi-choice revenue is credited in full to every option.**
   - Where: `app/lib/survey-analytics.server.ts:267-275`.
   - Scenario: Instagram + TikTok on a $100 order credits each with $100. Per-option totals exceed the survey total with no disclosure.
 
@@ -738,40 +738,40 @@ the shop endpoint") is stale.
 
 ### Reporting
 
-- [ ] **L65 (CONFIRMED): a crafted page number causes a 500.**
+- [x] **L65 (CONFIRMED): a crafted page number causes a 500.**
   - Where: `app/routes/app.responses.tsx:39`.
   - Defect: `page` is not floored or capped.
   - Scenario: `?page=1.01` or a huge value raises a Prisma error, giving a 500.
-- [ ] **L66 (CONFIRMED): Responses times render in the server's zone.**
+- [x] **L66 (CONFIRMED): Responses times render in the server's zone.**
   - Where: `app/routes/app.responses.tsx:84`.
   - Defect: dates use the server zone with no label, while the CSV uses the shop zone.
-- [ ] **L67 (CONFIRMED): Pending rows are labelled "Not counted".**
+- [x] **L67 (CONFIRMED): Pending rows are labelled "Not counted".**
   - Where: `app/routes/app.responses.tsx:163`.
   - Defect: the computed reason is never shown.
-- [ ] **L68 (CONFIRMED): abandoned rows are exported as "awaiting order".**
+- [x] **L68 (CONFIRMED): abandoned rows are exported as "awaiting order".**
   - Where: `app/routes/app.results_.csv.tsx:35`.
   - Defect: `unverifiedFailed` rows are exported as "awaiting order".
-- [ ] **L69 (CONFIRMED): truncated exports look complete.**
+- [x] **L69 (CONFIRMED): truncated exports look complete.**
   - Where: `app/routes/app.export.tsx:77-88` and `app/routes/app.export_.csv.tsx:191` and `:202`.
   - Defects:
     - the truncation header is ignored by the client;
     - the newest-first limit drops the oldest rows;
     - exactly 50,000 rows is flagged as truncated.
-- [ ] **L70 (CONFIRMED): a failed results CSV download is swallowed silently.**
+- [x] **L70 (CONFIRMED): a failed results CSV download is swallowed silently.**
   - Where: `app/routes/app.results.tsx:121`.
-- [ ] **L71 (CONFIRMED): unreconcilable rows wait forever.**
+- [x] **L71 (CONFIRMED): unreconcilable rows wait forever.**
   - Where: `app/lib/analytics.ts:130`.
   - Defect: Dashboard "pending" includes `unreconcilable` rows, which then show "waiting for order" forever.
-- [ ] **L72 (CONFIRMED): Home makes uncached blocking calls.**
+- [x] **L72 (CONFIRMED): Home makes uncached blocking calls.**
   - Where: `app/routes/app._index.tsx:71` and `app/lib/home.server.ts:50-57`.
   - Defect: every Home load makes an uncached blocking Shopify call and loads up to 3×5,000 responses sequentially.
-- [ ] **L73 (CONFIRMED): Home numbers are formatted and counted inconsistently.**
+- [x] **L73 (CONFIRMED): Home numbers are formatted and counted inconsistently.**
   - Where: `app/lib/home.server.ts:68` and `:79`.
   - Defects:
     - the average is not locale-formatted;
     - the badge count and the confidence `n` disagree;
     - NPS shows the 0–10 mean, not an NPS score.
-- [ ] **L74 (CONFIRMED): an older shop with no recent answers looks brand-new.**
+- [x] **L74 (CONFIRMED): an older shop with no recent answers looks brand-new.**
   - Where: `app/routes/app.dashboard.tsx:95`.
   - Defect: `hasAnyResponse` is window-scoped.
   - Scenario: no answers in the last 30 days shows the "no answers yet" empty state.
@@ -781,7 +781,7 @@ the shop endpoint") is stale.
 ## Info
 
 - [ ] **I2:** `markUnverifiedFailedResponses` (`app/lib/answers.server.ts:480-486`) has no `shopId` filter and no `orderId IS NOT NULL` filter. It runs only from `api.survey-config.tsx:84` (the legacy route), not on a dashboard visit as the project notes claim. It also flags order-less on-site/link answers. (CONFIRMED)
-- [ ] **I5:** `app/routes/app.dashboard.tsx:79` vs `:87`: two `new Date()` calls can straddle UTC midnight and shift the trend by a day. (PLAUSIBLE)
+- [x] **I5:** `app/routes/app.dashboard.tsx:79` vs `:87`: two `new Date()` calls can straddle UTC midnight and shift the trend by a day. (PLAUSIBLE)
 - [ ] **I6:** `app/lib/compliance.server.ts:73-79`: the data-request channel breakdown reads only legacy `SurveyResponse`, while the total includes v2. (CONFIRMED)
 - [ ] **I7:** Compliance, failed and ignored webhook ledger rows have `shopId = null` (`app/routes/webhooks.tsx:78`, `app/lib/webhooks.server.ts:152`), so they survive `shop/redact` until the 30-day purge. They hold no PII. (CONFIRMED)
 - [ ] **I8:** `app/lib/crypto.server.ts:72`: `safeEqual` leaks the secret length. Also, `/readyz` (`app/routes/readyz.tsx:23`) shares `RETENTION_JOB_SECRET` with the data-deleting `/jobs/retention`. (CONFIRMED)

@@ -5,7 +5,7 @@ import { previousWindowBounds, windowBounds } from "~/lib/analytics";
 import { formatTimestamp, orderAdminLink, resolveExportTimeZone, type CsvRow, type RevenueStatus } from "~/lib/csv";
 import { minorToDecimalString, parseMoneyToMinor } from "~/lib/money";
 import { evaluateResponseRevenue, type RevenueDecision } from "~/lib/revenue";
-import { OTHER_CHANNEL_VALUE } from "~/lib/settings";
+import { OTHER_CHANNEL_VALUE, parseSurveySettings } from "~/lib/settings";
 import { withRetry } from "~/lib/retry.server";
 
 /**
@@ -82,10 +82,10 @@ export async function fetchResponsesInWindow(params: {
         o."financialStatus",
         o."isTest",
         o."isCancelled"
-      FROM "SurveyResponse" r
+      FROM (${channelAnswersSql(params.shopId)}) r
       LEFT JOIN "OrderCache" o
-        ON o."shopId" = r."shopId" AND o."orderId" = r."orderId"
-      WHERE r."shopId" = ${params.shopId}
+        ON o."shopId" = ${params.shopId} AND o."orderId" = r."orderId"
+      WHERE TRUE
         ${params.start ? Prisma.sql`AND r."submittedAt" >= ${params.start}` : Prisma.empty}
         ${params.end ? Prisma.sql`AND r."submittedAt" < ${params.end}` : Prisma.empty}
         ${params.channel ? Prisma.sql`AND r.channel = ${params.channel}` : Prisma.empty}
@@ -95,6 +95,92 @@ export async function fetchResponsesInWindow(params: {
   );
 
   return rows.map(toResponseWithOrder);
+}
+
+/**
+ * Every channel answer for a shop, from both stores, in one shape.
+ *
+ * - The legacy `SurveyResponse` rows that the multi-question migration did not
+ *   copy (the old single-question route still writes them), and
+ * - every v2 `Response` (which includes the migrated history, `bf-response-*`)
+ *   that answered its survey's channel-report question.
+ *
+ * The checkout blocks write only v2, so reading `SurveyResponse` alone left the
+ * dashboard and export empty for every shop installed after that release.
+ *
+ * A v2 answer's channel is the chosen option id. Migrated options carry the
+ * legacy channel value in their id (`bf-option-<shop>-<value>`); that prefix is
+ * stripped so history and post-migration legacy rows stay one channel. Revenue
+ * is decided the same way for both: a v2 row with a stored total is
+ * "reconciled", and one the 24h sweep gave up on is "unreconcilable". An
+ * answer with no order id (on-site and link placements) cannot carry revenue
+ * and is not part of this order-level report.
+ */
+function channelAnswersSql(shopId: string): Prisma.Sql {
+  const bfPrefix = `bf-option-${shopId}-`;
+  return Prisma.sql`
+    SELECT
+      l.id, l."orderId", l.channel, l."otherText", l."submittedAt", l."isLocked",
+      l.reconciled, l."unreconcilable"
+    FROM "SurveyResponse" l
+    WHERE l."shopId" = ${shopId}
+      AND NOT EXISTS (SELECT 1 FROM "Response" b WHERE b.id = 'bf-response-' || l.id)
+    UNION ALL
+    SELECT
+      v.id,
+      v."orderId",
+      CASE
+        WHEN starts_with(a."optionIds"::jsonb ->> 0, ${bfPrefix})
+          THEN substr(a."optionIds"::jsonb ->> 0, ${bfPrefix.length + 1}::int)
+        ELSE a."optionIds"::jsonb ->> 0
+      END AS channel,
+      a."otherText",
+      v."createdAt" AS "submittedAt",
+      v.flagged AS "isLocked",
+      (v."orderTotal" IS NOT NULL) AS reconciled,
+      v."unverifiedFailed" AS "unreconcilable"
+    FROM "Response" v
+    JOIN "Survey" s ON s.id = v."surveyId"
+    JOIN "Answer" a ON a."responseId" = v.id AND a."questionId" = s."channelReportQuestionId"
+    WHERE v."shopId" = ${shopId}
+      AND v."orderId" IS NOT NULL
+      AND jsonb_typeof(a."optionIds"::jsonb) = 'array'
+      AND (a."optionIds"::jsonb ->> 0) IS NOT NULL
+  `;
+}
+
+/** How many channel answers the shop has in total (the Export page count). */
+export async function countChannelAnswers(shopId: string): Promise<number> {
+  const rows = await retryDb(() =>
+    db.$queryRaw<Array<{ count: bigint }>>`SELECT COUNT(*)::bigint AS count FROM (${channelAnswersSql(shopId)}) r`,
+  );
+  return Number(rows[0]?.count ?? 0);
+}
+
+/**
+ * Channel key -> the merchant's label: the single-question settings' labels,
+ * plus every option of the shop's surveys (archived included, so a removed
+ * option keeps its name in reports).
+ */
+export async function fetchChannelLabels(shop: {
+  id: string;
+  optionsJson: string;
+  questionText: string;
+}): Promise<Map<string, string>> {
+  const labels = new Map(
+    parseSurveySettings(shop.optionsJson, { questionText: shop.questionText, options: [], allowOther: false }).options.map(
+      (option) => [option.value, option.label] as const,
+    ),
+  );
+  const options = await retryDb(() =>
+    db.option.findMany({ where: { question: { survey: { shopId: shop.id } } }, select: { id: true, label: true } }),
+  );
+  const bfPrefix = `bf-option-${shop.id}-`;
+  for (const option of options) {
+    const key = option.id.startsWith(bfPrefix) ? option.id.slice(bfPrefix.length) : option.id;
+    if (!labels.has(key)) labels.set(key, option.label);
+  }
+  return labels;
 }
 
 type ResponseWithOrderRow = {
@@ -137,11 +223,36 @@ function toResponseWithOrder(row: ResponseWithOrderRow): ResponseWithOrder {
 
 /** Denormalised count, used for the previous-period comparison. */
 export async function countResponsesInWindow(params: { shopId: string; start: Date; end: Date }): Promise<number> {
-  return retryDb(() =>
-    db.surveyResponse.count({
-      where: { shopId: params.shopId, submittedAt: { gte: params.start, lt: params.end } },
-    }),
+  const rows = await retryDb(() =>
+    db.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(*)::bigint AS count FROM (${channelAnswersSql(params.shopId)}) r
+      WHERE r."submittedAt" >= ${params.start} AND r."submittedAt" < ${params.end}
+    `,
   );
+  return Number(rows[0]?.count ?? 0);
+}
+
+/**
+ * The response rate's numerator: eligible orders PLACED in the window that have
+ * an answer, whenever it was given. Counting answers by their own date against
+ * orders by theirs let late Order-status answers push the rate past 100%.
+ */
+export async function countAnsweredEligibleOrdersInWindow(params: {
+  shopId: string;
+  start: Date;
+  end: Date;
+}): Promise<number> {
+  const rows = await retryDb(() =>
+    db.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(*)::bigint AS count
+      FROM "OrderCache" o
+      WHERE o."shopId" = ${params.shopId}
+        AND o."createdAtShop" >= ${params.start} AND o."createdAtShop" < ${params.end}
+        AND o."isTest" = false AND o."isCancelled" = false
+        AND EXISTS (SELECT 1 FROM (${channelAnswersSql(params.shopId)}) r WHERE r."orderId" = o."orderId")
+    `,
+  );
+  return Number(rows[0]?.count ?? 0);
 }
 
 /**
@@ -311,10 +422,12 @@ export async function fetchDashboardData(params: { shopId: string; days: number;
   const { start, end } = windowBounds(params.days, now);
   const previous = previousWindowBounds(params.days, now);
 
-  const [responses, ordersInWindow, previousCount] = await Promise.all([
+  const [responses, ordersInWindow, previousCount, rateResponses, totalCount] = await Promise.all([
     fetchResponsesInWindow({ shopId: params.shopId, start, end }),
     countEligibleOrdersInWindow({ shopId: params.shopId, start, end }),
     countResponsesInWindow({ shopId: params.shopId, start: previous.start, end: previous.end }),
+    countAnsweredEligibleOrdersInWindow({ shopId: params.shopId, start, end }),
+    countChannelAnswers(params.shopId),
   ]);
 
   return {
@@ -323,7 +436,9 @@ export async function fetchDashboardData(params: { shopId: string; days: number;
     previousCount,
     window: { start, end },
     decidedAmounts: toDecidedAmounts(responses),
-    // Same exclusions as `countEligibleOrdersInWindow`, the rate's denominator.
-    rateResponses: responses.filter((row) => !(row.order && (row.order.isTest || row.order.isCancelled))).length,
+    // Answered orders among the same eligible orders as the denominator.
+    rateResponses,
+    /** Answers ever, so a shop with none in this window is not shown as brand-new. */
+    totalCount,
   };
 }

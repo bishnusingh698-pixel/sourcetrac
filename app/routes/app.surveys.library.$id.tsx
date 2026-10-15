@@ -67,13 +67,10 @@ export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) =>
     design: template.defaults.design,
   });
 
-  const questionTypeLabel = (type: string) => `surveys.type_${shortType(type)}`;
-
   return {
     detail,
     preview,
     languages: LANGUAGES.map((l) => ({ code: l.code, name: l.nativeName })),
-    questionTypeLabel,
   };
 });
 

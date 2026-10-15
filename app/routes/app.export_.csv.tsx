@@ -32,11 +32,15 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   // fetched now, so their answers stop reading "Pending". Bounded and never throws.
   await backfillMissingOrders({ shopId: shop.id, shopDomain: shop.shopDomain, accessToken: session.accessToken });
 
-  // The query returns newest first; the file is oldest first.
-  const [responses, context] = await Promise.all([
-    fetchResponsesInWindow({ shopId: shop.id, limit: MAX_CSV_ROWS }),
+  // The query returns newest first; the file is oldest first. One row past the
+  // cap is read only to know whether anything was left out: a shop with
+  // exactly the cap is complete. When truncated, the newest answers are kept.
+  const [fetched, context] = await Promise.all([
+    fetchResponsesInWindow({ shopId: shop.id, limit: MAX_CSV_ROWS + 1 }),
     loadExportContext(shop, session),
   ]);
+  const truncated = fetched.length > MAX_CSV_ROWS;
+  const responses = truncated ? fetched.slice(0, MAX_CSV_ROWS) : fetched;
   const csv = toCsv(toExportRows([...responses].reverse(), context));
 
   return new Response(csv, {
@@ -45,7 +49,8 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
       "Content-Disposition": `attachment; filename="${csvFilename(new Date(), resolveExportTimeZone(context.timeZone))}"`,
       // Signal a truncated file so the client can warn the merchant instead of
       // silently presenting a partial export as complete.
-      "X-SourceTrac-Truncated": String(responses.length >= MAX_CSV_ROWS),
+      "X-SourceTrac-Truncated": String(truncated),
+      "X-SourceTrac-Row-Limit": String(MAX_CSV_ROWS),
       // The file is generated per request from live data, so it must never be
       // cached by a proxy sitting in front of Render.
       "Cache-Control": "no-store",

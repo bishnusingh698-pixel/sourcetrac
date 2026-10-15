@@ -21,6 +21,11 @@ first; otherwise the option safest for merchants and their data.
 - **M28** (editing answered questions): changing the *type* of a question that has answers is refused; relabelling options stays allowed so typos can be fixed.
 - **I25** (missing revision): the Studio route now refuses a post without a revision (shown as a conflict). The library functions keep the optional parameter for internal callers, but the check is now an atomic conditional update.
 - **L60** (setup wizard): a launch creates the survey as active in the same transaction as the create, so a retry cannot leave a duplicate.
+- **C4** (reports read only the legacy table): the dashboard and export now read one union of legacy `SurveyResponse` rows the migration did not copy and every v2 `Response` that answered its survey's channel-report question; migrated `bf-option-<shop>-<value>` ids are folded back to their legacy value so history stays one channel. Answers without an order id (on-site/link) are left out of this order-level report.
+- **M33** (rate over 100%): the rate's numerator is now "eligible orders placed in the window that have an answer", the same population as the denominator.
+- **M34** (multi-choice revenue): kept full credit per chosen option (splitting an order's value would invent a model the merchant never chose) and added a note under every multiple-choice breakdown saying the amounts can exceed the total.
+- **M30/L69** (large result sets): Results aggregates the newest 5,000 answers and says so when capped; both CSVs cap at 50,000 newest rows, read one extra row to detect truncation exactly, send `X-SourceTrac-Truncated`, and the Export page now warns.
+- **L73** (Home numbers): an NPS question shows its NPS score; the confidence badge shows the number of answers the label was computed from.
 
 ## Steps for the repository owner (not done here: deploys or touching real data)
 

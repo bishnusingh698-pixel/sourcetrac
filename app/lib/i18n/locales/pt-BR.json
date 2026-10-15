@@ -150,7 +150,8 @@
     "download": "Baixar CSV",
     "preview_title": "Pré-visualização",
     "preview_description": "Suas {{count}} respostas mais recentes, exatamente como serão exportadas.",
-    "download_failed": "O download não começou. Tente novamente em instantes."
+    "download_failed": "O download não começou. Tente novamente em instantes.",
+    "truncated": "Este arquivo contém apenas as {{limit}} respostas mais recentes. As mais antigas ficaram de fora."
   },
   "plans": {
     "title": "Planos",
@@ -590,7 +591,10 @@
     "cross_caption": "{{row}} por {{col}}",
     "cross_percent": "{{percent}}%",
     "ideas_title": "Ideias para testar",
-    "filter_product": "Produto"
+    "filter_product": "Produto",
+    "multi_credit_note": "Uma resposta com várias opções conta o pedido em cada uma, então estes valores podem somar mais que o total.",
+    "capped_note": "Com base nas {{limit}} respostas mais recentes.",
+    "download_failed": "O download não começou. Tente novamente em instantes."
   },
   "responses": {
     "title": "Respostas",
@@ -608,7 +612,16 @@
     "counted": "Contabilizada",
     "not_counted": "Não contabilizada",
     "previous": "Anterior",
-    "next": "Próxima"
+    "next": "Próxima",
+    "status_counted": "Contabilizada",
+    "status_awaiting_order": "Aguardando pedido",
+    "status_order_not_received": "Pedido não recebido",
+    "status_test_order": "Pedido de teste",
+    "status_cancelled": "Cancelado",
+    "status_voided": "Anulado",
+    "status_refunded": "Reembolsado",
+    "status_total_unreadable": "Total ilegível",
+    "status_no_order": "Sem pedido"
   },
   "library": {
     "title": "Biblioteca de modelos",

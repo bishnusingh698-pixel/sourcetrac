@@ -21,7 +21,7 @@ import { templateById } from "@shared/templates/index";
 import { templateText } from "@shared/templates/locales";
 import { regionPackFor } from "@shared/templates/packs";
 import { currentSpotlight } from "@shared/templates/catalog";
-import { fetchShopLocaleInfo } from "~/lib/shopify-graphql.server";
+import { getShopLocaleInfo } from "~/lib/studio.server";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -68,7 +68,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const templateLocale = shop.language ?? "en";
   let spotlightTemplateName: string | null = null;
   if (homeSurveys.length > 0) {
-    const { countryCode, timeZone } = await fetchShopLocaleInfo(shop.shopDomain, session.accessToken);
+    const { countryCode, timeZone } = await getShopLocaleInfo(shop.id, shop.shopDomain, session.accessToken);
     const spotlight = currentSpotlight({
       locale: templateLocale,
       region: regionPackFor(countryCode),

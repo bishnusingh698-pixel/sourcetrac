@@ -10,9 +10,8 @@ import {
   type RevenueStatus,
   type SurveyCsvRow,
 } from "~/lib/csv";
-import { decideSurveyRevenue, fetchSurveyResponses } from "~/lib/survey-analytics.server";
+import { currentOrderTotal, fetchSurveyResponses, surveyRevenueStatus } from "~/lib/survey-analytics.server";
 import { getSurveyRow, listSurveys } from "~/lib/surveys.server";
-import { formatDecimalForCurrency } from "~/lib/money";
 import { loadExportContext } from "~/lib/export.server";
 import { ensureShop } from "~/lib/provision.server";
 import { backfillMissingOrders } from "~/lib/order-backfill.server";
@@ -27,14 +26,8 @@ import { authenticate } from "~/shopify.server";
  * the same decision as the Results page, so `counted` rows are exactly the
  * orders those totals include.
  */
-const REASON_LABEL: Record<string, RevenueStatus> = {
-  test_order: "test order",
-  cancelled: "cancelled",
-  voided: "voided",
-  fully_refunded: "refunded",
-  unreconciled: "awaiting order",
-  unparseable_total: "total unreadable",
-};
+/** Same cap as the main export; the newest answers are kept. */
+const MAX_CSV_ROWS = 50_000;
 
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -71,13 +64,13 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     header: questionColumnHeader(question.text, index, taken),
   }));
 
-  const responses = await fetchSurveyResponses({ shopId: shop.id, surveyId: selectedId });
+  const fetched = await fetchSurveyResponses({ shopId: shop.id, surveyId: selectedId, limit: MAX_CSV_ROWS + 1 });
+  const truncated = fetched.length > MAX_CSV_ROWS;
+  const responses = truncated ? fetched.slice(0, MAX_CSV_ROWS) : fetched;
 
   const rows: SurveyCsvRow[] = [...responses].reverse().map((response) => {
-    const decision = decideSurveyRevenue(response);
-    const status: RevenueStatus = decision.included
-      ? "counted"
-      : REASON_LABEL[decision.reason] ?? "awaiting order";
+    const status: RevenueStatus = surveyRevenueStatus(response);
+    const total = currentOrderTotal(response);
 
     const answers: Record<string, string> = {};
     for (const answer of response.answers) {
@@ -95,11 +88,8 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
       submittedAt: formatTimestamp(response.createdAt, resolveExportTimeZone(context.timeZone)),
       timeZone: resolveExportTimeZone(context.timeZone),
       placement: response.placement,
-      orderTotal:
-        response.orderTotal !== null && response.currency
-          ? formatDecimalForCurrency(response.orderTotal, response.currency)
-          : null,
-      currency: response.currency ?? null,
+      orderTotal: total?.total ?? null,
+      currency: total?.currency ?? null,
       revenueStatus: status,
       orderLink: response.orderId ? orderAdminLink(shop.shopDomain, response.orderId) : "",
       answers,
@@ -110,6 +100,8 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="${csvFilename(new Date(), resolveExportTimeZone(context.timeZone))}"`,
+      "X-SourceTrac-Truncated": String(truncated),
+      "X-SourceTrac-Row-Limit": String(MAX_CSV_ROWS),
       "Cache-Control": "no-store",
     },
   });

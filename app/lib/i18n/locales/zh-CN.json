@@ -150,7 +150,8 @@
     "download": "下载 CSV",
     "preview_title": "预览",
     "preview_description": "您最近的 {{count}} 条回答，与导出时完全一致。",
-    "download_failed": "下载未能开始。请稍后重试。"
+    "download_failed": "下载未能开始。请稍后重试。",
+    "truncated": "此文件仅包含最新的 {{limit}} 条回答，较早的回答未包含在内。"
   },
   "plans": {
     "title": "套餐",
@@ -590,7 +591,10 @@
     "cross_caption": "按 {{col}} 划分的 {{row}}",
     "cross_percent": "{{percent}}%",
     "ideas_title": "可尝试的想法",
-    "filter_product": "产品"
+    "filter_product": "产品",
+    "multi_credit_note": "多选回答会把订单计入每个所选项，因此这些金额之和可能超过总额。",
+    "capped_note": "基于最新的 {{limit}} 条回答。",
+    "download_failed": "下载未能开始，请稍后重试。"
   },
   "responses": {
     "title": "回答",
@@ -608,7 +612,16 @@
     "counted": "已计入",
     "not_counted": "未计入",
     "previous": "上一页",
-    "next": "下一页"
+    "next": "下一页",
+    "status_counted": "已计入",
+    "status_awaiting_order": "等待订单",
+    "status_order_not_received": "未收到订单",
+    "status_test_order": "测试订单",
+    "status_cancelled": "已取消",
+    "status_voided": "已作废",
+    "status_refunded": "已退款",
+    "status_total_unreadable": "总额无法读取",
+    "status_no_order": "无订单"
   },
   "library": {
     "title": "模板库",
