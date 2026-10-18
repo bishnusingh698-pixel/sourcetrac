@@ -822,7 +822,8 @@ async function claimRevision(
  * create/setup/duplicate intents could otherwise hand a Free shop the Growth
  * feature (an exclusive option, T6, or a by-product breakdown, T8).
  *
- * Content-based for the exclusive option, so the Lite build (which strips it)
+ * Content-based for the exclusive option, so the Lite build (which makes it
+ * ordinary)
  * still creates on Free; the by-product breakdown cannot be subset away, so a
  * template that ships it is blocked outright on Free.
  */

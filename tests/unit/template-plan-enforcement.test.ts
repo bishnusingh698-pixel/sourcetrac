@@ -45,10 +45,10 @@ describe("template plan enforcement (DH-002)", () => {
     expect(templateLockedForPlan(compass, "free")).toBe(false);
   });
 
-  it("strips the exclusive option from the Lite version of a gated template", () => {
+  it("keeps the None answer in the Lite version, without the paid clear-the-rest behaviour", () => {
     // An exclusive option (T6) is what makes the FULL template Growth. If Lite
     // kept it, a Free merchant would get the paid feature.
-    for (const id of ["ad-recall", "packaging-priorities", "taste-profile"]) {
+    for (const id of ["ad-recall", "packaging-priorities", "taste-profile", "where-else", "contact-preference"]) {
       const template = templateById(id)!;
       expect(templateRequiredPlan(template)).toBe("growth");
 
@@ -57,8 +57,11 @@ describe("template plan enforcement (DH-002)", () => {
 
       expect(definitionHasExclusiveOption(full)).toBe(true);
       expect(definitionHasExclusiveOption(lite)).toBe(false);
-      // The non-exclusive answers survive.
-      expect(lite.questions[0]!.options!.length).toBeGreaterThan(0);
+      // Every answer survives, "None of these" included: without it a buyer
+      // with nothing to tick had to pick something untrue.
+      const fullQuestion = full.questions.find((q) => q.options?.some((o) => o.exclusive))!;
+      const liteQuestion = lite.questions.find((q) => q.id === fullQuestion.id)!;
+      expect(liteQuestion.options!.map((o) => o.id)).toEqual(fullQuestion.options!.map((o) => o.id));
     }
   });
 

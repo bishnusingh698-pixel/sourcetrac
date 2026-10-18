@@ -52,7 +52,8 @@ export function templateLockedForPlan(template: TemplateDefinition, plan: Catalo
 /**
  * Whether the definition's own content uses a Growth-only feature.
  *
- * Content-based so the Lite version (which strips the exclusive option) passes
+ * Content-based so the Lite version (which turns the exclusive option into an
+ * ordinary one) passes
  * on Free while the full version does not. The by-product breakdown is not a
  * question-level feature, so it is checked separately by template id.
  */
@@ -67,7 +68,7 @@ export function definitionHasExclusiveOption(definition: {
  *
  * A Lite subset exists AND the template has no by-product breakdown, which
  * cannot be subset away (it is a results feature tied to the template id). An
- * exclusive option does not block Free: the Lite build strips it.
+ * exclusive option does not block Free: the Lite build makes it ordinary.
  */
 export function templateHasFreeVersion(template: TemplateDefinition): boolean {
   if (template.liteQuestionKeys.length === 0) return false;

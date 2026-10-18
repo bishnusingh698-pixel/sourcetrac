@@ -74,10 +74,14 @@ export function buildSurveyDefinition(params: {
   const { template, locale, region, lite = false } = params;
   const incoming = includedQuestions(template, lite);
   // Lite is the Free-plan subset, so it must not carry a Growth-only feature.
-  // An exclusive option (T6) is what makes the FULL version Growth; keeping it
-  // in Lite would hand the paid feature to a Free merchant.
+  // What is Growth is the exclusive *behaviour* (T6: ticking "None of these"
+  // clears the rest), not the answer itself. Lite keeps the answer as an
+  // ordinary option: dropping it made a buyer who only shops with you, or wants
+  // no messages, pick something untrue or abandon the survey.
   const liteOptions = lite
-    ? incoming.map((q) => (q.options ? { ...q, options: q.options.filter((o) => !o.exclusive) } : q))
+    ? incoming.map((q) =>
+        q.options ? { ...q, options: q.options.map((o) => (o.exclusive ? { ...o, exclusive: false } : o)) } : q,
+      )
     : incoming;
   // A profile question's pack is an industry the merchant picks in Quick setup,
   // so a `profileFamily` replaces the template's default beauty pack. The

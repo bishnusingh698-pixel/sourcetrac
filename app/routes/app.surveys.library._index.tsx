@@ -13,7 +13,13 @@ import { NotFoundError, ValidationError } from "~/lib/errors";
 import { effectivePlan } from "~/lib/plans";
 import { getShopLocaleInfo } from "~/lib/studio.server";
 import { isEnabled } from "@shared/feature-flags";
-import { CATEGORY_ORDER, catalogPlanFromKey, templateHasFreeVersion, templateLockedForPlan } from "@shared/templates/catalog";
+import {
+  CATEGORY_ORDER,
+  catalogPlanFromKey,
+  templateHasFreeVersion,
+  templateLockedForPlan,
+  templateRequiredPlan,
+} from "@shared/templates/catalog";
 import { buildSurveyDefinition } from "@shared/templates/resolve";
 import { regionPackFor } from "@shared/templates/packs";
 import { templateText } from "@shared/templates/locales";
@@ -92,6 +98,9 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
       // "full": everything included. "free_version": the plan gets fewer
       // questions. "paid": the plan cannot use this template.
       access: !locked ? "full" : hasFree ? "free_version" : "paid",
+      // Whether the whole template is on the Free plan, so a merchant can tell
+      // at a glance before choosing.
+      fullyFree: templateRequiredPlan(template) === "free",
     } as const;
   });
 
@@ -299,6 +308,7 @@ function TemplateCard({ card, primary = false }: { card: Card; primary?: boolean
         <s-stack direction="inline" gap="small" alignItems="center">
           <s-heading>{card.name}</s-heading>
           {card.access === "paid" ? <s-badge tone="info">{t("library.needs_plan", { plan: t("plans.growth") })}</s-badge> : null}
+          {card.fullyFree ? <s-badge tone="success">{t("plans.free")}</s-badge> : null}
         </s-stack>
         <s-text color="subdued">{card.oneLiner}</s-text>
 
