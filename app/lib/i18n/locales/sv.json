@@ -638,7 +638,22 @@
     "reason_language": "”{{survey}}” är begränsad till andra språk.",
     "reason_order_value": "Beställningens summa ligger utanför ordervärdesintervallet för ”{{survey}}”.",
     "recent_outdated_title": "Din kassa kör en gammal version av SourceTrac-blocket",
-    "recent_outdated_body": "En uppdatering av appens server uppdaterar inte blocket i kassan. Den som sköter appen måste köra ”shopify app deploy” (och släppa den nya versionen om det efterfrågas). Äldre block kanske inte visar något alls."
+    "recent_outdated_body": "En uppdatering av appens server uppdaterar inte blocket i kassan. Den som sköter appen måste köra ”shopify app deploy” (och släppa den nya versionen om det efterfrågas). Äldre block kanske inte visar något alls.",
+    "check_title": "Kassakontroll",
+    "check_server": "SourceTrac-servern körs.",
+    "check_server_version": "SourceTrac-servern körs (version {{commit}}).",
+    "check_database_ok": "Databasen är uppdaterad.",
+    "check_database_fail": "Databasuppdateringen kördes inte ({{code}}), så köpare kan inte ladda enkäter. Driftsätt appen på Render igen och leta efter ”migrate” i loggen.",
+    "check_survey": "{{page}}: ”{{survey}}” är aktiv och visas här.",
+    "check_survey_rules": "{{page}}: ”{{survey}}” är aktiv här, men reglerna under ”Vem ser den” gör att bara vissa beställningar ser den.",
+    "check_no_survey": "{{page}}: ingen aktiv enkät är inställd här. Slå på en enkät och markera sidan under ”Var den visas”.",
+    "check_block_never": "{{page}}: SourceTrac-blocket har inte laddats här sedan appen startades om. Lägg till blocket ”SourceTrac survey” på sidan i kassaredigeraren, klicka på Spara och öppna redigeraren igen eller lägg en testbeställning.",
+    "check_block_old": "{{page}}: blocket laddades {{when}}, men det är en gammal version. Kör ”shopify app deploy” och släpp den nya versionen.",
+    "check_block_buyer": "{{page}}: blocket laddades för en köpare {{when}} (senaste versionen).",
+    "check_block_editor": "{{page}}: blocket laddades i kassaredigeraren {{when}} (senaste versionen).",
+    "check_new_order": "Varje beställning tillfrågas bara en gång. Testa med en ny beställning och se ”Senaste kassor” nedan.",
+    "check_plan_hidden_one": "{{count}} aktiv enkät ligger över planens gräns, så köpare ser den inte.",
+    "check_plan_hidden_other": "{{count}} aktiva enkäter ligger över planens gräns, så köpare ser dem inte."
   },
   "templates": {
     "how_did_you_hear": {

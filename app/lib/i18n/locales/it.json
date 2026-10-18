@@ -638,7 +638,22 @@
     "reason_language": "«{{survey}}» è limitato ad altre lingue.",
     "reason_order_value": "Il totale di questo ordine è fuori dall'intervallo di valore di «{{survey}}».",
     "recent_outdated_title": "Il tuo checkout usa una versione vecchia del blocco SourceTrac",
-    "recent_outdated_body": "Aggiornare il server dell'app non aggiorna il blocco nel checkout. Chi gestisce l'app deve eseguire «shopify app deploy» (e pubblicare la nuova versione se richiesto). I blocchi vecchi potrebbero non mostrare nulla."
+    "recent_outdated_body": "Aggiornare il server dell'app non aggiorna il blocco nel checkout. Chi gestisce l'app deve eseguire «shopify app deploy» (e pubblicare la nuova versione se richiesto). I blocchi vecchi potrebbero non mostrare nulla.",
+    "check_title": "Controllo del checkout",
+    "check_server": "Il server di SourceTrac è attivo.",
+    "check_server_version": "Il server di SourceTrac è attivo (versione {{commit}}).",
+    "check_database_ok": "Il database è aggiornato.",
+    "check_database_fail": "L'aggiornamento del database non è stato eseguito ({{code}}), quindi gli acquirenti non possono caricare i sondaggi. Ripubblica l'app su Render e cerca «migrate» nel log.",
+    "check_survey": "{{page}}: «{{survey}}» è attivo e impostato per apparire qui.",
+    "check_survey_rules": "{{page}}: «{{survey}}» è attivo qui, ma per le regole in «Chi lo vede» lo vedono solo alcuni ordini.",
+    "check_no_survey": "{{page}}: nessun sondaggio attivo è impostato qui. Attiva un sondaggio e seleziona questa pagina in «Dove appare».",
+    "check_block_never": "{{page}}: il blocco SourceTrac non si è caricato qui dall'ultimo riavvio dell'app. Nell'editor del checkout aggiungi il blocco «SourceTrac survey» a questa pagina, premi Salva, poi riapri l'editor o fai un ordine di prova.",
+    "check_block_old": "{{page}}: il blocco si è caricato {{when}}, ma è una versione vecchia. Esegui «shopify app deploy» e pubblica la nuova versione.",
+    "check_block_buyer": "{{page}}: il blocco si è caricato per un acquirente {{when}} (ultima versione).",
+    "check_block_editor": "{{page}}: il blocco si è caricato nell'editor del checkout {{when}} (ultima versione).",
+    "check_new_order": "Ogni ordine viene interrogato una sola volta. Prova con un nuovo ordine e guarda sotto «Checkout recenti» cosa è successo.",
+    "check_plan_hidden_one": "{{count}} sondaggio attivo supera il limite del tuo piano, quindi gli acquirenti non lo vedono.",
+    "check_plan_hidden_other": "{{count}} sondaggi attivi superano il limite del tuo piano, quindi gli acquirenti non li vedono."
   },
   "templates": {
     "how_did_you_hear": {

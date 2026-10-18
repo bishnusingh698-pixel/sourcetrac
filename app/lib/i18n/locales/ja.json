@@ -638,7 +638,22 @@
     "reason_language": "「{{survey}}」は他の言語に限定されています。",
     "reason_order_value": "この注文の合計は「{{survey}}」の注文金額の範囲外です。",
     "recent_outdated_title": "チェックアウトで古いバージョンのSourceTracブロックが動いています",
-    "recent_outdated_body": "アプリのサーバーを更新しても、チェックアウトのブロックは更新されません。アプリの管理者が「shopify app deploy」を実行し、求められたら新しいバージョンをリリースしてください。古いブロックは何も表示しないことがあります。"
+    "recent_outdated_body": "アプリのサーバーを更新しても、チェックアウトのブロックは更新されません。アプリの管理者が「shopify app deploy」を実行し、求められたら新しいバージョンをリリースしてください。古いブロックは何も表示しないことがあります。",
+    "check_title": "チェックアウトの確認",
+    "check_server": "SourceTracサーバーは稼働中です。",
+    "check_server_version": "SourceTracサーバーは稼働中です（バージョン {{commit}}）。",
+    "check_database_ok": "データベースは最新です。",
+    "check_database_fail": "データベースの更新が実行されていないため（{{code}}）、購入者はアンケートを読み込めません。Renderでアプリを再デプロイし、デプロイログで「migrate」を確認してください。",
+    "check_survey": "{{page}}：「{{survey}}」が公開中で、ここに表示される設定です。",
+    "check_survey_rules": "{{page}}：「{{survey}}」は公開中ですが、「表示対象」のルールにより一部の注文にのみ表示されます。",
+    "check_no_survey": "{{page}}：ここに表示する公開中のアンケートがありません。アンケートをオンにし、「表示する場所」でこのページを選んでください。",
+    "check_block_never": "{{page}}：アプリの前回の再起動以降、ここでSourceTracブロックが読み込まれていません。チェックアウトエディタでこのページに「SourceTrac survey」ブロックを追加して保存し、エディタを開き直すかテスト注文をしてください。",
+    "check_block_old": "{{page}}：ブロックは{{when}}に読み込まれましたが、古いバージョンです。「shopify app deploy」を実行し、新しいバージョンをリリースしてください。",
+    "check_block_buyer": "{{page}}：{{when}}に購入者向けにブロックが読み込まれました（最新バージョン）。",
+    "check_block_editor": "{{page}}：{{when}}にチェックアウトエディタでブロックが読み込まれました（最新バージョン）。",
+    "check_new_order": "各注文への質問は1回だけです。新しい注文でテストし、下の「最近のチェックアウト」で結果を確認してください。",
+    "check_plan_hidden_one": "{{count}}件の公開中アンケートがプランの上限を超えているため、購入者には表示されません。",
+    "check_plan_hidden_other": "{{count}}件の公開中アンケートがプランの上限を超えているため、購入者には表示されません。"
   },
   "templates": {
     "how_did_you_hear": {

@@ -1,4 +1,5 @@
 import { logger } from "~/lib/logger";
+import { CURRENT_BLOCK_BUILD } from "@shared/block-build";
 
 /**
  * GET /healthz — liveness probe.
@@ -24,6 +25,11 @@ export const loader = async () => {
       status: "ok",
       service: "sourcetrac",
       booted_at: BOOTED_AT,
+      // Which code is live, so "did my deploy reach Render?" has an answer in
+      // a browser tab. Render sets RENDER_GIT_COMMIT on git-backed services.
+      commit: process.env.RENDER_GIT_COMMIT?.slice(0, 7) ?? null,
+      // The checkout block build this server expects (shared/block-build.ts).
+      block_build: CURRENT_BLOCK_BUILD,
     }),
     {
       status: 200,

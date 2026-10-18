@@ -638,7 +638,22 @@
     "reason_language": "„{{survey}}“ ist auf andere Sprachen beschränkt.",
     "reason_order_value": "Die Summe dieser Bestellung liegt außerhalb des Bestellwertbereichs von „{{survey}}“.",
     "recent_outdated_title": "Ihr Checkout verwendet eine alte Version des SourceTrac-Blocks",
-    "recent_outdated_body": "Ein Update des App-Servers aktualisiert den Block im Checkout nicht. Wer die App verwaltet, muss „shopify app deploy“ ausführen (und die neue Version freigeben, falls gefragt). Ältere Blöcke zeigen eventuell gar nichts an."
+    "recent_outdated_body": "Ein Update des App-Servers aktualisiert den Block im Checkout nicht. Wer die App verwaltet, muss „shopify app deploy“ ausführen (und die neue Version freigeben, falls gefragt). Ältere Blöcke zeigen eventuell gar nichts an.",
+    "check_title": "Checkout-Prüfung",
+    "check_server": "Der SourceTrac-Server läuft.",
+    "check_server_version": "Der SourceTrac-Server läuft (Version {{commit}}).",
+    "check_database_ok": "Die Datenbank ist aktuell.",
+    "check_database_fail": "Das Datenbank-Update wurde nicht ausgeführt ({{code}}), daher können Käufer keine Umfragen laden. Stellen Sie die App auf Render erneut bereit und suchen Sie im Deploy-Log nach „migrate“.",
+    "check_survey": "{{page}}: „{{survey}}“ ist aktiv und wird hier gezeigt.",
+    "check_survey_rules": "{{page}}: „{{survey}}“ ist hier aktiv, aber wegen der Regeln unter „Wer sie sieht“ sehen sie nur manche Bestellungen.",
+    "check_no_survey": "{{page}}: Keine aktive Umfrage ist für diese Seite eingestellt. Aktivieren Sie eine Umfrage und wählen Sie diese Seite unter „Wo sie erscheint“.",
+    "check_block_never": "{{page}}: Der SourceTrac-Block wurde hier seit dem letzten Neustart der App nicht geladen. Fügen Sie im Checkout-Editor den Block „SourceTrac survey“ zu dieser Seite hinzu, klicken Sie auf Speichern und öffnen Sie den Editor erneut oder geben Sie eine Testbestellung auf.",
+    "check_block_old": "{{page}}: Der Block wurde {{when}} geladen, ist aber eine alte Version. Führen Sie „shopify app deploy“ aus und geben Sie die neue Version frei.",
+    "check_block_buyer": "{{page}}: Der Block wurde {{when}} für einen Käufer geladen (neueste Version).",
+    "check_block_editor": "{{page}}: Der Block wurde {{when}} im Checkout-Editor geladen (neueste Version).",
+    "check_new_order": "Jede Bestellung wird nur einmal gefragt. Testen Sie mit einer neuen Bestellung und sehen Sie unten unter „Letzte Checkouts“, was passiert ist.",
+    "check_plan_hidden_one": "{{count}} aktive Umfrage liegt über dem Limit Ihres Tarifs und wird Käufern nicht gezeigt.",
+    "check_plan_hidden_other": "{{count}} aktive Umfragen liegen über dem Limit Ihres Tarifs und werden Käufern nicht gezeigt."
   },
   "templates": {
     "how_did_you_hear": {

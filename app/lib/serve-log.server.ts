@@ -73,7 +73,36 @@ export function recentServes(shopId: string): ServeEntry[] {
   return [...(log.get(shopId) ?? [])];
 }
 
+/**
+ * The last time the block loaded inside Shopify's checkout editor, per shop
+ * and page. The editor has no order, so these never appear in `recentServes`,
+ * but they prove the block is placed and that its code runs.
+ */
+export type PreviewLoad = { at: string; blockBuild: string | null };
+
+declare global {
+  var __sourcetracPreviewLog: Map<string, PreviewLoad> | undefined;
+}
+
+const previews: Map<string, PreviewLoad> = globalThis.__sourcetracPreviewLog ?? new Map();
+globalThis.__sourcetracPreviewLog = previews;
+
+export function recordPreviewLoad(shopId: string, placement: Placement, blockBuild: string | null, at = new Date()): void {
+  const key = `${shopId}:${placement}`;
+  previews.delete(key);
+  previews.set(key, { at: at.toISOString(), blockBuild });
+  if (previews.size > MAX_SHOPS * 2) {
+    const oldest = previews.keys().next().value;
+    if (oldest !== undefined) previews.delete(oldest);
+  }
+}
+
+export function lastPreviewLoad(shopId: string, placement: Placement): PreviewLoad | null {
+  return previews.get(`${shopId}:${placement}`) ?? null;
+}
+
 /** Test seam. */
 export function clearServeLog(): void {
   log.clear();
+  previews.clear();
 }

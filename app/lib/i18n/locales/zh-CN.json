@@ -638,7 +638,22 @@
     "reason_language": "“{{survey}}”仅限其他语言。",
     "reason_order_value": "此订单的总额不在“{{survey}}”的订单金额范围内。",
     "recent_outdated_title": "你的结账正在运行旧版 SourceTrac 区块",
-    "recent_outdated_body": "更新应用服务器不会更新结账中的区块。应用的管理者需要运行“shopify app deploy”（如有提示，还要发布新版本）。旧版区块可能完全不显示。"
+    "recent_outdated_body": "更新应用服务器不会更新结账中的区块。应用的管理者需要运行“shopify app deploy”（如有提示，还要发布新版本）。旧版区块可能完全不显示。",
+    "check_title": "结账检查",
+    "check_server": "SourceTrac 服务器正在运行。",
+    "check_server_version": "SourceTrac 服务器正在运行（版本 {{commit}}）。",
+    "check_database_ok": "数据库已是最新。",
+    "check_database_fail": "数据库更新未运行（{{code}}），买家无法加载问卷。请在 Render 上重新部署应用，并在部署日志中查找“migrate”。",
+    "check_survey": "{{page}}：“{{survey}}”已上线并设置在此显示。",
+    "check_survey_rules": "{{page}}：“{{survey}}”已在此上线，但受“谁能看到”规则限制，只有部分订单能看到。",
+    "check_no_survey": "{{page}}：没有设置在此显示的上线问卷。请开启问卷并在“显示位置”中勾选此页面。",
+    "check_block_never": "{{page}}：自应用上次重启以来，SourceTrac 区块未在此加载。请在结账编辑器中把“SourceTrac survey”区块添加到此页面并保存，然后重新打开编辑器或下一个测试订单。",
+    "check_block_old": "{{page}}：区块于 {{when}} 加载，但版本较旧。请运行“shopify app deploy”并发布新版本。",
+    "check_block_buyer": "{{page}}：区块于 {{when}} 为买家加载（最新版本）。",
+    "check_block_editor": "{{page}}：区块于 {{when}} 在结账编辑器中加载（最新版本）。",
+    "check_new_order": "每个订单只会被询问一次。请用新订单测试，然后查看下方的“最近的结账”。",
+    "check_plan_hidden_one": "{{count}} 个上线问卷超出了套餐上限，买家看不到。",
+    "check_plan_hidden_other": "{{count}} 个上线问卷超出了套餐上限，买家看不到。"
   },
   "templates": {
     "how_did_you_hear": {
