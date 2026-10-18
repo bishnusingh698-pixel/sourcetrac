@@ -11,7 +11,7 @@ import {
 } from "react-router";
 
 import { Banner, Panel } from "~/components/admin-ui";
-import { createSubscription, cancelSubscription, cycleOf } from "~/lib/billing.server";
+import { createSubscription, cancelSubscription, cycleOf, isBillingNotEnabled } from "~/lib/billing.server";
 import { logger } from "~/lib/logger";
 import {
   effectivePlan,
@@ -171,6 +171,19 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
 });
 
 /**
+ * Reading the subscriptions failed. Shopify refuses that read with the same
+ * "public distribution" error as a new charge, so an app not yet set to Public
+ * gets the message that says where to fix it. Anything else shows Shopify's
+ * own error, so the cause can be read off the page without opening the logs.
+ */
+function lookupFailed(error: unknown): Result {
+  const message = error instanceof Error ? error.message : String(error);
+  return isBillingNotEnabled(message)
+    ? result(false, "plans.msg_billing_not_enabled")
+    : result(false, "plans.msg_lookup_failed", { error: message || "—" });
+}
+
+/**
  * Cancel whatever live SourceTrac subscription Shopify reports.
  *
  * Resolved from Shopify rather than from our stored `subscriptionGid`, which can
@@ -181,8 +194,8 @@ async function cancelActiveSubscription(params: { shopDomain: string; accessToke
   let subscriptions: Awaited<ReturnType<typeof fetchActiveSubscriptions>>;
   try {
     subscriptions = await fetchActiveSubscriptions(params);
-  } catch {
-    return result(false, "plans.msg_lookup_failed");
+  } catch (error) {
+    return lookupFailed(error);
   }
 
   const active = activeSourceTracSubscription(subscriptions, {
@@ -192,6 +205,7 @@ async function cancelActiveSubscription(params: { shopDomain: string; accessToke
 
   const cancelled = await cancelSubscription({ ...params, subscriptionGid: active.id });
   if (!cancelled.ok) {
+    if (isBillingNotEnabled(cancelled.error)) return result(false, "plans.msg_billing_not_enabled");
     return result(false, "plans.msg_cancel_failed", { error: cancelled.error ?? "—" });
   }
 
@@ -238,8 +252,8 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
       if (current === plan && cycleOf(live) === cycle) {
         return result(true, "plans.msg_already_on_plan");
       }
-    } catch {
-      return result(false, "plans.msg_lookup_failed");
+    } catch (error) {
+      return lookupFailed(error);
     }
 
     const created = await createSubscription({
@@ -251,6 +265,7 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
     });
 
     if (!created.ok) {
+      if (isBillingNotEnabled(created.error)) return result(false, "plans.msg_billing_not_enabled");
       return result(false, "plans.msg_subscribe_failed", { error: created.error });
     }
 

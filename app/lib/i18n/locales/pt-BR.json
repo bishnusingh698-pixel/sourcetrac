@@ -225,7 +225,7 @@
     "billing_title": "Como funciona a cobrança",
     "billing_body": "As cobranças aparecem na sua fatura da Shopify junto com suas outras assinaturas de apps. O SourceTrac nunca armazena os dados do seu cartão — a Shopify processa o pagamento e nos avisa quando uma assinatura começa, muda ou termina.",
     "msg_shopify_unreachable": "Não conseguimos acessar a Shopify para gerenciar a cobrança. Reabra o app pelo admin da Shopify e tente novamente.",
-    "msg_lookup_failed": "Não conseguimos acessar a Shopify para encontrar sua assinatura. Tente novamente em instantes.",
+    "msg_lookup_failed": "Não conseguimos verificar sua assinatura com a Shopify. A Shopify respondeu: {{error}}",
     "msg_already_free": "Você já está no plano Gratuito.",
     "msg_cancel_failed": "A Shopify não conseguiu cancelar a assinatura: {{error}}",
     "msg_cancelled": "Assinatura cancelada. Você voltou ao plano Gratuito com {{cap}} respostas por mês.",
@@ -264,7 +264,8 @@
     "save_amount": "Você economiza {{amount}} por ano ({{percent}}%)",
     "reassure_cancel": "Mude ou cancele quando quiser nesta página",
     "reassure_shopify": "Cobrado na sua fatura da Shopify",
-    "reassure_data": "Suas respostas continuam salvas se você mudar para um plano menor"
+    "reassure_data": "Suas respostas continuam salvas se você mudar para um plano menor",
+    "msg_billing_not_enabled": "O faturamento da Shopify ainda não está ativado para este app. No Partner Dashboard, abra Apps, depois SourceTrac, depois Distribuição, e escolha Distribuição pública. Depois disso, você poderá aprovar os planos pagos aqui (como cobranças de teste gratuitas em uma loja de desenvolvimento)."
   },
   "help": {
     "title": "Ajuda",

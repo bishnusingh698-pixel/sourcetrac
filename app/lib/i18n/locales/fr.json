@@ -225,7 +225,7 @@
     "billing_title": "Fonctionnement de la facturation",
     "billing_body": "Les frais apparaissent sur votre facture Shopify avec vos autres abonnements d'applications. SourceTrac ne conserve jamais vos données de carte — Shopify gère le paiement et nous indique quand un abonnement commence, change ou se termine.",
     "msg_shopify_unreachable": "Impossible de joindre Shopify pour gérer la facturation. Rouvrez l'application depuis l'administration Shopify et réessayez.",
-    "msg_lookup_failed": "Impossible de joindre Shopify pour retrouver votre abonnement. Réessayez dans un instant.",
+    "msg_lookup_failed": "Impossible de vérifier votre abonnement auprès de Shopify. Réponse de Shopify : {{error}}",
     "msg_already_free": "Vous êtes déjà sur le forfait Gratuit.",
     "msg_cancel_failed": "Shopify n'a pas pu annuler l'abonnement : {{error}}",
     "msg_cancelled": "Abonnement annulé. Vous êtes de retour sur le forfait Gratuit avec {{cap}} réponses par mois.",
@@ -264,7 +264,8 @@
     "save_amount": "Vous économisez {{amount}} par an ({{percent}} %)",
     "reassure_cancel": "Modifiez ou annulez à tout moment sur cette page",
     "reassure_shopify": "Facturé sur votre facture Shopify",
-    "reassure_data": "Vos réponses sont conservées si vous changez pour un forfait inférieur"
+    "reassure_data": "Vos réponses sont conservées si vous changez pour un forfait inférieur",
+    "msg_billing_not_enabled": "La facturation Shopify n'est pas encore activée pour cette app. Dans le Partner Dashboard, ouvrez Apps, puis SourceTrac, puis Distribution, et choisissez la distribution publique. Vous pourrez ensuite approuver les forfaits payants ici (sous forme de frais de test gratuits sur une boutique de développement)."
   },
   "help": {
     "title": "Aide",

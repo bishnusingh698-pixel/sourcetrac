@@ -225,7 +225,7 @@
     "billing_title": "Come funziona la fatturazione",
     "billing_body": "Gli addebiti compaiono nella tua fattura Shopify insieme agli altri abbonamenti alle app. SourceTrac non memorizza mai i dati della tua carta — Shopify gestisce il pagamento e ci avvisa quando un abbonamento inizia, cambia o termina.",
     "msg_shopify_unreachable": "Non siamo riusciti a contattare Shopify per gestire la fatturazione. Riapri l'app dal pannello di Shopify e riprova.",
-    "msg_lookup_failed": "Non siamo riusciti a contattare Shopify per trovare il tuo abbonamento. Riprova tra un momento.",
+    "msg_lookup_failed": "Non siamo riusciti a verificare il tuo abbonamento con Shopify. Shopify dice: {{error}}",
     "msg_already_free": "Stai già usando il piano Gratuito.",
     "msg_cancel_failed": "Shopify non è riuscito ad annullare l'abbonamento: {{error}}",
     "msg_cancelled": "Abbonamento annullato. Sei tornato al piano Gratuito con {{cap}} risposte al mese.",
@@ -264,7 +264,8 @@
     "save_amount": "Risparmi {{amount}} all'anno ({{percent}}%)",
     "reassure_cancel": "Cambia o annulla quando vuoi da questa pagina",
     "reassure_shopify": "Addebitato nella tua fattura Shopify",
-    "reassure_data": "Le tue risposte restano anche se passi a un piano inferiore"
+    "reassure_data": "Le tue risposte restano anche se passi a un piano inferiore",
+    "msg_billing_not_enabled": "La fatturazione Shopify non è ancora attiva per questa app. Nella Partner Dashboard apri App, poi SourceTrac, poi Distribuzione, e scegli Distribuzione pubblica. Dopo potrai approvare qui i piani a pagamento (come addebiti di prova gratuiti su un negozio di sviluppo)."
   },
   "help": {
     "title": "Assistenza",

@@ -225,7 +225,7 @@
     "billing_title": "How billing works",
     "billing_body": "Charges appear on your Shopify invoice alongside your other app subscriptions. SourceTrac never stores your card details — Shopify handles the payment and tells us when a subscription starts, changes or ends.",
     "msg_shopify_unreachable": "We could not reach Shopify to manage billing. Reopen the app from Shopify admin and try again.",
-    "msg_lookup_failed": "We could not reach Shopify to find your subscription. Please try again in a moment.",
+    "msg_lookup_failed": "We could not check your subscription with Shopify. Shopify said: {{error}}",
     "msg_already_free": "You are already on the Free plan.",
     "msg_cancel_failed": "Shopify could not cancel the subscription: {{error}}",
     "msg_cancelled": "Subscription cancelled. You are back on the Free plan with {{cap}} responses a month.",
@@ -264,7 +264,8 @@
     "save_amount": "You save {{amount}} a year ({{percent}}%)",
     "reassure_cancel": "Change or cancel any time on this page",
     "reassure_shopify": "Billed on your Shopify invoice",
-    "reassure_data": "Your answers stay if you downgrade"
+    "reassure_data": "Your answers stay if you downgrade",
+    "msg_billing_not_enabled": "Shopify billing is not switched on for this app yet. In the Partner Dashboard, open Apps, then SourceTrac, then Distribution, and choose Public distribution. After that, paid plans can be approved here (as free test charges on a development store)."
   },
   "help": {
     "title": "Help",
