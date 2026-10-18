@@ -226,6 +226,7 @@
     "billing_body": "Gli addebiti compaiono nella tua fattura Shopify insieme agli altri abbonamenti alle app. SourceTrac non memorizza mai i dati della tua carta — Shopify gestisce il pagamento e ci avvisa quando un abbonamento inizia, cambia o termina.",
     "msg_shopify_unreachable": "Non siamo riusciti a contattare Shopify per gestire la fatturazione. Riapri l'app dal pannello di Shopify e riprova.",
     "msg_lookup_failed": "Non siamo riusciti a verificare il tuo abbonamento con Shopify. Shopify dice: {{error}}",
+    "msg_opening_approval": "Apertura di Shopify per approvare l'addebito…",
     "msg_already_free": "Stai già usando il piano Gratuito.",
     "msg_cancel_failed": "Shopify non è riuscito ad annullare l'abbonamento: {{error}}",
     "msg_cancelled": "Abbonamento annullato. Sei tornato al piano Gratuito con {{cap}} risposte al mese.",

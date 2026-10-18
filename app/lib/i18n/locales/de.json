@@ -226,6 +226,7 @@
     "billing_body": "Die Gebühren erscheinen auf Ihrer Shopify-Rechnung neben Ihren anderen App-Abos. SourceTrac speichert niemals Ihre Kartendaten — Shopify wickelt die Zahlung ab und teilt uns mit, wenn ein Abo beginnt, sich ändert oder endet.",
     "msg_shopify_unreachable": "Wir konnten Shopify für die Abrechnung nicht erreichen. Öffnen Sie die App erneut über Ihre Shopify-Administration und versuchen Sie es noch einmal.",
     "msg_lookup_failed": "Wir konnten Ihr Abo bei Shopify nicht prüfen. Shopify meldet: {{error}}",
+    "msg_opening_approval": "Shopify wird geöffnet, damit Sie die Zahlung bestätigen können …",
     "msg_already_free": "Sie nutzen bereits den Tarif Kostenlos.",
     "msg_cancel_failed": "Shopify konnte das Abo nicht kündigen: {{error}}",
     "msg_cancelled": "Abo gekündigt. Sie sind wieder im Tarif Kostenlos mit {{cap}} Antworten pro Monat.",
