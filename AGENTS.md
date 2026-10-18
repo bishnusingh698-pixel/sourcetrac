@@ -1474,3 +1474,27 @@ bill. It is set once in the Partner Dashboard (Apps > SourceTrac >
 Distribution > Public distribution), cannot be changed afterwards, and does
 not submit the app for review. `isBillingNotEnabled` turns that refusal into
 `plans.msg_billing_not_enabled`, which says where to change it.
+
+## Offline tokens must be expiring (2026-10-18)
+
+Shopify answers every Admin API call made with a non-expiring offline token
+with `403 [API] Non-expiring access tokens are no longer accepted`. That broke
+billing (the Plans page could not read the subscription) and every other Admin
+call, while auth itself still succeeded.
+
+- `shopifyApp({ future: { expiringOfflineAccessTokens: true } })` makes token
+  exchange ask for an expiring token plus a refresh token. The library
+  refreshes it in `authenticate.*` and `unauthenticated.admin`.
+- **The library never replaces an offline session with no `expires`**: it reads
+  as valid forever. `EncryptedSessionStorage.loadSession` swaps such a session
+  for an expiring one on first load (`migrateToExpiringToken` in
+  `app/lib/token-migration.server.ts`, the same request as shopify-api's
+  helper, which `shopifyApp()` does not expose). Parallel loads share one
+  exchange: Shopify revokes the legacy token on the first. If the exchange
+  fails the session loads as absent, so the next admin open runs token
+  exchange. Nothing is deleted.
+- Expiring tokens last about an hour, so `getAccessToken` reads the live
+  offline session through `unauthenticated.admin` first. The encrypted copy on
+  `Shop` is only a fallback and may be stale.
+- A Shopify 4xx now carries Shopify's own text (`httpErrorDetail`), and the
+  Plans page shows it. That is how this was found: the log line was not visible.

@@ -57,8 +57,20 @@ function mapTokens(session: Session, map: (value: string | undefined) => string 
   return copy;
 }
 
+/** Trades a legacy non-expiring offline session for an expiring one. */
+export type LegacyTokenMigrator = (legacy: Session) => Promise<Session>;
+
+/** An offline session with no expiry holds a token Shopify now refuses. */
+export function isLegacyOfflineSession(session: Session): boolean {
+  return !session.isOnline && !session.expires && Boolean(session.accessToken);
+}
+
 class EncryptedSessionStorage {
   private current: PrismaSessionStorage<never> | null = null;
+  private migrator: LegacyTokenMigrator | null = null;
+  // Parallel loaders read the same session at once; Shopify revokes the legacy
+  // token on the first exchange, so a second exchange would fail.
+  private readonly migrating = new Map<string, Promise<Session | undefined>>();
 
   constructor(private readonly create: () => PrismaSessionStorage<never>) {}
 
@@ -100,7 +112,44 @@ class EncryptedSessionStorage {
           });
         });
     }
-    return mapTokens(session, (value) => openToken(value, { sessionId: id, shop: session.shop }));
+    return this.upgradeLegacy(mapTokens(session, (value) => openToken(value, { sessionId: id, shop: session.shop })));
+  }
+
+  /** Set once at startup by `shopify.server.ts`; unset, sessions load as stored. */
+  useLegacyTokenMigration(migrator: LegacyTokenMigrator): void {
+    this.migrator = migrator;
+  }
+
+  /**
+   * Replace a non-expiring offline session with an expiring one. If the
+   * exchange fails the legacy session is reported as absent, not returned: its
+   * token only earns a 403, while no session makes the next admin open run
+   * token exchange, which now asks for an expiring token.
+   */
+  private upgradeLegacy(session: Session): Promise<Session | undefined> {
+    const migrator = this.migrator;
+    if (!migrator || !isLegacyOfflineSession(session)) return Promise.resolve(session);
+    const pending = this.migrating.get(session.id);
+    if (pending) return pending;
+
+    const run = (async () => {
+      try {
+        const upgraded = await migrator(session);
+        await this.storeSession(upgraded);
+        logger.info("offline_token_migrated", { shop_domain: session.shop });
+        return upgraded;
+      } catch (error) {
+        logger.warn("offline_token_migration_failed", {
+          shop_domain: session.shop,
+          error_message: error instanceof Error ? error.message : String(error),
+        });
+        return undefined;
+      } finally {
+        this.migrating.delete(session.id);
+      }
+    })();
+    this.migrating.set(session.id, run);
+    return run;
   }
 
   deleteSession(id: string): Promise<boolean> {
