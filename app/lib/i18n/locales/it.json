@@ -266,7 +266,10 @@
     "reassure_cancel": "Cambia o annulla quando vuoi da questa pagina",
     "reassure_shopify": "Addebitato nella tua fattura Shopify",
     "reassure_data": "Le tue risposte restano anche se passi a un piano inferiore",
-    "msg_billing_not_enabled": "La fatturazione Shopify non è ancora attiva per questa app. Nella Partner Dashboard apri App, poi SourceTrac, poi Distribuzione, e scegli Distribuzione pubblica. Dopo potrai approvare qui i piani a pagamento (come addebiti di prova gratuiti su un negozio di sviluppo)."
+    "msg_billing_not_enabled": "La fatturazione Shopify non è ancora attiva per questa app. Nella Partner Dashboard apri App, poi SourceTrac, poi Distribuzione, e scegli Distribuzione pubblica. Dopo potrai approvare qui i piani a pagamento (come addebiti di prova gratuiti su un negozio di sviluppo).",
+    "choose_plan_yearly": "Scegli {{plan}} con fatturazione annuale",
+    "choose_plan_yearly_instead": "Oppure paga annualmente: {{price}} all'anno",
+    "choose_plan_monthly_instead": "Oppure paga mensilmente: {{price}} al mese"
   },
   "help": {
     "title": "Assistenza",

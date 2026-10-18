@@ -266,7 +266,10 @@
     "reassure_cancel": "Wijzig of zeg op wanneer je wilt via deze pagina",
     "reassure_shopify": "Gefactureerd op je Shopify-factuur",
     "reassure_data": "Je antwoorden blijven bewaard als je overstapt naar een lager abonnement",
-    "msg_billing_not_enabled": "Shopify-facturering is nog niet ingeschakeld voor deze app. Open in het Partner Dashboard Apps, dan SourceTrac, dan Distributie, en kies Openbare distributie. Daarna kun je betaalde abonnementen hier goedkeuren (als gratis testkosten in een ontwikkelwinkel)."
+    "msg_billing_not_enabled": "Shopify-facturering is nog niet ingeschakeld voor deze app. Open in het Partner Dashboard Apps, dan SourceTrac, dan Distributie, en kies Openbare distributie. Daarna kun je betaalde abonnementen hier goedkeuren (als gratis testkosten in een ontwikkelwinkel).",
+    "choose_plan_yearly": "Kies {{plan}}, jaarlijks gefactureerd",
+    "choose_plan_yearly_instead": "Of betaal per jaar: {{price}} per jaar",
+    "choose_plan_monthly_instead": "Of betaal per maand: {{price}} per maand"
   },
   "help": {
     "title": "Help",

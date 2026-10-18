@@ -266,7 +266,10 @@
     "reassure_cancel": "随时可在此页面更改或取消",
     "reassure_shopify": "费用计入您的 Shopify 账单",
     "reassure_data": "降级后您的回答仍会保留",
-    "msg_billing_not_enabled": "此应用尚未开启 Shopify 计费。请在 Partner Dashboard 中依次打开“应用”、SourceTrac、“分发”，然后选择“公开分发”。之后即可在此批准付费套餐（在开发商店中为免费的测试收费）。"
+    "msg_billing_not_enabled": "此应用尚未开启 Shopify 计费。请在 Partner Dashboard 中依次打开“应用”、SourceTrac、“分发”，然后选择“公开分发”。之后即可在此批准付费套餐（在开发商店中为免费的测试收费）。",
+    "choose_plan_yearly": "选择 {{plan}}（按年付费）",
+    "choose_plan_yearly_instead": "或按年付费：每年 {{price}}",
+    "choose_plan_monthly_instead": "或按月付费：每月 {{price}}"
   },
   "help": {
     "title": "帮助",

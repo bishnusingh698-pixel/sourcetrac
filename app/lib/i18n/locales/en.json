@@ -266,7 +266,10 @@
     "reassure_cancel": "Change or cancel any time on this page",
     "reassure_shopify": "Billed on your Shopify invoice",
     "reassure_data": "Your answers stay if you downgrade",
-    "msg_billing_not_enabled": "Shopify billing is not switched on for this app yet. In the Partner Dashboard, open Apps, then SourceTrac, then Distribution, and choose Public distribution. After that, paid plans can be approved here (as free test charges on a development store)."
+    "msg_billing_not_enabled": "Shopify billing is not switched on for this app yet. In the Partner Dashboard, open Apps, then SourceTrac, then Distribution, and choose Public distribution. After that, paid plans can be approved here (as free test charges on a development store).",
+    "choose_plan_yearly": "Choose {{plan}}, billed yearly",
+    "choose_plan_yearly_instead": "Or pay yearly: {{price}} a year",
+    "choose_plan_monthly_instead": "Or pay monthly: {{price}} a month"
   },
   "help": {
     "title": "Help",

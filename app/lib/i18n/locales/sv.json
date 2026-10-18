@@ -266,7 +266,10 @@
     "reassure_cancel": "Ändra eller säg upp när du vill på den här sidan",
     "reassure_shopify": "Faktureras på din Shopify-faktura",
     "reassure_data": "Dina svar finns kvar om du byter till en lägre plan",
-    "msg_billing_not_enabled": "Shopify-fakturering är inte aktiverad för den här appen än. Öppna Appar, sedan SourceTrac, sedan Distribution i Partner Dashboard och välj Offentlig distribution. Därefter kan du godkänna betalplaner här (som kostnadsfria testdebiteringar i en utvecklingsbutik)."
+    "msg_billing_not_enabled": "Shopify-fakturering är inte aktiverad för den här appen än. Öppna Appar, sedan SourceTrac, sedan Distribution i Partner Dashboard och välj Offentlig distribution. Därefter kan du godkänna betalplaner här (som kostnadsfria testdebiteringar i en utvecklingsbutik).",
+    "choose_plan_yearly": "Välj {{plan}} med årsvis fakturering",
+    "choose_plan_yearly_instead": "Eller betala årsvis: {{price}} per år",
+    "choose_plan_monthly_instead": "Eller betala månadsvis: {{price}} per månad"
   },
   "help": {
     "title": "Hjälp",

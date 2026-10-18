@@ -311,9 +311,19 @@ export default function Plans() {
   // Only the card that was submitted shows a spinner; the others stay usable
   // to read. `formData` identifies which form is in flight.
   const pendingPlan = navigation.state !== "idle" ? String(navigation.formData?.get("plan") ?? "cancel") : null;
+  const pending =
+    navigation.state !== "idle" && navigation.formData
+      ? { plan: String(navigation.formData.get("plan") ?? ""), cycle: String(navigation.formData.get("cycle") ?? "") }
+      : null;
+
+  // The Monthly / Yearly switch is local state. It used to be two links to
+  // `?cycle=`, which left a merchant who tapped Yearly with no visible way to
+  // buy it; `?cycle=yearly` still opens the page on yearly.
+  const [cycle, setCycle] = useState<BillingCycle>(data.cycle);
+  useEffect(() => setCycle(data.cycle), [data.cycle]);
 
   const current = planFor(data.activePlan);
-  const yearly = data.cycle === "yearly";
+  const yearly = cycle === "yearly";
   const currentName = t(`plans.${current.key}`);
 
   return (
@@ -363,13 +373,14 @@ export default function Plans() {
         </s-query-container>
       </s-section>
 
-      {/* Monthly / yearly switch. A link, so the choice survives a refresh. */}
+      {/* Monthly / yearly switch. Every paid card also offers the other cycle
+          as its own button, so buying yearly never depends on this switch. */}
       <s-stack direction="inline" gap="small" alignItems="center">
         <s-button-group accessibilityLabel={t("plans.cycle_label")}>
-          <s-button href="/app/plans?cycle=monthly" variant={yearly ? "secondary" : "primary"}>
+          <s-button type="button" onClick={() => setCycle("monthly")} variant={yearly ? "secondary" : "primary"}>
             {t("plans.cycle_monthly")}
           </s-button>
-          <s-button href="/app/plans?cycle=yearly" variant={yearly ? "primary" : "secondary"}>
+          <s-button type="button" onClick={() => setCycle("yearly")} variant={yearly ? "primary" : "secondary"}>
             {t("plans.cycle_yearly")}
           </s-button>
         </s-button-group>
@@ -382,7 +393,12 @@ export default function Plans() {
           // so the page never offers to "switch" a merchant to what they have.
           const isCurrent =
             plan.key === data.activePlan &&
-            (plan.key === "free" || data.activeCycle === null || data.activeCycle === data.cycle);
+            (plan.key === "free" || data.activeCycle === null || data.activeCycle === cycle);
+          // The other cycle for this paid plan, unless the merchant already
+          // holds the plan on it.
+          const otherCycle: BillingCycle = yearly ? "monthly" : "yearly";
+          const offerOther =
+            plan.key !== "free" && !(plan.key === data.activePlan && data.activeCycle === otherCycle);
           const recommended = plan.key === "growth";
           const name = t(`plans.${plan.key}`);
           return (
@@ -441,24 +457,37 @@ export default function Plans() {
                     <input type="hidden" name="plan" value="free" />
                   </ConfirmCancel>
                 ) : (
-                  <Form method="post">
-                    <input type="hidden" name="intent" value="subscribe" />
-                    <input type="hidden" name="plan" value={plan.key} />
-                    <input type="hidden" name="cycle" value={data.cycle} />
-                    <s-button
-                      type="submit"
-                      variant={recommended ? "primary" : "secondary"}
-                      inlineSize="fill"
-                      loading={pendingPlan === plan.key}
-                    >
-                      {plan.key === data.activePlan
+                  <ChoosePlan
+                    plan={plan.key}
+                    cycle={cycle}
+                    variant={recommended ? "primary" : "secondary"}
+                    busy={pending?.plan === plan.key && pending.cycle === cycle}
+                    label={
+                      plan.key === data.activePlan
                         ? yearly
                           ? t("plans.switch_yearly")
                           : t("plans.switch_monthly")
-                        : t("plans.choose_plan", { plan: name })}
-                    </s-button>
-                  </Form>
+                        : t(yearly ? "plans.choose_plan_yearly" : "plans.choose_plan", { plan: name })
+                    }
+                  />
                 )}
+                {offerOther ? (
+                  <ChoosePlan
+                    plan={plan.key}
+                    cycle={otherCycle}
+                    variant="tertiary"
+                    busy={pending?.plan === plan.key && pending.cycle === otherCycle}
+                    label={
+                      plan.key === data.activePlan
+                        ? yearly
+                          ? t("plans.switch_monthly")
+                          : t("plans.switch_yearly")
+                        : yearly
+                          ? t("plans.choose_plan_monthly_instead", { price: plan.monthly ?? "" })
+                          : t("plans.choose_plan_yearly_instead", { price: plan.yearly ?? "" })
+                    }
+                  />
+                ) : null}
               </s-stack>
             </s-box>
           );
@@ -486,6 +515,32 @@ export default function Plans() {
   );
 }
 type PlanCard = ReturnType<typeof useLoaderData<typeof loader>>["plans"][number];
+
+/** Buys or switches to a paid plan on one billing cycle. */
+function ChoosePlan({
+  plan,
+  cycle,
+  variant,
+  busy,
+  label,
+}: {
+  plan: string;
+  cycle: BillingCycle;
+  variant: "primary" | "secondary" | "tertiary";
+  busy: boolean;
+  label: string;
+}) {
+  return (
+    <Form method="post">
+      <input type="hidden" name="intent" value="subscribe" />
+      <input type="hidden" name="plan" value={plan} />
+      <input type="hidden" name="cycle" value={cycle} />
+      <s-button type="submit" variant={variant} inlineSize="fill" loading={busy || undefined}>
+        {label}
+      </s-button>
+    </Form>
+  );
+}
 
 /**
  * The price block of a plan card.
