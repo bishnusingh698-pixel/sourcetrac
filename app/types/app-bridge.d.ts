@@ -35,6 +35,11 @@ declare global {
         show(id: string): void;
         hide(id: string): void;
       };
+      /**
+       * The values App Bridge started with. `shop` and `host` are what a
+       * full page load needs in its query string to sign back in.
+       */
+      config?: { shop?: string; host?: string; locale?: string };
     };
   }
 }

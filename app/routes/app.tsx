@@ -43,6 +43,7 @@ import { guarded } from "~/lib/admin-errors.server";
 import { RECORD_RETENTION_DAYS } from "~/lib/retention.server";
 import { authenticate } from "~/shopify.server";
 import { isShopifyAuthResponse } from "~/lib/shopify-boundary";
+import { ShopifyAuthPage } from "~/components/shopify-auth-page";
 import { APP_VERSION } from "@shared/support";
 
 /**
@@ -271,7 +272,7 @@ export const headers: HeadersFunction = (headersArgs) => boundary.headers(header
 
 export function ErrorBoundary() {
   const error = useRouteError();
-  if (isShopifyAuthResponse(error)) return boundary.error(error);
+  if (isShopifyAuthResponse(error)) return <ShopifyAuthPage error={error} fallback={<AdminErrorScreen error={error} />} />;
   return <AdminErrorScreen error={error} />;
 }
 
@@ -300,6 +301,8 @@ function AdminErrorScreen({ error }: { error: unknown }) {
       : null;
   const detail = typeof failure?.hint === "string"
     ? failure.hint
+    : isShopifyAuthResponse(error)
+    ? t("errors.session_reload")
     : isRouteErrorResponse(error)
     ? `${error.status} ${error.statusText}`
     : error instanceof Error

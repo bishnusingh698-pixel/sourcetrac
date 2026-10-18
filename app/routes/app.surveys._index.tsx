@@ -16,6 +16,8 @@ import {
   type SurveyListItem,
 } from "~/lib/surveys.server";
 import { formatDay } from "~/lib/format-day";
+import { getBlockSeen } from "~/lib/block-seen.server";
+import { checkoutEditorUrl, placementsMissingBlock } from "~/lib/checkout-editor";
 import { NotFoundError, ValidationError } from "~/lib/errors";
 
 /**
@@ -40,11 +42,22 @@ function statusTone(status: SurveyListItem["status"]): BadgeTone {
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
-  const [surveys, usage] = await Promise.all([listSurveys(shop.id), liveSurveyUsage(shop.id)]);
+  const [surveys, usage, blockSeen] = await Promise.all([
+    listSurveys(shop.id),
+    liveSurveyUsage(shop.id),
+    getBlockSeen(shop.id),
+  ]);
+
+  // Pages a live survey is set to show on where the block has never loaded.
+  const missing = [
+    ...new Set(surveys.filter((s) => s.status === "active").flatMap((s) => placementsMissingBlock(s.placements, blockSeen))),
+  ];
 
   return {
     surveys,
     usage,
+    missing,
+    shopHandle: shop.shopDomain.replace(".myshopify.com", ""),
   };
 });
 
@@ -108,7 +121,7 @@ function StatusBadge({ status }: { status: SurveyListItem["status"] }) {
 }
 
 export default function Surveys() {
-  const { surveys, usage } = useLoaderData<typeof loader>();
+  const { surveys, usage, missing, shopHandle } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const { t, locale } = useAdminI18n();
   const failureKey = actionData && actionData.ok === false ? `surveys.validation_${actionData.code}` : null;
@@ -131,6 +144,24 @@ export default function Surveys() {
     <s-stack gap="base">
       <PageIntro actions={createActions}>{t("surveys.subtitle")}</PageIntro>
       {failureText ? <s-banner tone="critical">{failureText}</s-banner> : null}
+      {missing.length > 0 ? (
+        // "Live" here means turned on. Buyers only see it once the block is in
+        // the checkout, which the app can only tell from the block loading.
+        <s-banner tone="warning" heading={t("editor.block_missing_title")}>
+          <s-stack gap="small">
+            <s-text>
+              {t("editor.block_missing_body", {
+                places: missing.map((p) => t(`editor.placement_${p}`)).join(", "),
+              })}
+            </s-text>
+            <s-stack direction="inline" gap="small">
+              <s-button href={checkoutEditorUrl(shopHandle, missing[0])} target="_top" icon="external">
+                {t("editor.open_checkout_editor")}
+              </s-button>
+            </s-stack>
+          </s-stack>
+        </s-banner>
+      ) : null}
       {usage.limit !== null && usage.live > usage.limit ? (
         // A downgrade leaves more surveys live than the plan serves. Buyers only
         // see the first ones in priority order; the rest keep their settings.

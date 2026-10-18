@@ -354,7 +354,8 @@
     "shop_missing_title": "Deze winkel is nog niet geïnstalleerd",
     "shop_missing_body": "Open SourceTrac opnieuw vanuit je Shopify-beheer om het opnieuw te installeren.",
     "boundary_title": "Er is iets misgegaan",
-    "reference": "Referentie: {{reference}}"
+    "reference": "Referentie: {{reference}}",
+    "session_reload": "Je sessie moet worden vernieuwd. Ga naar het dashboard om SourceTrac opnieuw te laden."
   },
   "a11y": {
     "skip_to_content": "Naar hoofdinhoud springen",
@@ -978,7 +979,8 @@
     "confirmed_sample": "Je bestelling is bevestigd",
     "fulfillment_sample": "Besteld · In voorbereiding · Verzonden · Bezorgd",
     "template_info": "{{count}} vragen",
-    "tab_studio": "Studio"
+    "tab_studio": "Studio",
+    "status_no_block": "Nog niet in checkout"
   },
   "confidence": {
     "too_early": "Te vroeg",
@@ -1200,7 +1202,12 @@
     "leave_title": "Sla je wijzigingen op voordat je weggaat",
     "leave_body": "Deze enquête heeft wijzigingen die nog niet zijn opgeslagen. Sla ze op, of negeer ze om deze pagina te verlaten.",
     "leave_discard": "Negeren en verlaten",
-    "leave_stay": "Verder bewerken"
+    "leave_stay": "Verder bewerken",
+    "status_on_no_block": "Ingeschakeld, maar kopers zien hem nog niet: het SourceTrac-blok staat niet in je checkout.",
+    "notice_launched_no_block": "Enquête ingeschakeld. Nog één stap: voeg het SourceTrac-blok toe in de checkout-editor.",
+    "notice_published_no_block": "Wijzigingen opgeslagen. Kopers zien ze zodra het SourceTrac-blok in je checkout staat.",
+    "block_missing_title": "Kopers zien deze enquête nog niet",
+    "block_missing_body": "Het SourceTrac-blok is nog niet geladen op: {{places}}. Voeg in de checkout-editor het blok \"SourceTrac survey\" toe aan die pagina en sla op. Deze melding verdwijnt zodra het blok daar voor het eerst laadt."
   },
   "preview": {
     "title": "Voorbeeld",

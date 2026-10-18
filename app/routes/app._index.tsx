@@ -1,6 +1,7 @@
 import { useLoaderData, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 
 import type { TFunction } from "~/lib/i18n";
+import { checkoutEditorUrl } from "~/lib/checkout-editor";
 import { intlLocaleFor } from "~/lib/i18n";
 import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
@@ -134,9 +135,7 @@ type Setup = {
  * than asking the merchant to confirm.
  */
 function SetupGuide({ setup, t, language }: { setup: Setup; t: TFunction; language: LanguageCode }) {
-  // Thank-you and order-status blocks only exist in the *checkout* editor
-  // (Settings › Checkout › Customize), never the Online Store theme editor.
-  const editorUrl = `https://admin.shopify.com/store/${setup.shopHandle}/settings/checkout/editor?page=thank-you`;
+  const editorUrl = checkoutEditorUrl(setup.shopHandle);
 
   const steps: Array<{ title: string; body: string; action?: { label: string; href: string } }> = [
     {

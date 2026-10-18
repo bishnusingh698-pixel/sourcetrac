@@ -354,7 +354,8 @@
     "shop_missing_title": "Questo negozio non è ancora installato",
     "shop_missing_body": "Riapri SourceTrac dal tuo admin Shopify per reinstallarlo.",
     "boundary_title": "Qualcosa è andato storto",
-    "reference": "Riferimento: {{reference}}"
+    "reference": "Riferimento: {{reference}}",
+    "session_reload": "La tua sessione deve essere aggiornata. Vai alla dashboard per ricaricare SourceTrac."
   },
   "a11y": {
     "skip_to_content": "Vai al contenuto principale",
@@ -978,7 +979,8 @@
     "confirmed_sample": "Il tuo ordine è confermato",
     "fulfillment_sample": "Ordine effettuato · In preparazione · Spedito · Consegnato",
     "template_info": "{{count}} domande",
-    "tab_studio": "Studio"
+    "tab_studio": "Studio",
+    "status_no_block": "Non ancora nel checkout"
   },
   "confidence": {
     "too_early": "Troppo presto",
@@ -1200,7 +1202,12 @@
     "leave_title": "Salva le modifiche prima di uscire",
     "leave_body": "Questo sondaggio ha modifiche non ancora salvate. Salvale, oppure annullale per lasciare questa pagina.",
     "leave_discard": "Annulla ed esci",
-    "leave_stay": "Continua a modificare"
+    "leave_stay": "Continua a modificare",
+    "status_on_no_block": "Attivato, ma gli acquirenti non lo vedono ancora: il blocco SourceTrac non è nel tuo checkout.",
+    "notice_launched_no_block": "Sondaggio attivato. Manca un passaggio: aggiungi il blocco SourceTrac nell'editor del checkout.",
+    "notice_published_no_block": "Modifiche salvate. Gli acquirenti le vedranno quando il blocco SourceTrac sarà nel tuo checkout.",
+    "block_missing_title": "Gli acquirenti non vedono ancora questo sondaggio",
+    "block_missing_body": "Il blocco SourceTrac non è ancora stato caricato su: {{places}}. Nell'editor del checkout, aggiungi il blocco \"SourceTrac survey\" a quella pagina e salva. Questo avviso scompare la prima volta che il blocco viene caricato lì."
   },
   "preview": {
     "title": "Anteprima",

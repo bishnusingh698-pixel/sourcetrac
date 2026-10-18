@@ -37,6 +37,8 @@ import {
 } from "~/lib/surveys.server";
 import { getShopDisplay } from "~/lib/studio.server";
 import { grantedSyncScopes } from "~/lib/scopes.server";
+import { getBlockSeen } from "~/lib/block-seen.server";
+import { checkoutEditorUrl, placementsMissingBlock } from "~/lib/checkout-editor";
 import { effectivePlan } from "~/lib/plans";
 import { LANGUAGES } from "~/lib/i18n";
 import { LIMITS } from "@shared/survey-rules";
@@ -86,8 +88,18 @@ export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) =>
     templatePresets: template?.smartActions ?? [],
     overActiveLimit: survey.status !== "active" && (await isOverActiveLimit(shop.id, survey.id)),
     liveLimit: usage.limit,
+    // Which pages have ever shown the SourceTrac block. "Live" is only claimed
+    // for those; anywhere else the merchant is sent to add the block.
+    blockSeen: await getBlockSeen(shop.id),
   };
 });
+
+/**
+ * Set on the redirect after a survey is turned on or its changes published.
+ * If the block has never been seen on one of the survey's pages, the editor
+ * opens Shopify's checkout editor so the merchant can add it.
+ */
+const OPEN_CHECKOUT = "open_checkout";
 
 const INTENTS = new Set(["save", "go-live", "publish", "discard", "pause", "activate"]);
 
@@ -122,7 +134,7 @@ export const action = guarded(async ({ request, params }: ActionFunctionArgs) =>
   try {
     if (intent === "publish") {
       await publishSurveyDraft(shop.id, id, expectedRevision);
-      return redirect(`/app/surveys/${id}?published=1`);
+      return redirect(`/app/surveys/${id}?published=1&${OPEN_CHECKOUT}=1`);
     }
     if (intent === "discard") {
       await discardSurveyDraft(shop.id, id, expectedRevision);
@@ -134,7 +146,7 @@ export const action = guarded(async ({ request, params }: ActionFunctionArgs) =>
     }
     if (intent === "activate") {
       await setSurveyStatus(shop.id, id, "active");
-      return redirect(`/app/surveys/${id}?launched=1`);
+      return redirect(`/app/surveys/${id}?launched=1&${OPEN_CHECKOUT}=1`);
     }
   } catch (error) {
     const result = failure(error);
@@ -159,7 +171,7 @@ export const action = guarded(async ({ request, params }: ActionFunctionArgs) =>
     const saved = await updateSurvey(shop.id, id, input, expectedRevision);
     if (intent === "go-live") {
       await setSurveyStatus(shop.id, id, "active");
-      return redirect(`/app/surveys/${id}?launched=1`);
+      return redirect(`/app/surveys/${id}?launched=1&${OPEN_CHECKOUT}=1`);
     }
     // A live or paused survey's save is held as a draft. Publish it straight
     // away: one button, and buyers see the change. The draft step still exists
@@ -167,7 +179,7 @@ export const action = guarded(async ({ request, params }: ActionFunctionArgs) =>
     // click.
     if (saved.hasDraft) {
       await publishSurveyDraft(shop.id, id, saved.revision);
-      return redirect(`/app/surveys/${id}?published=1`);
+      return redirect(`/app/surveys/${id}?published=1&${OPEN_CHECKOUT}=1`);
     }
   } catch (error) {
     const result = failure(error);
@@ -206,7 +218,7 @@ export default function SurveyEditorPage() {
   const { survey, limits, plan } = data;
   const { t } = useAdminI18n();
   const navigation = useNavigation();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const submit = useSubmit();
   const actionData = useActionData<typeof action>();
 
@@ -277,6 +289,28 @@ export default function SurveyEditorPage() {
   };
 
   const notice = NOTICES.find((key) => params.get(key) === "1");
+
+  // Pages this survey is on where the SourceTrac block has never loaded. The
+  // app cannot see the checkout editor, so "live" is only claimed where a
+  // block has asked for a survey; everywhere else the merchant is told to add it.
+  const missing = survey.status === "active" ? placementsMissingBlock(survey.placements, data.blockSeen) : [];
+  const editorHref = checkoutEditorUrl(data.shopHandle, missing[0] ?? "thank_you");
+  const missingPlaces = missing.map((p) => t(`editor.placement_${p}`)).join(", ");
+
+  // Straight after turning the survey on or publishing it, go to the checkout
+  // editor to add the block. The flag is dropped from the address first, and
+  // remembered per revision, so going back to this page never bounces the
+  // merchant out again.
+  const openCheckout = params.get(OPEN_CHECKOUT) === "1" && missing.length > 0;
+  useEffect(() => {
+    if (params.get(OPEN_CHECKOUT) !== "1") return;
+    const next = new URLSearchParams(params);
+    next.delete(OPEN_CHECKOUT);
+    setParams(next, { replace: true, preventScrollReset: true });
+    if (!openCheckout || alreadyOpened(survey.id, survey.revision)) return;
+    rememberOpened(survey.id, survey.revision);
+    window.open(editorHref, "_top");
+  }, [params, setParams, openCheckout, editorHref, survey.id, survey.revision]);
   const created = params.get("created") === "1";
   const freeVersion = params.get("free_version") === "1";
 
@@ -312,9 +346,9 @@ export default function SurveyEditorPage() {
           <s-text fontSize="large-100" fontWeight="bold">
             {draft.name || t("editor.untitled")}
           </s-text>
-          <StatusBadge status={draft.status} hasDraft={draft.hasDraft} t={t} />
+          <StatusBadge status={draft.status} hasDraft={draft.hasDraft} noBlock={missing.length > 0 && missing.length === survey.placements.length} t={t} />
         </s-stack>
-        <StatusLine draft={draft} t={t} />
+        <StatusLine draft={draft} missing={missing} t={t} />
       </s-stack>
 
       {actionData && actionData.ok === false ? (
@@ -332,6 +366,24 @@ export default function SurveyEditorPage() {
       ) : created && !dirty ? (
         <Banner tone="success" heading={t("editor.created_title")}>
           <s-text>{freeVersion ? t("editor.created_free_version", { plan: t("plans.growth") }) : t("editor.created_body")}</s-text>
+        </Banner>
+      ) : missing.length > 0 && !dirty ? (
+        <Banner
+          tone="warning"
+          heading={
+            notice === "launched" || notice === "published"
+              ? t(`editor.notice_${notice}_no_block`)
+              : t("editor.block_missing_title")
+          }
+        >
+          <s-stack gap="small">
+            <s-text>{t("editor.block_missing_body", { places: missingPlaces })}</s-text>
+            <s-stack direction="inline">
+              <s-button href={editorHref} target="_top" icon="external">
+                {t("editor.open_checkout_editor")}
+              </s-button>
+            </s-stack>
+          </s-stack>
         </Banner>
       ) : notice && !dirty ? (
         <Banner tone="success" heading={t(`editor.notice_${notice}`)} />
@@ -451,11 +503,7 @@ export default function SurveyEditorPage() {
                   <s-list-item>{t("editor.store_step_live")}</s-list-item>
                   <s-list-item>{t("editor.store_step_test")}</s-list-item>
                 </s-ordered-list>
-                <s-button
-                  href={`https://admin.shopify.com/store/${data.shopHandle}/settings/checkout/editor?page=thank-you`}
-                  target="_top"
-                  icon="external"
-                >
+                <s-button href={editorHref} target="_top" icon="external">
                   {t("editor.open_checkout_editor")}
                 </s-button>
                 <SurveyIdBox surveyId={survey.id} t={t} />
@@ -476,13 +524,16 @@ export default function SurveyEditorPage() {
   );
 }
 
-function StatusLine({ draft, t }: { draft: EditorSurvey; t: TFn }) {
-  const places = draft.placements.map((p) => t(`editor.placement_${p}`)).join(", ");
+function StatusLine({ draft, missing, t }: { draft: EditorSurvey; missing: Placement[]; t: TFn }) {
+  const shown = draft.placements.filter((p) => !missing.includes(p));
+  const places = shown.map((p) => t(`editor.placement_${p}`)).join(", ");
   const text =
     draft.status === "active"
       ? draft.hasDraft
         ? t("editor.status_live_draft")
-        : t("editor.status_live", { places: places || t("editor.placement_none") })
+        : draft.placements.length > 0 && shown.length === 0
+          ? t("editor.status_on_no_block")
+          : t("editor.status_live", { places: places || t("editor.placement_none") })
       : draft.status === "paused"
         ? t("editor.status_paused")
         : t("editor.status_draft");
@@ -559,9 +610,39 @@ function ActionButtons({
   );
 }
 
-function StatusBadge({ status, hasDraft, t }: { status: EditorSurvey["status"]; hasDraft: boolean; t: TFn }) {
+function StatusBadge({
+  status,
+  hasDraft,
+  noBlock,
+  t,
+}: {
+  status: EditorSurvey["status"];
+  hasDraft: boolean;
+  noBlock: boolean;
+  t: TFn;
+}) {
+  if (status === "active" && noBlock) return <s-badge tone="warning">{t("studio.status_no_block")}</s-badge>;
   if (status === "active" && hasDraft) return <s-badge tone="warning">{t("studio.status_live_draft")}</s-badge>;
   if (status === "active") return <s-badge tone="success">{t("surveys.status_active")}</s-badge>;
   if (status === "paused") return <s-badge tone="warning">{t("surveys.status_paused")}</s-badge>;
   return <s-badge tone="neutral">{t("surveys.status_draft")}</s-badge>;
+}
+
+const OPENED_KEY = "sourcetrac:checkout-editor-opened";
+
+function alreadyOpened(surveyId: string, revision: number): boolean {
+  try {
+    return window.sessionStorage.getItem(OPENED_KEY) === `${surveyId}:${revision}`;
+  } catch {
+    return false;
+  }
+}
+
+function rememberOpened(surveyId: string, revision: number): void {
+  try {
+    window.sessionStorage.setItem(OPENED_KEY, `${surveyId}:${revision}`);
+  } catch {
+    // No storage: the flag is already gone from the address, which covers a
+    // reload; only going back through history could open the editor again.
+  }
 }

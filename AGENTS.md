@@ -740,7 +740,18 @@ as a failure, so the merchant saw "200 Go to the dashboard" and never reached
 the dashboard or the survey editor. Both boundaries now call
 `boundary.error(error)` when `isShopifyAuthResponse(error)` (a 2xx
 `ErrorResponse`, `app/lib/shopify-boundary.ts`); real failures keep the custom
-screen. Reproduce with a browser UA: `curl -A "Mozilla/5.0 Chrome/130" "localhost:3000/app?shop=x.myshopify.com"`
+screen.
+
+**Never call the library's `boundary.error` in a component** (fixed 2026-10-18).
+It recognises the error by `constructor.name === "ErrorResponseImpl"`, which
+the production client bundle minifies (`qe`), so in the browser it rethrew and
+the root boundary showed "200" — the merchant's "random 200 error". Both
+boundaries render `ShopifyAuthPage` (`app/components/shopify-auth-page.tsx`):
+the server's page hydrates unchanged; on a page switch (a `.data` request that
+reached the server without a session token gets the same App Bridge page,
+whose scripts never run via `innerHTML`) it reloads the target page with
+`shop`/`host`/`embedded` from `shopify.config` or the boot URL, once per 20 s.
+`root.tsx` calls `markDocumentHydrated` so later renders count as page switches. Reproduce with a browser UA: `curl -A "Mozilla/5.0 Chrome/130" "localhost:3000/app?shop=x.myshopify.com"`
 must return the `app-bridge.js` script tag, not the error text.
 
 - **Billing `returnUrl` is the admin URL**
@@ -1502,3 +1513,18 @@ call, while auth itself still succeeded.
   `Shop` is only a fallback and may be stale.
 - A Shopify 4xx now carries Shopify's own text (`httpErrorDetail`), and the
   Plans page shows it. That is how this was found: the log line was not visible.
+
+## "Live" is only claimed where the block has loaded (2026-10-18)
+
+Turning a survey on does not put it in front of buyers: the merchant must add
+the SourceTrac block in Shopify's checkout editor, and Shopify exposes no
+"block added" state. `Shop.thankYouBlockSeenAt` / `orderStatusBlockSeenAt`
+(`app/lib/block-seen.server.ts`) are set when a block calls `/api/survey`
+(buyer) or `/api/survey-preview` (checkout editor), at most hourly per process,
+and cleared on `app/uninstalled`. The editor and Surveys list show "Buyers
+can't see this survey yet" with an Open checkout editor button for any page
+the block never loaded on, and after Go live / Save and publish the editor
+opens the checkout editor itself (`open_checkout=1`, dropped from the URL and
+remembered per revision so Back does not bounce out again). It never opens
+once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
+`tests/unit/checkout-editor.test.ts`, `tests/unit/shopify-auth-page.test.ts`.

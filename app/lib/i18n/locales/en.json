@@ -354,7 +354,8 @@
     "shop_missing_title": "This store is not installed yet",
     "shop_missing_body": "Reopen SourceTrac from your Shopify admin to reinstall.",
     "boundary_title": "Something went wrong",
-    "reference": "Reference: {{reference}}"
+    "reference": "Reference: {{reference}}",
+    "session_reload": "Your session needs refreshing. Go to the dashboard to load SourceTrac again."
   },
   "a11y": {
     "skip_to_content": "Skip to main content",
@@ -978,7 +979,8 @@
     "confirmed_sample": "Your order is confirmed",
     "fulfillment_sample": "Order placed · Preparing · Shipped · Delivered",
     "template_info": "{{count}} questions",
-    "tab_studio": "Studio"
+    "tab_studio": "Studio",
+    "status_no_block": "Not in checkout yet"
   },
   "confidence": {
     "too_early": "Too early",
@@ -1200,7 +1202,12 @@
     "leave_title": "Save your changes before you leave",
     "leave_body": "This survey has changes that are not saved yet. Save them, or discard them to leave this page.",
     "leave_discard": "Discard and leave",
-    "leave_stay": "Keep editing"
+    "leave_stay": "Keep editing",
+    "status_on_no_block": "Turned on, but buyers can't see it yet: the SourceTrac block isn't in your checkout.",
+    "notice_launched_no_block": "Survey turned on. One step left: add the SourceTrac block in the checkout editor.",
+    "notice_published_no_block": "Changes saved. Buyers see them once the SourceTrac block is in your checkout.",
+    "block_missing_title": "Buyers can't see this survey yet",
+    "block_missing_body": "The SourceTrac block hasn't loaded on the {{places}} yet. In the checkout editor, add the \"SourceTrac survey\" block to that page and save. This message goes away the first time the block loads there."
   },
   "preview": {
     "title": "Preview",

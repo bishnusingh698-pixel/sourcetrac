@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   isRouteErrorResponse,
   Links,
@@ -14,10 +15,10 @@ import {
 
 import { createTranslator, resolveLanguage, DEFAULT_LANGUAGE } from "~/lib/i18n";
 import { resolveRequestLanguage } from "~/lib/i18n/resolve.server";
-import { boundary } from "@shopify/shopify-app-react-router/server";
 import { buildSupportMailto, SUPPORT_EMAIL } from "@shared/support";
 
 import { isShopifyAuthResponse } from "~/lib/shopify-boundary";
+import { embeddedHref, markDocumentHydrated, ShopifyAuthPage } from "~/components/shopify-auth-page";
 import stylesheet from "~/styles/app.css?url";
 
 /**
@@ -112,6 +113,8 @@ export function useDocumentLanguage(): string {
 
 export default function App() {
   const lang = useDocumentLanguage();
+  // Everything rendered after this is a page switch, not the server's page.
+  useEffect(markDocumentHydrated, []);
   return (
     <html lang={lang}>
       <head>
@@ -155,7 +158,7 @@ function RootDocumentAuthPage({ error }: { error: unknown }) {
         <Links />
       </head>
       <body>
-        {boundary.error(error)}
+        <ShopifyAuthPage error={error} fallback={<RootErrorMain error={error} />} />
         <Scripts />
       </body>
     </html>
@@ -163,7 +166,24 @@ function RootDocumentAuthPage({ error }: { error: unknown }) {
 }
 
 function RootErrorScreen({ error }: { error: unknown }) {
+  return (
+    <html lang={useDocumentLanguage()}>
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <link rel="preconnect" href="https://cdn.shopify.com/" />
+        <Meta />
+        <Links />
+      </head>
+      <body>
+        <RootErrorMain error={error} />
+        <Scripts />
+      </body>
+    </html>
+  );
+}
 
+function RootErrorMain({ error }: { error: unknown }) {
   const hint =
     isRouteErrorResponse(error) && typeof (error.data as { hint?: unknown } | null)?.hint === "string"
       ? (error.data as { hint: string; reference?: string })
@@ -172,6 +192,8 @@ function RootErrorScreen({ error }: { error: unknown }) {
   const t = createTranslator(resolveLanguage(lang) ?? DEFAULT_LANGUAGE);
   const message = hint
     ? `${hint.hint}${hint.reference ? ` (${t("errors.reference", { reference: hint.reference })})` : ""}`
+    : isShopifyAuthResponse(error)
+    ? t("errors.session_reload")
     : isRouteErrorResponse(error)
     ? `${error.status} ${error.statusText}`
     : error instanceof Error
@@ -188,12 +210,12 @@ function RootErrorScreen({ error }: { error: unknown }) {
    * merchant clicks the link, lands on `/app` without a session token, and
    * Shopify redirects to OAuth, which in an iframe produces a blank panel.
    *
-   * `useLocation` gives us the current search string, which still carries
-   * `?shop=&host=&embedded=` even when the child route has crashed. Appending
-   * it to `/app` restores the embedded context so the re-auth flow succeeds.
+   * After a client-side move the address bar no longer carries
+   * `?shop=&host=&embedded=`, so `embeddedHref` adds them back from App Bridge
+   * and the address the document was loaded with.
    */
   const location = useLocation();
-  const dashboardHref = `/app${location.search}`;
+  const dashboardHref = embeddedHref("/app", location.search);
 
   // A plain mailto link, outside App Bridge. Enough on the error screen: the
   // merchant's mail app opens with the page in the body.
@@ -204,30 +226,18 @@ function RootErrorScreen({ error }: { error: unknown }) {
   });
 
   return (
-    <html lang={lang}>
-      <head>
-        <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
-        <link rel="preconnect" href="https://cdn.shopify.com/" />
-        <Meta />
-        <Links />
-      </head>
-      <body>
-        <main style={{ padding: "2rem", fontFamily: "system-ui, sans-serif" }}>
-          <h1 style={{ fontSize: "1.25rem", marginBottom: "0.5rem" }}>
-            {t("errors.boundary_title")}
-          </h1>
-          <p style={{ marginBottom: "1rem" }}>{message}</p>
-          <p style={{ marginBottom: "1rem" }}>
-            <a href={dashboardHref}>{t("errors.not_found_cta")}</a>
-          </p>
-          <p style={{ fontSize: "0.875rem" }}>
-            {t("support.body")}{" "}
-            <a href={supportHref}>{SUPPORT_EMAIL}</a>
-          </p>
-        </main>
-        <Scripts />
-      </body>
-    </html>
+    <main style={{ padding: "2rem", fontFamily: "system-ui, sans-serif" }}>
+      <h1 style={{ fontSize: "1.25rem", marginBottom: "0.5rem" }}>
+        {t("errors.boundary_title")}
+      </h1>
+      <p style={{ marginBottom: "1rem" }}>{message}</p>
+      <p style={{ marginBottom: "1rem" }}>
+        <a href={dashboardHref}>{t("errors.not_found_cta")}</a>
+      </p>
+      <p style={{ fontSize: "0.875rem" }}>
+        {t("support.body")}{" "}
+        <a href={supportHref}>{SUPPORT_EMAIL}</a>
+      </p>
+    </main>
   );
 }

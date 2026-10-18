@@ -96,6 +96,12 @@ model Shop {
   planDisplayName      String?
   checkoutSupported    Boolean?
   checkoutCheckedAt    DateTime?
+  /// When a SourceTrac checkout block last asked us for a survey on each page,
+  /// from a buyer's order or the checkout editor. Shopify reports no "block
+  /// added" state, so this is the only proof the block is really there. Null
+  /// means never seen; cleared on uninstall, which removes the blocks.
+  thankYouBlockSeenAt    DateTime?
+  orderStatusBlockSeenAt DateTime?
   questionText         String       @default("How did you hear about us?")
   /// Defaulted so a shop row is always valid: a freshly installed store must be
   /// able to render a working survey before the merchant visits Settings.
