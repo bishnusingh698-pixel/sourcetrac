@@ -8,6 +8,13 @@ import { resolveSmartActionWrites, SMART_ACTION_PRESETS, type ResolvedSmartActio
 import { PLAN_SCALE, effectivePlan } from "~/lib/plans";
 import { slugifyChannel } from "~/lib/settings";
 import { OTHER_CHANNEL_VALUE } from "@shared/survey-rules";
+import {
+  MAX_SYNC_TAG_LENGTH,
+  MAX_SYNC_TAGS,
+  normalizeTagTemplates,
+  sanitizeTag,
+  tagsForAnswer,
+} from "@shared/sync-tags";
 
 /**
  * Optional write-back to Shopify (Phase 7).
@@ -58,8 +65,7 @@ export type SurveySyncOptions = {
 const METAFIELD_NAMESPACE = /^[A-Za-z0-9_-]{3,255}$/;
 const METAFIELD_KEY = /^[A-Za-z0-9_-]{2,64}$/;
 
-export const MAX_SYNC_TAGS = 4;
-export const MAX_SYNC_TAG_LENGTH = 40;
+export { MAX_SYNC_TAGS, MAX_SYNC_TAG_LENGTH, sanitizeTag };
 export const MAX_SYNC_ATTEMPTS = 5;
 /** Work older than this is dropped, never fired: a reinstall must not replay months-old answers. */
 const MAX_SYNC_AGE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -73,17 +79,6 @@ function retryDb<T>(operation: () => Promise<T>): Promise<T> {
 /** Parse and clamp `Survey.syncOptions`. Unknown keys are ignored. */
 export function parseSyncOptions(raw: unknown): SurveySyncOptions {
   const source = (raw ?? {}) as Record<string, unknown>;
-  const tags = (value: unknown, prefix: string): string[] | undefined => {
-    if (!Array.isArray(value)) return undefined;
-    const cleaned = value
-      .filter((v): v is string => typeof v === "string")
-      .map((v) => v.trim().slice(0, MAX_SYNC_TAG_LENGTH))
-      .filter(Boolean)
-      .slice(0, MAX_SYNC_TAGS)
-      .map((v) => (v.includes(":") ? v : `${prefix}:${v}`));
-    return cleaned.length > 0 ? cleaned : undefined;
-  };
-
   // Only well-formed names and text types: the value written is always text,
   // and a malformed namespace/key or a numeric type failed every write.
   const metafields = Array.isArray(source.metafields)
@@ -100,8 +95,8 @@ export function parseSyncOptions(raw: unknown): SurveySyncOptions {
     : undefined;
 
   return {
-    orderTags: tags(source.orderTags, "sourcetrac"),
-    customerTags: tags(source.customerTags, "sourcetrac"),
+    orderTags: normalizeTagTemplates(source.orderTags),
+    customerTags: normalizeTagTemplates(source.customerTags),
     metafields: metafields && metafields.length > 0 ? metafields : undefined,
     flowTrigger: source.flowTrigger === true,
     presets: Array.isArray(source.presets)
@@ -386,19 +381,6 @@ async function fetchOrderCustomerId(ctx: SyncContext): Promise<string | null> {
   return result.data.order.customer?.id ?? null;
 }
 
-/**
- * A tag from a merchant template. Every `{channel}` is filled with the
- * channel's label, reduced to one safe segment (no `:`), so nothing typed by a
- * buyer can shape the tag; a template that needs a channel is skipped when the
- * buyer did not choose one, rather than writing `sourcetrac:`.
- */
-function fillTagTemplate(template: string, ctx: SyncContext): string | null {
-  if (!template.includes("{channel}")) return template;
-  const value = sanitizeTag(ctx.channelLabel || ctx.channel).replace(/:/g, "-").trim();
-  if (!value) return null;
-  return template.replaceAll("{channel}", value);
-}
-
 /** A metafield value within Shopify's limits for its text type. */
 function metafieldValue(value: string, type: string | undefined): string {
   return truncateForPayload(type === "multi_line_text_field" ? value : singleLine(value), 500);
@@ -412,28 +394,6 @@ function singleLine(value: string): string {
 // ---------------------------------------------------------------------------
 // Executing one kind
 // ---------------------------------------------------------------------------
-
-/**
- * Sanitise an order/customer tag before sending it to Shopify.
- *
- * A tag is built from the merchant's prefix plus the channel label, and the
- * channel label can be the buyer's free-text "Other" answer. A comma splits one
- * tag into several, so a shopper typing "a,b,c" would create arbitrary tags on
- * the order; control characters and length are clamped for the same reason.
- * Lower-cased and reduced to a safe character set, max 40 characters.
- */
-export function sanitizeTag(raw: string): string {
-  const cleaned = raw
-    .toLowerCase()
-    // Drop control characters and anything that could break a tag (comma,
-    // quotes, backslash). Space, letters, digits, dash, underscore, dot, colon
-    // (the `prefix:channel` separator) and non-Latin letters survive.
-    .replace(/[\u0000-\u001f\u007f,"'\\]/g, "")
-    .replace(/[^\p{L}\p{N}\-_.: ]/gu, "")
-    .trim()
-    .slice(0, 40);
-  return cleaned;
-}
 
 /** Hard ceiling for a Flow payload, below Shopify's 50,000-byte limit. */
 export const MAX_FLOW_PAYLOAD_BYTES = 45_000;
@@ -482,11 +442,9 @@ export async function runSyncKind(
   if (kind === "tags") {
     if (!canSync(grantedScopes, "write_orders", ctx.shopId)) return;
     const tags = [
-      ...(options.orderTags ?? []).map((tag) => fillTagTemplate(tag, ctx)).filter((tag): tag is string => tag !== null),
-      ...presetWrites(ctx).orderTags,
-    ]
-      .map(sanitizeTag)
-      .filter((tag) => tag.length > 0);
+      ...tagsForAnswer(options.orderTags ?? [], ctx.channelLabel || ctx.channel),
+      ...presetWrites(ctx).orderTags.map(sanitizeTag),
+    ].filter((tag) => tag.length > 0);
     if (tags.length === 0) return;
     const result = await shopifyGraphql<{ tagsAdd: { userErrors: UserErrors } }>(
       ctx.shopDomain,
@@ -503,11 +461,9 @@ export async function runSyncKind(
     const customerId = await fetchOrderCustomerId(ctx);
     if (!customerId) return;
     const tags = [
-      ...(options.customerTags ?? []).map((tag) => fillTagTemplate(tag, ctx)).filter((tag): tag is string => tag !== null),
-      ...presetWrites(ctx).customerTags,
-    ]
-      .map(sanitizeTag)
-      .filter((tag) => tag.length > 0);
+      ...tagsForAnswer(options.customerTags ?? [], ctx.channelLabel || ctx.channel),
+      ...presetWrites(ctx).customerTags.map(sanitizeTag),
+    ].filter((tag) => tag.length > 0);
     if (tags.length === 0) return;
     const result = await shopifyGraphql<{ tagsAdd: { userErrors: UserErrors } }>(
       ctx.shopDomain,

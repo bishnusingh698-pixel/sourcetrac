@@ -1574,3 +1574,40 @@ once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
   in `app/lib/preview-state.ts`, visibility through the shared
   `isQuestionVisible`). Plain HTML buttons and inputs, never `name`d, all
   `type="button"`. Nothing is saved. Tests: `tests/unit/survey-preview.test.ts`.
+
+## Why the survey silently didn't show, and how merchants now see why (2026-10-18)
+
+- **Checkout auth goes through `authenticateCheckout`** (`app/lib/checkout-auth.server.ts`),
+  never `authenticate.public.checkout` directly. The library throws a bare 401
+  with no CORS when the session token is missing or does not verify; the block
+  read that as a network error and sat on "Loading…" for a minute, and the
+  reason was only logged at debug. The wrapper adds CORS (the block stops at
+  once), logs `checkout_auth_rejected` with a reason (`bad_signature` for a
+  known store means `SHOPIFY_API_SECRET` is wrong), and normalises `dest`.
+- **`explainTargeting`** (`shared/survey-config.ts`) is the only place targeting
+  is decided; `matchesTargeting` wraps it. `/api/survey` records every decision
+  with its reason in an in-memory ring buffer (`serve-log.server.ts`), shown as
+  "Recent checkouts" on the Surveys page. A new rule needs a `TargetingMiss`
+  code and a `surveys.reason_*` string in all ten locales.
+- **Order value** never applied: `valueCurrency` was never set. The editor (and
+  the route, as a backstop) set it to the store currency, and the block sends
+  `cost.totalAmount` (`total`/`totalCurrency`) because on the Thank-you page the
+  webhook has not landed. The cached webhook total wins when it exists.
+- **First-time/returning on Order status** reads `OrderFact`, written once
+  (create-only) when the Thank-you block reports `isFirstOrder`. Unknown still
+  hides the survey. 90-day retention; deleted on customers/redact.
+- **Dates are the store's calendar days** (`shared/zoned-date.ts`): start =
+  00:00 local, end = 00:00 the day after the end date (inclusive), stored as ISO
+  instants. Older bare `YYYY-MM-DD` rules still read, the end now inclusive.
+  Dashboard/Results buckets stay UTC (rule above).
+- **Countries are picked from a list** (`shared/countries.ts`,
+  `country-picker.tsx`); the server refuses unknown codes (`invalid_country`).
+  "USA" or "UK" used to save and match nobody.
+- **Language rules match the base language** (`en-US` matches `en`).
+- **Learn & stop fires once** (`Survey.autoPausedAt`). It used to re-pause the
+  next answer after a merchant resumed. Switching it off and on re-arms it.
+- Tag templates live in `shared/sync-tags.ts` so the editor's example tag is
+  written by the same code as the sync (a bare tag becomes `sourcetrac:<tag>`).
+- `setPlan` invalidates the compiled checkout config.
+- Extension changes in this pass (`total`, satisfaction labels) need
+  `shopify app deploy`.

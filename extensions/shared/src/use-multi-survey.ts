@@ -272,7 +272,9 @@ export function useMultiSurvey(
       ) {
         log("survey_hidden", {
           placement,
-          reason: config?.alreadyAnswered ? "already_answered" : "backend_unreachable",
+          // The merchant's Surveys page lists the server's reason for each
+          // load under "Recent checkouts".
+          reason: !config ? "backend_unreachable" : config.alreadyAnswered ? "already_answered" : "no_matching_survey",
         });
         setPhase("hidden");
         return;

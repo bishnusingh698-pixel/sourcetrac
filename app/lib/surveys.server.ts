@@ -36,9 +36,11 @@ import {
   type CompiledConfig,
   type CompiledQuestion,
   type CompiledSurvey,
+  targetingInstant,
   type Placement,
   type Targeting,
 } from "@shared/survey-config";
+import { isCountryCode } from "@shared/countries";
 import {
   DEFAULT_DESIGN,
   LIMITS,
@@ -98,6 +100,10 @@ export type EditorSurvey = {
   rotationWeight: number;
   /** T10. */
   learnAndStop: boolean;
+  /** When learn & stop paused it (ISO), or null. */
+  autoPausedAt: string | null;
+  /** Paused by learn & stop, and not touched by the merchant since. */
+  pausedAutomatically: boolean;
   /** S11/S12. */
   design: DesignSettings;
   /** ISO instant of the last draft save, or null when there is no draft. */
@@ -214,6 +220,8 @@ export function rowToEditor(
     rotation: row.rotation,
     rotationWeight: row.rotationWeight,
     learnAndStop: row.learnAndStop,
+    autoPausedAt: row.autoPausedAt ? row.autoPausedAt.toISOString() : null,
+    pausedAutomatically: row.status === "paused" && row.autoPausedAt !== null && row.autoPausedAt >= row.editedAt,
     design: resolveDesign(parseJson<Partial<DesignSettings>>(row.designJson, {})),
     draftUpdatedAt: row.draftUpdatedAt ? row.draftUpdatedAt.toISOString() : null,
     hasDraft: row.draft !== null,
@@ -657,6 +665,31 @@ function sanitizeSurveyInput(input: SurveyInput): SurveyInput {
   listLimit("countries", 250);
   listLimit("languages", 50);
 
+  // A code no checkout reports ("USA", "UK", a country name) matched no buyer,
+  // so the survey silently showed to nobody.
+  const unknownCountries = (targeting.countries ?? []).filter((code) => !isCountryCode(code));
+  if (unknownCountries.length > 0) {
+    fail("targeting.countries", "invalid_country", `Not a country code: ${unknownCountries.slice(0, 3).join(", ")}.`);
+  }
+  if (targeting.valueCurrency != null && (typeof targeting.valueCurrency !== "string" || !/^[A-Z]{3}$/.test(targeting.valueCurrency))) {
+    fail("targeting.valueCurrency", "invalid_targeting", "Targeting could not be read.");
+  }
+  // Dates are instants the editor computed in the shop's time zone (older
+  // rules: a bare date). Anything else was ignored by the matcher, so a rule
+  // the merchant believed in did nothing.
+  const ruleDate = (key: "startsAt" | "endsAt"): Date | null => {
+    const value = targeting[key];
+    if (value == null || value === "") return null;
+    const instant = typeof value === "string" ? targetingInstant(value, key === "startsAt" ? "start" : "end") : null;
+    if (!instant) return fail(`targeting.${key}`, "invalid_date", "That date could not be read.");
+    return instant;
+  };
+  const startsAt = ruleDate("startsAt");
+  const endsAt = ruleDate("endsAt");
+  if (startsAt && endsAt && endsAt <= startsAt) {
+    fail("targeting.endsAt", "end_before_start", "The end date must be on or after the start date.");
+  }
+
   let design: DesignSettings | undefined;
   if (input.design !== undefined) {
     design = resolveDesign(input.design);
@@ -1030,6 +1063,8 @@ export async function updateSurvey(
       rotation: input.rotation ?? existing.rotation,
       rotationWeight: input.rotationWeight ?? existing.rotationWeight,
       learnAndStop: input.learnAndStop ?? existing.learnAndStop,
+      // Switching auto-stop off and on again arms it again.
+      ...(input.learnAndStop === true && !existing.learnAndStop ? { autoPausedAt: null } : {}),
       // `designJson` is already a JSON string; only a posted design is encoded.
       designJson: input.design ? JSON.stringify(input.design) : existing.designJson,
       // Bump the version on every save of an active survey, so responses
@@ -1114,6 +1149,7 @@ export async function publishSurveyDraft(
       rotation: draftInput.rotation ?? existing.rotation,
       rotationWeight: draftInput.rotationWeight ?? existing.rotationWeight,
       learnAndStop: draftInput.learnAndStop ?? existing.learnAndStop,
+      ...(draftInput.learnAndStop === true && !existing.learnAndStop ? { autoPausedAt: null } : {}),
       designJson: draftInput.design ? JSON.stringify(draftInput.design) : existing.designJson,
       version: { increment: 1 },
       draft: null,

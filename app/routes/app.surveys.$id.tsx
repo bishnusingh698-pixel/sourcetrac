@@ -35,7 +35,8 @@ import {
   type EditorSurvey,
   type SurveyInput,
 } from "~/lib/surveys.server";
-import { getShopDisplay } from "~/lib/studio.server";
+import { getShopDisplay, getShopLocaleInfo } from "~/lib/studio.server";
+import { isValidTimeZone } from "@shared/zoned-date";
 import { grantedSyncScopes } from "~/lib/scopes.server";
 import { getBlockSeen, markBlockAdded } from "~/lib/block-seen.server";
 import { BlockMissingBanner, postedPlacements } from "~/components/block-missing";
@@ -73,7 +74,10 @@ export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) =>
   if (!row) throw new NotFoundError("That survey does not exist.", { surveyId: id });
   const survey = rowToEditor(row);
 
-  const display = await getShopDisplay(shop.id, shop.shopDomain, session.accessToken);
+  const [display, localeInfo] = await Promise.all([
+    getShopDisplay(shop.id, shop.shopDomain, session.accessToken),
+    getShopLocaleInfo(shop.id, shop.shopDomain, session.accessToken),
+  ]);
   const usage = await liveSurveyUsage(shop.id);
   const template = survey.templateId ? templateById(survey.templateId) : undefined;
 
@@ -81,6 +85,8 @@ export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) =>
     survey,
     shopHandle: shop.shopDomain.replace(".myshopify.com", ""),
     shopCurrency: display.currencyCode ?? "USD",
+    // Start and end dates are the store's calendar days, in its own zone.
+    shopTimeZone: isValidTimeZone(localeInfo.timeZone) ? localeInfo.timeZone : null,
     languages: LANGUAGES.map((l) => ({ code: l.code, name: l.nativeName })),
     defaultLanguage: resolveAdminLanguage(request, shop.language, shop.adminLocale),
     limits: LIMITS,
@@ -173,6 +179,14 @@ export const action = guarded(async ({ request, params }: ActionFunctionArgs) =>
     throw new ValidationError("The survey could not be read.", "Reload the page and save again.");
   }
 
+  // An order-value rule is in the store's currency. The editor sets it; an
+  // older client did not, which left the rule ignored on every order.
+  const targeting = input.targeting;
+  if (targeting && (targeting.minValue != null || targeting.maxValue != null) && !targeting.valueCurrency) {
+    const display = await getShopDisplay(shop.id, shop.shopDomain, session.accessToken);
+    if (display.currencyCode) targeting.valueCurrency = display.currencyCode;
+  }
+
   try {
     const saved = await updateSurvey(shop.id, id, input, expectedRevision);
     if (intent === "go-live") {
@@ -222,7 +236,7 @@ const NOTICES = ["launched", "published", "saved", "paused", "discarded"] as con
 export default function SurveyEditorPage() {
   const data = useLoaderData<typeof loader>();
   const { survey, limits, plan } = data;
-  const { t } = useAdminI18n();
+  const { t, language } = useAdminI18n();
   const navigation = useNavigation();
   const [params, setParams] = useSearchParams();
   const submit = useSubmit();
@@ -426,7 +440,16 @@ export default function SurveyEditorPage() {
                 <Audience draft={draft} update={update} t={t} />
                 <details className="st-details">
                   <summary>{t("editor.more_rules")}</summary>
-                  <AdvancedTargeting draft={draft} update={update} shopCurrency={data.shopCurrency} t={t} plan={plan} />
+                  <AdvancedTargeting
+                    draft={draft}
+                    update={update}
+                    shopCurrency={data.shopCurrency}
+                    shopTimeZone={data.shopTimeZone}
+                    language={language}
+                    errors={errors}
+                    t={t}
+                    plan={plan}
+                  />
                 </details>
               </s-stack>
             </s-section>
@@ -534,7 +557,9 @@ function StatusLine({ draft, missing, t }: { draft: EditorSurvey; missing: Place
           ? t("editor.status_on_no_block")
           : t("editor.status_live", { places: places || t("editor.placement_none") })
       : draft.status === "paused"
-        ? t("editor.status_paused")
+        ? draft.pausedAutomatically
+          ? t("editor.status_auto_paused")
+          : t("editor.status_paused")
         : t("editor.status_draft");
   return <s-text color="subdued">{text}</s-text>;
 }

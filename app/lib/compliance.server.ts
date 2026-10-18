@@ -241,6 +241,8 @@ export async function handleCustomerRedact(params: {
     await retryDb(() =>
       db.redactedOrder.createMany({ data: chunk.map((orderId) => ({ shopId: shop.id, orderId })), skipDuplicates: true }),
     );
+    // The first-order flag the Thank-you page reported for these orders.
+    await retryDb(() => db.orderFact.deleteMany({ where: { shopId: shop.id, orderId: { in: chunk } } }));
   }
 
   if (orderIds.length > REDACT_BATCH_SIZE) {

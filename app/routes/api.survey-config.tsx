@@ -10,7 +10,7 @@ import { BUCKETS, consumeShopBackstop, consumeToken } from "~/lib/rate-limit.ser
 import { DEFAULT_OPTIONS, parseSurveySettings } from "~/lib/settings";
 import { findShopByDomain, hasResponseFor, isKnownOrder } from "~/lib/shop.server";
 import { maybeMarkUnreconcilable } from "~/lib/responses.server";
-import { authenticate } from "~/shopify.server";
+import { authenticateCheckout } from "~/lib/checkout-auth.server";
 
 /**
  * GET /api/survey-config
@@ -30,8 +30,7 @@ export const loader = async ({ request }: { request: Request }) => {
 
   // Throws a 401 Response when the token is missing, invalid or expired. That
   // must keep propagating: the library adds its own CORS headers for it.
-  const { sessionToken, cors } = await authenticate.public.checkout(request);
-  const shopDomain = sessionToken.dest.toLowerCase();
+  const { cors, shopDomain } = await authenticateCheckout(request, "api_survey_config");
 
   // As in /api/responses, every exit from here is CORS-wrapped. A thrown error
   // would be serialised by React Router without an Access-Control-Allow-Origin

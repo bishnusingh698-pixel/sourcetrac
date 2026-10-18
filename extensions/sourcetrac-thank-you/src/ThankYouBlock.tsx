@@ -61,6 +61,8 @@ function ThankYouBlock() {
         // country comes from the buyer's localization context.
         getIsFirstOrder: () => shopify.orderConfirmation.value?.isFirstOrder,
         getCountry: () => shopify.localization?.country?.value?.isoCode,
+        // The order total as the page shows it, for the order-value rule.
+        getOrderTotal: () => shopify.cost?.totalAmount?.value,
         // T8: the order's product ids, so Results can break answers down by
         // product. Numeric ids only; up to ten.
         getProductIds: () =>

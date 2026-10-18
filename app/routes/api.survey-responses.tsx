@@ -16,8 +16,9 @@ import {
 import { submitAnswers } from "~/lib/answers.server";
 import { findShopByDomain, isKnownOrder } from "~/lib/shop.server";
 import { recordBlockSeen } from "~/lib/block-seen.server";
+import { readOrderFact } from "~/lib/order-facts.server";
 import { getSurveyRow, rowToEditor } from "~/lib/surveys.server";
-import { authenticate } from "~/shopify.server";
+import { authenticateCheckout } from "~/lib/checkout-auth.server";
 import { PLACEMENTS, type Placement } from "@shared/survey-config";
 import type { AnswerInput, SurveyDefinition } from "@shared/survey-rules";
 
@@ -74,7 +75,7 @@ const bodySchema = z.object({
 
 /** The browser preflights every submit; answer OPTIONS with a CORS 204. */
 export const loader = async ({ request }: { request: Request }) => {
-  const { cors } = await authenticate.public.checkout(request);
+  const { cors } = await authenticateCheckout(request, "api_survey_responses");
   return cors(
     toResponse({ error: { code: "method_not_allowed" } }, { status: 405, headers: { Allow: "POST, OPTIONS" } }),
   );
@@ -83,8 +84,7 @@ export const loader = async ({ request }: { request: Request }) => {
 export const action = async ({ request }: { request: Request }) => {
   const requestId = `ans_${Date.now().toString(36)}`;
 
-  const { sessionToken, cors } = await authenticate.public.checkout(request);
-  const shopDomain = sessionToken.dest.toLowerCase();
+  const { sessionToken, cors, shopDomain } = await authenticateCheckout(request, "api_survey_responses");
 
   // Set once a submission slot is reserved; released unless an answer is stored.
   let reservedToken: string | null = null;
@@ -177,7 +177,8 @@ export const action = async ({ request }: { request: Request }) => {
       placement,
       locale: parsed.data.locale ?? null,
       productIds: parsed.data.productIds,
-      isFirstOrder: parsed.data.isFirstOrder ?? null,
+      // Only the Thank-you page knows; an Order status answer reads what it saw.
+      isFirstOrder: parsed.data.isFirstOrder ?? (orderId ? await readOrderFact(shop.id, orderId) : null),
       country: parsed.data.country?.toUpperCase() ?? null,
       answers: parsed.data.answers as AnswerInput[],
       plan: effectivePlan(shop),

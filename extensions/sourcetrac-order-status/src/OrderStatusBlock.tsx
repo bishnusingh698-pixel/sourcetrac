@@ -54,6 +54,8 @@ function OrderStatusBlock() {
         // Country targeting. The order-status surface exposes the order's
         // country on `localization`, not on the order object.
         getCountry: () => shopify.localization?.country?.value?.isoCode,
+        // The order total as the page shows it, for the order-value rule.
+        getOrderTotal: () => shopify.cost?.totalAmount?.value,
       }),
     [shopify],
   );

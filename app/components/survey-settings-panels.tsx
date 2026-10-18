@@ -1,11 +1,14 @@
 import { useState } from "react";
 
 import { Banner } from "~/components/admin-ui";
+import { CountryPicker } from "~/components/country-picker";
 import { JustInTimeNotice } from "~/components/data-notice";
 import { LockedNote, checkboxChecked, fieldValue, numberOrNull, type TFn } from "~/components/survey-editor";
 import { LIMITS } from "@shared/survey-rules";
 import { planHas, usesAdvancedTargeting, type PlanTier } from "@shared/plan-features";
 import { SMART_ACTION_PRESETS } from "@shared/templates/smart-actions";
+import { normalizeTagTemplates, tagsForAnswer } from "@shared/sync-tags";
+import { endOfDayIso, startOfDayIso, storedToDateField } from "@shared/zoned-date";
 import type { EditorSurvey } from "~/lib/surveys.server";
 
 /**
@@ -35,7 +38,11 @@ function NumberField({ label, value, onInput, details }: { label: string; value:
 export function Audience({ draft, update, t }: { draft: EditorSurvey; update: Update; t: TFn }) {
   const targeting = draft.targeting;
   const value = targeting.customerType ?? "everyone";
+  // The Order status page has no first-order signal of its own; it reads what
+  // the Thank-you block reported for the order.
+  const orderStatusNote = value !== "everyone" && draft.placements.includes("order_status");
   return (
+    <s-stack gap="small">
     <s-choice-list
       label={t("editor.audience")}
       name="audience"
@@ -50,20 +57,34 @@ export function Audience({ draft, update, t }: { draft: EditorSurvey; update: Up
       <s-choice value="first_order">{t("editor.audience_first")}</s-choice>
       <s-choice value="returning">{t("editor.audience_returning")}</s-choice>
     </s-choice-list>
+    {orderStatusNote ? (
+      <s-text color="subdued" fontSize="small">
+        {t("editor.audience_order_status_note")}
+      </s-text>
+    ) : null}
+    </s-stack>
   );
 }
 
-/** Order value, share of orders, countries, languages, dates, answer limit (Growth). */
+/** Order value, share of orders, countries, dates, answer limit (Growth). */
 export function AdvancedTargeting({
   draft,
   update,
   shopCurrency,
+  shopTimeZone,
+  language,
+  errors,
   t,
   plan,
 }: {
   draft: EditorSurvey;
   update: Update;
   shopCurrency: string;
+  /** The store's IANA zone; dates are the store's calendar days. */
+  shopTimeZone: string | null;
+  /** The merchant's admin language, for country names. */
+  language: string;
+  errors: Map<string, string>;
   t: TFn;
   plan: PlanTier;
 }) {
@@ -74,26 +95,32 @@ export function AdvancedTargeting({
     return <LockedNote t={t} plan="growth">{t("editor.targeting_locked", { plan: t("plans.growth") })}</LockedNote>;
   }
 
-  const list = (value: string) =>
-    value
-      .split(",")
-      .map((v) => v.trim())
-      .filter(Boolean);
+  // The bounds are in the store's currency, and the rule only applies to
+  // orders in that currency. `valueCurrency` was never set, so the rule was
+  // skipped on every order and the survey showed whatever the total.
+  const setValue = (patch: { minValue?: number | null; maxValue?: number | null }) =>
+    set({ ...patch, valueCurrency: shopCurrency });
+  const zone = shopTimeZone ?? "UTC";
 
   return (
     <s-stack gap="base">
-      <s-grid gridTemplateColumns="repeat(auto-fit, minmax(min(100%, 11rem), 1fr))" gap="small">
-        <NumberField
-          label={t("editor.min_value", { currency: shopCurrency })}
-          value={targeting.minValue ?? null}
-          onInput={(v) => set({ minValue: v })}
-        />
-        <NumberField
-          label={t("editor.max_value", { currency: shopCurrency })}
-          value={targeting.maxValue ?? null}
-          onInput={(v) => set({ maxValue: v })}
-        />
-      </s-grid>
+      <s-stack gap="small-200">
+        <s-grid gridTemplateColumns="repeat(auto-fit, minmax(min(100%, 11rem), 1fr))" gap="small">
+          <NumberField
+            label={t("editor.min_value", { currency: shopCurrency })}
+            value={targeting.minValue ?? null}
+            onInput={(v) => setValue({ minValue: v })}
+          />
+          <NumberField
+            label={t("editor.max_value", { currency: shopCurrency })}
+            value={targeting.maxValue ?? null}
+            onInput={(v) => setValue({ maxValue: v })}
+          />
+        </s-grid>
+        <s-text color="subdued" fontSize="small">
+          {t("editor.order_value_details", { currency: shopCurrency })}
+        </s-text>
+      </s-stack>
       <s-number-field
         label={t("editor.sample")}
         details={t("editor.sample_details")}
@@ -101,7 +128,12 @@ export function AdvancedTargeting({
         max={100}
         suffix="%"
         value={targeting.samplePercent != null ? String(targeting.samplePercent) : "100"}
-        onInput={(e: Event) => set({ samplePercent: Math.min(100, numberOrNull(fieldValue(e)) ?? 100) })}
+        error={errors.get("targeting.samplePercent")}
+        onInput={(e: Event) => {
+          const v = numberOrNull(fieldValue(e));
+          // 100% is everyone: store no rule rather than a no-op one.
+          set({ samplePercent: v == null || v >= 100 ? undefined : Math.max(1, Math.round(v)) });
+        }}
       />
       <NumberField
         label={t("editor.max_responses")}
@@ -109,25 +141,38 @@ export function AdvancedTargeting({
         value={targeting.maxResponses ?? null}
         onInput={(v) => set({ maxResponses: v })}
       />
-      <s-text-field
-        label={t("editor.countries")}
-        details={t("editor.countries_details")}
-        placeholder="US, CA, GB"
-        value={(targeting.countries ?? []).join(", ")}
-        onInput={(e: Event) => set({ countries: list(fieldValue(e)).map((c) => c.toUpperCase()) })}
+      <CountryPicker
+        value={targeting.countries ?? []}
+        onChange={(codes) => set({ countries: codes.length > 0 ? codes : undefined })}
+        language={language}
+        error={errors.get("targeting.countries")}
+        t={t}
       />
-      <s-grid gridTemplateColumns="repeat(auto-fit, minmax(min(100%, 11rem), 1fr))" gap="small">
-        <s-date-field
-          label={t("editor.starts")}
-          value={targeting.startsAt ? targeting.startsAt.slice(0, 10) : ""}
-          onChange={(e: Event) => set({ startsAt: fieldValue(e) || null })}
-        />
-        <s-date-field
-          label={t("editor.ends")}
-          value={targeting.endsAt ? targeting.endsAt.slice(0, 10) : ""}
-          onChange={(e: Event) => set({ endsAt: fieldValue(e) || null })}
-        />
-      </s-grid>
+      <s-stack gap="small-200">
+        <s-grid gridTemplateColumns="repeat(auto-fit, minmax(min(100%, 11rem), 1fr))" gap="small">
+          <s-date-field
+            label={t("editor.starts")}
+            value={storedToDateField(targeting.startsAt, "start", zone)}
+            error={errors.get("targeting.startsAt")}
+            onChange={(e: Event) => {
+              const day = fieldValue(e);
+              set({ startsAt: day ? startOfDayIso(day, zone) : null });
+            }}
+          />
+          <s-date-field
+            label={t("editor.ends")}
+            value={storedToDateField(targeting.endsAt, "end", zone)}
+            error={errors.get("targeting.endsAt")}
+            onChange={(e: Event) => {
+              const day = fieldValue(e);
+              set({ endsAt: day ? endOfDayIso(day, zone) : null });
+            }}
+          />
+        </s-grid>
+        <s-text color="subdued" fontSize="small">
+          {t("editor.dates_details", { zone })}
+        </s-text>
+      </s-stack>
     </s-stack>
   );
 }
@@ -178,6 +223,12 @@ export function ShopifyActions({
       .filter(Boolean)
       .slice(0, maxTags);
   const set = (patch: Record<string, unknown>) => update({ syncOptions: { ...raw, ...patch } });
+  // Tags and the metafield carry the answer to the survey's channel question,
+  // the first single-choice or dropdown question.
+  const channelQuestion =
+    draft.questions.find((q) => q.id === draft.channelReportQuestionId) ??
+    draft.questions.find((q) => q.type === "single_choice" || q.type === "dropdown");
+  const exampleAnswer = channelQuestion?.options.find((o) => !o.isOther)?.label ?? "Instagram";
 
   return (
     <s-stack gap="base">
@@ -211,20 +262,28 @@ export function ShopifyActions({
         </s-stack>
       ) : null}
 
+      <s-text color="subdued">
+        {channelQuestion
+          ? t("editor.actions_channel_question", { question: channelQuestion.text || t("preview.untitled") })
+          : t("editor.actions_no_channel_question")}
+      </s-text>
       <s-text-field
         label={t("surveys.sync_order_tags")}
         details={t("surveys.sync_order_tags_help")}
         value={tagText(raw.orderTags)}
         onInput={(e: Event) => set({ orderTags: parseTags(fieldValue(e)) })}
       />
+      <TagExample templates={raw.orderTags} answer={exampleAnswer} t={t} />
       <s-text-field
         label={t("surveys.sync_customer_tags")}
         details={t("surveys.sync_customer_tags_help")}
         value={tagText(raw.customerTags)}
         onInput={(e: Event) => set({ customerTags: parseTags(fieldValue(e)) })}
       />
+      <TagExample templates={raw.customerTags} answer={exampleAnswer} t={t} />
       <s-checkbox
         label={t("surveys.sync_metafield")}
+        details={t("surveys.sync_metafield_help")}
         checked={Array.isArray(raw.metafields) && raw.metafields.length > 0 ? true : undefined}
         onChange={(e: Event) =>
           set({
@@ -244,6 +303,17 @@ export function ShopifyActions({
   );
 }
 
+/** The tags one answer would get, written by the same code as the sync. */
+function TagExample({ templates, answer, t }: { templates: unknown; answer: string; t: TFn }) {
+  const tags = tagsForAnswer(normalizeTagTemplates(templates) ?? [], answer);
+  if (tags.length === 0) return null;
+  return (
+    <s-text color="subdued" fontSize="small">
+      {t("editor.tags_example", { answer, tags: tags.join(", ") })}
+    </s-text>
+  );
+}
+
 /** Stop once the answer is clear, and rotate surveys (Scale). */
 export function Automation({ draft, update, t, plan }: { draft: EditorSurvey; update: Update; t: TFn; plan: PlanTier }) {
   const canStop = planHas(plan, "auto_stop") || draft.learnAndStop;
@@ -254,12 +324,19 @@ export function Automation({ draft, update, t, plan }: { draft: EditorSurvey; up
   return (
     <s-stack gap="base">
       {canStop ? (
-        <s-switch
-          label={t("setup.learn_stop")}
-          details={t("setup.learn_stop_help")}
-          checked={draft.learnAndStop || undefined}
-          onChange={(e: Event) => update({ learnAndStop: checkboxChecked(e) })}
-        />
+        <s-stack gap="small-200">
+          <s-switch
+            label={t("setup.learn_stop")}
+            details={t("setup.learn_stop_help")}
+            checked={draft.learnAndStop || undefined}
+            onChange={(e: Event) => update({ learnAndStop: checkboxChecked(e) })}
+          />
+          {draft.learnAndStop && draft.autoPausedAt ? (
+            <s-text color="subdued" fontSize="small">
+              {t("editor.learn_stop_done")}
+            </s-text>
+          ) : null}
+        </s-stack>
       ) : null}
       {canRotate ? (
         <s-switch

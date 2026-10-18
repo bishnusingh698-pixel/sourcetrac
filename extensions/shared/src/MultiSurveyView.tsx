@@ -243,17 +243,18 @@ function QuestionField({
             "very_satisfied",
           ].map((id) => {
             const isSelected = answer?.optionIds?.[0] === id;
+            const label = t(`sourcetrac.satisfaction_${id}`, id);
             return (
               <s-clickable
                 key={id}
                 onClick={() => set({ optionIds: [id], numberValue: null })}
-                accessibilityLabel={id}
+                accessibilityLabel={label}
                 border="base"
                 borderRadius="base"
                 background={isSelected ? "subdued" : "transparent"}
                 padding="base"
               >
-                <s-text type={isSelected ? "strong" : "generic"}>{t(`sourcetrac.satisfaction_${id}`, id)}</s-text>
+                <s-text type={isSelected ? "strong" : "generic"}>{label}</s-text>
               </s-clickable>
             );
           })}

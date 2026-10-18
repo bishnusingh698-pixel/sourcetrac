@@ -253,6 +253,13 @@ export interface ApiBinding {
    */
   getIsFirstOrder?: () => boolean | null | undefined;
   getCountry?: () => string | null | undefined;
+  /**
+   * The order total the page shows (`cost.totalAmount`). Sent for the
+   * order-value rule only: on the Thank-you page the order webhook has usually
+   * not arrived yet, so the server has no total of its own and the rule used to
+   * be skipped, showing the survey on every order.
+   */
+  getOrderTotal?: () => { amount: number; currencyCode: string } | null | undefined;
   /** Numeric product ids on the order (Thank-you only), for results by product. */
   getProductIds?: () => readonly string[];
 }
@@ -456,6 +463,11 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
     if (typeof isFirstOrder === "boolean") query.set("isFirstOrder", isFirstOrder ? "1" : "0");
     const country = safeRead(() => binding.getCountry?.());
     if (typeof country === "string" && country.length > 0) query.set("country", country.slice(0, 2).toUpperCase());
+    const total = safeRead(() => binding.getOrderTotal?.());
+    if (total && Number.isFinite(total.amount) && total.amount >= 0 && /^[A-Za-z]{3}$/.test(total.currencyCode)) {
+      query.set("total", String(total.amount));
+      query.set("totalCurrency", total.currencyCode.toUpperCase());
+    }
     return withRetries("survey_fetch", surfaceOf(placement), () =>
       attempt<SurveyConfigV2>(`/api/survey?${query.toString()}`, { method: "GET" }),
     );

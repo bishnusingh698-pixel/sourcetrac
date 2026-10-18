@@ -11,7 +11,7 @@ import { BUCKETS, consumeShopBackstop, consumeToken, consumeTokenSubmission } fr
 import { submitResponse } from "~/lib/responses.server";
 import { DEFAULT_OPTIONS, OTHER_CHANNEL_VALUE, parseSurveySettings } from "~/lib/settings";
 import { findShopByDomain, isKnownOrder } from "~/lib/shop.server";
-import { authenticate } from "~/shopify.server";
+import { authenticateCheckout } from "~/lib/checkout-auth.server";
 
 /**
  * POST /api/responses
@@ -43,7 +43,7 @@ const bodySchema = z.object({
  * other non-POST request gets a CORS-wrapped 405.
  */
 export const loader = async ({ request }: { request: Request }) => {
-  const { cors } = await authenticate.public.checkout(request);
+  const { cors } = await authenticateCheckout(request, "api_responses");
   return cors(toResponse({ error: { code: "method_not_allowed" } }, { status: 405, headers: { Allow: "POST, OPTIONS" } }));
 };
 
@@ -52,8 +52,7 @@ export const action = async ({ request }: { request: Request }) => {
 
   // Throws a 401 Response for a missing/invalid/expired token. That must keep
   // propagating untouched: the library builds its own CORS headers for it.
-  const { sessionToken, cors } = await authenticate.public.checkout(request);
-  const shopDomain = sessionToken.dest.toLowerCase();
+  const { sessionToken, cors, shopDomain } = await authenticateCheckout(request, "api_responses");
 
   // Everything after this point returns a CORS-wrapped response, including
   // failures. A thrown error would be turned into a response by React Router,

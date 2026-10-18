@@ -8,7 +8,7 @@ import { BUCKETS, consumeToken } from "~/lib/rate-limit.server";
 import { findShopByDomain } from "~/lib/shop.server";
 import { recordBlockSeen } from "~/lib/block-seen.server";
 import { compileSurvey, getCompiledConfig, getSurveyRow } from "~/lib/surveys.server";
-import { authenticate } from "~/shopify.server";
+import { authenticateCheckout } from "~/lib/checkout-auth.server";
 import { hasAudienceRules, PLACEMENTS, type Placement } from "@shared/survey-config";
 
 /**
@@ -54,8 +54,7 @@ export type SurveyPreviewBody = {
 export const loader = async ({ request }: { request: Request }) => {
   const requestId = `prv_${Date.now().toString(36)}`;
 
-  const { sessionToken, cors } = await authenticate.public.checkout(request);
-  const shopDomain = sessionToken.dest.toLowerCase();
+  const { cors, shopDomain } = await authenticateCheckout(request, "api_survey_preview");
 
   try {
     const url = new URL(request.url);
@@ -141,6 +140,6 @@ export const loader = async ({ request }: { request: Request }) => {
 
 /** Answers the browser's OPTIONS preflight, and any other non-GET probe. */
 export const action = async ({ request }: { request: Request }) => {
-  const { cors } = await authenticate.public.checkout(request);
+  const { cors } = await authenticateCheckout(request, "api_survey_preview");
   return cors(toResponse({ error: { code: "method_not_allowed" } }, { status: 405, headers: { Allow: "GET, OPTIONS" } }));
 };
