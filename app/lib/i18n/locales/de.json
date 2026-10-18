@@ -264,7 +264,8 @@
     "save_amount": "Sie sparen {{amount}} pro Jahr ({{percent}} %)",
     "reassure_cancel": "Jederzeit auf dieser Seite ändern oder kündigen",
     "reassure_shopify": "Abrechnung über Ihre Shopify-Rechnung",
-    "reassure_data": "Ihre Antworten bleiben beim Downgrade erhalten"
+    "reassure_data": "Ihre Antworten bleiben beim Downgrade erhalten",
+    "msg_billing_not_enabled": "Die Shopify-Abrechnung ist für diese App noch nicht aktiviert. Öffnen Sie im Partner Dashboard Apps, dann SourceTrac, dann Vertrieb, und wählen Sie Öffentlicher Vertrieb. Danach können Sie bezahlte Tarife hier bestätigen (in einem Entwicklungsshop als kostenlose Testbelastung)."
   },
   "help": {
     "title": "Hilfe",

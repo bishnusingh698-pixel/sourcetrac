@@ -264,7 +264,8 @@
     "save_amount": "每年节省 {{amount}}（{{percent}}%）",
     "reassure_cancel": "随时可在此页面更改或取消",
     "reassure_shopify": "费用计入您的 Shopify 账单",
-    "reassure_data": "降级后您的回答仍会保留"
+    "reassure_data": "降级后您的回答仍会保留",
+    "msg_billing_not_enabled": "此应用尚未开启 Shopify 计费。请在 Partner Dashboard 中依次打开“应用”、SourceTrac、“分发”，然后选择“公开分发”。之后即可在此批准付费套餐（在开发商店中为免费的测试收费）。"
   },
   "help": {
     "title": "帮助",

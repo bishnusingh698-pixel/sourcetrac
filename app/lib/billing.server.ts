@@ -65,6 +65,16 @@ const CANCEL_MUTATION = `#graphql
 
 export type BillingError = { field: string[] | null; message: string };
 
+/**
+ * Shopify's refusal for an app whose distribution is not Public: "Apps without
+ * a public distribution cannot use the Billing API". It is about the app's
+ * setting in the Partner Dashboard, not the store, and no retry or store type
+ * fixes it, so the Plans page says what to change instead of echoing Shopify.
+ */
+export function isBillingNotEnabled(error: string | undefined): boolean {
+  return typeof error === "string" && /public distribution|cannot use the billing api/i.test(error);
+}
+
 function mapUserErrors(errors: BillingError[]): string {
   return errors.map((e) => e.message).join("; ") || "Unknown billing error";
 }

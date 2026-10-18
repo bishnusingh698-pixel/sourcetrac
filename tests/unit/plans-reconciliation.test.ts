@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { needsPlanSync, paidPlanFromSubscriptions } from "../../app/lib/billing.server";
+import { isBillingNotEnabled, needsPlanSync, paidPlanFromSubscriptions } from "../../app/lib/billing.server";
 import { planStatusIsCollecting } from "../../app/lib/plans";
 
 /**
@@ -101,5 +101,18 @@ describe("needsPlanSync", () => {
   it("syncs whenever the plan itself differs", () => {
     expect(needsPlanSync({ plan: "growth", planStatus: "active" }, "free")).toBe(true);
     expect(needsPlanSync({ plan: "free", planStatus: "active" }, "scale")).toBe(true);
+  });
+});
+
+describe("isBillingNotEnabled", () => {
+  it("recognises Shopify's refusal for an app without public distribution", () => {
+    expect(isBillingNotEnabled("Apps without a public distribution cannot use the Billing API")).toBe(true);
+    expect(isBillingNotEnabled("Custom apps cannot use the Billing API")).toBe(true);
+  });
+
+  it("leaves every other billing error to be shown as Shopify wrote it", () => {
+    expect(isBillingNotEnabled("Price must be greater than zero")).toBe(false);
+    expect(isBillingNotEnabled(undefined)).toBe(false);
+    expect(isBillingNotEnabled("")).toBe(false);
   });
 });

@@ -264,7 +264,8 @@
     "save_amount": "年間 {{amount}} お得（{{percent}}%）",
     "reassure_cancel": "このページからいつでも変更・キャンセルできます",
     "reassure_shopify": "Shopify の請求書でお支払い",
-    "reassure_data": "ダウングレードしても回答は残ります"
+    "reassure_data": "ダウングレードしても回答は残ります",
+    "msg_billing_not_enabled": "このアプリではまだ Shopify の請求が有効になっていません。Partner Dashboard で「アプリ」、SourceTrac、「配布」の順に開き、「公開配布」を選択してください。その後、ここで有料プランを承認できます（開発ストアでは無料のテスト請求になります）。"
   },
   "help": {
     "title": "ヘルプ",

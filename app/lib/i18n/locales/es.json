@@ -264,7 +264,8 @@
     "save_amount": "Ahorras {{amount}} al año ({{percent}} %)",
     "reassure_cancel": "Cambia o cancela cuando quieras en esta página",
     "reassure_shopify": "Se cobra en tu factura de Shopify",
-    "reassure_data": "Tus respuestas se conservan si bajas de plan"
+    "reassure_data": "Tus respuestas se conservan si bajas de plan",
+    "msg_billing_not_enabled": "La facturación de Shopify aún no está activada para esta app. En el Partner Dashboard, abre Apps, luego SourceTrac, luego Distribución, y elige Distribución pública. Después podrás aprobar los planes de pago aquí (como cargos de prueba gratuitos en una tienda de desarrollo)."
   },
   "help": {
     "title": "Ayuda",

@@ -264,7 +264,8 @@
     "save_amount": "Je bespaart {{amount}} per jaar ({{percent}}%)",
     "reassure_cancel": "Wijzig of zeg op wanneer je wilt via deze pagina",
     "reassure_shopify": "Gefactureerd op je Shopify-factuur",
-    "reassure_data": "Je antwoorden blijven bewaard als je overstapt naar een lager abonnement"
+    "reassure_data": "Je antwoorden blijven bewaard als je overstapt naar een lager abonnement",
+    "msg_billing_not_enabled": "Shopify-facturering is nog niet ingeschakeld voor deze app. Open in het Partner Dashboard Apps, dan SourceTrac, dan Distributie, en kies Openbare distributie. Daarna kun je betaalde abonnementen hier goedkeuren (als gratis testkosten in een ontwikkelwinkel)."
   },
   "help": {
     "title": "Help",

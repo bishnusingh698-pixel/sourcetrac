@@ -1466,3 +1466,11 @@ No setting is needed. `testChargesAllowed` creates and honours **test**
 charges whenever `shop.plan.partnerDevelopment` is true, in production too, so
 a Partner development store can approve Growth or Scale on the Plans page for
 free. On a real store test charges never grant a plan.
+
+**The app's distribution must be Public first.** Until it is, every
+`appSubscriptionCreate` (dev store or not) fails with "Apps without a public
+distribution cannot use the Billing API", and custom distribution can never
+bill. It is set once in the Partner Dashboard (Apps > SourceTrac >
+Distribution > Public distribution), cannot be changed afterwards, and does
+not submit the app for review. `isBillingNotEnabled` turns that refusal into
+`plans.msg_billing_not_enabled`, which says where to change it.

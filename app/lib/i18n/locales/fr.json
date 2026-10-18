@@ -264,7 +264,8 @@
     "save_amount": "Vous économisez {{amount}} par an ({{percent}} %)",
     "reassure_cancel": "Modifiez ou annulez à tout moment sur cette page",
     "reassure_shopify": "Facturé sur votre facture Shopify",
-    "reassure_data": "Vos réponses sont conservées si vous changez pour un forfait inférieur"
+    "reassure_data": "Vos réponses sont conservées si vous changez pour un forfait inférieur",
+    "msg_billing_not_enabled": "La facturation Shopify n'est pas encore activée pour cette app. Dans le Partner Dashboard, ouvrez Apps, puis SourceTrac, puis Distribution, et choisissez la distribution publique. Vous pourrez ensuite approuver les forfaits payants ici (sous forme de frais de test gratuits sur une boutique de développement)."
   },
   "help": {
     "title": "Aide",
