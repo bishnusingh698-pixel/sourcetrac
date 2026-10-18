@@ -132,3 +132,31 @@ describe("client components", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe("the menu's layout", () => {
+  const css = readFileSync(join(ROOT, "app/styles/app.css"), "utf8");
+  const start = css.indexOf("/* --- Top navigation");
+  const block = css.slice(start, css.indexOf("/* --- Charts", start));
+
+  it("never scrolls sideways", () => {
+    expect(block).not.toMatch(/overflow-x|nowrap/);
+  });
+
+  it("fills its rows evenly at every width, with no lone tile on the last row", () => {
+    const columns = [...block.matchAll(/repeat\((\d+), minmax\(0, 1fr\)\)/g)].map((m) => Number(m[1]));
+    expect(columns.length).toBeGreaterThanOrEqual(2);
+    for (const cols of columns) {
+      const lastRow = NAV.length % cols;
+      expect(lastRow === 0 || lastRow >= cols - 1, `${cols} columns leave ${lastRow} on the last row`).toBe(true);
+    }
+  });
+
+  it("puts each label under its icon inside its own tile", () => {
+    const html = render("/app");
+    expect(html.match(/class="st-topnav-tile"/g)).toHaveLength(NAV.length);
+    // Each link is a flex item of its own cell, so the rows cannot overlap,
+    // without overriding Polaris's own display on the element.
+    expect(block).toMatch(/\.st-topnav-cell \{\s*display: flex;/);
+    expect(block).not.toMatch(/s-clickable \{[^}]*display:/);
+  });
+});

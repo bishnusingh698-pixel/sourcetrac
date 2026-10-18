@@ -9,6 +9,12 @@ declare module "react" {
   namespace JSX {
     interface IntrinsicElements {
       "s-app-nav": { children?: React.ReactNode };
+      /**
+       * App Bridge contextual save bar. Its `<button>` children become the
+       * Save / Discard actions in the admin's top bar; it is shown and hidden
+       * with `shopify.saveBar.show(id)` / `hide(id)`.
+       */
+      "ui-save-bar": { id: string; children?: React.ReactNode };
     }
   }
 }

@@ -1193,7 +1193,12 @@
     "survey_id_label": "ID da pesquisa",
     "survey_id_help": "Tem mais de uma pesquisa? No editor do checkout, selecione o bloco \"SourceTrac survey\" e cole este ID na configuração \"Survey ID\". Esse bloco passa a mostrar só esta pesquisa, e o editor mostra a prévia dela. Deixe a configuração vazia para mostrar sua pesquisa ativa de maior prioridade.",
     "survey_id_copied": "ID da pesquisa copiado",
-    "survey_id_copy_failed": "Não foi possível copiar. Selecione o ID e copie."
+    "survey_id_copy_failed": "Não foi possível copiar. Selecione o ID e copie.",
+    "discard_changes": "Descartar alterações",
+    "leave_title": "Salve suas alterações antes de sair",
+    "leave_body": "Esta pesquisa tem alterações que ainda não foram salvas. Salve-as ou descarte-as para sair desta página.",
+    "leave_discard": "Descartar e sair",
+    "leave_stay": "Continuar editando"
   },
   "preview": {
     "title": "Prévia",

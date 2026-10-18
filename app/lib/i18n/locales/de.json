@@ -1193,7 +1193,12 @@
     "survey_id_label": "Umfrage-ID",
     "survey_id_help": "Sie haben mehrere Umfragen? Wählen Sie im Checkout-Editor den Block „SourceTrac survey“ aus und fügen Sie diese ID in seine Einstellung „Survey ID“ ein. Der Block zeigt dann nur diese Umfrage, und der Editor zeigt ihre Vorschau. Lassen Sie die Einstellung leer, um Ihre Live-Umfrage mit der höchsten Priorität zu zeigen.",
     "survey_id_copied": "Umfrage-ID kopiert",
-    "survey_id_copy_failed": "Kopieren fehlgeschlagen. Markieren Sie die ID und kopieren Sie sie."
+    "survey_id_copy_failed": "Kopieren fehlgeschlagen. Markieren Sie die ID und kopieren Sie sie.",
+    "discard_changes": "Änderungen verwerfen",
+    "leave_title": "Speichern Sie Ihre Änderungen, bevor Sie die Seite verlassen",
+    "leave_body": "Diese Umfrage hat noch nicht gespeicherte Änderungen. Speichern Sie sie oder verwerfen Sie sie, um die Seite zu verlassen.",
+    "leave_discard": "Verwerfen und verlassen",
+    "leave_stay": "Weiter bearbeiten"
   },
   "preview": {
     "title": "Vorschau",

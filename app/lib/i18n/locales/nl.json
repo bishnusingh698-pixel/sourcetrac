@@ -1193,7 +1193,12 @@
     "survey_id_label": "Enquête-ID",
     "survey_id_help": "Meer dan één enquête? Selecteer in de checkout-editor het blok 'SourceTrac survey' en plak deze ID in de instelling 'Survey ID'. Dat blok toont dan alleen deze enquête, en de editor toont het voorbeeld ervan. Laat de instelling leeg om je live enquête met de hoogste prioriteit te tonen.",
     "survey_id_copied": "Enquête-ID gekopieerd",
-    "survey_id_copy_failed": "Kopiëren mislukt. Selecteer de ID en kopieer hem."
+    "survey_id_copy_failed": "Kopiëren mislukt. Selecteer de ID en kopieer hem.",
+    "discard_changes": "Wijzigingen negeren",
+    "leave_title": "Sla je wijzigingen op voordat je weggaat",
+    "leave_body": "Deze enquête heeft wijzigingen die nog niet zijn opgeslagen. Sla ze op, of negeer ze om deze pagina te verlaten.",
+    "leave_discard": "Negeren en verlaten",
+    "leave_stay": "Verder bewerken"
   },
   "preview": {
     "title": "Voorbeeld",

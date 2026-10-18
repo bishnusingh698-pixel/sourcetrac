@@ -15,6 +15,7 @@ import { Banner } from "~/components/admin-ui";
 import { FrameText, QuestionList, errorId, type TFn } from "~/components/survey-editor";
 import { SurveyPreview } from "~/components/survey-preview";
 import { SurveyIdBox } from "~/components/survey-id-box";
+import { UnsavedChangesGuard } from "~/components/unsaved-changes";
 import { AdvancedTargeting, Audience, Automation, Languages, ShopifyActions } from "~/components/survey-settings-panels";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
@@ -242,6 +243,9 @@ export default function SurveyEditorPage() {
   const busy = navigation.state !== "idle";
   const pendingIntent = navigation.formData?.get("intent");
   const update = (patch: Partial<EditorSurvey>) => setDraft((d) => ({ ...d, ...patch }));
+  // Back to the last saved version. The saved copy is the JSON `dirty` compares
+  // against, so the editor is clean again the moment this runs.
+  const discardChanges = () => setDraft(JSON.parse(initial.current) as EditorSurvey);
 
   const readiness = getReadiness({
     definition: {
@@ -285,11 +289,23 @@ export default function SurveyEditorPage() {
       pendingIntent={typeof pendingIntent === "string" ? pendingIntent : null}
       blocked={blocked}
       onPost={post}
+      onDiscardChanges={discardChanges}
     />
   );
 
   return (
     <s-stack gap="base">
+      {/* Nothing leaves this page with unsaved edits: Shopify's save bar, a
+          held navigation with Save / Discard and leave / Keep editing, and a
+          reload prompt. See the component for which covers what. */}
+      <UnsavedChangesGuard
+        dirty={dirty}
+        saving={busy}
+        saveLabel={draft.status === "draft" ? t("editor.save_draft") : t("editor.save_publish")}
+        onSave={() => post("save")}
+        onDiscard={discardChanges}
+        t={t}
+      />
       <s-link href="/app/surveys">{t("surveys.back_to_list")}</s-link>
       <s-stack gap="small-200">
         <s-stack direction="inline" gap="small" alignItems="center">
@@ -481,6 +497,7 @@ function ActionButtons({
   pendingIntent,
   blocked,
   onPost,
+  onDiscardChanges,
 }: {
   draft: EditorSurvey;
   t: TFn;
@@ -489,6 +506,7 @@ function ActionButtons({
   pendingIntent: string | null;
   blocked: boolean;
   onPost: (intent: string) => void;
+  onDiscardChanges: () => void;
 }) {
   const loading = (intent: string) => (busy && pendingIntent === intent) || undefined;
   return (
@@ -528,9 +546,14 @@ function ActionButtons({
         </>
       ) : null}
       {dirty ? (
-        <s-text color="subdued" fontSize="small">
-          {t("editor.unsaved")}
-        </s-text>
+        <>
+          <s-button variant="tertiary" disabled={busy || undefined} onClick={onDiscardChanges}>
+            {t("editor.discard_changes")}
+          </s-button>
+          <s-text color="subdued" fontSize="small">
+            {t("editor.unsaved")}
+          </s-text>
+        </>
       ) : null}
     </s-stack>
   );

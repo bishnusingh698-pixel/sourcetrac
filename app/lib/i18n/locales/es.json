@@ -1193,7 +1193,12 @@
     "survey_id_label": "ID de la encuesta",
     "survey_id_help": "¿Tienes más de una encuesta? En el editor del checkout, selecciona el bloque «SourceTrac survey» y pega este ID en su ajuste «Survey ID». Ese bloque mostrará solo esta encuesta y el editor mostrará su vista previa. Deja el ajuste vacío para mostrar tu encuesta activa de mayor prioridad.",
     "survey_id_copied": "ID de la encuesta copiado",
-    "survey_id_copy_failed": "No se pudo copiar. Selecciona el ID y cópialo."
+    "survey_id_copy_failed": "No se pudo copiar. Selecciona el ID y cópialo.",
+    "discard_changes": "Descartar cambios",
+    "leave_title": "Guarda tus cambios antes de salir",
+    "leave_body": "Esta encuesta tiene cambios sin guardar. Guárdalos o descártalos para salir de esta página.",
+    "leave_discard": "Descartar y salir",
+    "leave_stay": "Seguir editando"
   },
   "preview": {
     "title": "Vista previa",

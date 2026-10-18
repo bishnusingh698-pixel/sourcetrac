@@ -1397,10 +1397,14 @@ the same. What changed, and the rules that keep it that way:
   exact only) and announces it to screen readers. Items are `s-clickable href`,
   so navigation goes through App Bridge's `shopify:navigate` and React Router.
   `i18n-usage.test.ts` reads the keys out of `nav.ts`, not `app.tsx`.
-- **Phone layout of the bar is plain CSS** on our own `.st-topnav-track` div
-  (wraps on wide frames, one sideways-scrolling row under 48rem). Do not set
+- **The menu is a grid of icon tiles, never a scrolling row** (changed
+  2026-10-18: the merchant reported the phone row overlapping and rejected
+  sideways scrolling). Plain CSS on our own `ul.st-topnav-grid`: 3 / 5 / 9
+  columns by iframe width, so nine items always fill whole rows. Each `li` is
+  a flex container, which blockifies the `s-clickable` inside it. Do not set
   `display` on the `s-clickable` hosts: that overrides Polaris's own `:host`
-  display and can break the element.
+  display and can break the element. `top-nav.test.ts` fails on `overflow-x`
+  or a column count that leaves a lone tile.
 - **`/app` is the Dashboard** (`loadDashboard`, `app/lib/dashboard.server.ts`):
   the four attribution tiles (from `loadChannelReport`, so they always match the
   channel report), Customer scores (shop-wide NPS and CSAT), top 5 channels, new
@@ -1434,3 +1438,31 @@ Tests: `tests/unit/top-nav.test.ts`, `tests/unit/dashboard.test.ts`,
 `tests/db-dashboard.test.ts`. Verified 2026-10-15: `npm run check` green and
 `npm run build` clean. The bar's look on a real admin was not seen: Polaris
 cannot render here (`cdn.shopify.com` is blocked).
+
+## Unsaved survey edits cannot be left behind (2026-10-18)
+
+The editor keeps the survey in local state until Save, so leaving mid-edit
+lost the work. `UnsavedChangesGuard` (`app/components/unsaved-changes.tsx`)
+closes every exit while `dirty`:
+
+- `ui-save-bar` (App Bridge; shown with `shopify.saveBar.show(id)`, hidden on
+  clean and on unmount). Shopify blocks admin navigation while it shows. Its
+  `<button>`s need `variant` spread in, since React's button type lacks it.
+- `useBlocker` for in-app moves (top menu, links, sidebar taps, which App
+  Bridge turns into React Router navigations). Only a pathname change is held
+  (`leavesPage`): the editor's own POST and `?saved=1` redirect stay on the
+  page and must never be blocked. A held move shows a banner with Save,
+  Discard and leave, Keep editing; discarding from the save bar releases it.
+- `beforeunload` for reloads.
+
+`tests/unit/unsaved-changes.test.ts` mounts it in a real data router with
+happy-dom globals from `tests/helpers/dom-globals.ts` (a `happy-dom` vitest
+environment makes the React Router plugin demand its HMR preamble).
+What the save bar blocks inside the admin was not observable here.
+
+## Testing paid plans on a development store
+
+No setting is needed. `testChargesAllowed` creates and honours **test**
+charges whenever `shop.plan.partnerDevelopment` is true, in production too, so
+a Partner development store can approve Growth or Scale on the Plans page for
+free. On a real store test charges never grant a plan.

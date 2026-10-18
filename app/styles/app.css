@@ -249,33 +249,63 @@
 /* --- Top navigation ------------------------------------------------------ */
 
 /*
- * The row of page links in `TopNav`. The links themselves are Polaris
- * `s-clickable`s; only their arrangement lives here, because no Polaris layout
- * element can scroll one row sideways.
+ * The grid of page tiles in `TopNav`. The links are Polaris `s-clickable`s;
+ * only their arrangement and the tile's inner layout live here.
  *
- * Wide frame: the links wrap onto a second row if a translation is long.
- * Phone: one row that scrolls sideways, so the menu never takes three rows of
- * the first screen. The cut-off link at the edge is the cue that it scrolls.
+ * No row ever scrolls. Columns are 3 on a phone, 5 on a mid-width frame and 9
+ * on desktop, so the nine pages always fill whole rows (3 x 3, 5 + 4, 9) and
+ * look the same everywhere. Media queries respond to the admin iframe's width,
+ * which is the width the tiles actually have.
  */
-.st-topnav-track {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+.st-topnav-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-@media (max-width: 47.99rem) {
-  .st-topnav-track {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scrollbar-width: thin;
-    -webkit-overflow-scrolling: touch;
+@media (min-width: 36rem) {
+  .st-topnav-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
+}
 
-  .st-topnav-track > * {
-    flex: none;
+@media (min-width: 56rem) {
+  .st-topnav-grid {
+    grid-template-columns: repeat(9, minmax(0, 1fr));
   }
+}
+
+.st-topnav-cell {
+  display: flex;
+  min-inline-size: 0;
+}
+
+/*
+ * The link fills its cell. It is a flex item of the cell, which makes its box
+ * block-level whatever Polaris's own `:host` display is, so its height pushes
+ * the next row down; `display` on the host itself is deliberately left alone.
+ * The label stays inside the tile because the tile, not the row, sets the width.
+ */
+.st-topnav-cell > s-clickable {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+/* Icon above label, centred. A long label wraps inside its tile. */
+.st-topnav-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-block-size: 3.25rem;
+  text-align: center;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 
 /* --- Charts ---------------------------------------------------------------- */
