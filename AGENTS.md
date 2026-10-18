@@ -652,10 +652,14 @@ include that box.
 
 ## Production fixes (2026-10-06)
 
-- **Billing redirect must break out of the iframe.** Use the `redirect` returned
-  by `authenticate.admin` with `{ target: "_top" }`. React Router's plain
+- **Billing redirect must break out of the iframe.** React Router's plain
   `redirect` to `confirmationUrl` renders Shopify's approval page inside the
-  embedded frame, which refuses to load, so no upgrade could complete.
+  embedded frame, which refuses to load. The library's `redirect(url, { target:
+  "_top" })` is no better from an action: for a fetch it throws a 401 with a
+  reauthorize header, and that 401 reached the error screen ("401
+  Unauthorized", 2026-10-18). The action now returns `confirmationUrl` and the
+  page calls `window.open(url, "_top")`, checked by `isShopifyConfirmationUrl`
+  (`app/lib/billing-redirect.ts`).
 - **Superseded subscription notices are ignored.** A non-active
   `app_subscriptions/update` only applies when its GID matches
   `Shop.subscriptionGid`; otherwise the old plan's late CANCELLED would drop a

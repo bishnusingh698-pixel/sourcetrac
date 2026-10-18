@@ -11,6 +11,7 @@ import {
 } from "react-router";
 
 import { Banner, Panel } from "~/components/admin-ui";
+import { isShopifyConfirmationUrl } from "~/lib/billing-redirect";
 import { createSubscription, cancelSubscription, cycleOf, isBillingNotEnabled } from "~/lib/billing.server";
 import { logger } from "~/lib/logger";
 import {
@@ -64,7 +65,7 @@ export const handle = { titleKey: "plans.title" };
  * Action results carry a translation key rather than English. The action cannot
  * know which language the page is in, so the component translates.
  */
-type Result = { ok: boolean; message: I18nText };
+type Result = { ok: boolean; message: I18nText; confirmationUrl?: string };
 const result = (ok: boolean, key: string, params?: I18nText["params"]): Result => ({
   ok,
   message: { key, params },
@@ -215,10 +216,10 @@ async function cancelActiveSubscription(params: { shopDomain: string; accessToke
 }
 
 export const action = guarded(async ({ request }: ActionFunctionArgs) => {
-  // The library's `redirect` breaks out of the embedded iframe. Shopify's
-  // charge-approval page refuses to render inside it, so a plain redirect
-  // left the merchant on a blank frame and no upgrade could ever complete.
-  const { session, redirect } = await authenticate.admin(request);
+  // Shopify's charge-approval page refuses to render inside the embedded
+  // iframe, so a new charge's URL goes back to the page, which opens it in the
+  // top frame (`isShopifyConfirmationUrl`).
+  const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
 
   const form = await request.formData();
@@ -270,8 +271,11 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
     }
 
     // Shopify asks the merchant to approve the charge. We do not assume success
-    // here — the app_subscriptions/update webhook confirms it.
-    if (created.confirmationUrl) return redirect(created.confirmationUrl, { target: "_top" });
+    // here — the app_subscriptions/update webhook confirms it. The page opens
+    // the approval page in the top frame (see `isShopifyConfirmationUrl`).
+    if (isShopifyConfirmationUrl(created.confirmationUrl)) {
+      return { ...result(true, "plans.msg_opening_approval"), confirmationUrl: created.confirmationUrl };
+    }
 
     // Without a confirmation URL there is nothing the merchant can approve.
     logger.warn("billing_no_confirmation_url", { shop_domain: shop.shopDomain, plan, cycle });
@@ -291,6 +295,12 @@ export default function Plans() {
   const navigation = useNavigation();
   const { t } = useAdminI18n();
   const { revalidate } = useRevalidator();
+
+  // The charge's approval page cannot load inside the admin iframe.
+  const confirmationUrl = outcome?.confirmationUrl;
+  useEffect(() => {
+    if (isShopifyConfirmationUrl(confirmationUrl)) window.open(confirmationUrl, "_top");
+  }, [confirmationUrl]);
 
   // Refresh the shell (plan badge, usage, cap banner) once this page has
   // corrected the stored plan. Keyed on `synced` alone, so it fires once.

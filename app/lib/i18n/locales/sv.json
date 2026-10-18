@@ -226,6 +226,7 @@
     "billing_body": "Avgifterna visas på din Shopify-faktura tillsammans med dina andra app-abonnemang. SourceTrac sparar aldrig dina kortuppgifter — Shopify hanterar betalningen och meddelar oss när ett abonnemang startar, ändras eller avslutas.",
     "msg_shopify_unreachable": "Vi kunde inte nå Shopify för att hantera faktureringen. Öppna appen igen från Shopify-admin och försök på nytt.",
     "msg_lookup_failed": "Vi kunde inte kontrollera ditt abonnemang hos Shopify. Shopify svarade: {{error}}",
+    "msg_opening_approval": "Öppnar Shopify så att du kan godkänna debiteringen…",
     "msg_already_free": "Du har redan planen Gratis.",
     "msg_cancel_failed": "Shopify kunde inte avsluta abonnemanget: {{error}}",
     "msg_cancelled": "Abonnemanget är avslutat. Du är tillbaka på Gratis med {{cap}} svar per månad.",

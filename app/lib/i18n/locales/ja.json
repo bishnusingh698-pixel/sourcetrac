@@ -226,6 +226,7 @@
     "billing_body": "料金はほかのアプリのサブスクリプションと一緒に Shopify の請求書に記載されます。SourceTrac がカード情報を保存することはありません — 支払いは Shopify が処理し、サブスクリプションの開始・変更・終了を当社に通知します。",
     "msg_shopify_unreachable": "請求を管理するために Shopify に接続できませんでした。Shopify 管理画面からアプリを開き直して、もう一度お試しください。",
     "msg_lookup_failed": "Shopify でサブスクリプションを確認できませんでした。Shopify からの応答：{{error}}",
+    "msg_opening_approval": "料金を承認するために Shopify を開いています…",
     "msg_already_free": "すでに無料プランです。",
     "msg_cancel_failed": "Shopify でサブスクリプションを解約できませんでした：{{error}}",
     "msg_cancelled": "サブスクリプションを解約しました。1 か月あたり {{cap}} 件の回答が可能な無料プランに戻りました。",

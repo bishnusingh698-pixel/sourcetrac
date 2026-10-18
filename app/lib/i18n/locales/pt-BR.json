@@ -226,6 +226,7 @@
     "billing_body": "As cobranças aparecem na sua fatura da Shopify junto com suas outras assinaturas de apps. O SourceTrac nunca armazena os dados do seu cartão — a Shopify processa o pagamento e nos avisa quando uma assinatura começa, muda ou termina.",
     "msg_shopify_unreachable": "Não conseguimos acessar a Shopify para gerenciar a cobrança. Reabra o app pelo admin da Shopify e tente novamente.",
     "msg_lookup_failed": "Não conseguimos verificar sua assinatura com a Shopify. A Shopify respondeu: {{error}}",
+    "msg_opening_approval": "Abrindo a Shopify para você aprovar a cobrança…",
     "msg_already_free": "Você já está no plano Gratuito.",
     "msg_cancel_failed": "A Shopify não conseguiu cancelar a assinatura: {{error}}",
     "msg_cancelled": "Assinatura cancelada. Você voltou ao plano Gratuito com {{cap}} respostas por mês.",

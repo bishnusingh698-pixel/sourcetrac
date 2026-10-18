@@ -226,6 +226,7 @@
     "billing_body": "Kosten verschijnen op je Shopify-factuur naast je andere app-abonnementen. SourceTrac slaat nooit je kaartgegevens op — Shopify verwerkt de betaling en laat ons weten wanneer een abonnement begint, verandert of eindigt.",
     "msg_shopify_unreachable": "We konden Shopify niet bereiken om de facturering te beheren. Open de app opnieuw vanuit je Shopify-beheer en probeer het nog eens.",
     "msg_lookup_failed": "We konden je abonnement niet controleren bij Shopify. Shopify meldt: {{error}}",
+    "msg_opening_approval": "Shopify wordt geopend zodat je de betaling kunt goedkeuren…",
     "msg_already_free": "Je gebruikt al het abonnement Gratis.",
     "msg_cancel_failed": "Shopify kon het abonnement niet opzeggen: {{error}}",
     "msg_cancelled": "Abonnement opgezegd. Je zit weer op Gratis met {{cap}} antwoorden per maand.",
