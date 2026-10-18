@@ -100,6 +100,16 @@ export function cleanSurveyId(value: unknown): string | null {
 }
 
 /**
+ * Which build of the block is running. Sent with every survey request so the
+ * merchant's "Recent checkouts" can say when the store still runs an older
+ * block: merging the code updates the server, but the checkout only gets a new
+ * block from `shopify app deploy`. Must equal `CURRENT_BLOCK_BUILD` in
+ * shared/block-build.ts (tests/unit/block-build.test.ts checks). Bump both
+ * whenever the block's code changes.
+ */
+export const BLOCK_BUILD = "2026-10-18.2";
+
+/**
  * Sentinel channel for the free-text answer. Must match
  * `OTHER_CHANNEL_VALUE` in app/lib/settings.ts, which the submit route
  * allowlists against.
@@ -446,7 +456,7 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
    * placement, already compiled server-side.
    */
   function fetchSurvey(orderId: string, placement: Placement, locale: string | null, surveyId?: string | null) {
-    const query = new URLSearchParams({ placement });
+    const query = new URLSearchParams({ placement, build: BLOCK_BUILD });
     if (orderId) query.set("orderId", orderId);
     if (locale) query.set("locale", locale);
     // The block's "Survey ID" setting: show that survey, not the priority pick.
@@ -478,7 +488,7 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
    * read only: the editor preview never submits.
    */
   function fetchPreview(placement: Placement, surveyId: string | null) {
-    const query = new URLSearchParams({ placement });
+    const query = new URLSearchParams({ placement, build: BLOCK_BUILD });
     if (surveyId) query.set("surveyId", surveyId);
     return withRetries("survey_preview", surfaceOf(placement), () =>
       attempt<SurveyPreview>(`/api/survey-preview?${query.toString()}`, { method: "GET" }, { tokenFailureIsFinal: true }),

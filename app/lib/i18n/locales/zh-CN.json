@@ -614,7 +614,7 @@
     "validation_end_before_start": "结束日期必须不早于开始日期。",
     "recent_title": "最近的结账",
     "recent_help": "每次 SourceTrac 区块在感谢页面或订单状态页面加载时，都会在这里列出它显示的问卷，或什么都没显示的原因。下一个测试订单即可检查您的设置。",
-    "recent_empty": "自应用上次重启以来，没有结账加载过 SourceTrac 区块。如果您下了订单但这里没有记录，说明区块还不在您的结账中：请在结账编辑器中添加并保存。",
+    "recent_empty": "自应用上次重启以来，没有结账加载过 SourceTrac 区块。如果你下了测试订单但这里没有记录，说明区块没有运行：请在结账编辑器中把“SourceTrac survey”区块添加到感谢页面并保存，并确认最新区块已通过“shopify app deploy”发布。",
     "recent_shown": "已显示",
     "recent_hidden": "未显示",
     "recent_order": "订单 {{order}}",
@@ -636,7 +636,9 @@
     "reason_country": "“{{survey}}”仅限其他国家；此次结账在 {{country}}。",
     "reason_country_unknown": "“{{survey}}”仅限部分国家，而 Shopify 未报告此次结账的国家。",
     "reason_language": "“{{survey}}”仅限其他语言。",
-    "reason_order_value": "此订单的总额不在“{{survey}}”的订单金额范围内。"
+    "reason_order_value": "此订单的总额不在“{{survey}}”的订单金额范围内。",
+    "recent_outdated_title": "你的结账正在运行旧版 SourceTrac 区块",
+    "recent_outdated_body": "更新应用服务器不会更新结账中的区块。应用的管理者需要运行“shopify app deploy”（如有提示，还要发布新版本）。旧版区块可能完全不显示。"
   },
   "templates": {
     "how_did_you_hear": {

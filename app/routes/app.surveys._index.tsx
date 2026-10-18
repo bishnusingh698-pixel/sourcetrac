@@ -26,6 +26,7 @@ import { getShopLocaleInfo } from "~/lib/studio.server";
 import { intlLocaleFor } from "~/lib/i18n";
 import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
 import { isValidTimeZone } from "@shared/zoned-date";
+import { isOutdatedBlock } from "@shared/block-build";
 import { db } from "~/db.server";
 
 /**
@@ -105,6 +106,7 @@ async function recentCheckoutRows(
     reason: entry.reason,
     country: entry.country,
     isFirstOrder: entry.isFirstOrder,
+    outdatedBlock: isOutdatedBlock(entry.blockBuild),
   }));
 }
 

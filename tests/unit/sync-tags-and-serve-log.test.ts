@@ -60,6 +60,7 @@ describe("recent checkouts log", () => {
     pinned: false,
     country: null,
     isFirstOrder: null,
+    blockBuild: null,
   });
 
   it("keeps the newest first, one line per reload, bounded", () => {

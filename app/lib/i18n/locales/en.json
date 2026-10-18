@@ -560,7 +560,7 @@
     "validation_end_before_start": "The end date must be on or after the start date.",
     "recent_title": "Recent checkouts",
     "recent_help": "Each time the SourceTrac block loads on a Thank-you or Order status page, it's listed here with the survey it showed, or why it showed nothing. Place a test order to check your setup.",
-    "recent_empty": "No checkout has loaded the SourceTrac block since the app last restarted. If you placed an order and see nothing here, the block is not in your checkout yet: add it in the checkout editor and save.",
+    "recent_empty": "No checkout has loaded the SourceTrac block since the app last restarted. If you placed a test order and see nothing here, the block is not running in your checkout: add the “SourceTrac survey” block to the Thank-you page in the checkout editor and press Save, and make sure the latest block was published with “shopify app deploy”.",
     "recent_shown": "Shown",
     "recent_hidden": "Not shown",
     "recent_order": "Order {{order}}",
@@ -582,7 +582,9 @@
     "reason_country": "“{{survey}}” is limited to other countries; this checkout was in {{country}}.",
     "reason_country_unknown": "“{{survey}}” is limited to some countries, and Shopify didn't report a country for this checkout.",
     "reason_language": "“{{survey}}” is limited to other languages.",
-    "reason_order_value": "This order's total is outside the order value range of “{{survey}}”."
+    "reason_order_value": "This order's total is outside the order value range of “{{survey}}”.",
+    "recent_outdated_title": "Your checkout is running an old version of the SourceTrac block",
+    "recent_outdated_body": "Updating the app's server does not update the block in your checkout. Whoever manages the app must run “shopify app deploy” (and release the new version if asked). Older blocks may show nothing at all."
   },
   "templates": {
     "how_did_you_hear": {

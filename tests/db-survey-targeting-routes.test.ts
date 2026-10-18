@@ -23,6 +23,7 @@ import { clearConfigCache, createSurvey, type SurveyInput } from "~/lib/surveys.
 import { resetBuckets } from "~/lib/rate-limit.server";
 import { clearServeLog, recentServes } from "~/lib/serve-log.server";
 import { loader as surveyLoader } from "~/routes/api.survey";
+import { BLOCK_BUILD } from "../extensions/shared/src/survey-logic";
 
 const prisma = new PrismaClient();
 const DOMAIN = "targeting-routes-test.myshopify.com";
@@ -216,6 +217,14 @@ describe("dates", () => {
 });
 
 describe("recent checkouts", () => {
+  it("records which block build asked, so an old deployed block can be named", async () => {
+    await createSurvey(shopId, input("Any"));
+    await config(`placement=thank_you&orderId=${nextOrder()}`);
+    expect(recentServes(shopId)[0]?.blockBuild).toBeNull();
+    await config(`placement=thank_you&orderId=${nextOrder()}&build=${BLOCK_BUILD}`);
+    expect(recentServes(shopId)[0]?.blockBuild).toBe(BLOCK_BUILD);
+  });
+
   it("says when no live survey is set to show on the page", async () => {
     await createSurvey(shopId, input("Thank-you only", { placements: ["thank_you"] }));
     expect((await config(`placement=order_status&orderId=${nextOrder()}`)).enabled).toBe(false);

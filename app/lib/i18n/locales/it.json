@@ -614,7 +614,7 @@
     "validation_end_before_start": "La data di fine deve essere uguale o successiva a quella di inizio.",
     "recent_title": "Checkout recenti",
     "recent_help": "Ogni volta che il blocco SourceTrac si carica in una pagina di ringraziamento o di stato dell'ordine, compare qui con il sondaggio mostrato o il motivo per cui non è apparso nulla. Fai un ordine di prova per verificare la configurazione.",
-    "recent_empty": "Nessun checkout ha caricato il blocco SourceTrac dall'ultimo riavvio dell'app. Se hai fatto un ordine e qui non vedi nulla, il blocco non è ancora nel checkout: aggiungilo nell'editor del checkout e salva.",
+    "recent_empty": "Nessun checkout ha caricato il blocco SourceTrac dall'ultimo riavvio dell'app. Se hai fatto un ordine di prova e qui non vedi nulla, il blocco non è attivo: aggiungi il blocco «SourceTrac survey» alla pagina di ringraziamento nell'editor del checkout, premi Salva e verifica che l'ultimo blocco sia stato pubblicato con «shopify app deploy».",
     "recent_shown": "Mostrato",
     "recent_hidden": "Non mostrato",
     "recent_order": "Ordine {{order}}",
@@ -636,7 +636,9 @@
     "reason_country": "«{{survey}}» è limitato ad altri paesi; questo checkout era in {{country}}.",
     "reason_country_unknown": "«{{survey}}» è limitato ad alcuni paesi, e Shopify non ha indicato un paese per questo checkout.",
     "reason_language": "«{{survey}}» è limitato ad altre lingue.",
-    "reason_order_value": "Il totale di questo ordine è fuori dall'intervallo di valore di «{{survey}}»."
+    "reason_order_value": "Il totale di questo ordine è fuori dall'intervallo di valore di «{{survey}}».",
+    "recent_outdated_title": "Il tuo checkout usa una versione vecchia del blocco SourceTrac",
+    "recent_outdated_body": "Aggiornare il server dell'app non aggiorna il blocco nel checkout. Chi gestisce l'app deve eseguire «shopify app deploy» (e pubblicare la nuova versione se richiesto). I blocchi vecchi potrebbero non mostrare nulla."
   },
   "templates": {
     "how_did_you_hear": {

@@ -614,7 +614,7 @@
     "validation_end_before_start": "De einddatum moet op of na de startdatum liggen.",
     "recent_title": "Recente checkouts",
     "recent_help": "Elke keer dat het SourceTrac-blok op een bedank- of bestelstatuspagina laadt, staat het hier met de getoonde enquête, of waarom er niets verscheen. Plaats een testbestelling om je instellingen te controleren.",
-    "recent_empty": "Sinds de laatste herstart van de app heeft geen checkout het SourceTrac-blok geladen. Heb je besteld en zie je hier niets, dan staat het blok nog niet in je checkout: voeg het toe in de checkout-editor en sla op.",
+    "recent_empty": "Sinds de laatste herstart van de app heeft geen checkout het SourceTrac-blok geladen. Heb je een testbestelling geplaatst en zie je hier niets, dan draait het blok niet: voeg in de checkout-editor het blok ‘SourceTrac survey’ toe aan de bedankpagina, klik op Opslaan en controleer of het nieuwste blok is gepubliceerd met ‘shopify app deploy’.",
     "recent_shown": "Getoond",
     "recent_hidden": "Niet getoond",
     "recent_order": "Bestelling {{order}}",
@@ -636,7 +636,9 @@
     "reason_country": "‘{{survey}}’ is beperkt tot andere landen; deze checkout was in {{country}}.",
     "reason_country_unknown": "‘{{survey}}’ is beperkt tot bepaalde landen, en Shopify meldde geen land voor deze checkout.",
     "reason_language": "‘{{survey}}’ is beperkt tot andere talen.",
-    "reason_order_value": "Het totaal van deze bestelling valt buiten het waardebereik van ‘{{survey}}’."
+    "reason_order_value": "Het totaal van deze bestelling valt buiten het waardebereik van ‘{{survey}}’.",
+    "recent_outdated_title": "Je checkout gebruikt een oude versie van het SourceTrac-blok",
+    "recent_outdated_body": "Een update van de app-server werkt het blok in je checkout niet bij. Wie de app beheert, moet ‘shopify app deploy’ uitvoeren (en de nieuwe versie vrijgeven als dat gevraagd wordt). Oudere blokken tonen soms helemaal niets."
   },
   "templates": {
     "how_did_you_hear": {

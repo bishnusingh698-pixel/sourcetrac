@@ -18,6 +18,8 @@ export type RecentCheckoutRow = {
   reason: ServeReason;
   country: string | null;
   isFirstOrder: boolean | null;
+  /** The block that asked is older than this server's (see shared/block-build.ts). */
+  outdatedBlock: boolean;
 };
 
 /** Reasons that mean the merchant has something to change. */
@@ -38,6 +40,13 @@ export function RecentCheckouts({ rows, t }: { rows: RecentCheckoutRow[]; t: TFn
     <s-section heading={t("surveys.recent_title")}>
       <s-stack gap="base">
         <s-text color="subdued">{t("surveys.recent_help")}</s-text>
+        {/* The newest load decides: an old block is replaced by a deploy, and
+            once a current one has loaded the warning is history. */}
+        {rows[0]?.outdatedBlock ? (
+          <s-banner tone="critical" heading={t("surveys.recent_outdated_title")}>
+            <s-text>{t("surveys.recent_outdated_body")}</s-text>
+          </s-banner>
+        ) : null}
         {rows.length === 0 ? (
           <s-box padding="base" borderRadius="base" background="subdued">
             <s-text>{t("surveys.recent_empty")}</s-text>

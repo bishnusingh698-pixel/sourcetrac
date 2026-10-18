@@ -1645,3 +1645,17 @@ once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
 - `tests/db-template-e2e.test.ts` creates, compiles, walks (with the block's own
   `visibleQuestionsFor`) and submits every template on Free and Scale, and checks
   every preset writes. A new template is covered automatically.
+
+## Block build stamp: merging does not update the checkout (2026-10-18)
+
+Verified 2026-10-18 by driving the production build over real HTTP (OPTIONS
+preflight -> CORS 204, signed GET -> survey) and by running the CLI-built bundle
+in a worker-shaped `vm` sandbox with no `window`: both work. A store that shows
+no survey with a live server is almost always running an old block (blocks
+before 2026-10-11 rendered nothing), a block not placed and saved in the
+checkout editor, or network access not approved in the Partner Dashboard.
+
+`BLOCK_BUILD` (extensions/shared/src/survey-logic.ts) and `CURRENT_BLOCK_BUILD`
+(shared/block-build.ts) must be equal and bumped together whenever block code
+changes. The block sends it as `build=`; Recent checkouts shows a critical
+banner when the newest load came from another build or none.

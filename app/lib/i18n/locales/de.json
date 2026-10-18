@@ -614,7 +614,7 @@
     "validation_end_before_start": "Das Enddatum muss am oder nach dem Startdatum liegen.",
     "recent_title": "Letzte Checkouts",
     "recent_help": "Jedes Mal, wenn der SourceTrac-Block auf einer Danke- oder Bestellstatusseite lädt, steht er hier mit der gezeigten Umfrage oder dem Grund, warum nichts erschien. Geben Sie eine Testbestellung auf, um Ihre Einrichtung zu prüfen.",
-    "recent_empty": "Seit dem letzten Neustart der App hat kein Checkout den SourceTrac-Block geladen. Wenn Sie bestellt haben und hier nichts sehen, ist der Block noch nicht in Ihrem Checkout: Fügen Sie ihn im Checkout-Editor hinzu und speichern Sie.",
+    "recent_empty": "Seit dem letzten Neustart der App hat kein Checkout den SourceTrac-Block geladen. Wenn Sie eine Testbestellung aufgegeben haben und hier nichts sehen, läuft der Block nicht in Ihrem Checkout: Fügen Sie im Checkout-Editor den Block „SourceTrac survey“ zur Danke-Seite hinzu, klicken Sie auf Speichern und stellen Sie sicher, dass der neueste Block mit „shopify app deploy“ veröffentlicht wurde.",
     "recent_shown": "Angezeigt",
     "recent_hidden": "Nicht angezeigt",
     "recent_order": "Bestellung {{order}}",
@@ -636,7 +636,9 @@
     "reason_country": "„{{survey}}“ ist auf andere Länder beschränkt; dieser Checkout war in {{country}}.",
     "reason_country_unknown": "„{{survey}}“ ist auf bestimmte Länder beschränkt, und Shopify hat für diesen Checkout kein Land gemeldet.",
     "reason_language": "„{{survey}}“ ist auf andere Sprachen beschränkt.",
-    "reason_order_value": "Die Summe dieser Bestellung liegt außerhalb des Bestellwertbereichs von „{{survey}}“."
+    "reason_order_value": "Die Summe dieser Bestellung liegt außerhalb des Bestellwertbereichs von „{{survey}}“.",
+    "recent_outdated_title": "Ihr Checkout verwendet eine alte Version des SourceTrac-Blocks",
+    "recent_outdated_body": "Ein Update des App-Servers aktualisiert den Block im Checkout nicht. Wer die App verwaltet, muss „shopify app deploy“ ausführen (und die neue Version freigeben, falls gefragt). Ältere Blöcke zeigen eventuell gar nichts an."
   },
   "templates": {
     "how_did_you_hear": {

@@ -614,7 +614,7 @@
     "validation_end_before_start": "終了日は開始日以降にしてください。",
     "recent_title": "最近のチェックアウト",
     "recent_help": "サンクスページや注文状況ページでSourceTracブロックが読み込まれるたびに、表示したアンケート、または何も表示しなかった理由がここに表示されます。テスト注文で設定を確認してください。",
-    "recent_empty": "アプリの前回の再起動以降、SourceTracブロックを読み込んだチェックアウトはありません。注文したのにここに何も表示されない場合、ブロックがまだチェックアウトにありません。チェックアウトエディタで追加して保存してください。",
+    "recent_empty": "アプリの前回の再起動以降、SourceTracブロックを読み込んだチェックアウトはありません。テスト注文をしてもここに何も表示されない場合、ブロックが動いていません。チェックアウトエディタでサンクスページに「SourceTrac survey」ブロックを追加して保存し、最新のブロックが「shopify app deploy」で公開されていることを確認してください。",
     "recent_shown": "表示",
     "recent_hidden": "非表示",
     "recent_order": "注文 {{order}}",
@@ -636,7 +636,9 @@
     "reason_country": "「{{survey}}」は他の国に限定されています。このチェックアウトの国は {{country}} でした。",
     "reason_country_unknown": "「{{survey}}」は一部の国に限定されていますが、このチェックアウトの国がShopifyから報告されませんでした。",
     "reason_language": "「{{survey}}」は他の言語に限定されています。",
-    "reason_order_value": "この注文の合計は「{{survey}}」の注文金額の範囲外です。"
+    "reason_order_value": "この注文の合計は「{{survey}}」の注文金額の範囲外です。",
+    "recent_outdated_title": "チェックアウトで古いバージョンのSourceTracブロックが動いています",
+    "recent_outdated_body": "アプリのサーバーを更新しても、チェックアウトのブロックは更新されません。アプリの管理者が「shopify app deploy」を実行し、求められたら新しいバージョンをリリースしてください。古いブロックは何も表示しないことがあります。"
   },
   "templates": {
     "how_did_you_hear": {

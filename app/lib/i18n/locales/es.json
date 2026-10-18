@@ -614,7 +614,7 @@
     "validation_end_before_start": "La fecha de fin debe ser igual o posterior a la de inicio.",
     "recent_title": "Pagos recientes",
     "recent_help": "Cada vez que el bloque de SourceTrac carga en una página de agradecimiento o de estado del pedido, aparece aquí con la encuesta que mostró o el motivo por el que no mostró nada. Haz un pedido de prueba para comprobar tu configuración.",
-    "recent_empty": "Ningún pago ha cargado el bloque de SourceTrac desde el último reinicio de la app. Si hiciste un pedido y no ves nada aquí, el bloque aún no está en tu checkout: añádelo en el editor de checkout y guarda.",
+    "recent_empty": "Ningún checkout ha cargado el bloque de SourceTrac desde el último reinicio de la app. Si hiciste un pedido de prueba y no ves nada aquí, el bloque no se está ejecutando: añade el bloque «SourceTrac survey» a la página de agradecimiento en el editor de checkout, pulsa Guardar y asegúrate de que el bloque más reciente se publicó con «shopify app deploy».",
     "recent_shown": "Mostrada",
     "recent_hidden": "No mostrada",
     "recent_order": "Pedido {{order}}",
@@ -636,7 +636,9 @@
     "reason_country": "«{{survey}}» está limitada a otros países; este pago fue en {{country}}.",
     "reason_country_unknown": "«{{survey}}» está limitada a algunos países, y Shopify no indicó un país para este pago.",
     "reason_language": "«{{survey}}» está limitada a otros idiomas.",
-    "reason_order_value": "El total de este pedido está fuera del rango de valor de «{{survey}}»."
+    "reason_order_value": "El total de este pedido está fuera del rango de valor de «{{survey}}».",
+    "recent_outdated_title": "Tu checkout usa una versión antigua del bloque de SourceTrac",
+    "recent_outdated_body": "Actualizar el servidor de la app no actualiza el bloque de tu checkout. Quien gestione la app debe ejecutar «shopify app deploy» (y publicar la nueva versión si se le pide). Los bloques antiguos pueden no mostrar nada."
   },
   "templates": {
     "how_did_you_hear": {

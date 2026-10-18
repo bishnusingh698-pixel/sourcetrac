@@ -233,6 +233,7 @@ export const loader = async ({ request }: { request: Request }) => {
       pinned: pinnedExists,
       country,
       isFirstOrder,
+      blockBuild: url.searchParams.get("build")?.slice(0, 32) || null,
     });
 
     logger.info("survey_config_served_v2", {
@@ -244,6 +245,7 @@ export const loader = async ({ request }: { request: Request }) => {
       reason,
       pinned: pinnedExists,
       already_answered: alreadyAnswered,
+      block_build: url.searchParams.get("build")?.slice(0, 32) || null,
     });
 
     return cors(

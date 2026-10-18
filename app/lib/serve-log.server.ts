@@ -36,6 +36,8 @@ export type ServeEntry = {
   pinned: boolean;
   country: string | null;
   isFirstOrder: boolean | null;
+  /** The block build that asked (`BLOCK_BUILD`), or null for one too old to say. */
+  blockBuild: string | null;
 };
 
 const PER_SHOP = 20;

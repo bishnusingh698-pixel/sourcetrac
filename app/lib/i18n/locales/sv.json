@@ -614,7 +614,7 @@
     "validation_end_before_start": "Slutdatumet måste vara samma dag som eller efter startdatumet.",
     "recent_title": "Senaste kassor",
     "recent_help": "Varje gång SourceTrac-blocket laddas på en tack- eller orderstatussida visas det här med enkäten det visade, eller varför inget visades. Lägg en testbeställning för att kontrollera inställningarna.",
-    "recent_empty": "Ingen kassa har laddat SourceTrac-blocket sedan appen senast startades om. Om du har beställt och inte ser något här finns blocket inte i kassan ännu: lägg till det i kassaredigeraren och spara.",
+    "recent_empty": "Ingen kassa har laddat SourceTrac-blocket sedan appen senast startades om. Om du har lagt en testbeställning och inte ser något här körs inte blocket: lägg till blocket ”SourceTrac survey” på tacksidan i kassaredigeraren, klicka på Spara och kontrollera att det senaste blocket publicerades med ”shopify app deploy”.",
     "recent_shown": "Visad",
     "recent_hidden": "Inte visad",
     "recent_order": "Beställning {{order}}",
@@ -636,7 +636,9 @@
     "reason_country": "”{{survey}}” är begränsad till andra länder; kassan var i {{country}}.",
     "reason_country_unknown": "”{{survey}}” är begränsad till vissa länder, och Shopify angav inget land för kassan.",
     "reason_language": "”{{survey}}” är begränsad till andra språk.",
-    "reason_order_value": "Beställningens summa ligger utanför ordervärdesintervallet för ”{{survey}}”."
+    "reason_order_value": "Beställningens summa ligger utanför ordervärdesintervallet för ”{{survey}}”.",
+    "recent_outdated_title": "Din kassa kör en gammal version av SourceTrac-blocket",
+    "recent_outdated_body": "En uppdatering av appens server uppdaterar inte blocket i kassan. Den som sköter appen måste köra ”shopify app deploy” (och släppa den nya versionen om det efterfrågas). Äldre block kanske inte visar något alls."
   },
   "templates": {
     "how_did_you_hear": {

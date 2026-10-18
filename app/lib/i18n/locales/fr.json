@@ -614,7 +614,7 @@
     "validation_end_before_start": "La date de fin doit être identique ou postérieure à la date de début.",
     "recent_title": "Paiements récents",
     "recent_help": "Chaque fois que le bloc SourceTrac se charge sur une page de remerciement ou d'état de commande, il apparaît ici avec le sondage affiché, ou la raison pour laquelle rien ne s'est affiché. Passez une commande test pour vérifier votre configuration.",
-    "recent_empty": "Aucun paiement n'a chargé le bloc SourceTrac depuis le dernier redémarrage de l'application. Si vous avez passé une commande et ne voyez rien ici, le bloc n'est pas encore dans votre checkout : ajoutez-le dans l'éditeur de checkout et enregistrez.",
+    "recent_empty": "Aucun checkout n'a chargé le bloc SourceTrac depuis le dernier redémarrage de l'application. Si vous avez passé une commande test et ne voyez rien ici, le bloc ne s'exécute pas : ajoutez le bloc « SourceTrac survey » à la page de remerciement dans l'éditeur de checkout, cliquez sur Enregistrer et vérifiez que le dernier bloc a été publié avec « shopify app deploy ».",
     "recent_shown": "Affiché",
     "recent_hidden": "Non affiché",
     "recent_order": "Commande {{order}}",
@@ -636,7 +636,9 @@
     "reason_country": "« {{survey}} » est limité à d'autres pays ; ce paiement était en {{country}}.",
     "reason_country_unknown": "« {{survey}} » est limité à certains pays, et Shopify n'a indiqué aucun pays pour ce paiement.",
     "reason_language": "« {{survey}} » est limité à d'autres langues.",
-    "reason_order_value": "Le total de cette commande est hors de la plage de montant de « {{survey}} »."
+    "reason_order_value": "Le total de cette commande est hors de la plage de montant de « {{survey}} ».",
+    "recent_outdated_title": "Votre checkout utilise une ancienne version du bloc SourceTrac",
+    "recent_outdated_body": "Mettre à jour le serveur de l'application ne met pas à jour le bloc de votre checkout. La personne qui gère l'application doit lancer « shopify app deploy » (et publier la nouvelle version si demandé). Les anciens blocs peuvent ne rien afficher du tout."
   },
   "templates": {
     "how_did_you_hear": {
