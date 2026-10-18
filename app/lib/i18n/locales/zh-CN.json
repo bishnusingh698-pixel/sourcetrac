@@ -225,7 +225,7 @@
     "billing_title": "计费方式",
     "billing_body": "费用会和您的其他应用订阅一起显示在 Shopify 账单上。SourceTrac 从不存储您的银行卡信息 — 付款由 Shopify 处理，并在订阅开始、变更或结束时通知我们。",
     "msg_shopify_unreachable": "无法连接 Shopify 来管理计费。请从 Shopify 后台重新打开应用后重试。",
-    "msg_lookup_failed": "无法连接 Shopify 来查找您的订阅。请稍后重试。",
+    "msg_lookup_failed": "无法向 Shopify 核实您的订阅。Shopify 返回：{{error}}",
     "msg_already_free": "您已经在使用免费套餐。",
     "msg_cancel_failed": "Shopify 无法取消订阅：{{error}}",
     "msg_cancelled": "订阅已取消。您已回到免费套餐，每月 {{cap}} 条回答。",

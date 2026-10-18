@@ -54,6 +54,33 @@ export function isThrottle(error: unknown): boolean {
   return error instanceof ShopifyGraphQLError && error.errors.some((e) => e.extensions?.code && THROTTLE_CODES.has(e.extensions.code));
 }
 
+/**
+ * Shopify's own words from a 4xx body, so the merchant and the logs see why a
+ * call was refused ("Invalid API key or access token") rather than a bare
+ * status. The body is `{"errors": "..."}` or `{"errors": [{"message": ...}]}`;
+ * anything else (an HTML page) yields nothing.
+ */
+export function httpErrorDetail(body: string): string | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return null;
+  }
+  const errors = (parsed as { errors?: unknown } | null)?.errors;
+  const text =
+    typeof errors === "string"
+      ? errors
+      : Array.isArray(errors)
+        ? errors
+            .map((e) => (typeof e === "string" ? e : (e as { message?: unknown })?.message))
+            .filter((m): m is string => typeof m === "string")
+            .join("; ")
+        : "";
+  const trimmed = text.trim().slice(0, 200);
+  return trimmed || null;
+}
+
 export type GraphQLResponse<T> = { data: T; extensions?: Record<string, unknown> };
 
 /**
@@ -107,7 +134,10 @@ export async function shopifyGraphql<T>(
           status: response.status,
           body_preview: body.slice(0, 300),
         });
-        throw new ShopifyGraphQLError([{ message: `Shopify returned ${response.status}` }]);
+        const detail = httpErrorDetail(body);
+        throw new ShopifyGraphQLError([
+          { message: detail ? `Shopify returned ${response.status}: ${detail}` : `Shopify returned ${response.status}` },
+        ]);
       }
 
       const payload = (await response.json()) as GraphQLResponse<T> & { errors?: GraphQLError[] };

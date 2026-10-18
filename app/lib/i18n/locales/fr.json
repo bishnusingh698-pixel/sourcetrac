@@ -225,7 +225,7 @@
     "billing_title": "Fonctionnement de la facturation",
     "billing_body": "Les frais apparaissent sur votre facture Shopify avec vos autres abonnements d'applications. SourceTrac ne conserve jamais vos données de carte — Shopify gère le paiement et nous indique quand un abonnement commence, change ou se termine.",
     "msg_shopify_unreachable": "Impossible de joindre Shopify pour gérer la facturation. Rouvrez l'application depuis l'administration Shopify et réessayez.",
-    "msg_lookup_failed": "Impossible de joindre Shopify pour retrouver votre abonnement. Réessayez dans un instant.",
+    "msg_lookup_failed": "Impossible de vérifier votre abonnement auprès de Shopify. Réponse de Shopify : {{error}}",
     "msg_already_free": "Vous êtes déjà sur le forfait Gratuit.",
     "msg_cancel_failed": "Shopify n'a pas pu annuler l'abonnement : {{error}}",
     "msg_cancelled": "Abonnement annulé. Vous êtes de retour sur le forfait Gratuit avec {{cap}} réponses par mois.",

@@ -225,7 +225,7 @@
     "billing_title": "Cómo funciona la facturación",
     "billing_body": "Los cargos aparecen en tu factura de Shopify junto con tus otras suscripciones de apps. SourceTrac nunca guarda los datos de tu tarjeta — Shopify gestiona el pago y nos avisa cuando una suscripción empieza, cambia o termina.",
     "msg_shopify_unreachable": "No pudimos conectar con Shopify para gestionar la facturación. Vuelve a abrir la app desde el panel de Shopify e inténtalo de nuevo.",
-    "msg_lookup_failed": "No pudimos conectar con Shopify para encontrar tu suscripción. Inténtalo de nuevo en un momento.",
+    "msg_lookup_failed": "No pudimos comprobar tu suscripción con Shopify. Shopify dice: {{error}}",
     "msg_already_free": "Ya tienes el plan Gratis.",
     "msg_cancel_failed": "Shopify no pudo cancelar la suscripción: {{error}}",
     "msg_cancelled": "Suscripción cancelada. Vuelves a tener el plan Gratis con {{cap}} respuestas al mes.",
