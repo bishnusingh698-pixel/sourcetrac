@@ -191,6 +191,34 @@ export const SMART_ACTION_PRESETS: Record<string, SmartActionPreset> = {
     exampleKey: "smart_actions.example_customer_metafield",
     scope: "write_customers",
   },
+  trigger_order_tag: {
+    id: "trigger_order_tag",
+    kind: "order_tag",
+    questionKey: "q_today",
+    name: "trigger:{optionKey}",
+    exampleKey: "smart_actions.example_order_tag",
+    scope: "write_orders",
+  },
+  offer_order_tag: {
+    id: "offer_order_tag",
+    kind: "order_tag",
+    questionKey: "q_offer",
+    // Only the orders a discount helped: those are the ones a merchant checks
+    // before deciding whether an offer is worth its margin.
+    name: "offer:{optionKey}",
+    onlyForOptionKeys: ["needed", "helped"],
+    exampleKey: "smart_actions.example_order_tag",
+    scope: "write_orders",
+  },
+  subscribe_interest_customer_tag: {
+    id: "subscribe_interest_customer_tag",
+    kind: "customer_tag",
+    questionKey: "q_subscribe",
+    name: "subscribe-interest:{optionKey}",
+    onlyForOptionKeys: ["monthly", "every_2_3_months", "with_discount"],
+    exampleKey: "smart_actions.example_customer_tag",
+    scope: "write_customers",
+  },
 };
 
 export function smartActionPreset(id: string): SmartActionPreset | undefined {

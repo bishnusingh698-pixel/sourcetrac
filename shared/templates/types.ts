@@ -112,4 +112,10 @@ export interface TemplateDefinition {
   goodToKnowKeys?: string[];
   /** The legacy template id this replaces, if any. */
   classicOf?: string;
+  /**
+   * Extra words the library search matches, for the jargon merchants type
+   * ("NPS", "attribution", "CSAT"). Not shown; English is fine, the terms are
+   * the same in every language.
+   */
+  searchAliases?: string[];
 }

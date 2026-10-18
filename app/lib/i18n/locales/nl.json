@@ -781,7 +781,7 @@
   "library": {
     "title": "Sjablonenbibliotheek",
     "subtitle": "Kies wat je wilt leren. Elke sjabloon is kort, direct te gebruiken en volledig aanpasbaar.",
-    "search_placeholder": "Sjablonen zoeken",
+    "search_placeholder": "Zoek sjablonen, bijv. NPS, cadeau, levering, korting",
     "category_all": "Alle",
     "category_marketing": "Marketing",
     "category_product_page": "Productpagina",
@@ -836,7 +836,12 @@
     "more_questions_one": "Nog {{count}} vraag tonen",
     "more_questions_other": "Nog {{count}} vragen tonen",
     "follow_up": "Vervolg op vraag {{n}}",
-    "free_version_note": "Met je abonnement krijg je {{n}} van de {{total}} vragen. Met {{plan}} krijg je de volledige versie."
+    "free_version_note": "Met je abonnement krijg je {{n}} van de {{total}} vragen. Met {{plan}} krijg je de volledige versie.",
+    "search_label": "Sjablonen zoeken",
+    "search_results_one": "{{count}} sjabloon gevonden",
+    "search_results_other": "{{count}} sjablonen gevonden",
+    "search_empty": "Geen sjabloon past bij ‘{{query}}’. Probeer een ander woord of begin vanaf nul.",
+    "search_clear": "Zoekopdracht wissen"
   },
   "setup": {
     "title": "Stel je enquête in",
@@ -1257,7 +1262,10 @@
     "actions_no_channel_question": "Tags en het metaveld hebben een enkele-keuze- of keuzelijstvraag nodig. Deze enquête heeft er geen, dus alleen Shopify Flow draait.",
     "tags_example": "Voorbeeld: het antwoord ‘{{answer}}’ voegt {{tags}} toe",
     "learn_stop_done": "Automatisch stoppen heeft deze enquête al een keer gepauzeerd. Dat gebeurt niet opnieuw; zet het uit en weer aan om het opnieuw te activeren.",
-    "status_auto_paused": "Automatisch gepauzeerd: de resultaten zijn betrouwbaar geworden. Kopers zien deze enquête niet. Zet hem wanneer je wilt weer aan; hij pauzeert niet opnieuw."
+    "status_auto_paused": "Automatisch gepauzeerd: de resultaten zijn betrouwbaar geworden. Kopers zien deze enquête niet. Zet hem wanneer je wilt weer aan; hij pauzeert niet opnieuw.",
+    "other_label": "Tekst van het antwoord ‘Anders’",
+    "channel_question": "Meetellen in het kanaalrapport",
+    "channel_question_details": "Vink dit aan bij een vraag als ‘Hoe heb je ons leren kennen?’. De antwoorden worden je kanalen, met hun omzet, op het dashboard en in het kanaalrapport."
   },
   "preview": {
     "title": "Voorbeeld",

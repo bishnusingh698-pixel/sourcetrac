@@ -781,7 +781,7 @@
   "library": {
     "title": "模板库",
     "subtitle": "选择你想了解的内容。每个模板都很简短、可直接使用，并且完全可编辑。",
-    "search_placeholder": "搜索模板",
+    "search_placeholder": "搜索模板，例如 NPS、礼品、配送、折扣",
     "category_all": "全部",
     "category_marketing": "营销",
     "category_product_page": "产品页面",
@@ -836,7 +836,12 @@
     "more_questions_one": "再显示 {{count}} 个问题",
     "more_questions_other": "再显示 {{count}} 个问题",
     "follow_up": "问题 {{n}} 的追问",
-    "free_version_note": "你的套餐可使用 {{total}} 个问题中的 {{n}} 个。{{plan}}可解锁完整版本。"
+    "free_version_note": "你的套餐可使用 {{total}} 个问题中的 {{n}} 个。{{plan}}可解锁完整版本。",
+    "search_label": "搜索模板",
+    "search_results_one": "找到 {{count}} 个模板",
+    "search_results_other": "找到 {{count}} 个模板",
+    "search_empty": "没有与“{{query}}”匹配的模板。请换个词试试，或从空白开始。",
+    "search_clear": "清除搜索"
   },
   "setup": {
     "title": "设置你的问卷",
@@ -1257,7 +1262,10 @@
     "actions_no_channel_question": "标签和元字段需要一个单选或下拉问题。此问卷没有，因此只会运行 Shopify Flow。",
     "tags_example": "示例：回答“{{answer}}”会添加 {{tags}}",
     "learn_stop_done": "自动停止已暂停过此问卷一次，不会再次暂停。关闭后重新开启即可重新启用。",
-    "status_auto_paused": "已自动暂停：结果已经可靠。买家看不到此问卷。您可以随时重新开启，它不会再次自动暂停。"
+    "status_auto_paused": "已自动暂停：结果已经可靠。买家看不到此问卷。您可以随时重新开启，它不会再次自动暂停。",
+    "other_label": "“其他”选项的文字",
+    "channel_question": "计入渠道报告",
+    "channel_question_details": "用于“你是如何知道我们的？”这类问题。它的回答会作为你的渠道（附收入）显示在仪表板和渠道报告中。"
   },
   "preview": {
     "title": "预览",

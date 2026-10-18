@@ -48,7 +48,8 @@ function opt(key: string, labelKey: string): TemplateOption {
   return { key, labelKey };
 }
 
-const OTHER = opt("other", "packs.option_other");
+/** Opens the text box in checkout and stays last when shuffled (see `isOther`). */
+const OTHER: TemplateOption = { key: "other", labelKey: "packs.option_other", isOther: true };
 
 /** The three channel packs. Keys are shared where the meaning matches. */
 const CHANNELS: Record<RegionPack, Pack> = {
@@ -204,7 +205,7 @@ const PROFILES: Record<string, Pack> = {
       opt("dog", "packs.profile_pets_dog"),
       opt("cat", "packs.profile_pets_cat"),
       opt("both", "packs.profile_pets_both"),
-      opt("other_pet", "packs.profile_pets_other"),
+      { key: "other_pet", labelKey: "packs.profile_pets_other", isOther: true },
     ],
   },
   profiles_home: {

@@ -1611,3 +1611,37 @@ once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
 - `setPlan` invalidates the compiled checkout config.
 - Extension changes in this pass (`total`, satisfaction labels) need
   `shopify app deploy`.
+
+## Templates: search, Other options, channel question (2026-10-18, second pass)
+
+- **35 templates.** Nine were added from the questions survey vendors publish
+  (Fairing's question bank, Zigpoll, Userloop, Formbricks, Triple Whale):
+  `today-trigger`, `rival-check`, `brand-presence`, `offer-impact`,
+  `product-discovery`, `contact-preference`, `where-else`, `open-feedback`,
+  `subscribe-interest`, with eight new outcome tags and three presets
+  (`trigger_order_tag`, `offer_order_tag`, `subscribe_interest_customer_tag`).
+  Template text is server-only (resolved in loaders), so more templates do not
+  grow the browser bundle.
+- **"Other (please specify)" must be `isOther`.** Use `other(labelKey)` in
+  `index.ts` (packs: `OTHER`). Every template declared it as a plain option, so
+  buyers who picked it got no text box and it was shuffled into the middle.
+  Migration `20261018170000_template_other_options` fixed stored surveys. The
+  editor's "Allow a free-text answer" switch reads `allowOther` OR an `isOther`
+  option, removes the option when switched off, and shows its label.
+- **Only a channel question feeds the Channel report.** The report and the
+  Dashboard attribution numbers join every survey's `channelReportQuestionId`,
+  which used to default to any first single-choice question, so gift/price
+  answers showed up as channels. Templates set it only for a channel-pack
+  single choice (`channelQuestionId` in `template-survey.ts`), an explicit
+  `null` means none, and the editor has a per-question checkbox. Migration
+  `20261018171000_channel_question_only_for_channels` lists the template
+  questions it unpicks; regenerate that list if a template question is added
+  that should never be a channel (it is a one-off fix for stored data). Tags and
+  Flow fall back to the first choice question when there is no channel question.
+- **Library search** is client-side over a normalised `search` string the
+  loader builds (name, one-liner, questions and options, learn bullets, tags,
+  category, `searchAliases` jargon). Typing must not touch the URL: that re-runs
+  the loader. `shared/templates/search.ts` is the matcher.
+- `tests/db-template-e2e.test.ts` creates, compiles, walks (with the block's own
+  `visibleQuestionsFor`) and submits every template on Free and Scale, and checks
+  every preset writes. A new template is covered automatically.

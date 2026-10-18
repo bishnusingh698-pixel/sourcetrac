@@ -781,7 +781,7 @@
   "library": {
     "title": "Biblioteca de plantillas",
     "subtitle": "Elige lo que quieres aprender. Cada plantilla es corta, lista para usar y totalmente editable.",
-    "search_placeholder": "Buscar plantillas",
+    "search_placeholder": "Busca plantillas, p. ej. NPS, regalo, entrega, descuento",
     "category_all": "Todas",
     "category_marketing": "Marketing",
     "category_product_page": "Página de producto",
@@ -836,7 +836,12 @@
     "more_questions_one": "Mostrar {{count}} pregunta más",
     "more_questions_other": "Mostrar {{count}} preguntas más",
     "follow_up": "Seguimiento de la pregunta {{n}}",
-    "free_version_note": "Con tu plan tienes {{n}} de {{total}} preguntas. {{plan}} desbloquea la versión completa."
+    "free_version_note": "Con tu plan tienes {{n}} de {{total}} preguntas. {{plan}} desbloquea la versión completa.",
+    "search_label": "Buscar plantillas",
+    "search_results_one": "{{count}} plantilla encontrada",
+    "search_results_other": "{{count}} plantillas encontradas",
+    "search_empty": "Ninguna plantilla coincide con «{{query}}». Prueba otra palabra o empieza desde cero.",
+    "search_clear": "Borrar búsqueda"
   },
   "setup": {
     "title": "Configura tu encuesta",
@@ -1257,7 +1262,10 @@
     "actions_no_channel_question": "Las etiquetas y el metacampo necesitan una pregunta de opción única o desplegable. Esta encuesta no tiene, así que solo se ejecuta Shopify Flow.",
     "tags_example": "Ejemplo: la respuesta «{{answer}}» añade {{tags}}",
     "learn_stop_done": "La parada automática ya pausó esta encuesta una vez. No la volverá a pausar; desactívala y actívala para armarla de nuevo.",
-    "status_auto_paused": "Pausada automáticamente: los resultados ya son fiables. Los compradores no ven esta encuesta. Vuelve a activarla cuando quieras; no se pausará de nuevo."
+    "status_auto_paused": "Pausada automáticamente: los resultados ya son fiables. Los compradores no ven esta encuesta. Vuelve a activarla cuando quieras; no se pausará de nuevo.",
+    "other_label": "Texto de la respuesta «Otro»",
+    "channel_question": "Contar en el informe de canales",
+    "channel_question_details": "Márcalo en una pregunta tipo «¿Cómo nos conociste?». Sus respuestas serán tus canales, con sus ingresos, en el Panel y el informe de canales."
   },
   "preview": {
     "title": "Vista previa",

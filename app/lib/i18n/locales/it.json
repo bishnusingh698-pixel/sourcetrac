@@ -781,7 +781,7 @@
   "library": {
     "title": "Libreria di modelli",
     "subtitle": "Scegli cosa vuoi scoprire. Ogni modello è breve, pronto all'uso e completamente modificabile.",
-    "search_placeholder": "Cerca modelli",
+    "search_placeholder": "Cerca modelli, es. NPS, regalo, consegna, sconto",
     "category_all": "Tutti",
     "category_marketing": "Marketing",
     "category_product_page": "Pagina prodotto",
@@ -836,7 +836,12 @@
     "more_questions_one": "Mostra {{count}} altra domanda",
     "more_questions_other": "Mostra altre {{count}} domande",
     "follow_up": "Approfondimento della domanda {{n}}",
-    "free_version_note": "Con il tuo piano hai {{n}} domande su {{total}}. Il piano {{plan}} sblocca la versione completa."
+    "free_version_note": "Con il tuo piano hai {{n}} domande su {{total}}. Il piano {{plan}} sblocca la versione completa.",
+    "search_label": "Cerca modelli",
+    "search_results_one": "{{count}} modello trovato",
+    "search_results_other": "{{count}} modelli trovati",
+    "search_empty": "Nessun modello corrisponde a «{{query}}». Prova un'altra parola o parti da zero.",
+    "search_clear": "Cancella ricerca"
   },
   "setup": {
     "title": "Configura il tuo sondaggio",
@@ -1257,7 +1262,10 @@
     "actions_no_channel_question": "I tag e il metacampo richiedono una domanda a scelta singola o a menu. Questo sondaggio non ne ha, quindi funziona solo Shopify Flow.",
     "tags_example": "Esempio: la risposta «{{answer}}» aggiunge {{tags}}",
     "learn_stop_done": "L'arresto automatico ha già messo in pausa questo sondaggio una volta. Non lo farà di nuovo; disattivalo e riattivalo per riarmarlo.",
-    "status_auto_paused": "In pausa automaticamente: i risultati sono diventati affidabili. Gli acquirenti non vedono questo sondaggio. Riattivalo quando vuoi; non si fermerà di nuovo."
+    "status_auto_paused": "In pausa automaticamente: i risultati sono diventati affidabili. Gli acquirenti non vedono questo sondaggio. Riattivalo quando vuoi; non si fermerà di nuovo.",
+    "other_label": "Testo della risposta «Altro»",
+    "channel_question": "Conta nel report dei canali",
+    "channel_question_details": "Selezionalo per una domanda tipo «Come ci hai conosciuto?». Le risposte diventano i tuoi canali, con il fatturato, nella Dashboard e nel report dei canali."
   },
   "preview": {
     "title": "Anteprima",

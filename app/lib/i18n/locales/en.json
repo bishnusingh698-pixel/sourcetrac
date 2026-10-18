@@ -781,7 +781,7 @@
   "library": {
     "title": "Template library",
     "subtitle": "Pick what you want to learn. Every template is short, ready to use and fully editable.",
-    "search_placeholder": "Search templates",
+    "search_placeholder": "Search templates, e.g. NPS, gift, delivery, discount",
     "category_all": "All",
     "category_marketing": "Marketing",
     "category_product_page": "Product page",
@@ -836,7 +836,12 @@
     "more_questions_one": "Show {{count}} more question",
     "more_questions_other": "Show {{count}} more questions",
     "follow_up": "Follow-up to question {{n}}",
-    "free_version_note": "On your plan you get {{n}} of {{total}} questions. {{plan}} unlocks the full version."
+    "free_version_note": "On your plan you get {{n}} of {{total}} questions. {{plan}} unlocks the full version.",
+    "search_label": "Search templates",
+    "search_results_one": "{{count}} template found",
+    "search_results_other": "{{count}} templates found",
+    "search_empty": "No template matches “{{query}}”. Try another word, or start from scratch.",
+    "search_clear": "Clear search"
   },
   "setup": {
     "title": "Set up your survey",
@@ -1257,7 +1262,10 @@
     "actions_no_channel_question": "Tags and the metafield need a single-choice or dropdown question. This survey has none, so only Shopify Flow runs.",
     "tags_example": "Example: an answer “{{answer}}” adds {{tags}}",
     "learn_stop_done": "Auto-stop already paused this survey once. It won't pause it again; switch it off and on to arm it again.",
-    "status_auto_paused": "Paused automatically: the results became reliable. Buyers don't see this survey. Turn it back on any time; it won't pause itself again."
+    "status_auto_paused": "Paused automatically: the results became reliable. Buyers don't see this survey. Turn it back on any time; it won't pause itself again.",
+    "other_label": "Label for the “Other” answer",
+    "channel_question": "Count this in the Channel report",
+    "channel_question_details": "Tick this for a “How did you hear about us?” question. Its answers become your channels, with their revenue, on the Dashboard and the Channel report."
   },
   "preview": {
     "title": "Preview",

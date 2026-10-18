@@ -992,7 +992,12 @@ export async function createSurvey(shopId: string, rawInput: SurveyInput): Promi
       select: { id: true },
     });
     const requested = input.channelReportQuestionId ? idMap.get(input.channelReportQuestionId) : undefined;
-    if (requested || channelQuestion) {
+    // `null` means "this survey has no channel question" (a gift or price
+    // survey from a template); only an unset value falls back to the first
+    // choice question, which is the blank survey's "How did you hear about us?".
+    if (input.channelReportQuestionId === null) {
+      // Nothing to set.
+    } else if (requested || channelQuestion) {
       await tx.survey.update({
         where: { id: survey.id },
         data: { channelReportQuestionId: requested ?? channelQuestion!.id },
@@ -1091,9 +1096,11 @@ async function applyChannelReportQuestion(
   posted: string | null | undefined,
   idMap: IdMap,
 ): Promise<void> {
-  if (!posted) return;
-  const id = idMap.get(posted);
-  if (id) await tx.survey.update({ where: { id: surveyId }, data: { channelReportQuestionId: id } });
+  // Absent: an older client that does not send it; leave it as it is.
+  if (posted === undefined) return;
+  // Null, or a question that is no longer in the survey: no channel question.
+  const id = posted ? (idMap.get(posted) ?? null) : null;
+  await tx.survey.update({ where: { id: surveyId }, data: { channelReportQuestionId: id } });
 }
 
 /**

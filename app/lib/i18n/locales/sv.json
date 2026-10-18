@@ -781,7 +781,7 @@
   "library": {
     "title": "Mallbibliotek",
     "subtitle": "Välj vad du vill lära dig. Varje mall är kort, redo att använda och helt redigerbar.",
-    "search_placeholder": "Sök mallar",
+    "search_placeholder": "Sök mallar, t.ex. NPS, present, leverans, rabatt",
     "category_all": "Alla",
     "category_marketing": "Marknadsföring",
     "category_product_page": "Produktsida",
@@ -836,7 +836,12 @@
     "more_questions_one": "Visa {{count}} fråga till",
     "more_questions_other": "Visa {{count}} frågor till",
     "follow_up": "Följdfråga till fråga {{n}}",
-    "free_version_note": "Med din plan får du {{n}} av {{total}} frågor. {{plan}} låser upp den fullständiga versionen."
+    "free_version_note": "Med din plan får du {{n}} av {{total}} frågor. {{plan}} låser upp den fullständiga versionen.",
+    "search_label": "Sök mallar",
+    "search_results_one": "{{count}} mall hittades",
+    "search_results_other": "{{count}} mallar hittades",
+    "search_empty": "Ingen mall matchar ”{{query}}”. Prova ett annat ord eller börja från början.",
+    "search_clear": "Rensa sökning"
   },
   "setup": {
     "title": "Ställ in din enkät",
@@ -1257,7 +1262,10 @@
     "actions_no_channel_question": "Taggar och metafältet behöver en fråga med ett val eller en rullgardinslista. Enkäten har ingen, så bara Shopify Flow körs.",
     "tags_example": "Exempel: svaret ”{{answer}}” lägger till {{tags}}",
     "learn_stop_done": "Autostopp har redan pausat enkäten en gång. Den pausas inte igen; slå av och på för att aktivera det igen.",
-    "status_auto_paused": "Pausad automatiskt: resultaten är tillförlitliga. Köpare ser inte enkäten. Slå på den igen när du vill; den pausas inte igen."
+    "status_auto_paused": "Pausad automatiskt: resultaten är tillförlitliga. Köpare ser inte enkäten. Slå på den igen när du vill; den pausas inte igen.",
+    "other_label": "Text för svaret ”Annat”",
+    "channel_question": "Räkna i kanalrapporten",
+    "channel_question_details": "Markera för en fråga som ”Hur hörde du talas om oss?”. Svaren blir dina kanaler, med intäkter, på översikten och i kanalrapporten."
   },
   "preview": {
     "title": "Förhandsvisning",

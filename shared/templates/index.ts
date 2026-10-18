@@ -1,5 +1,5 @@
 /**
- * The 25 outcome-first templates.
+ * The outcome-first templates.
  *
  * All copy lives in `shared/templates/locales/<locale>.json`, keyed by template
  * id and field. This module holds structure only: stable ids, question types,
@@ -15,6 +15,16 @@ import type { TemplateCategory, TemplateDefinition, TemplateOption, TemplateQues
 /** A fixed option. `labelKey` defaults to the template's own namespace. */
 function opt(key: string, labelKey: string): TemplateOption {
   return { key, labelKey };
+}
+
+/**
+ * The "Other (please specify)" choice. `isOther` is what opens the text box in
+ * checkout, keeps it last when options are shuffled, and makes the server
+ * require the typed answer. Every template used to declare it as a plain
+ * option, so buyers who picked it had nowhere to say what they meant.
+ */
+function other(labelKey: string): TemplateOption {
+  return { key: "other", labelKey, isOther: true };
 }
 
 /** Pack-based option set (labels come from `packs.ts`). */
@@ -41,6 +51,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "channel-compass",
     version: 1,
+    searchAliases: ["attribution", "hdyhau", "source", "referral", "marketing", "acquisition", "first touch"],
     nameKey: "templates.channel-compass.name",
     oneLinerKey: "templates.channel-compass.one_liner",
     category: "marketing",
@@ -99,6 +110,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "nudge-counter",
     version: 1,
+    searchAliases: ["frequency", "touchpoints", "ad fatigue", "awareness"],
     nameKey: "templates.nudge-counter.name",
     oneLinerKey: "templates.nudge-counter.one_liner",
     category: "marketing",
@@ -139,6 +151,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "ad-recall",
     version: 1,
+    searchAliases: ["ads", "advertising", "creative", "paid social", "attribution"],
     nameKey: "templates.ad-recall.name",
     oneLinerKey: "templates.ad-recall.one_liner",
     category: "marketing",
@@ -173,6 +186,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "switch-story",
     version: 1,
+    searchAliases: ["competitor", "competition", "switching", "previous brand"],
     nameKey: "templates.switch-story.name",
     oneLinerKey: "templates.switch-story.one_liner",
     category: "marketing",
@@ -189,7 +203,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
           opt("local_store", "templates.switch-story.q_before.local_store"),
           opt("homemade", "templates.switch-story.q_before.homemade"),
           opt("nothing_new", "templates.switch-story.q_before.nothing_new"),
-          opt("other", "templates.switch-story.q_before.other"),
+          other("templates.switch-story.q_before.other"),
         ],
       },
       {
@@ -214,7 +228,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
           opt("better_reviews", "templates.switch-story.q_reason.better_reviews"),
           opt("wanted_new", "templates.switch-story.q_reason.wanted_new"),
           opt("values", "templates.switch-story.q_reason.values"),
-          opt("other", "templates.switch-story.q_reason.other"),
+          other("templates.switch-story.q_reason.other"),
         ],
       },
     ],
@@ -227,6 +241,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "trust-trigger",
     version: 1,
+    searchAliases: ["trust", "reviews", "social proof", "credibility", "cro"],
     nameKey: "templates.trust-trigger.name",
     oneLinerKey: "templates.trust-trigger.one_liner",
     category: "product_page",
@@ -248,7 +263,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
           opt("secure_payment", "templates.trust-trigger.q_trust.secure_payment"),
           opt("clear_dates", "templates.trust-trigger.q_trust.clear_dates"),
           opt("known_brand", "templates.trust-trigger.q_trust.known_brand"),
-          opt("other", "templates.trust-trigger.q_trust.other"),
+          other("templates.trust-trigger.q_trust.other"),
         ],
       },
     ],
@@ -259,6 +274,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "deciding-detail",
     version: 1,
+    searchAliases: ["product page", "pdp", "conversion", "cro", "photos", "reviews"],
     nameKey: "templates.deciding-detail.name",
     oneLinerKey: "templates.deciding-detail.one_liner",
     category: "product_page",
@@ -298,6 +314,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "purchase-reason",
     version: 1,
+    searchAliases: ["motivation", "why buy", "reason", "jobs to be done"],
     nameKey: "templates.purchase-reason.name",
     oneLinerKey: "templates.purchase-reason.one_liner",
     category: "product_page",
@@ -318,7 +335,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
           opt("gift", "templates.purchase-reason.q_reason.gift"),
           opt("recommended", "templates.purchase-reason.q_reason.recommended"),
           opt("bought_before", "templates.purchase-reason.q_reason.bought_before"),
-          opt("other", "templates.purchase-reason.q_reason.other"),
+          other("templates.purchase-reason.q_reason.other"),
         ],
       },
       {
@@ -338,6 +355,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "almost-left",
     version: 1,
+    searchAliases: ["hesitation", "friction", "objections", "barriers", "cro", "abandon"],
     nameKey: "templates.almost-left.name",
     oneLinerKey: "templates.almost-left.one_liner",
     category: "product_page",
@@ -358,7 +376,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
           opt("payment_options", "templates.almost-left.q_blocker.payment_options"),
           opt("store_trust", "templates.almost-left.q_blocker.store_trust"),
           opt("checkout_confusing", "templates.almost-left.q_blocker.checkout_confusing"),
-          opt("other", "templates.almost-left.q_blocker.other"),
+          other("templates.almost-left.q_blocker.other"),
         ],
       },
       {
@@ -390,6 +408,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "site-ease",
     version: 1,
+    searchAliases: ["usability", "ux", "website", "checkout", "ces", "effort"],
     nameKey: "templates.site-ease.name",
     oneLinerKey: "templates.site-ease.one_liner",
     category: "product_page",
@@ -419,6 +438,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "price-pulse",
     version: 1,
+    searchAliases: ["pricing", "value", "price sensitivity", "expensive"],
     nameKey: "templates.price-pulse.name",
     oneLinerKey: "templates.price-pulse.one_liner",
     category: "product_page",
@@ -450,7 +470,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
           opt("bundle_deal", "templates.price-pulse.q_worth.bundle_deal"),
           opt("nicer_packaging", "templates.price-pulse.q_worth.nicer_packaging"),
           opt("fine_as_is", "templates.price-pulse.q_worth.fine_as_is"),
-          opt("other", "templates.price-pulse.q_worth.other"),
+          other("templates.price-pulse.q_worth.other"),
         ],
       },
     ],
@@ -464,6 +484,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "delivery-ready",
     version: 1,
+    searchAliases: ["cod", "cash on delivery", "courier", "shipping"],
     nameKey: "templates.delivery-ready.name",
     oneLinerKey: "templates.delivery-ready.one_liner",
     category: "delivery",
@@ -517,6 +538,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "fit-confidence",
     version: 1,
+    searchAliases: ["size", "sizing", "returns", "apparel", "fashion"],
     nameKey: "templates.fit-confidence.name",
     oneLinerKey: "templates.fit-confidence.one_liner",
     category: "delivery",
@@ -546,7 +568,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
           opt("too_big", "templates.fit-confidence.q_unsure_about.too_big"),
           opt("length", "templates.fit-confidence.q_unsure_about.length"),
           opt("color_real", "templates.fit-confidence.q_unsure_about.color_real"),
-          opt("other", "templates.fit-confidence.q_unsure_about.other"),
+          other("templates.fit-confidence.q_unsure_about.other"),
         ],
       },
     ],
@@ -559,6 +581,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "delivery-promise",
     version: 1,
+    searchAliases: ["shipping", "delivery speed", "eta", "expectations"],
     nameKey: "templates.delivery-promise.name",
     oneLinerKey: "templates.delivery-promise.one_liner",
     category: "delivery",
@@ -593,6 +616,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "packaging-priorities",
     version: 1,
+    searchAliases: ["packaging", "unboxing", "sustainability", "eco"],
     nameKey: "templates.packaging-priorities.name",
     oneLinerKey: "templates.packaging-priorities.one_liner",
     category: "delivery",
@@ -623,6 +647,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "first-order-pulse",
     version: 1,
+    searchAliases: ["new customer", "onboarding", "first purchase", "ces"],
     nameKey: "templates.first-order-pulse.name",
     oneLinerKey: "templates.first-order-pulse.one_liner",
     category: "loyalty",
@@ -671,6 +696,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "loyalty-pulse",
     version: 1,
+    searchAliases: ["nps", "net promoter score", "recommend", "promoters", "detractors"],
     nameKey: "templates.loyalty-pulse.name",
     oneLinerKey: "templates.loyalty-pulse.one_liner",
     category: "loyalty",
@@ -697,7 +723,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
           opt("fast_delivery", "templates.loyalty-pulse.q_love.fast_delivery"),
           opt("service", "templates.loyalty-pulse.q_love.service"),
           opt("values", "templates.loyalty-pulse.q_love.values"),
-          opt("other", "templates.loyalty-pulse.q_love.other"),
+          other("templates.loyalty-pulse.q_love.other"),
         ],
       },
       {
@@ -720,6 +746,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "customer-satisfaction",
     version: 1,
+    searchAliases: ["csat", "satisfaction", "happiness"],
     nameKey: "templates.customer-satisfaction.name",
     oneLinerKey: "templates.customer-satisfaction.one_liner",
     category: "loyalty",
@@ -749,6 +776,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "product-fit",
     version: 1,
+    searchAliases: ["pmf", "product market fit", "sean ellis", "very disappointed"],
     nameKey: "templates.product-fit.name",
     oneLinerKey: "templates.product-fit.one_liner",
     category: "loyalty",
@@ -782,6 +810,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "come-back-reasons",
     version: 1,
+    searchAliases: ["repeat", "returning", "retention", "loyalty"],
     nameKey: "templates.come-back-reasons.name",
     oneLinerKey: "templates.come-back-reasons.one_liner",
     category: "loyalty",
@@ -802,7 +831,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
           opt("new_product", "templates.come-back-reasons.q_reason.new_product"),
           opt("reminder", "templates.come-back-reasons.q_reason.reminder"),
           opt("trying_different", "templates.come-back-reasons.q_reason.trying_different"),
-          opt("other", "templates.come-back-reasons.q_reason.other"),
+          other("templates.come-back-reasons.q_reason.other"),
         ],
       },
     ],
@@ -815,6 +844,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "gift-radar",
     version: 1,
+    searchAliases: ["gift", "occasion", "birthday", "christmas", "recipient"],
     nameKey: "templates.gift-radar.name",
     oneLinerKey: "templates.gift-radar.one_liner",
     category: "know_customer",
@@ -865,6 +895,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "reorder-clock",
     version: 1,
+    searchAliases: ["replenishment", "refill", "subscription", "reminder", "consumables"],
     nameKey: "templates.reorder-clock.name",
     oneLinerKey: "templates.reorder-clock.one_liner",
     category: "know_customer",
@@ -902,6 +933,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "taste-profile",
     version: 1,
+    searchAliases: ["preferences", "zero party data", "personalization", "segmentation", "quiz"],
     nameKey: "templates.taste-profile.name",
     oneLinerKey: "templates.taste-profile.one_liner",
     category: "know_customer",
@@ -940,6 +972,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "age-range",
     version: 1,
+    searchAliases: ["demographics", "age", "persona"],
     nameKey: "templates.age-range.name",
     oneLinerKey: "templates.age-range.one_liner",
     category: "know_customer",
@@ -973,6 +1006,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "business-buyer",
     version: 1,
+    searchAliases: ["b2b", "wholesale", "bulk", "business"],
     nameKey: "templates.business-buyer.name",
     oneLinerKey: "templates.business-buyer.one_liner",
     category: "know_customer",
@@ -1008,6 +1042,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
   {
     id: "missing-piece",
     version: 1,
+    searchAliases: ["product ideas", "catalog", "assortment", "out of stock"],
     nameKey: "templates.missing-piece.name",
     oneLinerKey: "templates.missing-piece.one_liner",
     category: "know_customer",
@@ -1035,10 +1070,344 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
     ideas: [],
   },
 
+  // ----- Added 2026-10-18 from the questions survey vendors publish ------------
+  // (Fairing's question bank, Zigpoll, Userloop, Formbricks, Triple Whale):
+  // each covers a question those lists recommend that no template asked.
+  {
+    id: "today-trigger",
+    version: 1,
+    searchAliases: ["last touch", "last click", "retargeting", "attribution", "today", "trigger"],
+    nameKey: "templates.today-trigger.name",
+    oneLinerKey: "templates.today-trigger.one_liner",
+    category: "marketing",
+    outcomeTags: ["purchase_triggers", "best_channels"],
+    learnKeys: ["templates.today-trigger.learn_1", "templates.today-trigger.learn_2"],
+    questions: [
+      {
+        key: "q_today",
+        type: "single_choice",
+        textKey: "templates.today-trigger.q_today.text",
+        required: true,
+        randomize: true,
+        options: [
+          opt("ad", "templates.today-trigger.q_today.ad"),
+          opt("email", "templates.today-trigger.q_today.email"),
+          opt("sms", "templates.today-trigger.q_today.sms"),
+          opt("search", "templates.today-trigger.q_today.search"),
+          opt("social_post", "templates.today-trigger.q_today.social_post"),
+          opt("friend", "templates.today-trigger.q_today.friend"),
+          opt("typed_address", "templates.today-trigger.q_today.typed_address"),
+          other("templates.today-trigger.q_today.other"),
+        ],
+      },
+      {
+        key: "q_ad_where",
+        type: "single_choice",
+        textKey: "templates.today-trigger.q_ad_where.text",
+        required: false,
+        optionalInSetup: true,
+        options: [
+          opt("instagram", "packs.channel_instagram"),
+          opt("facebook", "packs.channel_facebook"),
+          opt("tiktok", "packs.channel_tiktok"),
+          opt("youtube", "packs.channel_youtube"),
+          opt("google", "packs.channel_google"),
+          other("packs.option_other"),
+        ],
+        showIf: { questionKey: "q_today", optionKeys: ["ad"] },
+      },
+    ],
+    liteQuestionKeys: ["q_today", "q_ad_where"],
+    defaults: { audience: "everyone", placements: ["thank_you"], samplePercent: 100 },
+    smartActions: ["trigger_order_tag"],
+    ideas: [],
+  },
+  {
+    id: "rival-check",
+    version: 1,
+    searchAliases: ["competitor", "competition", "compare", "comparison", "alternatives"],
+    nameKey: "templates.rival-check.name",
+    oneLinerKey: "templates.rival-check.one_liner",
+    category: "marketing",
+    outcomeTags: ["rival_names", "switch_reasons"],
+    learnKeys: [
+      "templates.rival-check.learn_1",
+      "templates.rival-check.learn_2",
+      "templates.rival-check.learn_3",
+    ],
+    questions: [
+      {
+        key: "q_compared",
+        type: "yes_no",
+        textKey: "templates.rival-check.q_compared.text",
+        required: true,
+      },
+      {
+        key: "q_brands",
+        type: "text",
+        textKey: "templates.rival-check.q_brands.text",
+        placeholderKey: "templates.rival-check.q_brands.placeholder",
+        required: false,
+        optionalInSetup: true,
+        showIf: { questionKey: "q_compared", optionKeys: ["yes"] },
+      },
+      {
+        key: "q_why_us",
+        type: "single_choice",
+        textKey: "templates.rival-check.q_why_us.text",
+        required: false,
+        optionalInSetup: true,
+        randomize: true,
+        options: [
+          opt("price", "templates.rival-check.q_why_us.price"),
+          opt("quality", "templates.rival-check.q_why_us.quality"),
+          opt("reviews", "templates.rival-check.q_why_us.reviews"),
+          opt("delivery", "templates.rival-check.q_why_us.delivery"),
+          opt("values", "templates.rival-check.q_why_us.values"),
+          opt("offer", "templates.rival-check.q_why_us.offer"),
+          other("templates.rival-check.q_why_us.other"),
+        ],
+        showIf: { questionKey: "q_compared", optionKeys: ["yes"] },
+      },
+    ],
+    liteQuestionKeys: ["q_compared", "q_brands"],
+    defaults: { audience: "everyone", placements: ["thank_you"], samplePercent: 100 },
+    ideas: [],
+  },
+  {
+    id: "brand-presence",
+    version: 1,
+    searchAliases: ["awareness", "brand", "reach", "frequency", "presence", "media mix"],
+    nameKey: "templates.brand-presence.name",
+    oneLinerKey: "templates.brand-presence.one_liner",
+    category: "marketing",
+    outcomeTags: ["brand_presence", "best_channels"],
+    learnKeys: ["templates.brand-presence.learn_1", "templates.brand-presence.learn_2"],
+    questions: [
+      {
+        key: "q_seen",
+        type: "multi_choice",
+        textKey: "templates.brand-presence.q_seen.text",
+        required: true,
+        pack: "channels",
+        randomize: true,
+        maxSelections: 3,
+      },
+    ],
+    liteQuestionKeys: ["q_seen"],
+    defaults: { audience: "everyone", placements: ["thank_you"], samplePercent: 100 },
+    ideas: [],
+  },
+  {
+    id: "offer-impact",
+    version: 1,
+    searchAliases: ["discount", "coupon", "promo code", "promotion", "margin", "incrementality", "sale"],
+    nameKey: "templates.offer-impact.name",
+    oneLinerKey: "templates.offer-impact.one_liner",
+    category: "marketing",
+    outcomeTags: ["discount_reliance", "price_feel"],
+    learnKeys: ["templates.offer-impact.learn_1", "templates.offer-impact.learn_2"],
+    questions: [
+      {
+        key: "q_offer",
+        type: "single_choice",
+        textKey: "templates.offer-impact.q_offer.text",
+        required: true,
+        options: [
+          opt("needed", "templates.offer-impact.q_offer.needed"),
+          opt("helped", "templates.offer-impact.q_offer.helped"),
+          opt("no_offer", "templates.offer-impact.q_offer.no_offer"),
+        ],
+      },
+      {
+        key: "q_offer_where",
+        type: "single_choice",
+        textKey: "templates.offer-impact.q_offer_where.text",
+        required: false,
+        optionalInSetup: true,
+        options: [
+          opt("email", "templates.offer-impact.q_offer_where.email"),
+          opt("sms", "templates.offer-impact.q_offer_where.sms"),
+          opt("social_ad", "templates.offer-impact.q_offer_where.social_ad"),
+          opt("coupon_site", "templates.offer-impact.q_offer_where.coupon_site"),
+          opt("friend", "templates.offer-impact.q_offer_where.friend"),
+          opt("our_site", "templates.offer-impact.q_offer_where.our_site"),
+          other("templates.offer-impact.q_offer_where.other"),
+        ],
+        showIf: { questionKey: "q_offer", optionKeys: ["needed", "helped"] },
+      },
+    ],
+    liteQuestionKeys: ["q_offer", "q_offer_where"],
+    defaults: { audience: "everyone", placements: ["thank_you"], samplePercent: 100 },
+    smartActions: ["offer_order_tag"],
+    ideas: [],
+  },
+
+  // ----- Product page (added) -----------------------------------------------
+  {
+    id: "product-discovery",
+    version: 1,
+    searchAliases: ["navigation", "site search", "merchandising", "cro", "findability", "menu", "recommendations"],
+    nameKey: "templates.product-discovery.name",
+    oneLinerKey: "templates.product-discovery.one_liner",
+    category: "product_page",
+    outcomeTags: ["product_discovery", "page_gaps"],
+    learnKeys: ["templates.product-discovery.learn_1", "templates.product-discovery.learn_2"],
+    questions: [
+      {
+        key: "q_found",
+        type: "single_choice",
+        textKey: "templates.product-discovery.q_found.text",
+        required: true,
+        options: [
+          opt("search_bar", "templates.product-discovery.q_found.search_bar"),
+          opt("menu", "templates.product-discovery.q_found.menu"),
+          opt("homepage", "templates.product-discovery.q_found.homepage"),
+          opt("recommended", "templates.product-discovery.q_found.recommended"),
+          opt("direct_link", "templates.product-discovery.q_found.direct_link"),
+          opt("knew_it", "templates.product-discovery.q_found.knew_it"),
+          other("templates.product-discovery.q_found.other"),
+        ],
+      },
+      {
+        key: "q_easy",
+        type: "rating_5",
+        textKey: "templates.product-discovery.q_easy.text",
+        required: false,
+        optionalInSetup: true,
+        scaleLabelKeys: {
+          low: "templates.product-discovery.q_easy.scale_low",
+          high: "templates.product-discovery.q_easy.scale_high",
+        },
+      },
+    ],
+    liteQuestionKeys: ["q_found"],
+    defaults: { audience: "everyone", placements: ["thank_you"], samplePercent: 100 },
+    ideas: [],
+  },
+
+  // ----- Know your customer (added) -----------------------------------------
+  {
+    id: "contact-preference",
+    version: 1,
+    searchAliases: ["email", "sms", "whatsapp", "opt in", "newsletter", "communication", "marketing channels"],
+    nameKey: "templates.contact-preference.name",
+    oneLinerKey: "templates.contact-preference.one_liner",
+    category: "know_customer",
+    outcomeTags: ["contact_channels", "content_wishes"],
+    learnKeys: ["templates.contact-preference.learn_1", "templates.contact-preference.learn_2"],
+    questions: [
+      {
+        key: "q_channels",
+        type: "multi_choice",
+        textKey: "templates.contact-preference.q_channels.text",
+        required: true,
+        maxSelections: 3,
+        options: [
+          opt("email", "templates.contact-preference.q_channels.email"),
+          opt("sms", "templates.contact-preference.q_channels.sms"),
+          opt("whatsapp", "templates.contact-preference.q_channels.whatsapp"),
+          opt("instagram", "packs.channel_instagram"),
+          opt("tiktok", "packs.channel_tiktok"),
+          opt("facebook", "packs.channel_facebook"),
+          { key: "none", labelKey: "templates.contact-preference.q_channels.none", exclusive: true },
+        ],
+      },
+    ],
+    liteQuestionKeys: ["q_channels"],
+    defaults: { audience: "everyone", placements: ["thank_you"], samplePercent: 100 },
+    ideas: [],
+    goodToKnowKeys: ["templates.contact-preference.good_to_know"],
+  },
+  {
+    id: "where-else",
+    version: 1,
+    searchAliases: ["amazon", "marketplace", "retail", "omnichannel", "stores", "etsy", "ebay"],
+    nameKey: "templates.where-else.name",
+    oneLinerKey: "templates.where-else.one_liner",
+    category: "know_customer",
+    outcomeTags: ["other_stores", "rival_names"],
+    learnKeys: ["templates.where-else.learn_1", "templates.where-else.learn_2"],
+    questions: [
+      {
+        key: "q_where",
+        type: "multi_choice",
+        textKey: "templates.where-else.q_where.text",
+        required: true,
+        maxSelections: 3,
+        options: [
+          opt("amazon", "templates.where-else.q_where.amazon"),
+          opt("marketplaces", "templates.where-else.q_where.marketplaces"),
+          opt("social_shops", "templates.where-else.q_where.social_shops"),
+          opt("physical_stores", "templates.where-else.q_where.physical_stores"),
+          opt("brand_sites", "templates.where-else.q_where.brand_sites"),
+          { key: "only_here", labelKey: "templates.where-else.q_where.only_here", exclusive: true },
+        ],
+      },
+    ],
+    liteQuestionKeys: ["q_where"],
+    defaults: { audience: "everyone", placements: ["thank_you"], samplePercent: 100 },
+    ideas: [],
+  },
+  {
+    id: "open-feedback",
+    version: 1,
+    searchAliases: ["open ended", "feedback", "comments", "suggestions", "voice of customer", "voc", "anything else"],
+    nameKey: "templates.open-feedback.name",
+    oneLinerKey: "templates.open-feedback.one_liner",
+    category: "know_customer",
+    outcomeTags: ["open_feedback"],
+    learnKeys: ["templates.open-feedback.learn_1", "templates.open-feedback.learn_2"],
+    questions: [
+      {
+        key: "q_anything",
+        type: "text",
+        textKey: "templates.open-feedback.q_anything.text",
+        placeholderKey: "templates.open-feedback.q_anything.placeholder",
+        required: true,
+        multiline: true,
+      },
+    ],
+    liteQuestionKeys: ["q_anything"],
+    defaults: { audience: "everyone", placements: ["thank_you"], samplePercent: 100 },
+    ideas: [],
+  },
+
+  // ----- Loyalty (added) ----------------------------------------------------
+  {
+    id: "subscribe-interest",
+    version: 1,
+    searchAliases: ["subscription", "subscribe and save", "recurring", "auto ship", "replenishment"],
+    nameKey: "templates.subscribe-interest.name",
+    oneLinerKey: "templates.subscribe-interest.one_liner",
+    category: "loyalty",
+    outcomeTags: ["subscription_interest", "reorder_timing"],
+    learnKeys: ["templates.subscribe-interest.learn_1", "templates.subscribe-interest.learn_2"],
+    questions: [
+      {
+        key: "q_subscribe",
+        type: "single_choice",
+        textKey: "templates.subscribe-interest.q_subscribe.text",
+        required: true,
+        options: [
+          opt("monthly", "templates.subscribe-interest.q_subscribe.monthly"),
+          opt("every_2_3_months", "templates.subscribe-interest.q_subscribe.every_2_3_months"),
+          opt("with_discount", "templates.subscribe-interest.q_subscribe.with_discount"),
+          opt("no", "templates.subscribe-interest.q_subscribe.no"),
+        ],
+      },
+    ],
+    liteQuestionKeys: ["q_subscribe"],
+    defaults: { audience: "everyone", placements: ["thank_you"], samplePercent: 100 },
+    smartActions: ["subscribe_interest_customer_tag"],
+    ideas: [],
+  },
+
   // ----- After delivery (survey link placement only) -----------------------
   {
     id: "after-delivery",
     version: 1,
+    searchAliases: ["review", "product quality", "post delivery"],
     nameKey: "templates.after-delivery.name",
     oneLinerKey: "templates.after-delivery.one_liner",
     category: "after_delivery",

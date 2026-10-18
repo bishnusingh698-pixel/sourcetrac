@@ -41,6 +41,14 @@ export const TAG_IDS = [
   "business_buyers",
   "missing_products",
   "after_delivery",
+  "purchase_triggers",
+  "brand_presence",
+  "discount_reliance",
+  "product_discovery",
+  "contact_channels",
+  "other_stores",
+  "subscription_interest",
+  "open_feedback",
 ] as const;
 
 export type TagId = (typeof TAG_IDS)[number];
@@ -82,6 +90,14 @@ export const TAG_EN: Readonly<Record<TagId, string>> = {
   business_buyers: "Finds business buyers",
   missing_products: "Finds missing products",
   after_delivery: "Checks product after delivery",
+  purchase_triggers: "Shows what brought buyers today",
+  brand_presence: "Shows where buyers see you",
+  discount_reliance: "Checks if discounts drive sales",
+  product_discovery: "Shows how buyers find products",
+  contact_channels: "Learns how to reach buyers",
+  other_stores: "Finds where else buyers shop",
+  subscription_interest: "Finds subscription buyers",
+  open_feedback: "Collects open feedback",
 };
 
 /** An outcome tag uses the success (green) tone. Never on meta or plan badges. */

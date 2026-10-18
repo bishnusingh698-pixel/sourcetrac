@@ -781,7 +781,7 @@
   "library": {
     "title": "Bibliothèque de modèles",
     "subtitle": "Choisissez ce que vous voulez apprendre. Chaque modèle est court, prêt à l'emploi et entièrement modifiable.",
-    "search_placeholder": "Rechercher des modèles",
+    "search_placeholder": "Rechercher un modèle, p. ex. NPS, cadeau, livraison, réduction",
     "category_all": "Tous",
     "category_marketing": "Marketing",
     "category_product_page": "Page produit",
@@ -836,7 +836,12 @@
     "more_questions_one": "Afficher {{count}} question de plus",
     "more_questions_other": "Afficher {{count}} questions de plus",
     "follow_up": "Suite de la question {{n}}",
-    "free_version_note": "Avec votre offre, vous disposez de {{n}} questions sur {{total}}. {{plan}} débloque la version complète."
+    "free_version_note": "Avec votre offre, vous disposez de {{n}} questions sur {{total}}. {{plan}} débloque la version complète.",
+    "search_label": "Rechercher des modèles",
+    "search_results_one": "{{count}} modèle trouvé",
+    "search_results_other": "{{count}} modèles trouvés",
+    "search_empty": "Aucun modèle ne correspond à « {{query}} ». Essayez un autre mot ou partez de zéro.",
+    "search_clear": "Effacer la recherche"
   },
   "setup": {
     "title": "Configurer votre sondage",
@@ -1257,7 +1262,10 @@
     "actions_no_channel_question": "Les étiquettes et le métachamp nécessitent une question à choix unique ou une liste déroulante. Ce sondage n'en a pas : seul Shopify Flow s'exécute.",
     "tags_example": "Exemple : la réponse « {{answer}} » ajoute {{tags}}",
     "learn_stop_done": "L'arrêt automatique a déjà mis ce sondage en pause une fois. Il ne le refera pas ; désactivez-le puis réactivez-le pour le réarmer.",
-    "status_auto_paused": "Mis en pause automatiquement : les résultats sont devenus fiables. Les acheteurs ne voient pas ce sondage. Réactivez-le quand vous voulez ; il ne se remettra pas en pause."
+    "status_auto_paused": "Mis en pause automatiquement : les résultats sont devenus fiables. Les acheteurs ne voient pas ce sondage. Réactivez-le quand vous voulez ; il ne se remettra pas en pause.",
+    "other_label": "Libellé de la réponse « Autre »",
+    "channel_question": "Compter dans le rapport des canaux",
+    "channel_question_details": "Cochez-le pour une question « Comment nous avez-vous connus ? ». Ses réponses deviennent vos canaux, avec leur chiffre d'affaires, dans le tableau de bord et le rapport des canaux."
   },
   "preview": {
     "title": "Aperçu",

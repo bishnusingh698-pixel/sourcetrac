@@ -781,7 +781,7 @@
   "library": {
     "title": "Vorlagenbibliothek",
     "subtitle": "Wählen Sie, was Sie lernen möchten. Jede Vorlage ist kurz, sofort einsatzbereit und vollständig anpassbar.",
-    "search_placeholder": "Vorlagen suchen",
+    "search_placeholder": "Vorlagen suchen, z. B. NPS, Geschenk, Lieferung, Rabatt",
     "category_all": "Alle",
     "category_marketing": "Marketing",
     "category_product_page": "Produktseite",
@@ -836,7 +836,12 @@
     "more_questions_one": "{{count}} weitere Frage anzeigen",
     "more_questions_other": "{{count}} weitere Fragen anzeigen",
     "follow_up": "Folgefrage zu Frage {{n}}",
-    "free_version_note": "Mit Ihrem Tarif erhalten Sie {{n}} von {{total}} Fragen. {{plan}} schaltet die vollständige Version frei."
+    "free_version_note": "Mit Ihrem Tarif erhalten Sie {{n}} von {{total}} Fragen. {{plan}} schaltet die vollständige Version frei.",
+    "search_label": "Vorlagen durchsuchen",
+    "search_results_one": "{{count}} Vorlage gefunden",
+    "search_results_other": "{{count}} Vorlagen gefunden",
+    "search_empty": "Keine Vorlage passt zu „{{query}}“. Versuchen Sie ein anderes Wort oder beginnen Sie ohne Vorlage.",
+    "search_clear": "Suche löschen"
   },
   "setup": {
     "title": "Umfrage einrichten",
@@ -1257,7 +1262,10 @@
     "actions_no_channel_question": "Tags und das Metafeld benötigen eine Einfachauswahl- oder Dropdown-Frage. Diese Umfrage hat keine, daher läuft nur Shopify Flow.",
     "tags_example": "Beispiel: Die Antwort „{{answer}}“ fügt {{tags}} hinzu",
     "learn_stop_done": "Der automatische Stopp hat diese Umfrage bereits einmal pausiert. Er pausiert sie nicht erneut; schalten Sie ihn aus und wieder ein, um ihn neu zu aktivieren.",
-    "status_auto_paused": "Automatisch pausiert: Die Ergebnisse sind zuverlässig. Käufer sehen diese Umfrage nicht. Sie können sie jederzeit wieder aktivieren; sie pausiert sich nicht erneut."
+    "status_auto_paused": "Automatisch pausiert: Die Ergebnisse sind zuverlässig. Käufer sehen diese Umfrage nicht. Sie können sie jederzeit wieder aktivieren; sie pausiert sich nicht erneut.",
+    "other_label": "Text der Antwort „Sonstiges“",
+    "channel_question": "Im Kanalbericht zählen",
+    "channel_question_details": "Aktivieren Sie das für eine Frage wie „Wie sind Sie auf uns aufmerksam geworden?“. Die Antworten werden mit ihrem Umsatz zu Ihren Kanälen im Dashboard und im Kanalbericht."
   },
   "preview": {
     "title": "Vorschau",

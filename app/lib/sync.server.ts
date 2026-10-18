@@ -253,7 +253,9 @@ async function loadSyncContext(shopId: string, responseId: string): Promise<{
         survey: { select: { syncOptions: true, channelReportQuestionId: true, templateId: true } },
         answers: {
           include: {
-            question: { select: { templateKey: true, options: { select: { id: true, templateKey: true } } } },
+            question: {
+              select: { templateKey: true, type: true, position: true, options: { select: { id: true, templateKey: true } } },
+            },
           },
         },
       },
@@ -272,8 +274,14 @@ async function loadSyncContext(shopId: string, responseId: string): Promise<{
   let channelLabel = "";
   let otherText: string | null = null;
 
+  // The channel question when the survey has one; otherwise the first choice
+  // question, which is what the editor tells the merchant tags will use.
   const reportQuestionId = response.survey.channelReportQuestionId;
-  const reportAnswer = response.answers.find((a) => a.questionId === reportQuestionId);
+  const reportAnswer =
+    response.answers.find((a) => a.questionId === reportQuestionId) ??
+    [...response.answers]
+      .filter((a) => a.question.type === "single_choice" || a.question.type === "dropdown")
+      .sort((a, b) => a.question.position - b.question.position)[0];
   if (reportAnswer) {
     const optionId = safeJson<string[]>(reportAnswer.optionIds, [])[0] ?? "";
     otherText = reportAnswer.otherText?.trim() || null;

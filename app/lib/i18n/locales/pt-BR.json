@@ -781,7 +781,7 @@
   "library": {
     "title": "Biblioteca de modelos",
     "subtitle": "Escolha o que você quer aprender. Todo modelo é curto, pronto para usar e totalmente editável.",
-    "search_placeholder": "Buscar modelos",
+    "search_placeholder": "Busque modelos, ex.: NPS, presente, entrega, desconto",
     "category_all": "Todos",
     "category_marketing": "Marketing",
     "category_product_page": "Página do produto",
@@ -836,7 +836,12 @@
     "more_questions_one": "Mostrar mais {{count}} pergunta",
     "more_questions_other": "Mostrar mais {{count}} perguntas",
     "follow_up": "Complemento da pergunta {{n}}",
-    "free_version_note": "No seu plano você tem {{n}} de {{total}} perguntas. O plano {{plan}} libera a versão completa."
+    "free_version_note": "No seu plano você tem {{n}} de {{total}} perguntas. O plano {{plan}} libera a versão completa.",
+    "search_label": "Buscar modelos",
+    "search_results_one": "{{count}} modelo encontrado",
+    "search_results_other": "{{count}} modelos encontrados",
+    "search_empty": "Nenhum modelo corresponde a “{{query}}”. Tente outra palavra ou comece do zero.",
+    "search_clear": "Limpar busca"
   },
   "setup": {
     "title": "Configure sua pesquisa",
@@ -1257,7 +1262,10 @@
     "actions_no_channel_question": "As tags e o metacampo precisam de uma pergunta de escolha única ou lista suspensa. Esta pesquisa não tem, então só o Shopify Flow é executado.",
     "tags_example": "Exemplo: a resposta “{{answer}}” adiciona {{tags}}",
     "learn_stop_done": "A parada automática já pausou esta pesquisa uma vez. Ela não vai pausar de novo; desative e ative para armá-la outra vez.",
-    "status_auto_paused": "Pausada automaticamente: os resultados ficaram confiáveis. Os compradores não veem esta pesquisa. Ative de novo quando quiser; ela não vai pausar outra vez."
+    "status_auto_paused": "Pausada automaticamente: os resultados ficaram confiáveis. Os compradores não veem esta pesquisa. Ative de novo quando quiser; ela não vai pausar outra vez.",
+    "other_label": "Texto da resposta “Outro”",
+    "channel_question": "Contar no relatório de canais",
+    "channel_question_details": "Marque numa pergunta como “Como você nos conheceu?”. As respostas viram seus canais, com a receita, no Painel e no relatório de canais."
   },
   "preview": {
     "title": "Prévia",

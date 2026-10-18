@@ -276,7 +276,18 @@ export function QuestionList({
           question={question}
           index={index}
           questions={questions}
-          setQuestion={setQuestion}
+          setQuestion={(i, patch) => {
+            // A question that stops being single choice can no longer feed the
+            // channel report.
+            if (patch.type && !isChannelType(patch.type) && draft.channelReportQuestionId === question.id) {
+              setQuestion(i, patch);
+              update({ channelReportQuestionId: null });
+              return;
+            }
+            setQuestion(i, patch);
+          }}
+          isChannelQuestion={Boolean(question.id) && draft.channelReportQuestionId === question.id}
+          onChannelQuestion={(on) => update({ channelReportQuestionId: on ? question.id : null })}
           onMove={moveQuestion}
           onDuplicate={duplicateQuestion}
           onRemove={removeQuestion}
@@ -311,11 +322,18 @@ function newOption(label: string): Option {
   return { id: newItemId(), label, isOther: false, exclusive: false, archived: false, translations: {} };
 }
 
+/** Question types whose answer can be a channel ("How did you hear about us?"). */
+function isChannelType(type: QuestionType): boolean {
+  return type === "single_choice" || type === "dropdown";
+}
+
 function QuestionCard({
   question,
   index,
   questions,
   setQuestion,
+  isChannelQuestion,
+  onChannelQuestion,
   onMove,
   onDuplicate,
   onRemove,
@@ -329,6 +347,8 @@ function QuestionCard({
   index: number;
   questions: Question[];
   setQuestion: (index: number, patch: Partial<Question>) => void;
+  isChannelQuestion: boolean;
+  onChannelQuestion: (on: boolean) => void;
   onMove: (index: number, to: number) => void;
   onDuplicate: (index: number) => void;
   onRemove: (index: number) => void;
@@ -433,6 +453,18 @@ function QuestionCard({
           checked={question.required || undefined}
           onChange={(e: Event) => setQuestion(index, { required: checkboxChecked(e) })}
         />
+
+        {/* Which question is "how did you hear about us?". Only that one feeds
+            the Channel report and the attribution numbers on the Dashboard; a
+            gift or price question counted there would show up as channels. */}
+        {isChannelType(question.type) ? (
+          <s-checkbox
+            label={t("editor.channel_question")}
+            details={t("editor.channel_question_details")}
+            checked={isChannelQuestion || undefined}
+            onChange={(e: Event) => onChannelQuestion(checkboxChecked(e))}
+          />
+        ) : null}
 
         <FollowUpEditor question={question} index={index} questions={questions} setQuestion={setQuestion} t={t} />
 
@@ -563,12 +595,36 @@ function AnswerList({
           {t("editor.answer_count", { count, max: limits.MAX_OPTIONS })}
         </s-text>
       </s-stack>
+      {/* A template's "Other (please specify)" is a real option, not the
+          `allowOther` flag, so the switch reads both and turning it off
+          removes the option too. Before, that option was hidden here and the
+          switch read off while buyers still saw it. */}
       <s-switch
         label={t("editor.allow_other")}
         details={t("editor.allow_other_details")}
-        checked={question.allowOther || undefined}
-        onChange={(e: Event) => setQuestion(index, { allowOther: checkboxChecked(e) })}
+        checked={question.allowOther || others.length > 0 || undefined}
+        onChange={(e: Event) =>
+          checkboxChecked(e)
+            ? setQuestion(index, { allowOther: true })
+            : setQuestion(index, { allowOther: false, options: options })
+        }
       />
+      {others.map((other) => (
+        <s-text-field
+          key={other.id || "other"}
+          label={t("editor.other_label")}
+          value={other.label}
+          maxLength={limits.MAX_OPTION_LABEL}
+          onInput={(e: Event) => {
+            const label = fieldValue(e);
+            setQuestion(index, {
+              options: question.options.map((o) =>
+                o === other ? { ...o, label, translations: label === o.label ? o.translations : {} } : o,
+              ),
+            });
+          }}
+        />
+      ))}
     </s-stack>
   );
 }

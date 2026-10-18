@@ -11,7 +11,7 @@ import { createSurvey } from "~/lib/surveys.server";
 import { templateSurveyInput } from "~/lib/template-survey";
 import { NotFoundError, ValidationError } from "~/lib/errors";
 import { effectivePlan } from "~/lib/plans";
-import { fetchShopLocaleInfo } from "~/lib/shopify-graphql.server";
+import { getShopLocaleInfo } from "~/lib/studio.server";
 import { isEnabled } from "@shared/feature-flags";
 import { CATEGORY_ORDER, catalogPlanFromKey, templateHasFreeVersion, templateLockedForPlan } from "@shared/templates/catalog";
 import { buildSurveyDefinition } from "@shared/templates/resolve";
@@ -19,6 +19,9 @@ import { regionPackFor } from "@shared/templates/packs";
 import { templateText } from "@shared/templates/locales";
 import { templateById, TEMPLATES } from "@shared/templates";
 import { describeFollowUp } from "@shared/survey-summary";
+import { matchesSearch, normalizeSearchText, searchTerms } from "@shared/templates/search";
+import { isTagId } from "@shared/templates/tags";
+import { useMemo, useState } from "react";
 import type { TemplateCategory } from "@shared/templates/types";
 
 /**
@@ -40,9 +43,12 @@ const RECOMMENDED_ID = "channel-compass";
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
-  const { countryCode } = await fetchShopLocaleInfo(shop.shopDomain, session.accessToken);
+  // Cached per shop: the uncached lookup put a blocking Admin API call (with
+  // its timeout and retries) in front of every visit to this page.
+  const { countryCode } = await getShopLocaleInfo(shop.id, shop.shopDomain, session.accessToken);
   const locale = resolveAdminLanguage(request, shop.language, shop.adminLocale);
   const region = regionPackFor(countryCode);
+  const t = createTranslator(locale);
   const plan = catalogPlanFromKey(effectivePlan(shop));
   const surveyLinkEnabled = isEnabled("SURVEY_LINK_PAGE");
 
@@ -57,11 +63,30 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
       text: question.text,
       followUp: describeFollowUp(question, definition.questions),
     }));
+    const name = templateText(locale, template.nameKey);
+    const oneLiner = templateText(locale, template.oneLinerKey);
     return {
       id: template.id,
       category: template.category,
-      name: templateText(locale, template.nameKey),
-      oneLiner: templateText(locale, template.oneLinerKey),
+      name,
+      oneLiner,
+      // What the search box matches: everything on the card, plus what the
+      // merchant learns, the outcome tags, the category and the usual jargon
+      // ("NPS", "attribution"), normalised once here.
+      search: normalizeSearchText(
+        [
+          name,
+          oneLiner,
+          ...buildSurveyDefinition({ template, locale, region }).questions.flatMap((q) => [
+            q.text,
+            ...(q.options ?? []).map((o) => o.label),
+          ]),
+          ...template.learnKeys.map((key) => templateText(locale, key)),
+          ...template.outcomeTags.filter(isTagId).map((id) => templateText(locale, `tags.${id}`)),
+          t(`library.category_${template.category}`),
+          ...(template.searchAliases ?? []),
+        ].join(" "),
+      ),
       questions,
       fullCount,
       // "full": everything included. "free_version": the plan gets fewer
@@ -121,7 +146,7 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
 
     const template = templateById(String(form.get("templateId") ?? ""));
     if (!template) throw new NotFoundError("That template does not exist.");
-    const { countryCode } = await fetchShopLocaleInfo(shop.shopDomain, session.accessToken);
+    const { countryCode } = await getShopLocaleInfo(shop.id, shop.shopDomain, session.accessToken);
     const built = templateSurveyInput({
       template,
       locale,
@@ -150,12 +175,20 @@ export default function TemplateLibrary() {
   const { t } = useAdminI18n();
   const [params, setParams] = useSearchParams();
   const category = (params.get("category") as TemplateCategory | null) ?? null;
+  // Kept in the page, not the address: a URL change per keystroke would re-run
+  // the loader (and its Shopify lookup) while the merchant types.
+  const [query, setQuery] = useState(() => params.get("q") ?? "");
+  const terms = useMemo(() => searchTerms(query), [query]);
+  const searching = terms.length > 0;
 
   const recommended = cards.find((card) => card.id === recommendedId);
   // The recommended card has its own spot above the list, so it is left out
-  // of "All"; once a category is picked it is listed with the others again,
-  // or picking its own category would hide it.
-  const rest = cards.filter((card) => (category ? card.category === category : card.id !== recommendedId));
+  // of "All"; once a category is picked, or the merchant searches, it is
+  // listed with the others again, or it could never be found.
+  const rest = cards.filter(
+    (card) =>
+      (category ? card.category === category : searching || card.id !== recommendedId) && matchesSearch(card.search, terms),
+  );
 
   const failureKey = actionData?.ok === false ? `surveys.validation_${actionData.code}` : null;
   const failure = failureKey ? (t(failureKey) === failureKey ? t("library.create_failed") : t(failureKey)) : null;
@@ -183,7 +216,15 @@ export default function TemplateLibrary() {
 
       {failure ? <Banner tone="critical" heading={failure} /> : null}
 
-      {recommended && !category ? (
+      <s-search-field
+        label={t("library.search_label")}
+        labelAccessibilityVisibility="exclusive"
+        placeholder={t("library.search_placeholder")}
+        value={query}
+        onInput={(e: Event) => setQuery((e.currentTarget as { value?: string }).value ?? "")}
+      />
+
+      {recommended && !category && !searching ? (
         <s-section>
           <s-stack gap="small">
             <s-stack direction="inline" gap="small" alignItems="center">
@@ -199,7 +240,7 @@ export default function TemplateLibrary() {
         </s-section>
       ) : null}
 
-      <s-section heading={t("library.more_title")}>
+      <s-section heading={searching ? t("library.search_results", { count: rest.length }) : t("library.more_title")}>
         <s-stack gap="base">
           <s-stack direction="inline" gap="small">
             <s-button type="button" variant={!category ? "primary" : "secondary"} onClick={() => setCategory(null)}>
@@ -211,6 +252,24 @@ export default function TemplateLibrary() {
               </s-button>
             ))}
           </s-stack>
+
+          {rest.length === 0 ? (
+            <s-box padding="base" borderRadius="base" background="subdued">
+              <s-stack gap="small">
+                <s-text>{t("library.search_empty", { query: query.trim() })}</s-text>
+                <s-stack direction="inline" gap="small">
+                  <s-button type="button" onClick={() => setQuery("")}>
+                    {t("library.search_clear")}
+                  </s-button>
+                  {category ? (
+                    <s-button type="button" variant="tertiary" onClick={() => setCategory(null)}>
+                      {t("library.category_all")}
+                    </s-button>
+                  ) : null}
+                </s-stack>
+              </s-stack>
+            </s-box>
+          ) : null}
 
           <s-query-container>
             <s-grid

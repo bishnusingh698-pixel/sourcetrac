@@ -781,7 +781,7 @@
   "library": {
     "title": "テンプレートライブラリ",
     "subtitle": "知りたいことを選んでください。どのテンプレートも短く、すぐに使えて、自由に編集できます。",
-    "search_placeholder": "テンプレートを検索",
+    "search_placeholder": "テンプレートを検索（例: NPS、ギフト、配送、割引）",
     "category_all": "すべて",
     "category_marketing": "マーケティング",
     "category_product_page": "商品ページ",
@@ -836,7 +836,12 @@
     "more_questions_one": "さらに{{count}}問を表示",
     "more_questions_other": "さらに{{count}}問を表示",
     "follow_up": "質問 {{n}} へのフォローアップ",
-    "free_version_note": "現在のプランでは{{total}}問中{{n}}問をご利用いただけます。{{plan}}で完全版が使えるようになります。"
+    "free_version_note": "現在のプランでは{{total}}問中{{n}}問をご利用いただけます。{{plan}}で完全版が使えるようになります。",
+    "search_label": "テンプレートを検索",
+    "search_results_one": "{{count}}件のテンプレート",
+    "search_results_other": "{{count}}件のテンプレート",
+    "search_empty": "「{{query}}」に一致するテンプレートはありません。別の言葉で試すか、白紙から作成してください。",
+    "search_clear": "検索をクリア"
   },
   "setup": {
     "title": "アンケートを設定",
@@ -1257,7 +1262,10 @@
     "actions_no_channel_question": "タグとメタフィールドには単一選択またはドロップダウンの質問が必要です。このアンケートにはないため、Shopify Flowのみ実行されます。",
     "tags_example": "例: 回答が「{{answer}}」の場合、{{tags}} が追加されます",
     "learn_stop_done": "自動停止はこのアンケートをすでに一度停止しました。再び停止することはありません。もう一度有効にするには、オフにしてからオンにしてください。",
-    "status_auto_paused": "結果が信頼できるようになったため自動的に一時停止しました。購入者には表示されません。いつでも再開でき、再び自動停止することはありません。"
+    "status_auto_paused": "結果が信頼できるようになったため自動的に一時停止しました。購入者には表示されません。いつでも再開でき、再び自動停止することはありません。",
+    "other_label": "「その他」の表示名",
+    "channel_question": "チャネルレポートに含める",
+    "channel_question_details": "「当店をどこで知りましたか？」のような質問で選択してください。回答が売上とともに、ダッシュボードとチャネルレポートのチャネルになります。"
   },
   "preview": {
     "title": "プレビュー",
