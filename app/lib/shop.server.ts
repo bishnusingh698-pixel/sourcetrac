@@ -1,5 +1,7 @@
 import type { PlanStatus } from "@prisma/client";
 
+import { SessionNotFoundError } from "@shopify/shopify-app-react-router/server";
+
 import { db, isRetryableDbError } from "~/db.server";
 import { decryptSecret, encryptSecret } from "~/lib/crypto.server";
 import { NotFoundError } from "~/lib/errors";
@@ -176,18 +178,28 @@ export async function findShopById(shopId: string): Promise<ShopRecord | null> {
 }
 
 /**
- * Decrypt the offline token. Returns null when absent or undecryptable —
- * callers must handle null by re-authenticating, not by crashing.
+ * The shop's offline token for work outside an admin request (sync, webhooks,
+ * the admin blocks). Returns null when there is none — callers must handle null
+ * by skipping, not by crashing.
+ *
+ * Offline tokens expire after about an hour, so the live source is the
+ * library's offline session, which `unauthenticated.admin` refreshes with the
+ * stored refresh token. The copy on the shop row is only a fallback for a shop
+ * whose session is missing; it can be stale.
  */
 export async function getAccessToken(internalShopId: string): Promise<string | null> {
   const row = await retryDb(() =>
     db.shop.findUnique({
       where: { id: internalShopId },
-      select: { accessTokenEncrypted: true, accessTokenIv: true, accessTokenTag: true },
+      select: { shopDomain: true, accessTokenEncrypted: true, accessTokenIv: true, accessTokenTag: true },
     }),
   );
+  if (!row) return null;
 
-  if (!row?.accessTokenEncrypted || !row.accessTokenIv || !row.accessTokenTag) return null;
+  const live = await freshOfflineToken(row.shopDomain);
+  if (live) return live;
+
+  if (!row.accessTokenEncrypted || !row.accessTokenIv || !row.accessTokenTag) return null;
 
   const token = decryptSecret({
     ciphertext: row.accessTokenEncrypted,
@@ -200,6 +212,30 @@ export async function getAccessToken(internalShopId: string): Promise<string | n
   }
 
   return token;
+}
+
+/**
+ * Load the offline session through the library so an expired token is
+ * refreshed first. Imported lazily: `shopify.server` imports this module (via
+ * provisioning), and a static import would make the two load each other.
+ */
+async function freshOfflineToken(shopDomain: string): Promise<string | null> {
+  try {
+    const { unauthenticated } = await import("~/shopify.server");
+    const { session } = await unauthenticated.admin(shopDomain);
+    return session.accessToken ?? null;
+  } catch (error) {
+    // No stored session (SessionNotFoundError) is the normal case for a shop
+    // that has not opened the app since the token change; anything else is a
+    // failed refresh and worth seeing.
+    if (!(error instanceof SessionNotFoundError)) {
+      logger.warn("offline_token_refresh_failed", {
+        shop_domain: shopDomain,
+        error_message: error instanceof Error ? error.message : error instanceof Response ? `HTTP ${error.status}` : String(error),
+      });
+    }
+    return null;
+  }
 }
 
 /**

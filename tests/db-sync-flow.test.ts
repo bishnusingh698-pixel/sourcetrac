@@ -71,7 +71,12 @@ beforeEach(async () => {
   // Several live surveys, targeting rules and Shopify actions are paid features.
   await prisma.shop.update({ where: { id: shopId }, data: { plan: "scale", planStatus: "active" } });
   await prisma.session.create({
-    data: { id: `offline_${DOMAIN}`, shop: DOMAIN, state: "s", isOnline: false, scope: "read_orders,write_orders", accessToken: "x" },
+    // Expiring, as every offline session now is: one with no expiry is a
+    // legacy token and is exchanged on load (tests/db-token-migration.test.ts).
+    data: {
+      id: `offline_${DOMAIN}`, shop: DOMAIN, state: "s", isOnline: false, scope: "read_orders,write_orders", accessToken: "x",
+      expires: new Date(Date.now() + 3600_000),
+    },
   });
   await prisma.orderCache.create({
     data: {
