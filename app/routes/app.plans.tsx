@@ -171,6 +171,18 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
 });
 
 /**
+ * Reading the subscriptions failed. Shopify refuses that read with the same
+ * "public distribution" error as a new charge, so an app not yet set to Public
+ * gets the message that says where to fix it; anything else is a real outage.
+ */
+function lookupFailed(error: unknown): Result {
+  const message = error instanceof Error ? error.message : String(error);
+  return isBillingNotEnabled(message)
+    ? result(false, "plans.msg_billing_not_enabled")
+    : result(false, "plans.msg_lookup_failed");
+}
+
+/**
  * Cancel whatever live SourceTrac subscription Shopify reports.
  *
  * Resolved from Shopify rather than from our stored `subscriptionGid`, which can
@@ -181,8 +193,8 @@ async function cancelActiveSubscription(params: { shopDomain: string; accessToke
   let subscriptions: Awaited<ReturnType<typeof fetchActiveSubscriptions>>;
   try {
     subscriptions = await fetchActiveSubscriptions(params);
-  } catch {
-    return result(false, "plans.msg_lookup_failed");
+  } catch (error) {
+    return lookupFailed(error);
   }
 
   const active = activeSourceTracSubscription(subscriptions, {
@@ -239,8 +251,8 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
       if (current === plan && cycleOf(live) === cycle) {
         return result(true, "plans.msg_already_on_plan");
       }
-    } catch {
-      return result(false, "plans.msg_lookup_failed");
+    } catch (error) {
+      return lookupFailed(error);
     }
 
     const created = await createSubscription({
