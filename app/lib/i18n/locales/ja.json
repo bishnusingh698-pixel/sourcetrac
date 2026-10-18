@@ -1193,7 +1193,12 @@
     "survey_id_label": "アンケート ID",
     "survey_id_help": "アンケートが複数ありますか？チェックアウトエディタで「SourceTrac survey」ブロックを選択し、この ID を「Survey ID」設定に貼り付けてください。そのブロックにはこのアンケートだけが表示され、エディタでもプレビューされます。設定を空にすると、優先度が最も高い公開中のアンケートが表示されます。",
     "survey_id_copied": "アンケート ID をコピーしました",
-    "survey_id_copy_failed": "コピーできませんでした。ID を選択してコピーしてください。"
+    "survey_id_copy_failed": "コピーできませんでした。ID を選択してコピーしてください。",
+    "discard_changes": "変更を破棄",
+    "leave_title": "移動する前に変更を保存してください",
+    "leave_body": "このアンケートには保存されていない変更があります。保存するか、変更を破棄してからこのページを離れてください。",
+    "leave_discard": "破棄して移動",
+    "leave_stay": "編集を続ける"
   },
   "preview": {
     "title": "プレビュー",

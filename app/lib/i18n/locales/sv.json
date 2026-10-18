@@ -1193,7 +1193,12 @@
     "survey_id_label": "Enkät-ID",
     "survey_id_help": "Har du fler än en enkät? Markera blocket ”SourceTrac survey” i kassaredigeraren och klistra in det här ID:t i inställningen ”Survey ID”. Blocket visar då bara den här enkäten, och redigeraren förhandsvisar den. Lämna inställningen tom för att visa din aktiva enkät med högst prioritet.",
     "survey_id_copied": "Enkät-ID kopierat",
-    "survey_id_copy_failed": "Det gick inte att kopiera. Markera ID:t och kopiera det."
+    "survey_id_copy_failed": "Det gick inte att kopiera. Markera ID:t och kopiera det.",
+    "discard_changes": "Ignorera ändringar",
+    "leave_title": "Spara dina ändringar innan du lämnar sidan",
+    "leave_body": "Den här enkäten har ändringar som inte har sparats. Spara dem, eller ignorera dem för att lämna sidan.",
+    "leave_discard": "Ignorera och lämna",
+    "leave_stay": "Fortsätt redigera"
   },
   "preview": {
     "title": "Förhandsvisning",

@@ -1193,7 +1193,12 @@
     "survey_id_label": "Identifiant de l'enquête",
     "survey_id_help": "Vous avez plusieurs enquêtes ? Dans l'éditeur de paiement, sélectionnez le bloc « SourceTrac survey » et collez cet identifiant dans son paramètre « Survey ID ». Ce bloc n'affiche alors que cette enquête, et l'éditeur en montre l'aperçu. Laissez le paramètre vide pour afficher votre enquête en ligne la plus prioritaire.",
     "survey_id_copied": "Identifiant copié",
-    "survey_id_copy_failed": "Copie impossible. Sélectionnez l'identifiant et copiez-le."
+    "survey_id_copy_failed": "Copie impossible. Sélectionnez l'identifiant et copiez-le.",
+    "discard_changes": "Annuler les modifications",
+    "leave_title": "Enregistrez vos modifications avant de quitter",
+    "leave_body": "Ce sondage contient des modifications non enregistrées. Enregistrez-les, ou annulez-les pour quitter cette page.",
+    "leave_discard": "Annuler et quitter",
+    "leave_stay": "Continuer la modification"
   },
   "preview": {
     "title": "Aperçu",

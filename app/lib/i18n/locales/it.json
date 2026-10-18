@@ -1193,7 +1193,12 @@
     "survey_id_label": "ID del sondaggio",
     "survey_id_help": "Hai più di un sondaggio? Nell'editor del checkout, seleziona il blocco \"SourceTrac survey\" e incolla questo ID nella sua impostazione \"Survey ID\". Quel blocco mostrerà solo questo sondaggio e l'editor ne mostrerà l'anteprima. Lascia l'impostazione vuota per mostrare il sondaggio attivo con la priorità più alta.",
     "survey_id_copied": "ID del sondaggio copiato",
-    "survey_id_copy_failed": "Impossibile copiare. Seleziona l'ID e copialo."
+    "survey_id_copy_failed": "Impossibile copiare. Seleziona l'ID e copialo.",
+    "discard_changes": "Annulla le modifiche",
+    "leave_title": "Salva le modifiche prima di uscire",
+    "leave_body": "Questo sondaggio ha modifiche non ancora salvate. Salvale, oppure annullale per lasciare questa pagina.",
+    "leave_discard": "Annulla ed esci",
+    "leave_stay": "Continua a modificare"
   },
   "preview": {
     "title": "Anteprima",

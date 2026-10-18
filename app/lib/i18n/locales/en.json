@@ -1193,7 +1193,12 @@
     "survey_id_label": "Survey ID",
     "survey_id_help": "Running more than one survey? In the checkout editor, select the SourceTrac survey block and paste this ID into its Survey ID setting. That block then shows only this survey, and the editor previews it. Leave the setting empty to show your highest-priority live survey.",
     "survey_id_copied": "Survey ID copied",
-    "survey_id_copy_failed": "Couldn't copy. Select the ID and copy it."
+    "survey_id_copy_failed": "Couldn't copy. Select the ID and copy it.",
+    "discard_changes": "Discard changes",
+    "leave_title": "Save your changes before you leave",
+    "leave_body": "This survey has changes that are not saved yet. Save them, or discard them to leave this page.",
+    "leave_discard": "Discard and leave",
+    "leave_stay": "Keep editing"
   },
   "preview": {
     "title": "Preview",

@@ -1193,7 +1193,12 @@
     "survey_id_label": "问卷 ID",
     "survey_id_help": "有多个问卷？在结账编辑器中选择“SourceTrac survey”区块，并将此 ID 粘贴到其“Survey ID”设置中。该区块将只显示此问卷，编辑器也会预览它。将设置留空则显示优先级最高的已发布问卷。",
     "survey_id_copied": "已复制问卷 ID",
-    "survey_id_copy_failed": "无法复制。请选中 ID 后手动复制。"
+    "survey_id_copy_failed": "无法复制。请选中 ID 后手动复制。",
+    "discard_changes": "放弃更改",
+    "leave_title": "离开前请保存更改",
+    "leave_body": "此问卷有尚未保存的更改。请保存，或放弃更改后离开此页面。",
+    "leave_discard": "放弃并离开",
+    "leave_stay": "继续编辑"
   },
   "preview": {
     "title": "预览",
