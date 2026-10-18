@@ -1212,7 +1212,8 @@
     "block_missing_title": "Buyers can't see this survey yet",
     "block_missing_body": "The SourceTrac block hasn't loaded on the {{places}} yet. In the checkout editor, add the \"SourceTrac survey\" block to that page and save. This message goes away the first time the block loads there.",
     "block_partial_title": "Add the SourceTrac block to the {{places}} too",
-    "block_added_confirm": "It's already added"
+    "block_added_confirm": "It's already added",
+    "survey_id_not_showing": "Pasted the ID and still see nothing? Press Save in the checkout editor, check that this survey is live and set to show on that page, and test with a new order. Each order is asked only once, on either page."
   },
   "preview": {
     "title": "Preview",
@@ -1225,8 +1226,15 @@
     "follow_up_unknown": "Asked only after an earlier answer",
     "follow_up_answers": "Asked if question {{n}} is {{answers}}",
     "follow_up_range": "Asked if question {{n}} scores {{min}} to {{max}}",
-    "other": "Other (buyer types an answer)",
-    "dropdown": "Choose an answer"
+    "dropdown": "Choose an answer",
+    "thanks": "Thanks for your answer!",
+    "restart": "Start again",
+    "progress": "{{current}} of {{total}}",
+    "back": "Back",
+    "next": "Next",
+    "try_it": "Click through it like a buyer. Nothing is saved.",
+    "other_label": "Other",
+    "other_placeholder": "Tell us more"
   },
   "privacy": {
     "notice": "SourceTrac keeps survey answers and order details for {{months}} months. It never stores buyer names, emails, phone numbers, addresses or payment details.",

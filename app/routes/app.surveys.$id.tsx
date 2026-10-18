@@ -503,6 +503,9 @@ export default function SurveyEditorPage() {
                   {t("editor.open_checkout_editor")}
                 </s-button>
                 <SurveyIdBox surveyId={survey.id} t={t} />
+                <s-text color="subdued" fontSize="small">
+                  {t("editor.survey_id_not_showing")}
+                </s-text>
               </s-stack>
             </s-section>
 

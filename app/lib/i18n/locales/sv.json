@@ -1212,7 +1212,8 @@
     "block_missing_title": "Köpare ser inte den här enkäten än",
     "block_missing_body": "SourceTrac-blocket har inte lästs in på: {{places}}. Lägg till blocket \"SourceTrac survey\" på den sidan i kassaredigeraren och spara. Meddelandet försvinner första gången blocket läses in där.",
     "block_partial_title": "Lägg till SourceTrac-blocket även på: {{places}}",
-    "block_added_confirm": "Det är redan tillagt"
+    "block_added_confirm": "Det är redan tillagt",
+    "survey_id_not_showing": "Klistrat in ID:t och ser fortfarande inget? Tryck på Spara i kassaredigeraren, kontrollera att enkäten är aktiv och inställd för den sidan, och testa med en ny beställning. Varje beställning får frågan bara en gång, på någon av sidorna."
   },
   "preview": {
     "title": "Förhandsvisning",
@@ -1225,8 +1226,15 @@
     "follow_up_unknown": "Ställs bara efter ett tidigare svar",
     "follow_up_answers": "Ställs om fråga {{n}} är {{answers}}",
     "follow_up_range": "Ställs om fråga {{n}} får {{min}} till {{max}}",
-    "other": "Annat (köparen skriver ett svar)",
-    "dropdown": "Välj ett svar"
+    "dropdown": "Välj ett svar",
+    "thanks": "Tack för ditt svar!",
+    "restart": "Börja om",
+    "progress": "{{current}} av {{total}}",
+    "back": "Tillbaka",
+    "next": "Nästa",
+    "try_it": "Klicka dig igenom den som en köpare. Inget sparas.",
+    "other_label": "Annat",
+    "other_placeholder": "Berätta mer"
   },
   "privacy": {
     "notice": "SourceTrac sparar enkätsvar och orderuppgifter i {{months}} månader. Köparens namn, e-post, telefonnummer, adress eller betalningsuppgifter sparas aldrig.",

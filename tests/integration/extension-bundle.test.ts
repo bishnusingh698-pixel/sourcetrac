@@ -314,7 +314,7 @@ describe.each(SURFACES)("$name extension bundle", (surface) => {
     };
     const page = await mount(await bundle(surface), surface, true, {}, {
       settings: { survey_id: "  SURVEY7abcdefgh " },
-      preview: { survey, name: "Delivery check", status: "draft", pinned: true, reason: null },
+      preview: { survey, name: "Delivery check", status: "draft", pinned: true, reason: null, planHidden: true, audienceRules: true },
     });
     await waitFor(() => page.body().textContent?.includes("Did your order arrive on time?") === true);
 
@@ -330,6 +330,11 @@ describe.each(SURFACES)("$name extension bundle", (surface) => {
     expect(page.body().textContent).not.toContain("t:sourcetrac.previewQuestion");
     expect(page.body().textContent).toContain("t:sourcetrac.editorShowing");
     expect(page.body().textContent).toContain("t:sourcetrac.editorDraft");
+    // Why a buyer might still not see it: the plan's live-survey share, the
+    // audience rules, and one answer per order.
+    expect(page.body().textContent).toContain("t:sourcetrac.editorPlanHidden");
+    expect(page.body().textContent).toContain("t:sourcetrac.editorAudience");
+    expect(page.body().textContent).toContain("t:sourcetrac.editorOncePerOrder");
 
     // The merchant can click through it; nothing is ever posted.
     const tiles = page.body().querySelectorAll("s-clickable");

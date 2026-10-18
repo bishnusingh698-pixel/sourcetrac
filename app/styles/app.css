@@ -373,9 +373,11 @@
 /* --- Survey preview ------------------------------------------------------- */
 
 /*
- * A still picture of the survey. It is drawn with plain elements because it is
- * not a form: nothing in it is focusable or clickable. Sizes are in rem and the
- * width follows its column, so it reads the same on a phone.
+ * A clickable copy of the survey. Plain HTML controls, styled here: Polaris
+ * elements cannot be restyled, and native buttons and inputs give keyboard
+ * use and focus for free. Sizes are in rem and the width follows its column,
+ * so it reads the same on a phone. Colours come from Polaris tokens, with
+ * `currentColor` as the fallback.
  */
 .st-preview {
   border: 1px solid var(--p-color-border, currentColor);
@@ -397,17 +399,30 @@
 }
 
 .st-preview-options {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: grid;
   gap: 0.5rem;
 }
 
-.st-preview-options > li {
+.st-preview-choice {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  inline-size: 100%;
+  min-block-size: 2.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--p-color-border, currentColor);
+  border-radius: var(--p-border-radius-200, 0.5rem);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.st-preview-choice--on {
+  border-color: var(--p-color-border-emphasis, currentColor);
+  box-shadow: inset 0 0 0 1px var(--p-color-border-emphasis, currentColor);
 }
 
 .st-dot,
@@ -427,18 +442,30 @@
   border-radius: 0.25rem;
 }
 
-.st-preview-field {
+/* The selected marker is filled with the text colour, so it works in both
+   light and dark admin themes. */
+.st-preview-choice--on .st-dot,
+.st-preview-choice--on .st-box {
+  background: currentColor;
+  box-shadow: inset 0 0 0 2px var(--p-color-bg-surface, transparent);
+}
+
+.st-preview-input {
   display: block;
+  inline-size: 100%;
   min-block-size: 2.25rem;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--p-color-border-strong, currentColor);
   border-radius: var(--p-border-radius-200, 0.5rem);
-  color: var(--p-color-text-secondary, inherit);
+  background: transparent;
+  color: inherit;
+  font: inherit;
   box-sizing: border-box;
 }
 
 .st-preview-area {
   min-block-size: 4.5rem;
+  resize: vertical;
 }
 
 /* Rating and NPS boxes. Eleven NPS boxes wrap onto two rows on a phone rather
@@ -449,26 +476,33 @@
   gap: 0.25rem;
 }
 
-.st-preview-scale > span {
+.st-preview-scale-btn {
   flex: 1 0 1.75rem;
   max-inline-size: 3rem;
-  min-block-size: 2rem;
+  min-block-size: 2.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 1px solid var(--p-color-border-strong, currentColor);
   border-radius: var(--p-border-radius-150, 0.375rem);
+  background: transparent;
+  color: inherit;
+  font: inherit;
   font-variant-numeric: tabular-nums;
+  cursor: pointer;
 }
 
-.st-preview-button {
-  display: block;
-  text-align: center;
-  padding: 0.625rem 1rem;
-  border-radius: var(--p-border-radius-200, 0.5rem);
-  background: var(--p-color-bg-fill-brand, var(--p-color-bg-fill-inverse, currentColor));
-  color: var(--p-color-text-brand-on-bg-fill, var(--p-color-text-inverse, inherit));
+.st-preview-scale-btn--on {
+  border-color: var(--p-color-border-emphasis, currentColor);
+  box-shadow: inset 0 0 0 1px var(--p-color-border-emphasis, currentColor);
   font-weight: var(--p-font-weight-semibold, 600);
+}
+
+.st-preview-choice:focus-visible,
+.st-preview-scale-btn:focus-visible,
+.st-preview-input:focus-visible {
+  outline: 2px solid var(--p-color-border-focus, currentColor);
+  outline-offset: 1px;
 }
 
 .st-align-end {

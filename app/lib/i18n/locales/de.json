@@ -1212,7 +1212,8 @@
     "block_missing_title": "Käufer sehen diese Umfrage noch nicht",
     "block_missing_body": "Der SourceTrac-Block wurde auf folgenden Seiten noch nicht geladen: {{places}}. Fügen Sie im Checkout-Editor den Block „SourceTrac survey“ zu dieser Seite hinzu und speichern Sie. Dieser Hinweis verschwindet, sobald der Block dort zum ersten Mal lädt.",
     "block_partial_title": "Fügen Sie den SourceTrac-Block auch hier hinzu: {{places}}",
-    "block_added_confirm": "Er ist bereits hinzugefügt"
+    "block_added_confirm": "Er ist bereits hinzugefügt",
+    "survey_id_not_showing": "ID eingefügt und trotzdem nichts zu sehen? Klicken Sie im Checkout-Editor auf Speichern, prüfen Sie, dass diese Umfrage live und für diese Seite aktiviert ist, und testen Sie mit einer neuen Bestellung. Jede Bestellung wird nur einmal gefragt, auf einer der beiden Seiten."
   },
   "preview": {
     "title": "Vorschau",
@@ -1225,8 +1226,15 @@
     "follow_up_unknown": "Wird nur nach einer bestimmten früheren Antwort gestellt",
     "follow_up_answers": "Wird gestellt, wenn die Antwort auf Frage {{n}} {{answers}} lautet",
     "follow_up_range": "Wird gestellt, wenn Frage {{n}} mit {{min}} bis {{max}} bewertet wird",
-    "other": "Sonstiges (Käufer gibt eine eigene Antwort ein)",
-    "dropdown": "Antwort auswählen"
+    "dropdown": "Antwort auswählen",
+    "thanks": "Danke für Ihre Antwort!",
+    "restart": "Neu beginnen",
+    "progress": "{{current}} von {{total}}",
+    "back": "Zurück",
+    "next": "Weiter",
+    "try_it": "Klicken Sie sich wie ein Käufer durch. Nichts wird gespeichert.",
+    "other_label": "Sonstiges",
+    "other_placeholder": "Erzählen Sie uns mehr"
   },
   "privacy": {
     "notice": "SourceTrac bewahrt Umfrageantworten und Bestelldaten {{months}} Monate lang auf. Namen, E-Mail-Adressen, Telefonnummern, Anschriften oder Zahlungsdaten von Käufern werden nie gespeichert.",

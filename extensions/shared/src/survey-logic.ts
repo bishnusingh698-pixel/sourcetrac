@@ -82,6 +82,10 @@ export type SurveyPreview = {
   /** False when the survey is not set to show on the page this block is on. */
   onThisPage: boolean;
   reason: "not_found" | "none_live" | null;
+  /** Live, but beyond the plan's number of live surveys. Absent from older servers. */
+  planHidden?: boolean;
+  /** Rules under "Who sees it" keep some orders from seeing it. */
+  audienceRules?: boolean;
 };
 
 /**
@@ -301,7 +305,7 @@ export function orderOptionsForBuyer<T extends { isOther?: boolean }>(
  * extension's own hooks.
  */
 export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
-  async function attempt<T>(path: string, init: RequestInit): Promise<T> {
+  async function attempt<T>(path: string, init: RequestInit, options: { tokenFailureIsFinal?: boolean } = {}): Promise<T> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), ATTEMPT_TIMEOUT_MS);
 
@@ -312,7 +316,16 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
       // hangs, the timer aborts the fetch that follows but the await above it
       // would have kept the promise alive indefinitely, pushing the loop past
       // its budget on a single stuck attempt.
-      const token = await binding.getSessionToken();
+      let token: string;
+      try {
+        token = await binding.getSessionToken();
+      } catch (tokenError) {
+        // In the checkout editor a host that refuses a token will keep
+        // refusing it, so the preview gives up at once instead of showing
+        // "Loading…" for a minute. Buyers keep retrying, as before.
+        if (options.tokenFailureIsFinal) throw new TransientError(false, "session token unavailable");
+        throw tokenError;
+      }
 
       response = await fetch(`${apiUrl}${path}`, {
         ...init,
@@ -456,7 +469,7 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
     const query = new URLSearchParams({ placement });
     if (surveyId) query.set("surveyId", surveyId);
     return withRetries("survey_preview", surfaceOf(placement), () =>
-      attempt<SurveyPreview>(`/api/survey-preview?${query.toString()}`, { method: "GET" }),
+      attempt<SurveyPreview>(`/api/survey-preview?${query.toString()}`, { method: "GET" }, { tokenFailureIsFinal: true }),
     );
   }
 

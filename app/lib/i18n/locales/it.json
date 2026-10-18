@@ -1212,7 +1212,8 @@
     "block_missing_title": "Gli acquirenti non vedono ancora questo sondaggio",
     "block_missing_body": "Il blocco SourceTrac non è ancora stato caricato su: {{places}}. Nell'editor del checkout, aggiungi il blocco \"SourceTrac survey\" a quella pagina e salva. Questo avviso scompare la prima volta che il blocco viene caricato lì.",
     "block_partial_title": "Aggiungi il blocco SourceTrac anche a: {{places}}",
-    "block_added_confirm": "È già aggiunto"
+    "block_added_confirm": "È già aggiunto",
+    "survey_id_not_showing": "Hai incollato l'ID e non vedi ancora nulla? Premi Salva nell'editor del checkout, controlla che questo sondaggio sia attivo e impostato per quella pagina, e fai la prova con un nuovo ordine. Ogni ordine riceve la domanda una sola volta, su una delle due pagine."
   },
   "preview": {
     "title": "Anteprima",
@@ -1225,8 +1226,15 @@
     "follow_up_unknown": "Chiesta solo dopo una risposta precedente",
     "follow_up_answers": "Chiesta se la domanda {{n}} è {{answers}}",
     "follow_up_range": "Chiesta se la domanda {{n}} ha un punteggio da {{min}} a {{max}}",
-    "other": "Altro (il cliente scrive una risposta)",
-    "dropdown": "Scegli una risposta"
+    "dropdown": "Scegli una risposta",
+    "thanks": "Grazie per la risposta!",
+    "restart": "Ricomincia",
+    "progress": "{{current}} di {{total}}",
+    "back": "Indietro",
+    "next": "Avanti",
+    "try_it": "Provalo come un acquirente. Non viene salvato nulla.",
+    "other_label": "Altro",
+    "other_placeholder": "Raccontaci di più"
   },
   "privacy": {
     "notice": "SourceTrac conserva le risposte ai sondaggi e i dati degli ordini per {{months}} mesi. Non conserva mai nomi, email, numeri di telefono, indirizzi o dati di pagamento degli acquirenti.",

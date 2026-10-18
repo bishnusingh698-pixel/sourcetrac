@@ -219,6 +219,27 @@ export function matchesTargeting(
   return true;
 }
 
+/**
+ * Whether any rule can keep a buyer from seeing the survey, so the checkout
+ * editor can say that some orders will not see it. The same fields
+ * `matchesTargeting` and `matchesPaymentRule` read.
+ */
+export function hasAudienceRules(targeting: Targeting | undefined, paymentManualOnly = false): boolean {
+  if (paymentManualOnly) return true;
+  if (!targeting) return false;
+  return Boolean(
+    targeting.startsAt ||
+      targeting.endsAt ||
+      targeting.maxResponses != null ||
+      (targeting.samplePercent != null && targeting.samplePercent < 100) ||
+      targeting.customerType === "first_order" ||
+      targeting.customerType === "returning" ||
+      (targeting.countries?.length ?? 0) > 0 ||
+      (targeting.languages?.length ?? 0) > 0 ||
+      ((targeting.minValue != null || targeting.maxValue != null) && targeting.valueCurrency),
+  );
+}
+
 export type { SurveyOptionDef };
 
 // ---------------------------------------------------------------------------

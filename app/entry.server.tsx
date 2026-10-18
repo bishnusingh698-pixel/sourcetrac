@@ -6,6 +6,7 @@ import type { EntryContext } from "react-router";
 import { isbot } from "isbot";
 
 import { assertStartupInvariants } from "~/lib/env";
+import { startKeepAwakeFromEnv } from "~/lib/keep-awake.server";
 import { logger } from "~/lib/logger";
 import { addDocumentResponseHeaders } from "~/shopify.server";
 
@@ -17,6 +18,9 @@ for (const warning of assertStartupInvariants()) {
     warning,
   });
 }
+
+// A sleeping free-tier server makes buyers wait a minute for the survey.
+startKeepAwakeFromEnv();
 
 /**
  * Streaming SSR entry. Copied from the official React Router template — the

@@ -1548,3 +1548,29 @@ once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
   merchant's "It's already added" button (`markBlockAdded`). The editor preview
   only records if the deployed extension is recent enough to call
   `/api/survey-preview`, which is why the manual confirm exists.
+
+## Checkout loading, pinned surveys and the clickable preview (2026-10-18)
+
+- **The server pings its own `/healthz` every 10 minutes in production**
+  (`app/lib/keep-awake.server.ts`, started from `entry.server.tsx`), so Render's
+  free plan never sleeps and buyers never wait out a cold start. `/healthz`
+  does not touch the database, so Neon still suspends. `KEEP_AWAKE=off`
+  disables it. Whether a self-request counts as Render traffic was inferred
+  from Render's "inbound traffic" wording, not observed.
+- **`/api/survey` runs its reads with `Promise.all`** (block seen, already
+  answered, compiled config, order facts, pinned-survey check).
+- **Why a pinned survey shows nothing**, in the order they bite: the order
+  already answered (one answer per order across both pages and all surveys),
+  the survey is beyond the plan's live share (`getCompiledConfig`), audience
+  rules, the page is not in its placements, or the checkout editor was not
+  saved. `/api/survey-preview` returns `planHidden` and `audienceRules`
+  (`hasAudienceRules` in `shared/survey-config.ts`) and the editor block shows
+  a banner for each, plus a "test with a new order" line. Extension change:
+  needs `shopify app deploy`.
+- **The preview fetch gives up at once when the editor refuses a session
+  token** (`tokenFailureIsFinal`), instead of a minute of "Loading…". After
+  4 s of loading it says the server is starting up.
+- **The admin survey preview is clickable again** (`survey-preview.tsx`, rules
+  in `app/lib/preview-state.ts`, visibility through the shared
+  `isQuestionVisible`). Plain HTML buttons and inputs, never `name`d, all
+  `type="button"`. Nothing is saved. Tests: `tests/unit/survey-preview.test.ts`.
