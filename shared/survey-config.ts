@@ -151,56 +151,108 @@ export function safeOptions(option: CompiledOption[] | undefined): CompiledOptio
   return Array.isArray(option) ? option : [];
 }
 
+/** The order facts a survey's targeting is judged on. */
+export type TargetingFacts = {
+  orderId: string | null;
+  orderTotalMinor: number | null;
+  currency: string | null;
+  /** Minor-unit digits for `currency` (JPY 0, USD 2, KWD 3). */
+  currencyDigits: number;
+  isFirstOrder: boolean | null;
+  country: string | null;
+  language: string | null;
+  now: Date;
+  responseCount: number;
+};
+
 /**
- * Whether a survey's targeting matches an order. Every set field must hold; an
- * unset field is ignored. This runs on the server (config compile/select) and in
- * the extension is unnecessary — the server only sends surveys that match.
+ * Why a survey's targeting keeps it from an order, the first rule that fails.
+ * Shown to the merchant on the Surveys page ("Recent checkouts"), so each one
+ * must be something they can act on. `_unknown` means the checkout did not tell
+ * us the fact the rule needs, which is different from the fact not matching.
+ */
+export type TargetingMiss =
+  | "not_started"
+  | "ended"
+  | "max_responses"
+  | "sample"
+  | "first_order_only"
+  | "returning_only"
+  | "customer_type_unknown"
+  | "country"
+  | "country_unknown"
+  | "language"
+  | "order_value";
+
+/**
+ * A date rule as an instant. Rules saved by the editor are ISO instants already
+ * computed in the shop's time zone (see `shared/zoned-date.ts`). Older rules
+ * were a bare `YYYY-MM-DD`, which `new Date()` reads as UTC midnight: the
+ * start keeps that meaning, and an end date is read as the END of that day, as
+ * the merchant who picked it meant (it used to stop a day early).
+ */
+export function targetingInstant(value: string | null | undefined, edge: "start" | "end"): Date | null {
+  if (!value) return null;
+  const bare = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const date = new Date(bare ? `${value}T00:00:00Z` : value);
+  if (Number.isNaN(date.getTime())) return null;
+  if (bare && edge === "end") date.setUTCDate(date.getUTCDate() + 1);
+  return date;
+}
+
+/** Whether a buyer's language tag ("en-US", "pt-BR") is in a list ("en", "pt-BR"). */
+export function languageMatches(language: string, wanted: readonly string[]): boolean {
+  const tag = language.toLowerCase();
+  const base = tag.split("-")[0];
+  return wanted.some((code) => {
+    const want = code.toLowerCase();
+    return want === tag || want === base || want.split("-")[0] === tag;
+  });
+}
+
+/**
+ * The first targeting rule that keeps this survey from the order, or null when
+ * every set rule holds. An unset field is ignored. This is the only place the
+ * rules are decided; `matchesTargeting` and the merchant's diagnostics both
+ * read it, so they cannot disagree.
  *
  * The order-value rule is skipped when `valueCurrency` differs from the order's
- * currency, so a multi-currency store never hides a survey for a reason the
- * merchant cannot see.
+ * currency, or the total is not known yet, so a multi-currency store never hides
+ * a survey for a reason the merchant cannot see.
  */
-export function matchesTargeting(
-  targeting: Targeting | undefined,
-  facts: {
-    orderId: string | null;
-    orderTotalMinor: number | null;
-    currency: string | null;
-    /** Minor-unit digits for `currency` (JPY 0, USD 2, KWD 3). */
-    currencyDigits: number;
-    isFirstOrder: boolean | null;
-    country: string | null;
-    language: string | null;
-    now: Date;
-    responseCount: number;
-  },
-): boolean {
-  if (!targeting) return true;
+export function explainTargeting(targeting: Targeting | undefined, facts: TargetingFacts): TargetingMiss | null {
+  if (!targeting) return null;
 
-  if (targeting.startsAt && facts.now < new Date(targeting.startsAt)) return false;
-  if (targeting.endsAt && facts.now >= new Date(targeting.endsAt)) return false;
-  if (targeting.maxResponses != null && facts.responseCount >= targeting.maxResponses) return false;
+  const startsAt = targetingInstant(targeting.startsAt, "start");
+  const endsAt = targetingInstant(targeting.endsAt, "end");
+  if (startsAt && facts.now < startsAt) return "not_started";
+  if (endsAt && facts.now >= endsAt) return "ended";
+  if (targeting.maxResponses != null && facts.responseCount >= targeting.maxResponses) return "max_responses";
 
   if (targeting.samplePercent != null && targeting.samplePercent < 100) {
-    if (!facts.orderId) return false;
+    if (!facts.orderId) return "sample";
     // Deterministic per order, so the two surfaces agree.
     let h = 2166136261 >>> 0;
     for (let i = 0; i < facts.orderId.length; i += 1) {
       h ^= facts.orderId.charCodeAt(i);
       h = Math.imul(h, 16777619);
     }
-    if ((h >>> 0) % 100 >= targeting.samplePercent) return false;
+    if ((h >>> 0) % 100 >= targeting.samplePercent) return "sample";
   }
 
-  if (targeting.customerType === "first_order" && facts.isFirstOrder !== true) return false;
-  if (targeting.customerType === "returning" && facts.isFirstOrder !== false) return false;
+  if (targeting.customerType === "first_order" || targeting.customerType === "returning") {
+    if (facts.isFirstOrder === null) return "customer_type_unknown";
+    if (targeting.customerType === "first_order" && !facts.isFirstOrder) return "first_order_only";
+    if (targeting.customerType === "returning" && facts.isFirstOrder) return "returning_only";
+  }
 
   if (targeting.countries && targeting.countries.length > 0) {
-    if (!facts.country || !targeting.countries.includes(facts.country)) return false;
+    if (!facts.country) return "country_unknown";
+    if (!targeting.countries.includes(facts.country.toUpperCase())) return "country";
   }
 
   if (targeting.languages && targeting.languages.length > 0) {
-    if (!facts.language || !targeting.languages.includes(facts.language)) return false;
+    if (!facts.language || !languageMatches(facts.language, targeting.languages)) return "language";
   }
 
   if (
@@ -212,11 +264,16 @@ export function matchesTargeting(
     // Convert the merchant's major-unit bounds with the currency's own
     // precision, never a hardcoded 2: JPY has 0 digits and KWD has 3.
     const factor = 10 ** facts.currencyDigits;
-    if (targeting.minValue != null && facts.orderTotalMinor < Math.round(targeting.minValue * factor)) return false;
-    if (targeting.maxValue != null && facts.orderTotalMinor > Math.round(targeting.maxValue * factor)) return false;
+    if (targeting.minValue != null && facts.orderTotalMinor < Math.round(targeting.minValue * factor)) return "order_value";
+    if (targeting.maxValue != null && facts.orderTotalMinor > Math.round(targeting.maxValue * factor)) return "order_value";
   }
 
-  return true;
+  return null;
+}
+
+/** Whether a survey's targeting matches an order. See `explainTargeting`. */
+export function matchesTargeting(targeting: Targeting | undefined, facts: TargetingFacts): boolean {
+  return explainTargeting(targeting, facts) === null;
 }
 
 /**

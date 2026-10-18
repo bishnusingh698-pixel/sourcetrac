@@ -133,6 +133,7 @@ model Shop {
   pendingDeletions PendingDeletion[]
   dataRequests     DataRequest[]
   redactedOrders   RedactedOrder[]
+  orderFacts       OrderFact[]
 
   @@index([installState])
 }
@@ -327,6 +328,10 @@ model Survey {
   rotationWeight Int     @default(2)
   /// T10: pause automatically once results are reliable.
   learnAndStop   Boolean @default(false)
+  /// When learn & stop paused the survey. Set once: a merchant who resumes an
+  /// auto-paused survey keeps it running (it used to re-pause on the very next
+  /// answer), and the editor says why the survey was paused.
+  autoPausedAt   DateTime?
   /// S11/S12 design settings (JSON). Empty means the defaults.
   designJson     String  @default("{}")
   /// S7: the full editable definition held back while a live survey keeps
@@ -532,6 +537,24 @@ model RedactedOrder {
   shopId    String
   orderId   String
   createdAt DateTime @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@id([shopId, orderId])
+  @@index([createdAt])
+}
+
+/// What the Thank-you page told us about an order that the Order status page
+/// cannot see: whether it was the buyer's first order with the shop. The
+/// Order status page has no first-order signal, so a "first-time buyers" or
+/// "returning buyers" survey could never show there. Written when the
+/// Thank-you block loads; no buyer data, only the order id and the flag.
+/// Deleted with the shop, on customers/redact, and after 90 days.
+model OrderFact {
+  shopId       String
+  orderId      String
+  isFirstOrder Boolean
+  createdAt    DateTime @default(now())
 
   shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
 

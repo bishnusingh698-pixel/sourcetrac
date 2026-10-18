@@ -335,6 +335,11 @@ export async function setPlan(
     db.shop.update({ where: { id: internalShopId }, data }),
   );
   if (data.plan !== "free" && data.planStatus === "active") await unlockAnswers(internalShopId);
+  // The checkout serves the plan's share of live surveys from a cached
+  // config; an upgrade must show the extra surveys now, not a minute later.
+  // Imported on use: surveys.server imports this module.
+  const { invalidateConfig } = await import("~/lib/surveys.server");
+  await invalidateConfig(internalShopId);
 }
 
 /**

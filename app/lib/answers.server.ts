@@ -417,6 +417,8 @@ async function reconcileFromCachedOrder(shopId: string, orderId: string): Promis
  * once even under concurrent submissions.
  */
 async function maybeLearnAndStop(shopId: string, surveyId: string, questionId: string): Promise<void> {
+  const already = await db.survey.findFirst({ where: { id: surveyId, shopId }, select: { autoPausedAt: true } });
+  if (!already || already.autoPausedAt) return;
   const question = await db.question.findFirst({
     where: { id: questionId, surveyId },
     select: { type: true },
@@ -447,9 +449,12 @@ async function maybeLearnAndStop(shopId: string, surveyId: string, questionId: s
 
   if (!shouldLearnAndStop({ enabled: true, isNumeric, n, topShare })) return;
 
+  // Once per survey. A merchant who resumes an auto-paused survey wants it to
+  // keep running; with the old rule the next answer was still "reliable" and
+  // paused it again at once, so it could never be turned back on.
   const paused = await db.survey.updateMany({
-    where: { id: surveyId, shopId, status: "active" },
-    data: { status: "paused" },
+    where: { id: surveyId, shopId, status: "active", autoPausedAt: null },
+    data: { status: "paused", autoPausedAt: new Date() },
   });
   if (paused.count > 0) {
     // Recompile now: the cached config would keep serving the paused survey.

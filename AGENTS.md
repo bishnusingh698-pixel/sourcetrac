@@ -1574,3 +1574,88 @@ once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
   in `app/lib/preview-state.ts`, visibility through the shared
   `isQuestionVisible`). Plain HTML buttons and inputs, never `name`d, all
   `type="button"`. Nothing is saved. Tests: `tests/unit/survey-preview.test.ts`.
+
+## Why the survey silently didn't show, and how merchants now see why (2026-10-18)
+
+- **Checkout auth goes through `authenticateCheckout`** (`app/lib/checkout-auth.server.ts`),
+  never `authenticate.public.checkout` directly. The library throws a bare 401
+  with no CORS when the session token is missing or does not verify; the block
+  read that as a network error and sat on "Loading…" for a minute, and the
+  reason was only logged at debug. The wrapper adds CORS (the block stops at
+  once), logs `checkout_auth_rejected` with a reason (`bad_signature` for a
+  known store means `SHOPIFY_API_SECRET` is wrong), and normalises `dest`.
+- **`explainTargeting`** (`shared/survey-config.ts`) is the only place targeting
+  is decided; `matchesTargeting` wraps it. `/api/survey` records every decision
+  with its reason in an in-memory ring buffer (`serve-log.server.ts`), shown as
+  "Recent checkouts" on the Surveys page. A new rule needs a `TargetingMiss`
+  code and a `surveys.reason_*` string in all ten locales.
+- **Order value** never applied: `valueCurrency` was never set. The editor (and
+  the route, as a backstop) set it to the store currency, and the block sends
+  `cost.totalAmount` (`total`/`totalCurrency`) because on the Thank-you page the
+  webhook has not landed. The cached webhook total wins when it exists.
+- **First-time/returning on Order status** reads `OrderFact`, written once
+  (create-only) when the Thank-you block reports `isFirstOrder`. Unknown still
+  hides the survey. 90-day retention; deleted on customers/redact.
+- **Dates are the store's calendar days** (`shared/zoned-date.ts`): start =
+  00:00 local, end = 00:00 the day after the end date (inclusive), stored as ISO
+  instants. Older bare `YYYY-MM-DD` rules still read, the end now inclusive.
+  Dashboard/Results buckets stay UTC (rule above).
+- **Countries are picked from a list** (`shared/countries.ts`,
+  `country-picker.tsx`); the server refuses unknown codes (`invalid_country`).
+  "USA" or "UK" used to save and match nobody.
+- **Language rules match the base language** (`en-US` matches `en`).
+- **Learn & stop fires once** (`Survey.autoPausedAt`). It used to re-pause the
+  next answer after a merchant resumed. Switching it off and on re-arms it.
+- Tag templates live in `shared/sync-tags.ts` so the editor's example tag is
+  written by the same code as the sync (a bare tag becomes `sourcetrac:<tag>`).
+- `setPlan` invalidates the compiled checkout config.
+- Extension changes in this pass (`total`, satisfaction labels) need
+  `shopify app deploy`.
+
+## Templates: search, Other options, channel question (2026-10-18, second pass)
+
+- **35 templates.** Nine were added from the questions survey vendors publish
+  (Fairing's question bank, Zigpoll, Userloop, Formbricks, Triple Whale):
+  `today-trigger`, `rival-check`, `brand-presence`, `offer-impact`,
+  `product-discovery`, `contact-preference`, `where-else`, `open-feedback`,
+  `subscribe-interest`, with eight new outcome tags and three presets
+  (`trigger_order_tag`, `offer_order_tag`, `subscribe_interest_customer_tag`).
+  Template text is server-only (resolved in loaders), so more templates do not
+  grow the browser bundle.
+- **"Other (please specify)" must be `isOther`.** Use `other(labelKey)` in
+  `index.ts` (packs: `OTHER`). Every template declared it as a plain option, so
+  buyers who picked it got no text box and it was shuffled into the middle.
+  Migration `20261018170000_template_other_options` fixed stored surveys. The
+  editor's "Allow a free-text answer" switch reads `allowOther` OR an `isOther`
+  option, removes the option when switched off, and shows its label.
+- **Only a channel question feeds the Channel report.** The report and the
+  Dashboard attribution numbers join every survey's `channelReportQuestionId`,
+  which used to default to any first single-choice question, so gift/price
+  answers showed up as channels. Templates set it only for a channel-pack
+  single choice (`channelQuestionId` in `template-survey.ts`), an explicit
+  `null` means none, and the editor has a per-question checkbox. Migration
+  `20261018171000_channel_question_only_for_channels` lists the template
+  questions it unpicks; regenerate that list if a template question is added
+  that should never be a channel (it is a one-off fix for stored data). Tags and
+  Flow fall back to the first choice question when there is no channel question.
+- **Library search** is client-side over a normalised `search` string the
+  loader builds (name, one-liner, questions and options, learn bullets, tags,
+  category, `searchAliases` jargon). Typing must not touch the URL: that re-runs
+  the loader. `shared/templates/search.ts` is the matcher.
+- `tests/db-template-e2e.test.ts` creates, compiles, walks (with the block's own
+  `visibleQuestionsFor`) and submits every template on Free and Scale, and checks
+  every preset writes. A new template is covered automatically.
+
+## Block build stamp: merging does not update the checkout (2026-10-18)
+
+Verified 2026-10-18 by driving the production build over real HTTP (OPTIONS
+preflight -> CORS 204, signed GET -> survey) and by running the CLI-built bundle
+in a worker-shaped `vm` sandbox with no `window`: both work. A store that shows
+no survey with a live server is almost always running an old block (blocks
+before 2026-10-11 rendered nothing), a block not placed and saved in the
+checkout editor, or network access not approved in the Partner Dashboard.
+
+`BLOCK_BUILD` (extensions/shared/src/survey-logic.ts) and `CURRENT_BLOCK_BUILD`
+(shared/block-build.ts) must be equal and bumped together whenever block code
+changes. The block sends it as `build=`; Recent checkouts shows a critical
+banner when the newest load came from another build or none.

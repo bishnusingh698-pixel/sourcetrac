@@ -516,3 +516,57 @@
 .st-was-price {
   text-decoration-thickness: 1px;
 }
+
+/* --- Country picker ------------------------------------------------------- */
+
+/*
+ * The "Only these countries" list scrolls inside its own box, so 250 countries
+ * never push the rest of the editor off the page. Native checkboxes; colours
+ * from Polaris tokens only.
+ */
+.st-country-list {
+  max-block-size: 16rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--p-color-border, currentColor);
+  border-radius: var(--p-border-radius-200, 0.5rem);
+  padding-block: 0.25rem;
+}
+
+.st-country-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-block-size: 2.75rem;
+  padding-inline: 0.75rem;
+  cursor: pointer;
+}
+
+.st-country-row:hover {
+  background-color: var(--p-color-bg-surface-hover, transparent);
+}
+
+.st-country-row input {
+  inline-size: 1.125rem;
+  block-size: 1.125rem;
+  margin: 0;
+  flex: none;
+  accent-color: var(--p-color-bg-fill-brand, currentColor);
+}
+
+.st-country-row input:focus-visible {
+  outline: 2px solid var(--p-color-border-focus, currentColor);
+  outline-offset: 2px;
+}
+
+.st-country-code {
+  margin-inline-start: auto;
+  color: var(--p-color-text-secondary, currentColor);
+  font-variant-numeric: tabular-nums;
+}
+
+.st-country-empty {
+  margin: 0;
+  padding: 0.75rem;
+  color: var(--p-color-text-secondary, currentColor);
+}

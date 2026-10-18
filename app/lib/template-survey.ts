@@ -13,7 +13,7 @@
  * text, so a buyer never reads an outdated version of an edited question.
  */
 
-import { buildSurveyDefinition } from "@shared/templates/resolve";
+import { buildSurveyDefinition, stableQuestionId } from "@shared/templates/resolve";
 import { TEMPLATE_LOCALES, templateText } from "@shared/templates/locales";
 import {
   catalogPlanFromKey,
@@ -71,6 +71,10 @@ export function templateSurveyInput(params: {
     thankYouText: definition.thankYouText ?? "",
     templateId: template.id,
     templateVersion: template.version,
+    // Only a "where did you hear about us" question feeds the Channel report.
+    // Every other template's first choice question (who the gift is for, how
+    // the price felt) used to be counted there as if it were a channel.
+    channelReportQuestionId: channelQuestionId(template, definition),
     // Auto-stop is a Scale feature; below it the template's default is ignored.
     learnAndStop: (template.defaults.learnAndStop ?? false) && planHas(planTier(params.plan), "auto_stop"),
     design: definition.design ?? undefined,
@@ -87,6 +91,14 @@ export function templateSurveyInput(params: {
     })),
   };
   return { ok: true, input, lite };
+}
+
+/** The template's channel question (single choice from the channel pack), if it has one. */
+function channelQuestionId(template: TemplateDefinition, definition: SurveyDefinition): string | null {
+  const question = template.questions.find((q) => q.pack === "channels" && q.type === "single_choice");
+  if (!question) return null;
+  const id = stableQuestionId(template.id, question.key);
+  return definition.questions.some((q) => q.id === id) ? id : null;
 }
 
 type Localized = { code: string; def: SurveyDefinition };

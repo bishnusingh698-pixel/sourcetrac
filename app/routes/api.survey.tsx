@@ -11,8 +11,18 @@ import { hasAnyAnswerForOrder } from "~/lib/answers.server";
 import { findShopByDomain, isKnownOrder } from "~/lib/shop.server";
 import { recordBlockSeen } from "~/lib/block-seen.server";
 import { getCompiledConfig } from "~/lib/surveys.server";
-import { authenticate } from "~/shopify.server";
-import { matchesTargeting, matchesPaymentRule, pickFromRotation, rotationGroup, PLACEMENTS, type Placement } from "@shared/survey-config";
+import { authenticateCheckout } from "~/lib/checkout-auth.server";
+import {
+  explainTargeting,
+  matchesPaymentRule,
+  pickFromRotation,
+  rotationGroup,
+  PLACEMENTS,
+  type CompiledConfig,
+  type Placement,
+} from "@shared/survey-config";
+import { readOrderFact, recordOrderFact } from "~/lib/order-facts.server";
+import { recordServe, type ServeReason } from "~/lib/serve-log.server";
 import { db } from "~/db.server";
 
 /**
@@ -42,27 +52,38 @@ const querySchema = z.object({
   isFirstOrder: z.enum(["0", "1"]).optional(),
   /** ISO 3166-1 alpha-2, from the checkout/customer-account localization API. */
   country: z.string().length(2).optional(),
+  /**
+   * The order total as the checkout shows it (`cost.totalAmount`), for the
+   * order-value rule before the order webhook has landed. Targeting only:
+   * revenue always comes from the webhook.
+   */
+  total: z.string().max(24).optional(),
+  totalCurrency: z.string().regex(/^[A-Za-z]{3}$/).optional(),
   /** The survey this block is pinned to, from the block's "Survey ID" setting. */
   surveyId: surveyIdSchema,
 });
 
+type Candidate = CompiledConfig["surveys"][number];
+
 export const loader = async ({ request }: { request: Request }) => {
   const requestId = `srv_${Date.now().toString(36)}`;
 
-  const { sessionToken, cors } = await authenticate.public.checkout(request);
-  const shopDomain = sessionToken.dest.toLowerCase();
+  const { cors, shopDomain } = await authenticateCheckout(request, "api_survey");
 
   try {
     const url = new URL(request.url);
     const placement: Placement = (url.searchParams.get("placement") as Placement | null) ?? "thank_you";
+    const read = (key: string) => url.searchParams.get(key) || undefined;
     const parsed = querySchema.safeParse({
-      orderId: url.searchParams.get("orderId") ?? undefined,
-      placement: url.searchParams.get("placement") ?? undefined,
-      locale: url.searchParams.get("locale") ?? undefined,
-      paymentTypes: url.searchParams.get("paymentTypes") ?? undefined,
-      isFirstOrder: url.searchParams.get("isFirstOrder") ?? undefined,
-      country: url.searchParams.get("country") ?? undefined,
-      surveyId: url.searchParams.get("surveyId") || undefined,
+      orderId: read("orderId"),
+      placement: read("placement"),
+      locale: read("locale"),
+      paymentTypes: read("paymentTypes"),
+      isFirstOrder: read("isFirstOrder"),
+      country: read("country"),
+      total: read("total"),
+      totalCurrency: read("totalCurrency"),
+      surveyId: read("surveyId"),
     });
 
     if (!parsed.success) {
@@ -81,14 +102,17 @@ export const loader = async ({ request }: { request: Request }) => {
 
     const shop = await findShopByDomain(shopDomain);
     if (!shop || shop.installState === "uninstalled") {
-      logger.info("survey_no_shop", { request_id: requestId, shop_domain: shopDomain });
+      logger.warn("survey_no_shop", { request_id: requestId, shop_domain: shopDomain });
       return cors(toResponse(data({ enabled: false, reason: "not_installed" })));
     }
+
+    const reportedFirstOrder = parsed.data.isFirstOrder === undefined ? null : parsed.data.isFirstOrder === "1";
+
     // Independent queries, run together. On a database that has just woken
     // each round trip is slow, and the buyer is watching the page meanwhile.
-    // `recordBlockSeen` never throws.
+    // `recordBlockSeen`, `recordOrderFact` and `readOrderFact` never throw.
     const pinnedId = parsed.data.surveyId ?? null;
-    const [, alreadyAnswered, config, order, pinnedRows] = await Promise.all([
+    const [, alreadyAnswered, config, order, pinnedRows, rememberedFirstOrder] = await Promise.all([
       recordBlockSeen(shop.id, placement),
       orderId ? hasAnyAnswerForOrder(shop.id, orderId) : Promise.resolve(false),
       getCompiledConfig(shop.id),
@@ -100,10 +124,28 @@ export const loader = async ({ request }: { request: Request }) => {
           })
         : Promise.resolve(null),
       pinnedId ? db.survey.count({ where: { id: pinnedId, shopId: shop.id } }) : Promise.resolve(0),
+      // The Thank-you page reports whether this is the buyer's first order;
+      // the Order status page cannot, so it reads what Thank-you reported.
+      orderId && reportedFirstOrder === null
+        ? readOrderFact(shop.id, orderId)
+        : orderId && reportedFirstOrder !== null && placement === "thank_you"
+          ? recordOrderFact(shop.id, orderId, reportedFirstOrder).then(() => null)
+          : Promise.resolve(null),
     ]);
     const now = new Date();
-    const parsedTotal = order?.totalPrice ? parseMoneyToMinor(order.totalPrice.toString(), order.currency) : null;
-    const orderTotalMinor = parsedTotal?.ok ? parsedTotal.minor : null;
+    const isFirstOrder = reportedFirstOrder ?? rememberedFirstOrder;
+
+    // The order's total for the order-value rule: the webhook's when it has
+    // landed (shop currency, the currency the merchant set the rule in),
+    // otherwise what the checkout shows. On the Thank-you page the webhook
+    // has usually not arrived yet, so without the checkout's figure the rule
+    // never applied there and the survey showed on every order.
+    const cached = order?.totalPrice ? parseMoneyToMinor(order.totalPrice.toString(), order.currency) : null;
+    const reportedCurrency = parsed.data.totalCurrency?.toUpperCase() ?? null;
+    const reported =
+      !cached?.ok && parsed.data.total && reportedCurrency ? parseMoneyToMinor(parsed.data.total, reportedCurrency) : null;
+    const totalCurrency = cached?.ok ? order!.currency : reported?.ok ? reportedCurrency : null;
+    const orderTotalMinor = cached?.ok ? cached.minor : reported?.ok ? reported.minor : null;
 
     // `maxResponses` must read the live count: the compiled config is cached
     // for up to a minute, so a busy survey kept collecting past its limit.
@@ -120,27 +162,29 @@ export const loader = async ({ request }: { request: Request }) => {
     const paymentTypes = parsed.data.paymentTypes
       ? parsed.data.paymentTypes.split(",").map((s) => s.trim()).filter(Boolean)
       : [];
+    const country = parsed.data.country?.toUpperCase() ?? null;
 
-    const matches = (candidate: (typeof config.surveys)[number]) =>
-      candidate.placements.includes(placement) &&
-      matchesPaymentRule(candidate, paymentTypes, placement) &&
-      matchesTargeting(candidate.targeting, {
+    /** Why this survey cannot be shown on this order, or null when it can. */
+    const miss = (candidate: Candidate): ServeReason | null => {
+      if (!candidate.placements.includes(placement)) return "not_on_page";
+      if (!matchesPaymentRule(candidate, paymentTypes, placement)) return "payment_rule";
+      return explainTargeting(candidate.targeting, {
         orderId,
         orderTotalMinor,
-        currency: order?.currency ?? null,
-        currencyDigits: order ? minorUnitDigits(order.currency) : 2,
-        // Both come from the extension's host API. Absent (the Order-status
-        // page has no first-order signal) fails a first/returning or country
+        currency: totalCurrency,
+        currencyDigits: totalCurrency ? minorUnitDigits(totalCurrency) : 2,
+        // Unknown (no Thank-you report for this order) fails a first/returning
         // rule: the merchant asked for that audience only, so an unknown buyer
         // is not shown the survey. See DECISIONS.md (L17).
-        isFirstOrder: parsed.data.isFirstOrder === undefined ? null : parsed.data.isFirstOrder === "1",
-        country: parsed.data.country?.toUpperCase() ?? null,
+        isFirstOrder,
+        country,
         language: parsed.data.locale ?? null,
         now,
-        // The survey's own collected count, so `maxResponses` can fire. It was
-        // hardcoded to 0, so "pause after N responses" never triggered.
+        // The survey's own collected count, so `maxResponses` can fire.
         responseCount: liveCounts.get(candidate.id) ?? candidate.responseCount,
       });
+    };
+    const matches = (candidate: Candidate) => miss(candidate) === null;
 
     // A block pinned to one survey shows that survey or nothing: a merchant who
     // paused it does not want another survey appearing in its place. An id that
@@ -149,9 +193,14 @@ export const loader = async ({ request }: { request: Request }) => {
     const pinned = pinnedId ? (config.surveys.find((candidate) => candidate.id === pinnedId) ?? null) : null;
     const pinnedExists = pinnedId ? pinned !== null || pinnedRows > 0 : false;
 
-    let survey: (typeof config.surveys)[number] | null;
+    let survey: Candidate | null;
+    let reason: ServeReason;
+    let reasonSurveyId: string | null = null;
     if (pinnedExists) {
-      survey = pinned && matches(pinned) ? pinned : null;
+      const why = pinned ? miss(pinned) : "pinned_not_live";
+      survey = why === null ? pinned : null;
+      reason = why === null ? "shown" : why === "not_on_page" ? "pinned_other_page" : why;
+      reasonSurveyId = pinnedId;
     } else {
       // T11: the highest-priority match wins, unless it is in the rotation
       // group, in which case one member is chosen by a deterministic, weighted
@@ -163,7 +212,29 @@ export const loader = async ({ request }: { request: Request }) => {
         const group = rotationGroup(config.surveys, placement, matches).sort((a, b) => b.priority - a.priority);
         survey = pickFromRotation(group, orderId) ?? top;
       }
+      if (survey) {
+        reason = "shown";
+        reasonSurveyId = survey.id;
+      } else {
+        // Report the rule that hid the survey the merchant most expects here:
+        // the highest-priority one set to show on this page.
+        const onPage = config.surveys.find((candidate) => candidate.placements.includes(placement)) ?? null;
+        reason = config.surveys.length === 0 ? "none_live" : onPage ? (miss(onPage) ?? "shown") : "not_on_page";
+        reasonSurveyId = onPage?.id ?? null;
+      }
     }
+    if (survey && alreadyAnswered) reason = "already_answered";
+
+    recordServe(shop.id, {
+      placement,
+      orderId,
+      surveyId: reasonSurveyId,
+      reason,
+      pinned: pinnedExists,
+      country,
+      isFirstOrder,
+      blockBuild: url.searchParams.get("build")?.slice(0, 32) || null,
+    });
 
     logger.info("survey_config_served_v2", {
       request_id: requestId,
@@ -171,8 +242,10 @@ export const loader = async ({ request }: { request: Request }) => {
       order_id: orderId,
       placement,
       matched: Boolean(survey),
+      reason,
       pinned: pinnedExists,
       already_answered: alreadyAnswered,
+      block_build: url.searchParams.get("build")?.slice(0, 32) || null,
     });
 
     return cors(
@@ -198,7 +271,7 @@ export const loader = async ({ request }: { request: Request }) => {
 
 /** Answers the browser's OPTIONS preflight, and any other non-GET probe. */
 export const action = async ({ request }: { request: Request }) => {
-  const { cors } = await authenticate.public.checkout(request);
+  const { cors } = await authenticateCheckout(request, "api_survey");
   // Not a real submission endpoint; the loader is the only handler.
   return cors(toResponse({ error: { code: "method_not_allowed" } }, { status: 405, headers: { Allow: "GET, OPTIONS" } }));
 };

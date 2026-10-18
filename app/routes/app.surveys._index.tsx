@@ -20,6 +20,14 @@ import { getBlockSeen, markBlockAdded } from "~/lib/block-seen.server";
 import { placementsMissingBlock } from "~/lib/checkout-editor";
 import { BlockMissingBanner, postedPlacements } from "~/components/block-missing";
 import { NotFoundError, ValidationError } from "~/lib/errors";
+import { RecentCheckouts, type RecentCheckoutRow } from "~/components/recent-checkouts";
+import { recentServes } from "~/lib/serve-log.server";
+import { getShopLocaleInfo } from "~/lib/studio.server";
+import { intlLocaleFor } from "~/lib/i18n";
+import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
+import { isValidTimeZone } from "@shared/zoned-date";
+import { isOutdatedBlock } from "@shared/block-build";
+import { db } from "~/db.server";
 
 /**
  * Surveys list.
@@ -43,11 +51,16 @@ function statusTone(status: SurveyListItem["status"]): BadgeTone {
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
-  const [surveys, usage, blockSeen] = await Promise.all([
+  const [surveys, usage, blockSeen, localeInfo] = await Promise.all([
     listSurveys(shop.id),
     liveSurveyUsage(shop.id),
     getBlockSeen(shop.id),
+    getShopLocaleInfo(shop.id, shop.shopDomain, session.accessToken),
   ]);
+  const recent = await recentCheckoutRows(shop.id, surveys, {
+    locale: intlLocaleFor(resolveAdminLanguage(request, shop.language, shop.adminLocale)),
+    timeZone: isValidTimeZone(localeInfo.timeZone) ? localeInfo.timeZone : "UTC",
+  });
 
   // Pages a live survey is set to show on where the block has never loaded.
   const missing = [
@@ -63,9 +76,39 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     usage,
     missing,
     anySeen,
+    recent,
     shopHandle: shop.shopDomain.replace(".myshopify.com", ""),
   };
 });
+
+/** The last checkout decisions, with order names and survey names filled in. */
+async function recentCheckoutRows(
+  shopId: string,
+  surveys: SurveyListItem[],
+  { locale, timeZone }: { locale: string; timeZone: string },
+): Promise<RecentCheckoutRow[]> {
+  const entries = recentServes(shopId);
+  if (entries.length === 0) return [];
+  const orderIds = [...new Set(entries.map((e) => e.orderId).filter((id): id is string => Boolean(id)))];
+  const orders = orderIds.length
+    ? await db.orderCache.findMany({ where: { shopId, orderId: { in: orderIds } }, select: { orderId: true, orderNumber: true } })
+    : [];
+  const names = new Map(orders.map((o) => [o.orderId, o.orderNumber]));
+  const surveyNames = new Map(surveys.map((s) => [s.id, s.name]));
+  const format = new Intl.DateTimeFormat(locale, { timeZone, dateStyle: "medium", timeStyle: "short" });
+  return entries.map((entry) => ({
+    at: entry.at,
+    when: format.format(new Date(entry.at)),
+    placement: entry.placement,
+    // The order's name (#1001) once its webhook landed; its id until then.
+    order: entry.orderId ? (names.get(entry.orderId) ?? entry.orderId) : null,
+    surveyName: entry.surveyId ? (surveyNames.get(entry.surveyId) ?? null) : null,
+    reason: entry.reason,
+    country: entry.country,
+    isFirstOrder: entry.isFirstOrder,
+    outdatedBlock: isOutdatedBlock(entry.blockBuild),
+  }));
+}
 
 export const action = guarded(async ({ request }: ActionFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -131,7 +174,7 @@ function StatusBadge({ status }: { status: SurveyListItem["status"] }) {
 }
 
 export default function Surveys() {
-  const { surveys, usage, missing, anySeen, shopHandle } = useLoaderData<typeof loader>();
+  const { surveys, usage, missing, anySeen, recent, shopHandle } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const { t, locale } = useAdminI18n();
   const failureKey = actionData && actionData.ok === false ? `surveys.validation_${actionData.code}` : null;
@@ -295,6 +338,8 @@ export default function Surveys() {
           </s-stack>
         </s-section>
       )}
+
+      {surveys.length > 0 ? <RecentCheckouts rows={recent} t={t} /> : null}
     </s-stack>
   );
 }
