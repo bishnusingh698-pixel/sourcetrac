@@ -6,6 +6,7 @@ import { serialiseError } from "~/lib/errors";
 import { logger } from "~/lib/logger";
 import { BUCKETS, consumeToken } from "~/lib/rate-limit.server";
 import { findShopByDomain } from "~/lib/shop.server";
+import { recordBlockSeen } from "~/lib/block-seen.server";
 import { compileSurvey, getCompiledConfig, getSurveyRow } from "~/lib/surveys.server";
 import { authenticate } from "~/shopify.server";
 import { PLACEMENTS, type Placement } from "@shared/survey-config";
@@ -24,7 +25,8 @@ import { PLACEMENTS, type Placement } from "@shared/survey-config";
  *   is the normal pick before targeting, which needs a real order.
  *
  * Shop identity is the session token's `dest`, never a query field, so a block
- * can only ever preview its own shop's surveys. Nothing here is written.
+ * can only ever preview its own shop's surveys. The only write is the note
+ * that a block was seen on this page (`recordBlockSeen`).
  */
 
 export type SurveyPreviewBody = {
@@ -69,6 +71,8 @@ export const loader = async ({ request }: { request: Request }) => {
     if (!shop || shop.installState === "uninstalled") {
       return cors(toResponse(data(empty("none_live", Boolean(surveyId)))));
     }
+    // The checkout editor only draws a block that has been placed on the page.
+    await recordBlockSeen(shop.id, placement);
 
     let body: SurveyPreviewBody;
     if (surveyId) {

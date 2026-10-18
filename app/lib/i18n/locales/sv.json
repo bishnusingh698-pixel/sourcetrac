@@ -354,7 +354,8 @@
     "shop_missing_title": "Den här butiken är inte installerad ännu",
     "shop_missing_body": "Öppna SourceTrac igen från din Shopify-admin för att installera om den.",
     "boundary_title": "Något gick fel",
-    "reference": "Referens: {{reference}}"
+    "reference": "Referens: {{reference}}",
+    "session_reload": "Din session behöver uppdateras. Gå till översikten för att läsa in SourceTrac igen."
   },
   "a11y": {
     "skip_to_content": "Hoppa till huvudinnehåll",
@@ -978,7 +979,8 @@
     "confirmed_sample": "Din order är bekräftad",
     "fulfillment_sample": "Beställd · Förbereds · Skickad · Levererad",
     "template_info": "{{count}} frågor",
-    "tab_studio": "Studio"
+    "tab_studio": "Studio",
+    "status_no_block": "Inte i kassan än"
   },
   "confidence": {
     "too_early": "För tidigt",
@@ -1200,7 +1202,12 @@
     "leave_title": "Spara dina ändringar innan du lämnar sidan",
     "leave_body": "Den här enkäten har ändringar som inte har sparats. Spara dem, eller ignorera dem för att lämna sidan.",
     "leave_discard": "Ignorera och lämna",
-    "leave_stay": "Fortsätt redigera"
+    "leave_stay": "Fortsätt redigera",
+    "status_on_no_block": "Påslagen, men köpare ser den inte än: SourceTrac-blocket finns inte i din kassa.",
+    "notice_launched_no_block": "Enkäten är påslagen. Ett steg kvar: lägg till SourceTrac-blocket i kassaredigeraren.",
+    "notice_published_no_block": "Ändringarna är sparade. Köpare ser dem när SourceTrac-blocket finns i din kassa.",
+    "block_missing_title": "Köpare ser inte den här enkäten än",
+    "block_missing_body": "SourceTrac-blocket har inte lästs in på: {{places}}. Lägg till blocket \"SourceTrac survey\" på den sidan i kassaredigeraren och spara. Meddelandet försvinner första gången blocket läses in där."
   },
   "preview": {
     "title": "Förhandsvisning",

@@ -354,7 +354,8 @@
     "shop_missing_title": "Esta loja ainda não está instalada",
     "shop_missing_body": "Abra o SourceTrac novamente pelo seu admin da Shopify para reinstalar.",
     "boundary_title": "Algo deu errado",
-    "reference": "Referência: {{reference}}"
+    "reference": "Referência: {{reference}}",
+    "session_reload": "Sua sessão precisa ser atualizada. Vá para o painel para carregar o SourceTrac de novo."
   },
   "a11y": {
     "skip_to_content": "Pular para o conteúdo principal",
@@ -978,7 +979,8 @@
     "confirmed_sample": "Seu pedido está confirmado",
     "fulfillment_sample": "Pedido feito · Preparando · Enviado · Entregue",
     "template_info": "{{count}} perguntas",
-    "tab_studio": "Estúdio"
+    "tab_studio": "Estúdio",
+    "status_no_block": "Ainda não está no checkout"
   },
   "confidence": {
     "too_early": "Muito cedo",
@@ -1200,7 +1202,12 @@
     "leave_title": "Salve suas alterações antes de sair",
     "leave_body": "Esta pesquisa tem alterações que ainda não foram salvas. Salve-as ou descarte-as para sair desta página.",
     "leave_discard": "Descartar e sair",
-    "leave_stay": "Continuar editando"
+    "leave_stay": "Continuar editando",
+    "status_on_no_block": "Ativada, mas os compradores ainda não a veem: o bloco do SourceTrac não está no seu checkout.",
+    "notice_launched_no_block": "Pesquisa ativada. Falta um passo: adicione o bloco do SourceTrac no editor de checkout.",
+    "notice_published_no_block": "Alterações salvas. Os compradores as verão quando o bloco do SourceTrac estiver no seu checkout.",
+    "block_missing_title": "Os compradores ainda não veem esta pesquisa",
+    "block_missing_body": "O bloco do SourceTrac ainda não carregou em: {{places}}. No editor de checkout, adicione o bloco \"SourceTrac survey\" a essa página e salve. Este aviso some na primeira vez que o bloco carregar lá."
   },
   "preview": {
     "title": "Prévia",

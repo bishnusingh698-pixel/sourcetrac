@@ -354,7 +354,8 @@
     "shop_missing_title": "Cette boutique n'est pas encore installée",
     "shop_missing_body": "Rouvrez SourceTrac depuis votre administration Shopify pour la réinstaller.",
     "boundary_title": "Un problème est survenu",
-    "reference": "Référence : {{reference}}"
+    "reference": "Référence : {{reference}}",
+    "session_reload": "Votre session doit être actualisée. Ouvrez le tableau de bord pour recharger SourceTrac."
   },
   "a11y": {
     "skip_to_content": "Aller au contenu principal",
@@ -978,7 +979,8 @@
     "confirmed_sample": "Votre commande est confirmée",
     "fulfillment_sample": "Commande passée · En préparation · Expédiée · Livrée",
     "template_info": "{{count}} questions",
-    "tab_studio": "Studio"
+    "tab_studio": "Studio",
+    "status_no_block": "Pas encore dans le checkout"
   },
   "confidence": {
     "too_early": "Trop tôt",
@@ -1200,7 +1202,12 @@
     "leave_title": "Enregistrez vos modifications avant de quitter",
     "leave_body": "Ce sondage contient des modifications non enregistrées. Enregistrez-les, ou annulez-les pour quitter cette page.",
     "leave_discard": "Annuler et quitter",
-    "leave_stay": "Continuer la modification"
+    "leave_stay": "Continuer la modification",
+    "status_on_no_block": "Activé, mais les acheteurs ne le voient pas encore : le bloc SourceTrac n'est pas dans votre checkout.",
+    "notice_launched_no_block": "Sondage activé. Il reste une étape : ajoutez le bloc SourceTrac dans l'éditeur de paiement.",
+    "notice_published_no_block": "Modifications enregistrées. Les acheteurs les verront dès que le bloc SourceTrac sera dans votre checkout.",
+    "block_missing_title": "Les acheteurs ne voient pas encore ce sondage",
+    "block_missing_body": "Le bloc SourceTrac ne s'est pas encore chargé sur : {{places}}. Dans l'éditeur de paiement, ajoutez le bloc « SourceTrac survey » à cette page et enregistrez. Ce message disparaît dès que le bloc s'y charge pour la première fois."
   },
   "preview": {
     "title": "Aperçu",

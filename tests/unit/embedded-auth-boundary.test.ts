@@ -31,11 +31,13 @@ describe("Shopify auth responses in error boundaries", () => {
     expect(isShopifyAuthResponse(null)).toBe(false);
   });
 
-  it("renders auth responses with the library boundary in both error boundaries", () => {
+  // Rendered with `ShopifyAuthPage`, not the library's `boundary.error`, which
+  // throws in the browser; see tests/unit/shopify-auth-page.test.ts.
+  it("renders auth responses as the App Bridge page in both error boundaries", () => {
     for (const file of ["app/routes/app.tsx", "app/root.tsx"]) {
       const source = read(file);
       expect(source, file).toMatch(/if \(isShopifyAuthResponse\(error\)\)/);
-      expect(source, file).toContain("boundary.error(error)");
+      expect(source, file).toContain("<ShopifyAuthPage error={error}");
     }
   });
 

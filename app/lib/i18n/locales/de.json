@@ -354,7 +354,8 @@
     "shop_missing_title": "Dieser Shop ist noch nicht installiert",
     "shop_missing_body": "Öffnen Sie SourceTrac erneut aus Ihrer Shopify-Administration, um es neu zu installieren.",
     "boundary_title": "Etwas ist schiefgelaufen",
-    "reference": "Referenz: {{reference}}"
+    "reference": "Referenz: {{reference}}",
+    "session_reload": "Ihre Sitzung muss aktualisiert werden. Öffnen Sie das Dashboard, um SourceTrac neu zu laden."
   },
   "a11y": {
     "skip_to_content": "Zum Hauptinhalt springen",
@@ -978,7 +979,8 @@
     "confirmed_sample": "Deine Bestellung ist bestätigt",
     "fulfillment_sample": "Bestellt · In Vorbereitung · Versandt · Zugestellt",
     "template_info": "{{count}} Fragen",
-    "tab_studio": "Studio"
+    "tab_studio": "Studio",
+    "status_no_block": "Noch nicht im Checkout"
   },
   "confidence": {
     "too_early": "Zu früh",
@@ -1200,7 +1202,12 @@
     "leave_title": "Speichern Sie Ihre Änderungen, bevor Sie die Seite verlassen",
     "leave_body": "Diese Umfrage hat noch nicht gespeicherte Änderungen. Speichern Sie sie oder verwerfen Sie sie, um die Seite zu verlassen.",
     "leave_discard": "Verwerfen und verlassen",
-    "leave_stay": "Weiter bearbeiten"
+    "leave_stay": "Weiter bearbeiten",
+    "status_on_no_block": "Eingeschaltet, aber Käufer sehen sie noch nicht: Der SourceTrac-Block ist nicht in Ihrem Checkout.",
+    "notice_launched_no_block": "Umfrage eingeschaltet. Noch ein Schritt: Fügen Sie den SourceTrac-Block im Checkout-Editor hinzu.",
+    "notice_published_no_block": "Änderungen gespeichert. Käufer sehen sie, sobald der SourceTrac-Block in Ihrem Checkout ist.",
+    "block_missing_title": "Käufer sehen diese Umfrage noch nicht",
+    "block_missing_body": "Der SourceTrac-Block wurde auf folgenden Seiten noch nicht geladen: {{places}}. Fügen Sie im Checkout-Editor den Block „SourceTrac survey“ zu dieser Seite hinzu und speichern Sie. Dieser Hinweis verschwindet, sobald der Block dort zum ersten Mal lädt."
   },
   "preview": {
     "title": "Vorschau",

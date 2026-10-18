@@ -354,7 +354,8 @@
     "shop_missing_title": "このショップはまだインストールされていません",
     "shop_missing_body": "Shopify 管理画面から SourceTrac を開き直して再インストールしてください。",
     "boundary_title": "問題が発生しました",
-    "reference": "参照番号：{{reference}}"
+    "reference": "参照番号：{{reference}}",
+    "session_reload": "セッションの更新が必要です。ダッシュボードを開いて SourceTrac を再読み込みしてください。"
   },
   "a11y": {
     "skip_to_content": "メインコンテンツへスキップ",
@@ -978,7 +979,8 @@
     "confirmed_sample": "ご注文が確定しました",
     "fulfillment_sample": "注文済み · 準備中 · 発送済み · 配達済み",
     "template_info": "{{count}} 問",
-    "tab_studio": "スタジオ"
+    "tab_studio": "スタジオ",
+    "status_no_block": "チェックアウト未設置"
   },
   "confidence": {
     "too_early": "まだ早い",
@@ -1200,7 +1202,12 @@
     "leave_title": "移動する前に変更を保存してください",
     "leave_body": "このアンケートには保存されていない変更があります。保存するか、変更を破棄してからこのページを離れてください。",
     "leave_discard": "破棄して移動",
-    "leave_stay": "編集を続ける"
+    "leave_stay": "編集を続ける",
+    "status_on_no_block": "オンになっていますが、まだ購入者には表示されません。SourceTrac ブロックがチェックアウトにありません。",
+    "notice_launched_no_block": "アンケートをオンにしました。あと一歩です。チェックアウトエディタで SourceTrac ブロックを追加してください。",
+    "notice_published_no_block": "変更を保存しました。SourceTrac ブロックがチェックアウトに追加されると購入者に表示されます。",
+    "block_missing_title": "このアンケートはまだ購入者に表示されていません",
+    "block_missing_body": "SourceTrac ブロックは次のページでまだ読み込まれていません：{{places}}。チェックアウトエディタでそのページに「SourceTrac survey」ブロックを追加して保存してください。ブロックがそこで初めて読み込まれると、このメッセージは消えます。"
   },
   "preview": {
     "title": "プレビュー",

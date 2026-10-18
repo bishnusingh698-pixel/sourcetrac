@@ -354,7 +354,8 @@
     "shop_missing_title": "此店铺尚未安装",
     "shop_missing_body": "请从 Shopify 后台重新打开 SourceTrac 以重新安装。",
     "boundary_title": "出现了问题",
-    "reference": "参考编号：{{reference}}"
+    "reference": "参考编号：{{reference}}",
+    "session_reload": "您的会话需要刷新。请前往仪表板重新加载 SourceTrac。"
   },
   "a11y": {
     "skip_to_content": "跳到主要内容",
@@ -978,7 +979,8 @@
     "confirmed_sample": "你的订单已确认",
     "fulfillment_sample": "已下单 · 备货中 · 已发货 · 已送达",
     "template_info": "{{count}} 个问题",
-    "tab_studio": "工作室"
+    "tab_studio": "工作室",
+    "status_no_block": "尚未添加到结账"
   },
   "confidence": {
     "too_early": "尚早",
@@ -1200,7 +1202,12 @@
     "leave_title": "离开前请保存更改",
     "leave_body": "此问卷有尚未保存的更改。请保存，或放弃更改后离开此页面。",
     "leave_discard": "放弃并离开",
-    "leave_stay": "继续编辑"
+    "leave_stay": "继续编辑",
+    "status_on_no_block": "已开启，但买家还看不到：SourceTrac 区块不在您的结账页面中。",
+    "notice_launched_no_block": "问卷已开启。还差一步：在结账编辑器中添加 SourceTrac 区块。",
+    "notice_published_no_block": "更改已保存。SourceTrac 区块添加到结账页面后，买家即可看到。",
+    "block_missing_title": "买家还看不到此问卷",
+    "block_missing_body": "SourceTrac 区块尚未在以下页面加载：{{places}}。请在结账编辑器中将“SourceTrac survey”区块添加到该页面并保存。区块首次在该页面加载后，此提示将消失。"
   },
   "preview": {
     "title": "预览",

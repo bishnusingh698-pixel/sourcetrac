@@ -20,6 +20,7 @@ import {
 import { checkoutSurfacesSupported, fetchShopPlanName } from "~/lib/shopify-rest.server";
 import { fetchActiveSubscriptions, testChargesAllowed } from "~/lib/billing.server";
 import { isPlanKey, type PlanKey } from "~/lib/plans";
+import { clearBlockSeen } from "~/lib/block-seen.server";
 
 /**
  * Webhook processing.
@@ -356,6 +357,7 @@ export async function processWebhook(params: {
       await retryDb(() => db.pendingSync.deleteMany({ where: { shopId: shop.id } }));
       // Data is RETAINED (see docs/03 FLOW 10). Only the credential is erased.
       await clearAccessToken(shop.id);
+      await retryDb(() => clearBlockSeen(shop.id));
       logger.info("app_uninstalled", { shop_id: shop.id, shop_domain: shopDomain });
       return { action: "app_uninstalled", shopInternalId: shop.id };
     }

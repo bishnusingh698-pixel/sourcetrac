@@ -9,6 +9,7 @@ import { minorUnitDigits, parseMoneyToMinor } from "~/lib/money";
 import { BUCKETS, consumeShopBackstop, consumeToken } from "~/lib/rate-limit.server";
 import { hasAnyAnswerForOrder } from "~/lib/answers.server";
 import { findShopByDomain, isKnownOrder } from "~/lib/shop.server";
+import { recordBlockSeen } from "~/lib/block-seen.server";
 import { getCompiledConfig } from "~/lib/surveys.server";
 import { authenticate } from "~/shopify.server";
 import { matchesTargeting, matchesPaymentRule, pickFromRotation, rotationGroup, PLACEMENTS, type Placement } from "@shared/survey-config";
@@ -83,6 +84,7 @@ export const loader = async ({ request }: { request: Request }) => {
       logger.info("survey_no_shop", { request_id: requestId, shop_domain: shopDomain });
       return cors(toResponse(data({ enabled: false, reason: "not_installed" })));
     }
+    await recordBlockSeen(shop.id, placement);
 
     const alreadyAnswered = orderId ? await hasAnyAnswerForOrder(shop.id, orderId) : false;
 
