@@ -84,20 +84,24 @@ export const loader = async ({ request }: { request: Request }) => {
       logger.info("survey_no_shop", { request_id: requestId, shop_domain: shopDomain });
       return cors(toResponse(data({ enabled: false, reason: "not_installed" })));
     }
-    await recordBlockSeen(shop.id, placement);
-
-    const alreadyAnswered = orderId ? await hasAnyAnswerForOrder(shop.id, orderId) : false;
-
-    const config = await getCompiledConfig(shop.id);
+    // Independent queries, run together. On a database that has just woken
+    // each round trip is slow, and the buyer is watching the page meanwhile.
+    // `recordBlockSeen` never throws.
+    const pinnedId = parsed.data.surveyId ?? null;
+    const [, alreadyAnswered, config, order, pinnedRows] = await Promise.all([
+      recordBlockSeen(shop.id, placement),
+      orderId ? hasAnyAnswerForOrder(shop.id, orderId) : Promise.resolve(false),
+      getCompiledConfig(shop.id),
+      // Order facts for targeting. Nothing identifying is read.
+      orderId
+        ? db.orderCache.findUnique({
+            where: { shopId_orderId: { shopId: shop.id, orderId } },
+            select: { totalPrice: true, currency: true },
+          })
+        : Promise.resolve(null),
+      pinnedId ? db.survey.count({ where: { id: pinnedId, shopId: shop.id } }) : Promise.resolve(0),
+    ]);
     const now = new Date();
-
-    // Order facts for targeting. Nothing identifying is read.
-    const order = orderId
-      ? await db.orderCache.findUnique({
-          where: { shopId_orderId: { shopId: shop.id, orderId } },
-          select: { totalPrice: true, currency: true },
-        })
-      : null;
     const parsedTotal = order?.totalPrice ? parseMoneyToMinor(order.totalPrice.toString(), order.currency) : null;
     const orderTotalMinor = parsedTotal?.ok ? parsedTotal.minor : null;
 
@@ -142,11 +146,8 @@ export const loader = async ({ request }: { request: Request }) => {
     // paused it does not want another survey appearing in its place. An id that
     // names no survey at all (deleted, or mistyped) falls back to the normal
     // pick, so a stale setting never leaves the page without a survey.
-    const pinnedId = parsed.data.surveyId ?? null;
     const pinned = pinnedId ? (config.surveys.find((candidate) => candidate.id === pinnedId) ?? null) : null;
-    const pinnedExists = pinnedId
-      ? pinned !== null || (await db.survey.count({ where: { id: pinnedId, shopId: shop.id } })) > 0
-      : false;
+    const pinnedExists = pinnedId ? pinned !== null || pinnedRows > 0 : false;
 
     let survey: (typeof config.surveys)[number] | null;
     if (pinnedExists) {

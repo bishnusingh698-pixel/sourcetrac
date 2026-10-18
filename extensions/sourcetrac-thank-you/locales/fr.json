@@ -29,6 +29,10 @@
     "editorUnavailable": "Votre enquête n'a pas pu être chargée dans l'éditeur : ceci est un exemple. Les acheteurs voient toujours l'enquête définie dans SourceTrac.",
     "editorPinnedNote": "Aperçu. Rien n'est envoyé depuis l'éditeur. Les règles de ciblage s'appliquent aux vraies commandes.",
     "editorPriorityNote": "Aperçu. Ce bloc affiche votre enquête en ligne la plus prioritaire. Pour en choisir une, collez son identifiant d'enquête dans les paramètres de ce bloc.",
-    "editorOtherPage": "Cette enquête n'est pas configurée pour s'afficher sur cette page. Activez cette page dans « Où il s'affiche » dans SourceTrac."
+    "editorOtherPage": "Cette enquête n'est pas configurée pour s'afficher sur cette page. Activez cette page dans « Où il s'affiche » dans SourceTrac.",
+    "editorPlanHidden": "Votre forfait affiche moins d'enquêtes en ligne que vous n'en avez, et celle-ci n'en fait pas partie : les acheteurs ne la verront pas. Changez de forfait dans SourceTrac ou mettez en pause une enquête plus prioritaire.",
+    "editorAudience": "Cette enquête a des règles dans « Qui le voit », donc certaines commandes ne la verront pas.",
+    "editorOncePerOrder": "Chaque commande n'est interrogée qu'une fois. Après une réponse sur l'une des deux pages, cette commande n'affiche plus d'enquête : testez avec une nouvelle commande.",
+    "editorWaking": "SourceTrac démarre. Après une période calme, cela peut prendre jusqu'à une minute."
   }
 }

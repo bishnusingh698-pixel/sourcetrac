@@ -1212,7 +1212,8 @@
     "block_missing_title": "买家还看不到此问卷",
     "block_missing_body": "SourceTrac 区块尚未在以下页面加载：{{places}}。请在结账编辑器中将“SourceTrac survey”区块添加到该页面并保存。区块首次在该页面加载后，此提示将消失。",
     "block_partial_title": "也请将 SourceTrac 区块添加到：{{places}}",
-    "block_added_confirm": "已经添加"
+    "block_added_confirm": "已经添加",
+    "survey_id_not_showing": "粘贴了 ID 仍然看不到？请在结账编辑器中点击保存，确认此问卷已上线并设置在该页面显示，然后用新订单测试。每个订单只会被询问一次，无论在哪个页面。"
   },
   "preview": {
     "title": "预览",
@@ -1225,8 +1226,15 @@
     "follow_up_unknown": "仅在之前的某个回答之后提问",
     "follow_up_answers": "当问题 {{n}} 的回答为 {{answers}} 时提问",
     "follow_up_range": "当问题 {{n}} 的分数为 {{min}} 到 {{max}} 时提问",
-    "other": "其他（买家自行填写）",
-    "dropdown": "请选择一个答案"
+    "dropdown": "请选择一个答案",
+    "thanks": "感谢您的回答！",
+    "restart": "重新开始",
+    "progress": "第 {{current}} 题，共 {{total}} 题",
+    "back": "上一步",
+    "next": "下一步",
+    "try_it": "像买家一样点击作答。不会保存任何内容。",
+    "other_label": "其他",
+    "other_placeholder": "请告诉我们更多"
   },
   "privacy": {
     "notice": "SourceTrac 会将问卷回答和订单信息保留 {{months}} 个月。它从不存储买家的姓名、电子邮件、电话、地址或付款信息。",

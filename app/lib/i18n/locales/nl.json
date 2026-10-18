@@ -1212,7 +1212,8 @@
     "block_missing_title": "Kopers zien deze enquête nog niet",
     "block_missing_body": "Het SourceTrac-blok is nog niet geladen op: {{places}}. Voeg in de checkout-editor het blok \"SourceTrac survey\" toe aan die pagina en sla op. Deze melding verdwijnt zodra het blok daar voor het eerst laadt.",
     "block_partial_title": "Voeg het SourceTrac-blok ook toe aan: {{places}}",
-    "block_added_confirm": "Het is al toegevoegd"
+    "block_added_confirm": "Het is al toegevoegd",
+    "survey_id_not_showing": "ID geplakt en nog steeds niets te zien? Klik op Opslaan in de checkout-editor, controleer of deze enquête actief is en op die pagina staat, en test met een nieuwe bestelling. Elke bestelling krijgt de vraag maar één keer, op een van beide pagina's."
   },
   "preview": {
     "title": "Voorbeeld",
@@ -1225,8 +1226,15 @@
     "follow_up_unknown": "Alleen gesteld na een eerder antwoord",
     "follow_up_answers": "Gesteld als vraag {{n}} {{answers}} is",
     "follow_up_range": "Gesteld als vraag {{n}} een score van {{min}} tot {{max}} heeft",
-    "other": "Anders (koper typt een antwoord)",
-    "dropdown": "Kies een antwoord"
+    "dropdown": "Kies een antwoord",
+    "thanks": "Bedankt voor je antwoord!",
+    "restart": "Opnieuw beginnen",
+    "progress": "{{current}} van {{total}}",
+    "back": "Terug",
+    "next": "Volgende",
+    "try_it": "Klik er doorheen zoals een koper. Er wordt niets opgeslagen.",
+    "other_label": "Anders",
+    "other_placeholder": "Vertel ons meer"
   },
   "privacy": {
     "notice": "SourceTrac bewaart enquêteantwoorden en bestelgegevens {{months}} maanden. Namen, e-mailadressen, telefoonnummers, adressen en betaalgegevens van kopers worden nooit opgeslagen.",

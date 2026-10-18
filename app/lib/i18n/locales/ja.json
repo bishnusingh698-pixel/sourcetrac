@@ -1212,7 +1212,8 @@
     "block_missing_title": "このアンケートはまだ購入者に表示されていません",
     "block_missing_body": "SourceTrac ブロックは次のページでまだ読み込まれていません：{{places}}。チェックアウトエディタでそのページに「SourceTrac survey」ブロックを追加して保存してください。ブロックがそこで初めて読み込まれると、このメッセージは消えます。",
     "block_partial_title": "{{places}}にも SourceTrac ブロックを追加してください",
-    "block_added_confirm": "すでに追加済み"
+    "block_added_confirm": "すでに追加済み",
+    "survey_id_not_showing": "ID を貼り付けても表示されない場合は、チェックアウトエディターで保存を押し、このアンケートが公開中でそのページに表示する設定になっているか確認して、新しい注文でテストしてください。各注文への質問は、どちらのページでも1回だけです。"
   },
   "preview": {
     "title": "プレビュー",
@@ -1225,8 +1226,15 @@
     "follow_up_unknown": "前の回答に応じてのみ質問されます",
     "follow_up_answers": "質問 {{n}} の回答が {{answers}} の場合に質問されます",
     "follow_up_range": "質問 {{n}} のスコアが {{min}}〜{{max}} の場合に質問されます",
-    "other": "その他（購入者が回答を入力）",
-    "dropdown": "回答を選んでください"
+    "dropdown": "回答を選んでください",
+    "thanks": "ご回答ありがとうございます！",
+    "restart": "最初からやり直す",
+    "progress": "{{current}} / {{total}}",
+    "back": "戻る",
+    "next": "次へ",
+    "try_it": "購入者と同じように操作できます。何も保存されません。",
+    "other_label": "その他",
+    "other_placeholder": "詳しく教えてください"
   },
   "privacy": {
     "notice": "SourceTrac はアンケートの回答と注文の情報を {{months}} か月間保存します。購入者の氏名、メールアドレス、電話番号、住所、支払い情報は一切保存しません。",

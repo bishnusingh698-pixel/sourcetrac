@@ -9,7 +9,7 @@ import { findShopByDomain } from "~/lib/shop.server";
 import { recordBlockSeen } from "~/lib/block-seen.server";
 import { compileSurvey, getCompiledConfig, getSurveyRow } from "~/lib/surveys.server";
 import { authenticate } from "~/shopify.server";
-import { PLACEMENTS, type Placement } from "@shared/survey-config";
+import { hasAudienceRules, PLACEMENTS, type Placement } from "@shared/survey-config";
 
 /**
  * GET /api/survey-preview
@@ -42,6 +42,13 @@ export type SurveyPreviewBody = {
   onThisPage: boolean;
   /** Why there is nothing to show. */
   reason: "not_found" | "none_live" | null;
+  /**
+   * The survey is live but beyond the plan's number of live surveys, so
+   * buyers are not shown it (`getCompiledConfig` serves the plan's share).
+   */
+  planHidden: boolean;
+  /** Rules under "Who sees it" mean some orders will not see it. */
+  audienceRules: boolean;
 };
 
 export const loader = async ({ request }: { request: Request }) => {
@@ -65,6 +72,8 @@ export const loader = async ({ request }: { request: Request }) => {
       pinned,
       onThisPage: true,
       reason,
+      planHidden: false,
+      audienceRules: false,
     });
 
     const shop = await findShopByDomain(shopDomain);
@@ -76,7 +85,7 @@ export const loader = async ({ request }: { request: Request }) => {
 
     let body: SurveyPreviewBody;
     if (surveyId) {
-      const row = await getSurveyRow(shop.id, surveyId);
+      const [row, config] = await Promise.all([getSurveyRow(shop.id, surveyId), getCompiledConfig(shop.id)]);
       if (row) {
         const survey = compileSurvey(row);
         body = {
@@ -86,6 +95,8 @@ export const loader = async ({ request }: { request: Request }) => {
           pinned: true,
           onThisPage: survey.placements.includes(placement),
           reason: null,
+          planHidden: row.status === "active" && !config.surveys.some((candidate) => candidate.id === row.id),
+          audienceRules: hasAudienceRules(survey.targeting, survey.paymentManualOnly),
         };
       } else {
         body = empty("not_found", true);
@@ -95,7 +106,16 @@ export const loader = async ({ request }: { request: Request }) => {
       const top = config.surveys.find((candidate) => candidate.placements.includes(placement)) ?? null;
       if (top) {
         const row = await getSurveyRow(shop.id, top.id);
-        body = { survey: top, name: row?.name ?? null, status: "active", pinned: false, onThisPage: true, reason: null };
+        body = {
+          survey: top,
+          name: row?.name ?? null,
+          status: "active",
+          pinned: false,
+          onThisPage: true,
+          reason: null,
+          planHidden: false,
+          audienceRules: hasAudienceRules(top.targeting, top.paymentManualOnly),
+        };
       } else {
         body = empty("none_live", false);
       }

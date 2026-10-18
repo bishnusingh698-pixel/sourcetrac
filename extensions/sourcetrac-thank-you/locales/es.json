@@ -29,6 +29,10 @@
     "editorUnavailable": "No se pudo cargar tu encuesta en el editor, así que esto es un ejemplo. Los compradores siguen viendo la encuesta que configuraste en SourceTrac.",
     "editorPinnedNote": "Vista previa. Desde el editor no se envía nada. Las reglas de segmentación se aplican en pedidos reales.",
     "editorPriorityNote": "Vista previa. Este bloque muestra tu encuesta activa de mayor prioridad. Para elegir una, pega su ID de encuesta en la configuración de este bloque.",
-    "editorOtherPage": "Esta encuesta no está configurada para mostrarse en esta página. Activa esta página en «Dónde se muestra» en SourceTrac."
+    "editorOtherPage": "Esta encuesta no está configurada para mostrarse en esta página. Activa esta página en «Dónde se muestra» en SourceTrac.",
+    "editorPlanHidden": "Tu plan muestra menos encuestas activas de las que tienes y esta no está entre ellas, así que los compradores no la verán. Cambia de plan en SourceTrac o pausa una encuesta con más prioridad.",
+    "editorAudience": "Esta encuesta tiene reglas en \"Quién la ve\", así que algunos pedidos no la verán.",
+    "editorOncePerOrder": "Cada pedido se pregunta una vez. Cuando el comprador responde en cualquiera de las dos páginas, ese pedido ya no muestra encuestas, así que prueba con un pedido nuevo.",
+    "editorWaking": "SourceTrac se está iniciando. Tras un rato sin actividad, puede tardar hasta un minuto."
   }
 }

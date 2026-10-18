@@ -1212,7 +1212,8 @@
     "block_missing_title": "Os compradores ainda não veem esta pesquisa",
     "block_missing_body": "O bloco do SourceTrac ainda não carregou em: {{places}}. No editor de checkout, adicione o bloco \"SourceTrac survey\" a essa página e salve. Este aviso some na primeira vez que o bloco carregar lá.",
     "block_partial_title": "Adicione o bloco do SourceTrac também em: {{places}}",
-    "block_added_confirm": "Já está adicionado"
+    "block_added_confirm": "Já está adicionado",
+    "survey_id_not_showing": "Colou o ID e ainda não aparece nada? Clique em Salvar no editor de checkout, confira se esta pesquisa está ativa e configurada para essa página, e teste com um pedido novo. Cada pedido é perguntado só uma vez, em qualquer uma das páginas."
   },
   "preview": {
     "title": "Prévia",
@@ -1225,8 +1226,15 @@
     "follow_up_unknown": "Feita só depois de uma resposta anterior",
     "follow_up_answers": "Feita se a pergunta {{n}} for {{answers}}",
     "follow_up_range": "Feita se a pergunta {{n}} tiver nota de {{min}} a {{max}}",
-    "other": "Outro (o comprador escreve uma resposta)",
-    "dropdown": "Escolha uma resposta"
+    "dropdown": "Escolha uma resposta",
+    "thanks": "Obrigado pela resposta!",
+    "restart": "Começar de novo",
+    "progress": "{{current}} de {{total}}",
+    "back": "Voltar",
+    "next": "Próxima",
+    "try_it": "Responda como um comprador. Nada é salvo.",
+    "other_label": "Outro",
+    "other_placeholder": "Conte mais"
   },
   "privacy": {
     "notice": "O SourceTrac guarda as respostas da pesquisa e os dados do pedido por {{months}} meses. Ele nunca guarda nomes, e-mails, telefones, endereços ou dados de pagamento dos compradores.",

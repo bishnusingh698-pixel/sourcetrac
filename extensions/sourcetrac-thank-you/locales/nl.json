@@ -29,6 +29,10 @@
     "editorUnavailable": "Je enquête kon niet in de editor worden geladen, dus dit is een voorbeeld. Kopers zien nog steeds de enquête die je in SourceTrac hebt ingesteld.",
     "editorPinnedNote": "Voorbeeld. Vanuit de editor wordt niets verzonden. Doelgroepregels gelden voor echte bestellingen.",
     "editorPriorityNote": "Voorbeeld. Dit blok toont je live enquête met de hoogste prioriteit. Plak de enquête-ID in de instellingen van dit blok om er een te kiezen.",
-    "editorOtherPage": "Deze enquête staat niet aan voor deze pagina. Zet deze pagina aan onder 'Waar hij verschijnt' in SourceTrac."
+    "editorOtherPage": "Deze enquête staat niet aan voor deze pagina. Zet deze pagina aan onder 'Waar hij verschijnt' in SourceTrac.",
+    "editorPlanHidden": "Je abonnement toont minder actieve enquêtes dan je hebt, en deze hoort er niet bij, dus kopers zien hem niet. Wijzig je abonnement in SourceTrac of pauzeer een enquête met een hogere prioriteit.",
+    "editorAudience": "Deze enquête heeft regels onder \"Wie deze ziet\", dus sommige bestellingen zien hem niet.",
+    "editorOncePerOrder": "Elke bestelling krijgt de vraag één keer. Na een antwoord op een van beide pagina's toont die bestelling geen enquête meer, dus test met een nieuwe bestelling.",
+    "editorWaking": "SourceTrac wordt gestart. Na een rustige periode kan dat tot een minuut duren."
   }
 }

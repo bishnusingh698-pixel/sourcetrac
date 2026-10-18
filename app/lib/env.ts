@@ -65,6 +65,11 @@ const schema = z.object({
    * RETENTION_JOB_SECRET when unset.
    */
   READYZ_SECRET: optional(z.string().min(16, "Must be at least 16 characters.")),
+  /**
+   * "off" stops the server pinging its own /healthz (see keep-awake.server.ts).
+   * On by default in production.
+   */
+  KEEP_AWAKE: optional(z.enum(["on", "off"])),
 });
 
 export type Env = z.infer<typeof schema>;
