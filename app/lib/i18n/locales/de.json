@@ -1210,7 +1210,9 @@
     "notice_launched_no_block": "Umfrage eingeschaltet. Noch ein Schritt: Fügen Sie den SourceTrac-Block im Checkout-Editor hinzu.",
     "notice_published_no_block": "Änderungen gespeichert. Käufer sehen sie, sobald der SourceTrac-Block in Ihrem Checkout ist.",
     "block_missing_title": "Käufer sehen diese Umfrage noch nicht",
-    "block_missing_body": "Der SourceTrac-Block wurde auf folgenden Seiten noch nicht geladen: {{places}}. Fügen Sie im Checkout-Editor den Block „SourceTrac survey“ zu dieser Seite hinzu und speichern Sie. Dieser Hinweis verschwindet, sobald der Block dort zum ersten Mal lädt."
+    "block_missing_body": "Der SourceTrac-Block wurde auf folgenden Seiten noch nicht geladen: {{places}}. Fügen Sie im Checkout-Editor den Block „SourceTrac survey“ zu dieser Seite hinzu und speichern Sie. Dieser Hinweis verschwindet, sobald der Block dort zum ersten Mal lädt.",
+    "block_partial_title": "Fügen Sie den SourceTrac-Block auch hier hinzu: {{places}}",
+    "block_added_confirm": "Er ist bereits hinzugefügt"
   },
   "preview": {
     "title": "Vorschau",

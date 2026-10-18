@@ -1210,7 +1210,9 @@
     "notice_launched_no_block": "问卷已开启。还差一步：在结账编辑器中添加 SourceTrac 区块。",
     "notice_published_no_block": "更改已保存。SourceTrac 区块添加到结账页面后，买家即可看到。",
     "block_missing_title": "买家还看不到此问卷",
-    "block_missing_body": "SourceTrac 区块尚未在以下页面加载：{{places}}。请在结账编辑器中将“SourceTrac survey”区块添加到该页面并保存。区块首次在该页面加载后，此提示将消失。"
+    "block_missing_body": "SourceTrac 区块尚未在以下页面加载：{{places}}。请在结账编辑器中将“SourceTrac survey”区块添加到该页面并保存。区块首次在该页面加载后，此提示将消失。",
+    "block_partial_title": "也请将 SourceTrac 区块添加到：{{places}}",
+    "block_added_confirm": "已经添加"
   },
   "preview": {
     "title": "预览",

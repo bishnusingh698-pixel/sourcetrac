@@ -1210,7 +1210,9 @@
     "notice_launched_no_block": "Sondage activé. Il reste une étape : ajoutez le bloc SourceTrac dans l'éditeur de paiement.",
     "notice_published_no_block": "Modifications enregistrées. Les acheteurs les verront dès que le bloc SourceTrac sera dans votre checkout.",
     "block_missing_title": "Les acheteurs ne voient pas encore ce sondage",
-    "block_missing_body": "Le bloc SourceTrac ne s'est pas encore chargé sur : {{places}}. Dans l'éditeur de paiement, ajoutez le bloc « SourceTrac survey » à cette page et enregistrez. Ce message disparaît dès que le bloc s'y charge pour la première fois."
+    "block_missing_body": "Le bloc SourceTrac ne s'est pas encore chargé sur : {{places}}. Dans l'éditeur de paiement, ajoutez le bloc « SourceTrac survey » à cette page et enregistrez. Ce message disparaît dès que le bloc s'y charge pour la première fois.",
+    "block_partial_title": "Ajoutez aussi le bloc SourceTrac sur : {{places}}",
+    "block_added_confirm": "Il est déjà ajouté"
   },
   "preview": {
     "title": "Aperçu",

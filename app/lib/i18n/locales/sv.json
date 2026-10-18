@@ -1210,7 +1210,9 @@
     "notice_launched_no_block": "Enkäten är påslagen. Ett steg kvar: lägg till SourceTrac-blocket i kassaredigeraren.",
     "notice_published_no_block": "Ändringarna är sparade. Köpare ser dem när SourceTrac-blocket finns i din kassa.",
     "block_missing_title": "Köpare ser inte den här enkäten än",
-    "block_missing_body": "SourceTrac-blocket har inte lästs in på: {{places}}. Lägg till blocket \"SourceTrac survey\" på den sidan i kassaredigeraren och spara. Meddelandet försvinner första gången blocket läses in där."
+    "block_missing_body": "SourceTrac-blocket har inte lästs in på: {{places}}. Lägg till blocket \"SourceTrac survey\" på den sidan i kassaredigeraren och spara. Meddelandet försvinner första gången blocket läses in där.",
+    "block_partial_title": "Lägg till SourceTrac-blocket även på: {{places}}",
+    "block_added_confirm": "Det är redan tillagt"
   },
   "preview": {
     "title": "Förhandsvisning",

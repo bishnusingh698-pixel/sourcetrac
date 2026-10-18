@@ -1210,7 +1210,9 @@
     "notice_launched_no_block": "Survey turned on. One step left: add the SourceTrac block in the checkout editor.",
     "notice_published_no_block": "Changes saved. Buyers see them once the SourceTrac block is in your checkout.",
     "block_missing_title": "Buyers can't see this survey yet",
-    "block_missing_body": "The SourceTrac block hasn't loaded on the {{places}} yet. In the checkout editor, add the \"SourceTrac survey\" block to that page and save. This message goes away the first time the block loads there."
+    "block_missing_body": "The SourceTrac block hasn't loaded on the {{places}} yet. In the checkout editor, add the \"SourceTrac survey\" block to that page and save. This message goes away the first time the block loads there.",
+    "block_partial_title": "Add the SourceTrac block to the {{places}} too",
+    "block_added_confirm": "It's already added"
   },
   "preview": {
     "title": "Preview",

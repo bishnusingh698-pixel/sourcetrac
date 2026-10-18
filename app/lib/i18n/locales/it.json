@@ -1210,7 +1210,9 @@
     "notice_launched_no_block": "Sondaggio attivato. Manca un passaggio: aggiungi il blocco SourceTrac nell'editor del checkout.",
     "notice_published_no_block": "Modifiche salvate. Gli acquirenti le vedranno quando il blocco SourceTrac sarà nel tuo checkout.",
     "block_missing_title": "Gli acquirenti non vedono ancora questo sondaggio",
-    "block_missing_body": "Il blocco SourceTrac non è ancora stato caricato su: {{places}}. Nell'editor del checkout, aggiungi il blocco \"SourceTrac survey\" a quella pagina e salva. Questo avviso scompare la prima volta che il blocco viene caricato lì."
+    "block_missing_body": "Il blocco SourceTrac non è ancora stato caricato su: {{places}}. Nell'editor del checkout, aggiungi il blocco \"SourceTrac survey\" a quella pagina e salva. Questo avviso scompare la prima volta che il blocco viene caricato lì.",
+    "block_partial_title": "Aggiungi il blocco SourceTrac anche a: {{places}}",
+    "block_added_confirm": "È già aggiunto"
   },
   "preview": {
     "title": "Anteprima",

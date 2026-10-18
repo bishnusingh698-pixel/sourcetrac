@@ -1528,3 +1528,23 @@ opens the checkout editor itself (`open_checkout=1`, dropped from the URL and
 remembered per revision so Back does not bounce out again). It never opens
 once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
 `tests/unit/checkout-editor.test.ts`, `tests/unit/shopify-auth-page.test.ts`.
+
+## Speed and the block warning (2026-10-18)
+
+- **The browser bundle carries English only.** `app/lib/i18n/bundled-locales.ts`
+  holds all ten locales for the server and vitest; the `browserLocales` plugin
+  in `vite.config.ts` swaps in `bundled-locales.browser.ts` for the client
+  build (keyed on `options.ssr`). The shell loader sends the merchant's own
+  strings as `messages` and `shellTranslator` registers them before render.
+  This took the main chunk from 228 KB to 34 KB gzipped. A component that calls
+  `createTranslator(lang)` without the shell's `messages` gets English in the
+  browser; go through `useAdminI18n()`.
+- **The shell loader does not re-run on page switches** (`shouldRevalidate` in
+  `app/routes/app.tsx`): only after a form submission or an explicit
+  `revalidate()`. Anything the shell shows that a child page changes must be
+  changed by a form/fetcher submit, or it stays stale.
+- **"Block added" has three sources**: the block loading (`/api/survey`,
+  `/api/survey-preview`), a buyer's answer (`/api/survey-responses`), and the
+  merchant's "It's already added" button (`markBlockAdded`). The editor preview
+  only records if the deployed extension is recent enough to call
+  `/api/survey-preview`, which is why the manual confirm exists.

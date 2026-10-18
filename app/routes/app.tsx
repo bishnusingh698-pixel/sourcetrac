@@ -9,6 +9,7 @@ import {
   useRouteLoaderData,
   type HeadersFunction,
   type LoaderFunctionArgs,
+  type ShouldRevalidateFunction,
 } from "react-router";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
@@ -33,7 +34,9 @@ import {
   createTranslator,
   DEFAULT_LANGUAGE,
   isSupportedLanguage,
+  languageStrings,
 } from "~/lib/i18n";
+import { shellTranslator } from "~/lib/i18n/use-admin-i18n";
 import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
 import { rememberAdminLocale } from "~/lib/shop.server";
 import { effectivePlan, evaluateCap, planFor } from "~/lib/plans";
@@ -114,6 +117,12 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     cap: evaluateCap(enforcedPlan, used),
     language,
     /**
+     * This language's strings. The browser bundle carries English only, so
+     * the merchant's language travels here, once per document load (see
+     * `shouldRevalidate`). Null for English.
+     */
+    messages: language === DEFAULT_LANGUAGE ? null : languageStrings(language),
+    /**
      * Version stamped into the support mail body. `npm_package_version` is set
      * by npm for `npm start`; the constant is the fallback for other runners.
      */
@@ -138,9 +147,22 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
  * `/app/language` instead; see `app/routes/app.language.tsx`.
  */
 
+/**
+ * The shell's data (plan, usage, language and its strings) only changes after
+ * a form submission or an explicit revalidate. A page switch or a filter change
+ * (`?range=`, `?survey=`) used to re-run this loader too, a second admin
+ * authentication and the language strings sent again on every click.
+ */
+export const shouldRevalidate: ShouldRevalidateFunction = ({ formMethod, currentUrl, nextUrl, defaultShouldRevalidate }) => {
+  if (formMethod) return defaultShouldRevalidate;
+  // `revalidate()` keeps the URL; anything else is a move to another page or filter.
+  if (currentUrl.href === nextUrl.href) return defaultShouldRevalidate;
+  return false;
+};
+
 export default function AdminLayout() {
-  const { apiKey, shop, plan, cap, language, version, retentionMonths } = useLoaderData<typeof loader>();
-  const t = createTranslator(language);
+  const { apiKey, shop, plan, cap, language, messages, version, retentionMonths } = useLoaderData<typeof loader>();
+  const t = shellTranslator(language, messages);
   const location = useLocation();
   const titleKey = usePageTitleKey();
 

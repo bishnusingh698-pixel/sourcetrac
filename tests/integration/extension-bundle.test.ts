@@ -211,6 +211,15 @@ async function mount(
   };
 }
 
+/** Polls until `ready` holds, for renders that finish after async work. */
+async function waitFor(ready: () => boolean, timeoutMs = 3000): Promise<void> {
+  const start = Date.now();
+  while (!ready()) {
+    if (Date.now() - start > timeoutMs) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+}
+
 describe.each(SURFACES)("$name extension bundle", (surface) => {
   it("renders the survey once the order arrives, and submits a tapped answer", async () => {
     const page = await mount(await bundle(surface), surface, false);
@@ -307,7 +316,7 @@ describe.each(SURFACES)("$name extension bundle", (surface) => {
       settings: { survey_id: "  SURVEY7abcdefgh " },
       preview: { survey, name: "Delivery check", status: "draft", pinned: true, reason: null },
     });
-    await page.settle();
+    await waitFor(() => page.body().textContent?.includes("Did your order arrive on time?") === true);
 
     // The block's Survey ID setting picks the survey, cleaned to the id format.
     const previewCall = page.calls.find((call) => call.url.includes("/api/survey-preview"));
@@ -336,7 +345,9 @@ describe.each(SURFACES)("$name extension bundle", (surface) => {
     const none = await mount(await bundle(surface), surface, true, {}, {
       preview: { survey: null, name: null, status: null, pinned: false, reason: "none_live" },
     });
-    await none.settle();
+    // Waits for the render rather than a fixed 20 ms, which ran out under a
+    // loaded full-suite run and made this test flaky.
+    await waitFor(() => none.body().textContent?.includes("t:sourcetrac.editorNoneLive") === true);
     expect(none.body().querySelector("s-heading")?.textContent).toBe("t:sourcetrac.previewTitle");
     expect(none.body().textContent).toContain("t:sourcetrac.editorNoneLive");
     expect(none.calls.filter((call) => call.method === "POST")).toHaveLength(0);
@@ -346,7 +357,7 @@ describe.each(SURFACES)("$name extension bundle", (surface) => {
     expect(new URL(call!.url, "https://example.test").searchParams.has("surveyId")).toBe(false);
 
     const failed = await mount(await bundle(surface), surface, true, {}, { preview: "fail" });
-    await failed.settle();
+    await waitFor(() => failed.body().textContent?.includes("t:sourcetrac.editorUnavailable") === true);
     expect(failed.body().querySelector("s-heading")?.textContent).toBe("t:sourcetrac.previewTitle");
     expect(failed.body().textContent).toContain("t:sourcetrac.editorUnavailable");
   });
@@ -518,6 +529,7 @@ async function mountAdmin(code: string, surface: (typeof ADMIN_SURFACES)[number]
 describe.each(ADMIN_SURFACES)("$name admin extension bundle", (surface) => {
   it("posts the selected id with the ID token and shows the recorded answer", async () => {
     const page = await mountAdmin(await bundleAdmin(surface), surface, true);
+    await waitFor(() => page.body().textContent?.includes("Instagram") === true);
 
     // The block's text comes from its own locales through the host translator.
     expect(page.body().querySelector("s-admin-block")?.getAttribute("heading")).toBe("t:sourcetrac.heading");

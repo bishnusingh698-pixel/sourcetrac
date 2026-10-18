@@ -1210,7 +1210,9 @@
     "notice_launched_no_block": "Enquête ingeschakeld. Nog één stap: voeg het SourceTrac-blok toe in de checkout-editor.",
     "notice_published_no_block": "Wijzigingen opgeslagen. Kopers zien ze zodra het SourceTrac-blok in je checkout staat.",
     "block_missing_title": "Kopers zien deze enquête nog niet",
-    "block_missing_body": "Het SourceTrac-blok is nog niet geladen op: {{places}}. Voeg in de checkout-editor het blok \"SourceTrac survey\" toe aan die pagina en sla op. Deze melding verdwijnt zodra het blok daar voor het eerst laadt."
+    "block_missing_body": "Het SourceTrac-blok is nog niet geladen op: {{places}}. Voeg in de checkout-editor het blok \"SourceTrac survey\" toe aan die pagina en sla op. Deze melding verdwijnt zodra het blok daar voor het eerst laadt.",
+    "block_partial_title": "Voeg het SourceTrac-blok ook toe aan: {{places}}",
+    "block_added_confirm": "Het is al toegevoegd"
   },
   "preview": {
     "title": "Voorbeeld",

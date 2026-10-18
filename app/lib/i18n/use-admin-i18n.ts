@@ -3,7 +3,24 @@ import { useRouteLoaderData } from "react-router";
 
 import type { loader as shellLoader } from "~/routes/app";
 
-import { createTranslator, DEFAULT_LANGUAGE, intlLocaleFor, type LanguageCode, type TFunction } from "./index";
+import {
+  createTranslator,
+  DEFAULT_LANGUAGE,
+  intlLocaleFor,
+  registerLanguage,
+  type LanguageCode,
+  type TFunction,
+} from "./index";
+
+/**
+ * A translator for the shell's language, registering the strings the shell
+ * loader sent first. The browser bundle carries English only; without this a
+ * German merchant's admin would render in English.
+ */
+export function shellTranslator(language: LanguageCode, messages: Record<string, unknown> | null | undefined): TFunction {
+  if (messages) registerLanguage(language, messages);
+  return createTranslator(language);
+}
 
 /**
  * Translator for any page rendered inside the admin shell.
@@ -21,9 +38,10 @@ import { createTranslator, DEFAULT_LANGUAGE, intlLocaleFor, type LanguageCode, t
 export function useAdminI18n(): { t: TFunction; language: LanguageCode; locale: string } {
   const shell = useRouteLoaderData<typeof shellLoader>("routes/app");
   const language = shell?.language ?? DEFAULT_LANGUAGE;
+  const messages = shell?.messages;
   return useMemo(
-    () => ({ t: createTranslator(language), language, locale: intlLocaleFor(language) }),
-    [language],
+    () => ({ t: shellTranslator(language, messages), language, locale: intlLocaleFor(language) }),
+    [language, messages],
   );
 }
 
@@ -36,8 +54,8 @@ export function adminTitle(
   key: string,
 ): Array<{ title: string }> {
   const shell = matches.find((match) => match?.id === "routes/app")?.loaderData as
-    | { language?: LanguageCode }
+    | { language?: LanguageCode; messages?: Record<string, unknown> | null }
     | undefined;
-  const t = createTranslator(shell?.language ?? DEFAULT_LANGUAGE);
+  const t = shellTranslator(shell?.language ?? DEFAULT_LANGUAGE, shell?.messages);
   return [{ title: `${t(key)} — SourceTrac` }];
 }

@@ -15,6 +15,7 @@ import {
 } from "~/lib/rate-limit.server";
 import { submitAnswers } from "~/lib/answers.server";
 import { findShopByDomain, isKnownOrder } from "~/lib/shop.server";
+import { recordBlockSeen } from "~/lib/block-seen.server";
 import { getSurveyRow, rowToEditor } from "~/lib/surveys.server";
 import { authenticate } from "~/shopify.server";
 import { PLACEMENTS, type Placement } from "@shared/survey-config";
@@ -136,6 +137,8 @@ export const action = async ({ request }: { request: Request }) => {
     if (!shop || shop.installState === "uninstalled") {
       throw new ValidationError("This store is not using SourceTrac.", "Contact the store if you see this message.");
     }
+    // An answer is the surest sign the block is on this page.
+    await recordBlockSeen(shop.id, placement);
 
     const row = await getSurveyRow(shop.id, parsed.data.surveyId);
     if (!row) {

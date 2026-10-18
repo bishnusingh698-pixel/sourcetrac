@@ -66,6 +66,20 @@ export async function getBlockSeen(shopId: string): Promise<BlockSeen> {
   };
 }
 
+/**
+ * The merchant says the block is on these pages.
+ *
+ * A block that has not loaded yet (no order since it was added, or a checkout
+ * editor that could not reach us) leaves the warning up although the block is
+ * there, so the merchant can clear it themselves.
+ */
+export async function markBlockAdded(shopId: string, placements: readonly Placement[], now = new Date()): Promise<void> {
+  const data: Partial<Record<(typeof COLUMN)[CheckoutPlacement], Date>> = {};
+  for (const placement of placements) if (isCheckoutPlacement(placement)) data[COLUMN[placement]] = now;
+  if (Object.keys(data).length === 0) return;
+  await db.shop.update({ where: { id: shopId }, data });
+}
+
 /** Uninstalling removes the app's checkout blocks, so what we saw no longer holds. */
 export async function clearBlockSeen(shopId: string): Promise<void> {
   for (const placement of Object.keys(COLUMN)) lastWrite.delete(`${shopId}:${placement}`);

@@ -1210,7 +1210,9 @@
     "notice_launched_no_block": "アンケートをオンにしました。あと一歩です。チェックアウトエディタで SourceTrac ブロックを追加してください。",
     "notice_published_no_block": "変更を保存しました。SourceTrac ブロックがチェックアウトに追加されると購入者に表示されます。",
     "block_missing_title": "このアンケートはまだ購入者に表示されていません",
-    "block_missing_body": "SourceTrac ブロックは次のページでまだ読み込まれていません：{{places}}。チェックアウトエディタでそのページに「SourceTrac survey」ブロックを追加して保存してください。ブロックがそこで初めて読み込まれると、このメッセージは消えます。"
+    "block_missing_body": "SourceTrac ブロックは次のページでまだ読み込まれていません：{{places}}。チェックアウトエディタでそのページに「SourceTrac survey」ブロックを追加して保存してください。ブロックがそこで初めて読み込まれると、このメッセージは消えます。",
+    "block_partial_title": "{{places}}にも SourceTrac ブロックを追加してください",
+    "block_added_confirm": "すでに追加済み"
   },
   "preview": {
     "title": "プレビュー",
