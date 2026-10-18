@@ -13,7 +13,7 @@ import crypto from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaClient } from "@prisma/client";
 
-import { getBlockSeen, recordBlockSeen, resetBlockSeenThrottle } from "~/lib/block-seen.server";
+import { getBlockSeen, markBlockAdded, recordBlockSeen, resetBlockSeenThrottle } from "~/lib/block-seen.server";
 import { placementsMissingBlock } from "~/lib/checkout-editor";
 import { upsertShop } from "~/lib/shop.server";
 import { clearConfigCache, createSurvey } from "~/lib/surveys.server";
@@ -117,6 +117,11 @@ describe("checkout block seen", () => {
   it("ignores pages that have no checkout block", async () => {
     await recordBlockSeen(shopId, "onsite");
     expect(await getBlockSeen(shopId)).toEqual({ thank_you: false, order_status: false });
+  });
+
+  it("can be confirmed by the merchant when the block has not loaded yet", async () => {
+    await markBlockAdded(shopId, ["order_status", "onsite"]);
+    expect(await getBlockSeen(shopId)).toEqual({ thank_you: false, order_status: true });
   });
 
   it("is forgotten on uninstall, which removes the blocks", async () => {

@@ -266,7 +266,10 @@
     "reassure_cancel": "Modifiez ou annulez à tout moment sur cette page",
     "reassure_shopify": "Facturé sur votre facture Shopify",
     "reassure_data": "Vos réponses sont conservées si vous changez pour un forfait inférieur",
-    "msg_billing_not_enabled": "La facturation Shopify n'est pas encore activée pour cette app. Dans le Partner Dashboard, ouvrez Apps, puis SourceTrac, puis Distribution, et choisissez la distribution publique. Vous pourrez ensuite approuver les forfaits payants ici (sous forme de frais de test gratuits sur une boutique de développement)."
+    "msg_billing_not_enabled": "La facturation Shopify n'est pas encore activée pour cette app. Dans le Partner Dashboard, ouvrez Apps, puis SourceTrac, puis Distribution, et choisissez la distribution publique. Vous pourrez ensuite approuver les forfaits payants ici (sous forme de frais de test gratuits sur une boutique de développement).",
+    "choose_plan_yearly": "Choisir {{plan}} en facturation annuelle",
+    "choose_plan_yearly_instead": "Ou payez à l'année : {{price}} par an",
+    "choose_plan_monthly_instead": "Ou payez au mois : {{price}} par mois"
   },
   "help": {
     "title": "Aide",
@@ -1207,7 +1210,9 @@
     "notice_launched_no_block": "Sondage activé. Il reste une étape : ajoutez le bloc SourceTrac dans l'éditeur de paiement.",
     "notice_published_no_block": "Modifications enregistrées. Les acheteurs les verront dès que le bloc SourceTrac sera dans votre checkout.",
     "block_missing_title": "Les acheteurs ne voient pas encore ce sondage",
-    "block_missing_body": "Le bloc SourceTrac ne s'est pas encore chargé sur : {{places}}. Dans l'éditeur de paiement, ajoutez le bloc « SourceTrac survey » à cette page et enregistrez. Ce message disparaît dès que le bloc s'y charge pour la première fois."
+    "block_missing_body": "Le bloc SourceTrac ne s'est pas encore chargé sur : {{places}}. Dans l'éditeur de paiement, ajoutez le bloc « SourceTrac survey » à cette page et enregistrez. Ce message disparaît dès que le bloc s'y charge pour la première fois.",
+    "block_partial_title": "Ajoutez aussi le bloc SourceTrac sur : {{places}}",
+    "block_added_confirm": "Il est déjà ajouté"
   },
   "preview": {
     "title": "Aperçu",

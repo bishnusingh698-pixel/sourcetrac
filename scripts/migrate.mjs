@@ -10,6 +10,7 @@
 // Neon suspends after 5 minutes idle and takes a few seconds to wake, so a
 // connection failure is retried before giving up.
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 
 const pooled = process.env.DATABASE_URL;
 if (!pooled) {
@@ -20,8 +21,15 @@ if (!pooled) {
 const direct = process.env.DIRECT_URL || pooled.replace("-pooler.", ".");
 const attempts = 5;
 
+// The installed CLI, not `npx prisma`: npx resolves the package again on every
+// start, which cost several seconds of each cold start on Render's small CPU.
+const local = new URL("../node_modules/.bin/prisma", import.meta.url);
+const [command, args] = existsSync(local)
+  ? [local.pathname, ["migrate", "deploy"]]
+  : ["npx", ["prisma", "migrate", "deploy"]];
+
 for (let attempt = 1; attempt <= attempts; attempt++) {
-  const result = spawnSync("npx", ["prisma", "migrate", "deploy"], {
+  const result = spawnSync(command, args, {
     stdio: "inherit",
     env: { ...process.env, DATABASE_URL: direct },
   });

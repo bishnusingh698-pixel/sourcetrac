@@ -266,7 +266,10 @@
     "reassure_cancel": "随时可在此页面更改或取消",
     "reassure_shopify": "费用计入您的 Shopify 账单",
     "reassure_data": "降级后您的回答仍会保留",
-    "msg_billing_not_enabled": "此应用尚未开启 Shopify 计费。请在 Partner Dashboard 中依次打开“应用”、SourceTrac、“分发”，然后选择“公开分发”。之后即可在此批准付费套餐（在开发商店中为免费的测试收费）。"
+    "msg_billing_not_enabled": "此应用尚未开启 Shopify 计费。请在 Partner Dashboard 中依次打开“应用”、SourceTrac、“分发”，然后选择“公开分发”。之后即可在此批准付费套餐（在开发商店中为免费的测试收费）。",
+    "choose_plan_yearly": "选择 {{plan}}（按年付费）",
+    "choose_plan_yearly_instead": "或按年付费：每年 {{price}}",
+    "choose_plan_monthly_instead": "或按月付费：每月 {{price}}"
   },
   "help": {
     "title": "帮助",
@@ -1207,7 +1210,9 @@
     "notice_launched_no_block": "问卷已开启。还差一步：在结账编辑器中添加 SourceTrac 区块。",
     "notice_published_no_block": "更改已保存。SourceTrac 区块添加到结账页面后，买家即可看到。",
     "block_missing_title": "买家还看不到此问卷",
-    "block_missing_body": "SourceTrac 区块尚未在以下页面加载：{{places}}。请在结账编辑器中将“SourceTrac survey”区块添加到该页面并保存。区块首次在该页面加载后，此提示将消失。"
+    "block_missing_body": "SourceTrac 区块尚未在以下页面加载：{{places}}。请在结账编辑器中将“SourceTrac survey”区块添加到该页面并保存。区块首次在该页面加载后，此提示将消失。",
+    "block_partial_title": "也请将 SourceTrac 区块添加到：{{places}}",
+    "block_added_confirm": "已经添加"
   },
   "preview": {
     "title": "预览",

@@ -266,7 +266,10 @@
     "reassure_cancel": "Jederzeit auf dieser Seite ändern oder kündigen",
     "reassure_shopify": "Abrechnung über Ihre Shopify-Rechnung",
     "reassure_data": "Ihre Antworten bleiben beim Downgrade erhalten",
-    "msg_billing_not_enabled": "Die Shopify-Abrechnung ist für diese App noch nicht aktiviert. Öffnen Sie im Partner Dashboard Apps, dann SourceTrac, dann Vertrieb, und wählen Sie Öffentlicher Vertrieb. Danach können Sie bezahlte Tarife hier bestätigen (in einem Entwicklungsshop als kostenlose Testbelastung)."
+    "msg_billing_not_enabled": "Die Shopify-Abrechnung ist für diese App noch nicht aktiviert. Öffnen Sie im Partner Dashboard Apps, dann SourceTrac, dann Vertrieb, und wählen Sie Öffentlicher Vertrieb. Danach können Sie bezahlte Tarife hier bestätigen (in einem Entwicklungsshop als kostenlose Testbelastung).",
+    "choose_plan_yearly": "{{plan}} mit jährlicher Abrechnung wählen",
+    "choose_plan_yearly_instead": "Oder jährlich zahlen: {{price}} pro Jahr",
+    "choose_plan_monthly_instead": "Oder monatlich zahlen: {{price}} pro Monat"
   },
   "help": {
     "title": "Hilfe",
@@ -1207,7 +1210,9 @@
     "notice_launched_no_block": "Umfrage eingeschaltet. Noch ein Schritt: Fügen Sie den SourceTrac-Block im Checkout-Editor hinzu.",
     "notice_published_no_block": "Änderungen gespeichert. Käufer sehen sie, sobald der SourceTrac-Block in Ihrem Checkout ist.",
     "block_missing_title": "Käufer sehen diese Umfrage noch nicht",
-    "block_missing_body": "Der SourceTrac-Block wurde auf folgenden Seiten noch nicht geladen: {{places}}. Fügen Sie im Checkout-Editor den Block „SourceTrac survey“ zu dieser Seite hinzu und speichern Sie. Dieser Hinweis verschwindet, sobald der Block dort zum ersten Mal lädt."
+    "block_missing_body": "Der SourceTrac-Block wurde auf folgenden Seiten noch nicht geladen: {{places}}. Fügen Sie im Checkout-Editor den Block „SourceTrac survey“ zu dieser Seite hinzu und speichern Sie. Dieser Hinweis verschwindet, sobald der Block dort zum ersten Mal lädt.",
+    "block_partial_title": "Fügen Sie den SourceTrac-Block auch hier hinzu: {{places}}",
+    "block_added_confirm": "Er ist bereits hinzugefügt"
   },
   "preview": {
     "title": "Vorschau",

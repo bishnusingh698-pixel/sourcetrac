@@ -266,7 +266,10 @@
     "reassure_cancel": "Ändra eller säg upp när du vill på den här sidan",
     "reassure_shopify": "Faktureras på din Shopify-faktura",
     "reassure_data": "Dina svar finns kvar om du byter till en lägre plan",
-    "msg_billing_not_enabled": "Shopify-fakturering är inte aktiverad för den här appen än. Öppna Appar, sedan SourceTrac, sedan Distribution i Partner Dashboard och välj Offentlig distribution. Därefter kan du godkänna betalplaner här (som kostnadsfria testdebiteringar i en utvecklingsbutik)."
+    "msg_billing_not_enabled": "Shopify-fakturering är inte aktiverad för den här appen än. Öppna Appar, sedan SourceTrac, sedan Distribution i Partner Dashboard och välj Offentlig distribution. Därefter kan du godkänna betalplaner här (som kostnadsfria testdebiteringar i en utvecklingsbutik).",
+    "choose_plan_yearly": "Välj {{plan}} med årsvis fakturering",
+    "choose_plan_yearly_instead": "Eller betala årsvis: {{price}} per år",
+    "choose_plan_monthly_instead": "Eller betala månadsvis: {{price}} per månad"
   },
   "help": {
     "title": "Hjälp",
@@ -1207,7 +1210,9 @@
     "notice_launched_no_block": "Enkäten är påslagen. Ett steg kvar: lägg till SourceTrac-blocket i kassaredigeraren.",
     "notice_published_no_block": "Ändringarna är sparade. Köpare ser dem när SourceTrac-blocket finns i din kassa.",
     "block_missing_title": "Köpare ser inte den här enkäten än",
-    "block_missing_body": "SourceTrac-blocket har inte lästs in på: {{places}}. Lägg till blocket \"SourceTrac survey\" på den sidan i kassaredigeraren och spara. Meddelandet försvinner första gången blocket läses in där."
+    "block_missing_body": "SourceTrac-blocket har inte lästs in på: {{places}}. Lägg till blocket \"SourceTrac survey\" på den sidan i kassaredigeraren och spara. Meddelandet försvinner första gången blocket läses in där.",
+    "block_partial_title": "Lägg till SourceTrac-blocket även på: {{places}}",
+    "block_added_confirm": "Det är redan tillagt"
   },
   "preview": {
     "title": "Förhandsvisning",

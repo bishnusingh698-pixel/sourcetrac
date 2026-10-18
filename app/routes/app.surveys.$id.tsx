@@ -37,7 +37,8 @@ import {
 } from "~/lib/surveys.server";
 import { getShopDisplay } from "~/lib/studio.server";
 import { grantedSyncScopes } from "~/lib/scopes.server";
-import { getBlockSeen } from "~/lib/block-seen.server";
+import { getBlockSeen, markBlockAdded } from "~/lib/block-seen.server";
+import { BlockMissingBanner, postedPlacements } from "~/components/block-missing";
 import { checkoutEditorUrl, placementsMissingBlock } from "~/lib/checkout-editor";
 import { effectivePlan } from "~/lib/plans";
 import { LANGUAGES } from "~/lib/i18n";
@@ -101,7 +102,7 @@ export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) =>
  */
 const OPEN_CHECKOUT = "open_checkout";
 
-const INTENTS = new Set(["save", "go-live", "publish", "discard", "pause", "activate"]);
+const INTENTS = new Set(["save", "go-live", "publish", "discard", "pause", "activate", "block-added"]);
 
 /** A survey-level ValidationError or ConflictError, as the editor renders it. */
 function failure(error: unknown) {
@@ -129,6 +130,11 @@ export const action = guarded(async ({ request, params }: ActionFunctionArgs) =>
   const expectedRevision = typeof rawRevision === "string" && rawRevision !== "" ? Number(rawRevision) : Number.NaN;
   if (!Number.isInteger(expectedRevision)) {
     return { ok: false as const, conflict: true, issues: [] };
+  }
+
+  if (intent === "block-added") {
+    await markBlockAdded(shop.id, postedPlacements(form));
+    return redirect(`/app/surveys/${id}`);
   }
 
   try {
@@ -295,7 +301,7 @@ export default function SurveyEditorPage() {
   // block has asked for a survey; everywhere else the merchant is told to add it.
   const missing = survey.status === "active" ? placementsMissingBlock(survey.placements, data.blockSeen) : [];
   const editorHref = checkoutEditorUrl(data.shopHandle, missing[0] ?? "thank_you");
-  const missingPlaces = missing.map((p) => t(`editor.placement_${p}`)).join(", ");
+  const checkoutPlacements = survey.placements.filter((p) => p === "thank_you" || p === "order_status");
 
   // Straight after turning the survey on or publishing it, go to the checkout
   // editor to add the block. The flag is dropped from the address first, and
@@ -346,7 +352,7 @@ export default function SurveyEditorPage() {
           <s-text fontSize="large-100" fontWeight="bold">
             {draft.name || t("editor.untitled")}
           </s-text>
-          <StatusBadge status={draft.status} hasDraft={draft.hasDraft} noBlock={missing.length > 0 && missing.length === survey.placements.length} t={t} />
+          <StatusBadge status={draft.status} hasDraft={draft.hasDraft} noBlock={missing.length > 0 && missing.length === checkoutPlacements.length} t={t} />
         </s-stack>
         <StatusLine draft={draft} missing={missing} t={t} />
       </s-stack>
@@ -368,23 +374,13 @@ export default function SurveyEditorPage() {
           <s-text>{freeVersion ? t("editor.created_free_version", { plan: t("plans.growth") }) : t("editor.created_body")}</s-text>
         </Banner>
       ) : missing.length > 0 && !dirty ? (
-        <Banner
-          tone="warning"
-          heading={
-            notice === "launched" || notice === "published"
-              ? t(`editor.notice_${notice}_no_block`)
-              : t("editor.block_missing_title")
-          }
-        >
-          <s-stack gap="small">
-            <s-text>{t("editor.block_missing_body", { places: missingPlaces })}</s-text>
-            <s-stack direction="inline">
-              <s-button href={editorHref} target="_top" icon="external">
-                {t("editor.open_checkout_editor")}
-              </s-button>
-            </s-stack>
-          </s-stack>
-        </Banner>
+        <BlockMissingBanner
+          missing={missing}
+          anySeen={missing.length < checkoutPlacements.length}
+          shopHandle={data.shopHandle}
+          heading={notice === "launched" || notice === "published" ? t(`editor.notice_${notice}_no_block`) : undefined}
+          t={t}
+        />
       ) : notice && !dirty ? (
         <Banner tone="success" heading={t(`editor.notice_${notice}`)} />
       ) : null}

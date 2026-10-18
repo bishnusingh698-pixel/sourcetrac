@@ -266,7 +266,10 @@
     "reassure_cancel": "Mude ou cancele quando quiser nesta página",
     "reassure_shopify": "Cobrado na sua fatura da Shopify",
     "reassure_data": "Suas respostas continuam salvas se você mudar para um plano menor",
-    "msg_billing_not_enabled": "O faturamento da Shopify ainda não está ativado para este app. No Partner Dashboard, abra Apps, depois SourceTrac, depois Distribuição, e escolha Distribuição pública. Depois disso, você poderá aprovar os planos pagos aqui (como cobranças de teste gratuitas em uma loja de desenvolvimento)."
+    "msg_billing_not_enabled": "O faturamento da Shopify ainda não está ativado para este app. No Partner Dashboard, abra Apps, depois SourceTrac, depois Distribuição, e escolha Distribuição pública. Depois disso, você poderá aprovar os planos pagos aqui (como cobranças de teste gratuitas em uma loja de desenvolvimento).",
+    "choose_plan_yearly": "Escolher {{plan}} com cobrança anual",
+    "choose_plan_yearly_instead": "Ou pague por ano: {{price}} por ano",
+    "choose_plan_monthly_instead": "Ou pague por mês: {{price}} por mês"
   },
   "help": {
     "title": "Ajuda",
@@ -1207,7 +1210,9 @@
     "notice_launched_no_block": "Pesquisa ativada. Falta um passo: adicione o bloco do SourceTrac no editor de checkout.",
     "notice_published_no_block": "Alterações salvas. Os compradores as verão quando o bloco do SourceTrac estiver no seu checkout.",
     "block_missing_title": "Os compradores ainda não veem esta pesquisa",
-    "block_missing_body": "O bloco do SourceTrac ainda não carregou em: {{places}}. No editor de checkout, adicione o bloco \"SourceTrac survey\" a essa página e salve. Este aviso some na primeira vez que o bloco carregar lá."
+    "block_missing_body": "O bloco do SourceTrac ainda não carregou em: {{places}}. No editor de checkout, adicione o bloco \"SourceTrac survey\" a essa página e salve. Este aviso some na primeira vez que o bloco carregar lá.",
+    "block_partial_title": "Adicione o bloco do SourceTrac também em: {{places}}",
+    "block_added_confirm": "Já está adicionado"
   },
   "preview": {
     "title": "Prévia",

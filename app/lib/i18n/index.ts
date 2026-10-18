@@ -1,17 +1,9 @@
 import { createInstance, type i18n as I18nInstance } from "i18next";
 
-import de from "./locales/de.json";
-import en from "./locales/en.json";
-import es from "./locales/es.json";
-import fr from "./locales/fr.json";
-import it from "./locales/it.json";
-import ja from "./locales/ja.json";
-import nl from "./locales/nl.json";
-import ptBR from "./locales/pt-BR.json";
-import sv from "./locales/sv.json";
-import zhCN from "./locales/zh-CN.json";
+import type en from "./locales/en.json";
+import { BUNDLED } from "./bundled-locales";
 
-import { DEFAULT_LANGUAGE, languageFor, type LanguageCode } from "./languages";
+import { DEFAULT_LANGUAGE, LANGUAGES, languageFor, type LanguageCode } from "./languages";
 
 /**
  * Per-request i18n.
@@ -28,26 +20,26 @@ import { DEFAULT_LANGUAGE, languageFor, type LanguageCode } from "./languages";
  * request, which is negligible next to the database round trip the same loader
  * already performs.
  *
- * ## Why resources are bundled rather than loaded per request
+ * ## Why resources are in memory rather than loaded per request
  *
- * All ten bundles are small and there is no network hop. Loading them lazily
- * would add a round trip to the critical path of every page for no benefit, and
- * a lazily-loaded language is exactly how you get a flash of English on first
- * paint.
+ * There is no network hop, so `getFixedT` is usable synchronously and a page
+ * never flashes English on first paint. The server holds all ten languages.
+ * The browser starts with English and receives the merchant's language in the
+ * shell loader's data, registered with `registerLanguage` before the first
+ * render, so it never downloads the other eight.
  */
 
-const RESOURCES = {
-  en: { translation: en },
-  de: { translation: de },
-  fr: { translation: fr },
-  es: { translation: es },
-  "pt-BR": { translation: ptBR },
-  "zh-CN": { translation: zhCN },
-  ja: { translation: ja },
-  it: { translation: it },
-  nl: { translation: nl },
-  sv: { translation: sv },
-} as const;
+const RESOURCES: Record<string, { translation: Record<string, unknown> }> = { ...BUNDLED };
+
+/** Adds a language's strings, as sent by the shell loader. */
+export function registerLanguage(language: LanguageCode, translation: Record<string, unknown>): void {
+  if (!RESOURCES[language]) RESOURCES[language] = { translation };
+}
+
+/** The strings for a language, when this process holds them. */
+export function languageStrings(language: LanguageCode): Record<string, unknown> | null {
+  return RESOURCES[language]?.translation ?? null;
+}
 
 /**
  * Shape of the English bundle. Every other language is checked against this at
@@ -73,7 +65,7 @@ export function createI18n(language: LanguageCode) {
   instance.init({
     lng: language,
     fallbackLng: DEFAULT_LANGUAGE,
-    supportedLngs: Object.keys(RESOURCES),
+    supportedLngs: LANGUAGES.map((language) => language.code),
     ns: ["translation"],
     defaultNS: "translation",
     // Without this the instance has no translations at all and every `t()` call

@@ -266,7 +266,10 @@
     "reassure_cancel": "Wijzig of zeg op wanneer je wilt via deze pagina",
     "reassure_shopify": "Gefactureerd op je Shopify-factuur",
     "reassure_data": "Je antwoorden blijven bewaard als je overstapt naar een lager abonnement",
-    "msg_billing_not_enabled": "Shopify-facturering is nog niet ingeschakeld voor deze app. Open in het Partner Dashboard Apps, dan SourceTrac, dan Distributie, en kies Openbare distributie. Daarna kun je betaalde abonnementen hier goedkeuren (als gratis testkosten in een ontwikkelwinkel)."
+    "msg_billing_not_enabled": "Shopify-facturering is nog niet ingeschakeld voor deze app. Open in het Partner Dashboard Apps, dan SourceTrac, dan Distributie, en kies Openbare distributie. Daarna kun je betaalde abonnementen hier goedkeuren (als gratis testkosten in een ontwikkelwinkel).",
+    "choose_plan_yearly": "Kies {{plan}}, jaarlijks gefactureerd",
+    "choose_plan_yearly_instead": "Of betaal per jaar: {{price}} per jaar",
+    "choose_plan_monthly_instead": "Of betaal per maand: {{price}} per maand"
   },
   "help": {
     "title": "Help",
@@ -1207,7 +1210,9 @@
     "notice_launched_no_block": "Enquête ingeschakeld. Nog één stap: voeg het SourceTrac-blok toe in de checkout-editor.",
     "notice_published_no_block": "Wijzigingen opgeslagen. Kopers zien ze zodra het SourceTrac-blok in je checkout staat.",
     "block_missing_title": "Kopers zien deze enquête nog niet",
-    "block_missing_body": "Het SourceTrac-blok is nog niet geladen op: {{places}}. Voeg in de checkout-editor het blok \"SourceTrac survey\" toe aan die pagina en sla op. Deze melding verdwijnt zodra het blok daar voor het eerst laadt."
+    "block_missing_body": "Het SourceTrac-blok is nog niet geladen op: {{places}}. Voeg in de checkout-editor het blok \"SourceTrac survey\" toe aan die pagina en sla op. Deze melding verdwijnt zodra het blok daar voor het eerst laadt.",
+    "block_partial_title": "Voeg het SourceTrac-blok ook toe aan: {{places}}",
+    "block_added_confirm": "Het is al toegevoegd"
   },
   "preview": {
     "title": "Voorbeeld",

@@ -5,7 +5,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@prisma/client";
 
-import { activeSourceTracSubscription, fetchActiveSubscriptions } from "~/lib/billing.server";
+import { activeSourceTracSubscription, createSubscription, fetchActiveSubscriptions } from "~/lib/billing.server";
 import { setPlan, upsertShop } from "~/lib/shop.server";
 import { normaliseSubscriptionStatus, processWebhook } from "~/lib/webhooks.server";
 
@@ -95,6 +95,37 @@ describe("subscription notices", () => {
       process.env.NODE_ENV = env;
     }
     expect((await prisma.shop.findUniqueOrThrow({ where: { id: shopId } })).plan).toBe("free");
+  });
+});
+
+describe("yearly billing", () => {
+  it("asks Shopify for an ANNUAL charge at the yearly price", async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          data: {
+            appSubscriptionCreate: {
+              appSubscription: { id: A, status: "PENDING", name: "SourceTrac Growth (yearly)", test: true },
+              confirmationUrl: "https://admin.shopify.com/store/x/charges/1/confirm",
+              userErrors: [],
+            },
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const created = await createSubscription({ shopDomain: DOMAIN, accessToken: "t", plan: "growth", cycle: "yearly", test: true });
+    expect(created.ok).toBe(true);
+
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const { variables } = JSON.parse(String(init.body)) as {
+      variables: { name: string; lineItems: Array<{ plan: { appRecurringPricingDetails: { interval: string; price: { amount: string } } } }> };
+    };
+    expect(variables.name).toContain("(yearly)");
+    expect(variables.lineItems[0]?.plan.appRecurringPricingDetails.interval).toBe("ANNUAL");
+    expect(variables.lineItems[0]?.plan.appRecurringPricingDetails.price.amount).toBe("53.89");
   });
 });
 

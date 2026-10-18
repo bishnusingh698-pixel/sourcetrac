@@ -1,6 +1,7 @@
 import { reactRouter } from "@react-router/dev/vite";
-import { defineConfig, type UserConfig } from "vite";
+import { defineConfig, type Plugin, type UserConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
+import { fileURLToPath } from "node:url";
 
 // The CLI passes HOST; Vite's own config uses it too. Normalising to
 // SHOPIFY_APP_URL avoids breaking the dev server when they differ.
@@ -31,6 +32,20 @@ if (host === "localhost") {
   };
 }
 
+/**
+ * The browser bundle gets English only; the server keeps all ten languages.
+ * The merchant's language reaches the browser in the shell loader's data. See
+ * `app/lib/i18n/bundled-locales.ts`.
+ */
+const browserLocales: Plugin = {
+  name: "sourcetrac:browser-locales",
+  enforce: "pre",
+  resolveId(source, importer, options) {
+    if (options?.ssr || source !== "./bundled-locales" || !importer?.includes("/app/lib/i18n/")) return null;
+    return fileURLToPath(new URL("./app/lib/i18n/bundled-locales.browser.ts", import.meta.url));
+  },
+};
+
 export default defineConfig({
   server: {
     allowedHosts: [host],
@@ -39,6 +54,6 @@ export default defineConfig({
     hmr: hmrConfig,
     fs: { allow: ["app", "shared", "node_modules"] },
   },
-  plugins: [reactRouter(), tsconfigPaths()],
+  plugins: [browserLocales, reactRouter(), tsconfigPaths()],
   build: { assetsInlineLimit: 0 },
 }) satisfies UserConfig;

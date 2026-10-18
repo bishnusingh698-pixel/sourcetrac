@@ -16,8 +16,9 @@ import {
   type SurveyListItem,
 } from "~/lib/surveys.server";
 import { formatDay } from "~/lib/format-day";
-import { getBlockSeen } from "~/lib/block-seen.server";
-import { checkoutEditorUrl, placementsMissingBlock } from "~/lib/checkout-editor";
+import { getBlockSeen, markBlockAdded } from "~/lib/block-seen.server";
+import { placementsMissingBlock } from "~/lib/checkout-editor";
+import { BlockMissingBanner, postedPlacements } from "~/components/block-missing";
 import { NotFoundError, ValidationError } from "~/lib/errors";
 
 /**
@@ -53,10 +54,15 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     ...new Set(surveys.filter((s) => s.status === "active").flatMap((s) => placementsMissingBlock(s.placements, blockSeen))),
   ];
 
+  // Whether the block has loaded on any page at all, which softens the banner
+  // from "buyers can't see it" to "add it to this page too".
+  const anySeen = blockSeen.thank_you || blockSeen.order_status;
+
   return {
     surveys,
     usage,
     missing,
+    anySeen,
     shopHandle: shop.shopDomain.replace(".myshopify.com", ""),
   };
 });
@@ -97,6 +103,10 @@ async function runListAction(shopId: string, intent: string, surveyId: string, f
       await setSurveyStatus(shop.id, surveyId, "active");
       return { ok: true as const };
 
+    case "block-added":
+      await markBlockAdded(shop.id, postedPlacements(form));
+      return { ok: true as const };
+
     case "delete":
       await deleteSurvey(shop.id, surveyId);
       return { ok: true as const };
@@ -121,7 +131,7 @@ function StatusBadge({ status }: { status: SurveyListItem["status"] }) {
 }
 
 export default function Surveys() {
-  const { surveys, usage, missing, shopHandle } = useLoaderData<typeof loader>();
+  const { surveys, usage, missing, anySeen, shopHandle } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const { t, locale } = useAdminI18n();
   const failureKey = actionData && actionData.ok === false ? `surveys.validation_${actionData.code}` : null;
@@ -147,20 +157,7 @@ export default function Surveys() {
       {missing.length > 0 ? (
         // "Live" here means turned on. Buyers only see it once the block is in
         // the checkout, which the app can only tell from the block loading.
-        <s-banner tone="warning" heading={t("editor.block_missing_title")}>
-          <s-stack gap="small">
-            <s-text>
-              {t("editor.block_missing_body", {
-                places: missing.map((p) => t(`editor.placement_${p}`)).join(", "),
-              })}
-            </s-text>
-            <s-stack direction="inline" gap="small">
-              <s-button href={checkoutEditorUrl(shopHandle, missing[0])} target="_top" icon="external">
-                {t("editor.open_checkout_editor")}
-              </s-button>
-            </s-stack>
-          </s-stack>
-        </s-banner>
+        <BlockMissingBanner missing={missing} anySeen={anySeen} shopHandle={shopHandle} t={t} />
       ) : null}
       {usage.limit !== null && usage.live > usage.limit ? (
         // A downgrade leaves more surveys live than the plan serves. Buyers only
