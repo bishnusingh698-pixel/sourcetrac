@@ -1,16 +1,18 @@
 /**
  * Surface-agnostic survey behaviour.
  *
- * The thank-you page and the order-status page render the same question, so the
- * rules about retrying, collapsing and never showing a buyer an error live here
- * once. Each extension supplies its own React components and hooks because the
- * two surfaces ship from different packages (`ui-extensions-react/checkout`
- * vs `.../customer-account`) and do not share an import path.
+ * The rules about retrying, collapsing and never showing a buyer an error live
+ * here, apart from the Thank-you block's components, so they can be tested
+ * without a checkout host and shared with the admin blocks.
  */
 
 export type SurveySurface = "thank-you" | "order-status";
 
-/** Where a survey can appear. Mirrors PLACEMENTS in shared/survey-config.ts. */
+/**
+ * Where a survey can appear. Mirrors PLACEMENTS in shared/survey-config.ts,
+ * which keeps the retired pages so historic answers still read. Surveys now
+ * only show on `thank_you`.
+ */
 export type Placement = "thank_you" | "order_status" | "onsite" | "link";
 
 /** One answer the buyer gave, in the wire shape the backend expects. */
@@ -79,8 +81,6 @@ export type SurveyPreview = {
   name: string | null;
   status: "draft" | "active" | "paused" | null;
   pinned: boolean;
-  /** False when the survey is not set to show on the page this block is on. */
-  onThisPage: boolean;
   reason: "not_found" | "none_live" | null;
   /** Live, but beyond the plan's number of live surveys. Absent from older servers. */
   planHidden?: boolean;
@@ -98,16 +98,6 @@ export function cleanSurveyId(value: unknown): string | null {
   const id = value.trim().toLowerCase();
   return /^[a-z0-9]{8,40}$/.test(id) ? id : null;
 }
-
-/**
- * Which build of the block is running. Sent with every survey request so the
- * merchant's "Recent checkouts" can say when the store still runs an older
- * block: merging the code updates the server, but the checkout only gets a new
- * block from `shopify app deploy`. Must equal `CURRENT_BLOCK_BUILD` in
- * shared/block-build.ts (tests/unit/block-build.test.ts checks). Bump both
- * whenever the block's code changes.
- */
-export const BLOCK_BUILD = "2026-10-18.2";
 
 /**
  * Sentinel channel for the free-text answer. Must match
@@ -247,8 +237,8 @@ export interface ApiBinding {
   /**
    * The selected payment option `type`s for this checkout (T7). Only the
    * Thank-you block can provide this; elsewhere it is absent and the server
-   * treats an empty list as "not a manual payment". Optional so the
-   * order-status and admin blocks need not implement it.
+   * treats an empty list as "not a manual payment". Optional so the admin
+   * blocks need not implement it.
    */
   getPaymentTypes?: () => readonly string[];
   /**
@@ -257,9 +247,8 @@ export interface ApiBinding {
    * route passed `null` and any survey targeting first/returning customers or a
    * country never matched, so it silently never appeared. Optional: an
    * unavailable value is simply not sent, and the server then treats a
-   * first/returning or country rule as not met (the Order-status page has no
-   * first-order signal), so a targeted survey is never shown to an unknown
-   * audience.
+   * first/returning or country rule as not met, so a targeted survey is never
+   * shown to an unknown audience.
    */
   getIsFirstOrder?: () => boolean | null | undefined;
   getCountry?: () => string | null | undefined;
@@ -456,7 +445,7 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
    * placement, already compiled server-side.
    */
   function fetchSurvey(orderId: string, placement: Placement, locale: string | null, surveyId?: string | null) {
-    const query = new URLSearchParams({ placement, build: BLOCK_BUILD });
+    const query = new URLSearchParams({ placement });
     if (orderId) query.set("orderId", orderId);
     if (locale) query.set("locale", locale);
     // The block's "Survey ID" setting: show that survey, not the priority pick.
@@ -488,7 +477,7 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
    * read only: the editor preview never submits.
    */
   function fetchPreview(placement: Placement, surveyId: string | null) {
-    const query = new URLSearchParams({ placement, build: BLOCK_BUILD });
+    const query = new URLSearchParams({ placement });
     if (surveyId) query.set("surveyId", surveyId);
     return withRetries("survey_preview", surfaceOf(placement), () =>
       attempt<SurveyPreview>(`/api/survey-preview?${query.toString()}`, { method: "GET" }, { tokenFailureIsFinal: true }),

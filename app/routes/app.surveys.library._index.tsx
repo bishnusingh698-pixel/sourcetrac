@@ -12,7 +12,6 @@ import { templateSurveyInput } from "~/lib/template-survey";
 import { NotFoundError, ValidationError } from "~/lib/errors";
 import { effectivePlan } from "~/lib/plans";
 import { getShopLocaleInfo } from "~/lib/studio.server";
-import { isEnabled } from "@shared/feature-flags";
 import {
   CATEGORY_ORDER,
   catalogPlanFromKey,
@@ -56,9 +55,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const region = regionPackFor(countryCode);
   const t = createTranslator(locale);
   const plan = catalogPlanFromKey(effectivePlan(shop));
-  const surveyLinkEnabled = isEnabled("SURVEY_LINK_PAGE");
-
-  const cards = TEMPLATES.filter((t) => t.category !== "after_delivery" || surveyLinkEnabled).map((template) => {
+  const cards = TEMPLATES.map((template) => {
     const locked = templateLockedForPlan(template, plan);
     const hasFree = templateHasFreeVersion(template);
     // The questions the merchant would actually get on their plan, in their
@@ -124,7 +121,6 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
       const survey = await createSurvey(shop.id, {
         name: t("library.blank_name"),
         status: "draft",
-        placements: ["thank_you", "order_status"],
         layout: "all",
         title: t("library.blank_title"),
         intro: null,

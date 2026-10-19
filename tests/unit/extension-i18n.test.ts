@@ -16,7 +16,7 @@ import { LANGUAGES } from "~/lib/i18n";
  */
 
 const ROOT = process.cwd();
-const EXTENSIONS = ["sourcetrac-thank-you", "sourcetrac-order-status"];
+const EXTENSIONS = ["sourcetrac-thank-you"];
 
 function keysUsedInSharedSource(): Set<string> {
   const dir = join(ROOT, "extensions/shared/src");

@@ -19,7 +19,6 @@ import {
   catalogPlanFromKey,
   templateHasFreeVersion,
   templateLockedForPlan,
-  templatePlacements,
 } from "@shared/templates/catalog";
 import type { RegionPack } from "@shared/templates/packs";
 import type { TemplateDefinition } from "@shared/templates/types";
@@ -63,7 +62,6 @@ export function templateSurveyInput(params: {
   const input: SurveyInput = {
     name: templateText(locale, template.nameKey),
     status: "draft",
-    placements: templatePlacements(template),
     layout: definition.layout ?? "all",
     title: definition.title ?? "",
     intro: definition.intro ?? null,

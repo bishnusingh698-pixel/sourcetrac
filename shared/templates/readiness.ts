@@ -138,7 +138,6 @@ export function diffHasRemovedWithAnswers(changes: readonly SurveyChange[]): boo
 export type ReadinessCheckId =
   | "has_questions"
   | "valid_questions"
-  | "has_placement"
   | "fits_plan"
   | "config_size"
   | "block_added"
@@ -156,14 +155,13 @@ export type ReadinessItem = {
 
 export type ReadinessInput = {
   definition: SurveyDefinition;
-  placements: string[];
   /** Question count allowed on the current plan, or null for unlimited. */
   maxQuestions: number | null;
   /** Whether the active-survey limit is already reached (draft is fine either way). */
   overActiveLimit: boolean;
   /** Compiled config size in bytes, if known. */
   configBytes?: number;
-  /** Per selected page, whether the checkout block is known to be placed. */
+  /** Whether the checkout block is known to be on the Thank-you page. */
   blockAdded?: boolean | null;
   /** Whether translations are complete for the shop's in-scope languages. */
   translationsComplete?: boolean | null;
@@ -184,7 +182,6 @@ export function getReadiness(input: ReadinessInput): ReadinessItem[] {
       blocking: true,
       fix: errors[0]?.path,
     },
-    { id: "has_placement", ok: input.placements.length > 0, blocking: true, fix: "placements" },
     {
       id: "fits_plan",
       ok: (input.maxQuestions === null || questionCount <= input.maxQuestions) && !input.overActiveLimit,

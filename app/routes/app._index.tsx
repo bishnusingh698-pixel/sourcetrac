@@ -6,14 +6,14 @@ import { intlLocaleFor } from "~/lib/i18n";
 import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 
-import { Banner, Panel, PageIntro, RangeSwitcher } from "~/components/admin-ui";
+import { Panel, PageIntro, RangeSwitcher } from "~/components/admin-ui";
 import { KpiGrid, ReportNotes, Sparkline } from "~/components/channel-report";
 import { BuyerMix, ScoresSection, SurveysOverview, TopChannels } from "~/components/dashboard";
 import { LanguageForm } from "~/components/language-selector";
 import { db } from "~/db.server";
 import { isSupportedLanguage, type LanguageCode } from "~/lib/i18n";
-import { MAX_OPTIONS, MIN_OPTIONS } from "~/lib/settings";
 import { hasAnyResponse } from "~/lib/home.server";
+import { getBlockSeen } from "~/lib/block-seen.server";
 import { loadDashboard, type DashboardSurvey } from "~/lib/dashboard.server";
 import { DASHBOARD_RANGE_LABEL_KEYS, DASHBOARD_RANGES, parseDashboardRange } from "~/lib/dashboard-range";
 import { ensureShop } from "~/lib/provision.server";
@@ -70,11 +70,12 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
 
   const locale = intlLocaleFor(resolveAdminLanguage(request, shop.language, shop.adminLocale));
 
-  const [anyResponse, firstOrder] = await Promise.all([
+  const [anyResponse, liveSurveys, blockSeen] = await Promise.all([
     // Ever, not in a window: a quiet week must not send an established
     // merchant back to the setup guide.
     hasAnyResponse(shop.id),
-    db.orderCache.findFirst({ where: { shopId: shop.id }, select: { id: true } }),
+    db.survey.count({ where: { shopId: shop.id, status: "active" } }),
+    getBlockSeen(shop.id),
   ]);
 
   const days = parseDashboardRange(new URL(request.url).searchParams.get("range"));
@@ -104,8 +105,8 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
       !anyResponse
         ? {
             shopHandle: shop.shopDomain.replace(/\.myshopify\.com$/, ""),
-            hasOrders: firstOrder !== null,
-            hasOther: shop.allowOther,
+            hasLiveSurvey: liveSurveys > 0,
+            blockSeen,
             // False until the merchant picks a language themselves; while it is
             // false the full picker is offered as the first setup step.
             hasExplicitLanguage: isSupportedLanguage(shop.language),
@@ -121,45 +122,43 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
 
 type Setup = {
   shopHandle: string;
-  hasOrders: boolean;
-  hasOther: boolean;
+  hasLiveSurvey: boolean;
+  blockSeen: boolean;
   hasExplicitLanguage: boolean;
 };
 
 /**
  * First-run checklist, shown on Home until the first answer arrives.
  *
- * A step is only reported as done when we can prove it from our own data. Step
- * 1 is never ticked: the Admin API exposes no "block enabled" state and Shopify
- * sends no event when a checkout block is toggled, so guessing would be worse
- * than asking the merchant to confirm.
+ * A step is only ticked when our own data proves it: a live survey, and the
+ * block having asked us for a survey from the Thank-you page or the checkout
+ * editor (`block-seen.server.ts`). Shopify reports no "block added" state, so
+ * the block loading is the only proof there is.
  */
 function SetupGuide({ setup, t, language }: { setup: Setup; t: TFunction; language: LanguageCode }) {
-  const editorUrl = checkoutEditorUrl(setup.shopHandle);
-
-  const steps: Array<{ title: string; body: string; action?: { label: string; href: string } }> = [
+  const steps: Array<{ title: string; body: string; done: boolean; action?: { label: string; href: string } }> = [
     {
       title: t("onboarding.step1_title"),
-      body: setup.hasOrders ? t("onboarding.step1_body_orders") : t("onboarding.step1_body"),
-      action: { label: t("onboarding.step1_action"), href: editorUrl },
+      body: setup.hasLiveSurvey ? t("onboarding.step1_body_done") : t("onboarding.step1_body"),
+      done: setup.hasLiveSurvey,
+      action: setup.hasLiveSurvey ? undefined : { label: t("onboarding.step1_action"), href: "/app/surveys/library" },
     },
     {
       title: t("onboarding.step2_title"),
-      body: setup.hasOther
-        ? t("onboarding.step2_body_other")
-        : t("onboarding.step2_body", { min: MIN_OPTIONS, max: MAX_OPTIONS }),
-      action: { label: t("onboarding.step2_action"), href: "/app/surveys" },
+      body: setup.blockSeen ? t("onboarding.step2_body_done") : t("onboarding.step2_body"),
+      done: setup.blockSeen,
+      action: setup.blockSeen ? undefined : { label: t("onboarding.step2_action"), href: checkoutEditorUrl(setup.shopHandle) },
     },
-    {
-      title: t("onboarding.step3_title"),
-      body: t("onboarding.step3_body"),
-    },
+    { title: t("onboarding.step3_title"), body: t("onboarding.step3_body"), done: false },
     {
       title: t("onboarding.step4_title"),
       body: t("onboarding.step4_body"),
+      done: false,
       action: { label: t("onboarding.step4_action"), href: "/app/results" },
     },
   ];
+  // The first step not yet done carries the page's one primary button.
+  const current = steps.findIndex((step) => !step.done);
 
   return (
     <s-stack gap="base">
@@ -183,7 +182,13 @@ function SetupGuide({ setup, t, language }: { setup: Setup; t: TFunction; langua
               {/* Number on the left, text on the right: the text column can
                   shrink, so long translations wrap instead of overflowing. */}
               <s-grid gridTemplateColumns="auto minmax(0, 1fr)" gap="base" alignItems="start">
-                <s-badge tone={index === 0 ? "info" : "neutral"}>{String(index + 1)}</s-badge>
+                {step.done ? (
+                  <s-badge tone="success" icon="check">
+                    {t("common.done")}
+                  </s-badge>
+                ) : (
+                  <s-badge tone={index === current ? "info" : "neutral"}>{String(index + 1)}</s-badge>
+                )}
                 <s-stack gap="small">
                   <s-text type="strong">{step.title}</s-text>
                   <s-text color="subdued">{step.body}</s-text>
@@ -192,11 +197,11 @@ function SetupGuide({ setup, t, language }: { setup: Setup; t: TFunction; langua
                       {/* Shopify admin pages refuse to render inside the app's
                           iframe, so the checkout editor opens in the top window.
                           In-app links stay in the frame. One primary action on
-                          the page: the step that unblocks everything else. */}
+                          the page: the first step not yet done. */}
                       <s-button
                         href={step.action.href}
                         target={step.action.href.startsWith("https://") ? "_top" : "auto"}
-                        variant={index === 0 ? "primary" : "secondary"}
+                        variant={index === current ? "primary" : "secondary"}
                       >
                         {step.action.label}
                       </s-button>
@@ -208,10 +213,6 @@ function SetupGuide({ setup, t, language }: { setup: Setup; t: TFunction; langua
           ))}
         </s-stack>
       </s-section>
-
-      <Banner tone="info" heading={t("onboarding.why_title")}>
-        <s-text>{t("onboarding.why_body")}</s-text>
-      </Banner>
     </s-stack>
   );
 }

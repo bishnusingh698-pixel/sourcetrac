@@ -38,7 +38,7 @@ export default function PrivacyPolicy() {
         <li>the Shopify order ID and order number</li>
         <li>the answers the buyer gave, including any text they typed</li>
         <li>the time of the answer and the page it was given on</li>
-        <li>the order total, currency and status (paid, refunded, cancelled or test), read from the order</li>
+        <li>the order total, currency, sales channel (such as online store or POS) and status (paid, refunded, cancelled or test), read from the order</li>
         <li>the buyer&apos;s checkout country and language</li>
         <li>the products in the order, and whether it was the buyer&apos;s first order</li>
       </ul>

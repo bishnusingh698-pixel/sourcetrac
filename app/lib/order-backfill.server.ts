@@ -32,6 +32,7 @@ const ORDER_QUERY = `#graphql
       createdAt
       updatedAt
       displayFinancialStatus
+      sourceName
       currentTotalPriceSet {
         shopMoney {
           amount
@@ -50,6 +51,7 @@ type OrderNode = {
   createdAt: string;
   updatedAt: string;
   displayFinancialStatus: string | null;
+  sourceName?: string | null;
   currentTotalPriceSet: { shopMoney: { amount: string; currencyCode: string } } | null;
 };
 
@@ -66,6 +68,7 @@ export function orderNodeToPayload(node: OrderNode): ShopifyOrder {
     financial_status: node.displayFinancialStatus ? node.displayFinancialStatus.toLowerCase() : null,
     test: node.test,
     cancelled_at: node.cancelledAt,
+    source_name: node.sourceName ?? null,
     created_at: node.createdAt,
     updated_at: node.updatedAt,
   };

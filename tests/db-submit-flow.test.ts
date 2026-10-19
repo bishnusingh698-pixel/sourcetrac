@@ -175,11 +175,10 @@ describe("buyer submit", () => {
     expect(answers.find((a) => a.questionId === q2)!.numberValue).toBe(4);
   });
 
-  it("stores one answer set per order across surfaces and surveys (M4)", async () => {
+  it("stores one answer set per order across surveys (M4)", async () => {
     const other = await createSurvey(shopId, {
       name: "Second",
       status: "active",
-      placements: ["order_status"],
       layout: "all",
       title: "Another",
       intro: null,
@@ -191,7 +190,7 @@ describe("buyer submit", () => {
     const orderId = "9710000000009";
     const results = await Promise.all([
       submit(base(orderId, [{ questionId: q1, optionIds: [instagram] }])),
-      submit({ surveyId: other.id, orderId, placement: "order_status", answers: [{ questionId: otherQ.id, numberValue: 1 }] }),
+      submit({ surveyId: other.id, orderId, placement: "thank_you", answers: [{ questionId: otherQ.id, numberValue: 1 }] }),
     ]);
     expect(results.map((r) => r.status)).toEqual([200, 200]);
     expect(await prisma.response.count({ where: { shopId, orderId } })).toBe(1);

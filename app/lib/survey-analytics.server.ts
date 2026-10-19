@@ -16,6 +16,7 @@ import type { RevenueStatus } from "~/lib/csv";
 import { formatDecimalForCurrency } from "~/lib/money";
 import { evaluateResponseRevenue, type RevenueDecision } from "~/lib/revenue";
 import { withRetry } from "~/lib/retry.server";
+import { couldSeeSurveySql } from "~/lib/order-sources";
 import {
   SATISFACTION_OPTIONS,
   YES_NO_IDS,
@@ -523,9 +524,10 @@ export function summariseSurvey(responses: ReadonlyArray<SurveyResponseRow>): Su
 
 /**
  * Answer rate per survey: of the real orders placed while the survey existed
- * (inside the chosen window), how many answered it. Test and cancelled orders
- * are left out of both sides, as on the channel report. A survey shown only to
- * some buyers (targeting, sampling, one page) reads lower, and the page says so.
+ * (inside the chosen window), how many answered it. Test, cancelled and POS
+ * orders are left out of both sides, as on the channel report: none of them
+ * could have been asked. A survey shown only to some buyers (targeting,
+ * sampling) reads lower, and the page says so.
  *
  * One small indexed count per survey; a shop has at most MAX_SURVEYS_TOTAL.
  */
@@ -553,6 +555,7 @@ export async function surveyAnswerRates(params: {
           WHERE o."shopId" = ${params.shopId}
             AND o."createdAtShop" >= ${from} AND o."createdAtShop" < ${params.end}
             AND o."isTest" = false AND o."isCancelled" = false
+            AND ${couldSeeSurveySql("o")}
         `,
       );
       const row = rows[0];

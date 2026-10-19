@@ -27,7 +27,7 @@ const FAQ = [
   "multiple",
   "question_types",
   "not_showing",
-  "both_pages",
+  "once_per_order",
   "missing_revenue",
   "refunds",
   "limit",

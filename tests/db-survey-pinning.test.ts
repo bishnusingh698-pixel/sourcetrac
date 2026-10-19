@@ -85,7 +85,6 @@ let first = "";
 let second = "";
 let paused = "";
 let draft = "";
-let orderStatusOnly = "";
 let foreign = "";
 
 beforeAll(async () => {
@@ -101,7 +100,6 @@ beforeAll(async () => {
   second = (await createSurvey(shop.id, input("Second", { priority: 1 }))).id;
   paused = (await createSurvey(shop.id, input("Paused", { status: "paused" }))).id;
   draft = (await createSurvey(shop.id, input("Draft", { status: "draft" }))).id;
-  orderStatusOnly = (await createSurvey(shop.id, input("Order status only", { placements: ["order_status"] }))).id;
 
   const other = await upsertShop({ shopDomain: OTHER_DOMAIN, shopId: "gid://shopify/Shop/9700002", accessToken: null });
   foreign = (await createSurvey(other.id, input("Someone else's"))).id;
@@ -118,7 +116,7 @@ describe("a block pinned to one survey", () => {
     const config = await get<ConfigBody>(surveyLoader, `/api/survey?placement=thank_you&orderId=${ORDER}`);
     expect(config.enabled).toBe(true);
     const preview = await get<SurveyPreviewBody>(previewLoader, "/api/survey-preview?placement=thank_you");
-    expect(preview).toMatchObject({ pinned: false, status: "active", reason: null, onThisPage: true });
+    expect(preview).toMatchObject({ pinned: false, status: "active", reason: null });
     expect(preview.survey?.id).toBe(config.survey?.id);
   });
 
@@ -140,14 +138,6 @@ describe("a block pinned to one survey", () => {
     }
   });
 
-  it("shows nothing on a page the pinned survey is not set for", async () => {
-    const config = await get<ConfigBody>(
-      surveyLoader,
-      `/api/survey?placement=thank_you&orderId=${ORDER}&surveyId=${orderStatusOnly}`,
-    );
-    expect(config.enabled).toBe(false);
-  });
-
   it("falls back to the normal pick for an unknown id, or another shop's", async () => {
     const normal = await get<ConfigBody>(surveyLoader, `/api/survey?placement=thank_you&orderId=${ORDER}`);
     for (const id of ["zzzzzzzzzzzzzzzzzzzzzzzzz", foreign, "not an id!"]) {
@@ -163,16 +153,8 @@ describe("a block pinned to one survey", () => {
 describe("the checkout editor preview", () => {
   it("shows a pinned draft with its status, so it can be checked before going live", async () => {
     const preview = await get<SurveyPreviewBody>(previewLoader, `/api/survey-preview?placement=thank_you&surveyId=${draft}`);
-    expect(preview).toMatchObject({ name: "Draft", status: "draft", pinned: true, reason: null, onThisPage: true });
+    expect(preview).toMatchObject({ name: "Draft", status: "draft", pinned: true, reason: null });
     expect(preview.survey?.questions[0]?.text).toBe("Draft question");
-  });
-
-  it("says when the pinned survey is not set for this page", async () => {
-    const preview = await get<SurveyPreviewBody>(
-      previewLoader,
-      `/api/survey-preview?placement=thank_you&surveyId=${orderStatusOnly}`,
-    );
-    expect(preview).toMatchObject({ pinned: true, onThisPage: false });
   });
 
   it("never shows another shop's survey", async () => {

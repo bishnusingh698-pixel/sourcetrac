@@ -9,7 +9,6 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const EXPECTED = {
   "sourcetrac-thank-you": "purchase.thank-you.block.render",
-  "sourcetrac-order-status": "customer-account.order-status.block.render",
   "sourcetrac-order-admin": "admin.order-details.block.render",
   "sourcetrac-customer-admin": "admin.customer-details.block.render",
 };

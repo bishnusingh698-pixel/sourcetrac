@@ -7,7 +7,6 @@ import { logger } from "~/lib/logger";
 import { BUCKETS, consumeToken } from "~/lib/rate-limit.server";
 import { findShopByDomain } from "~/lib/shop.server";
 import { recordBlockSeen } from "~/lib/block-seen.server";
-import { recordPreviewLoad } from "~/lib/serve-log.server";
 import { compileSurvey, getCompiledConfig, getSurveyRow } from "~/lib/surveys.server";
 import { authenticateCheckout } from "~/lib/checkout-auth.server";
 import { hasAudienceRules, PLACEMENTS, type Placement } from "@shared/survey-config";
@@ -36,11 +35,6 @@ export type SurveyPreviewBody = {
   status: "draft" | "active" | "paused" | null;
   /** True when the block names a survey; false when it shows the normal pick. */
   pinned: boolean;
-  /**
-   * False when the named survey is not set to show on this block's page, so
-   * buyers would see nothing here even once it is live.
-   */
-  onThisPage: boolean;
   /** Why there is nothing to show. */
   reason: "not_found" | "none_live" | null;
   /**
@@ -70,7 +64,6 @@ export const loader = async ({ request }: { request: Request }) => {
       name: null,
       status: null,
       pinned,
-      onThisPage: true,
       reason,
       planHidden: false,
       audienceRules: false,
@@ -82,7 +75,6 @@ export const loader = async ({ request }: { request: Request }) => {
     }
     // The checkout editor only draws a block that has been placed on the page.
     await recordBlockSeen(shop.id, placement);
-    recordPreviewLoad(shop.id, placement, url.searchParams.get("build")?.slice(0, 32) || null);
 
     let body: SurveyPreviewBody;
     if (surveyId) {
@@ -94,7 +86,6 @@ export const loader = async ({ request }: { request: Request }) => {
           name: row.name,
           status: row.status,
           pinned: true,
-          onThisPage: survey.placements.includes(placement),
           reason: null,
           planHidden: row.status === "active" && !config.surveys.some((candidate) => candidate.id === row.id),
           audienceRules: hasAudienceRules(survey.targeting, survey.paymentManualOnly),
@@ -112,8 +103,7 @@ export const loader = async ({ request }: { request: Request }) => {
           name: row?.name ?? null,
           status: "active",
           pinned: false,
-          onThisPage: true,
-          reason: null,
+              reason: null,
           planHidden: false,
           audienceRules: hasAudienceRules(top.targeting, top.paymentManualOnly),
         };

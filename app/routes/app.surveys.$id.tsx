@@ -39,15 +39,14 @@ import { getShopDisplay, getShopLocaleInfo } from "~/lib/studio.server";
 import { isValidTimeZone } from "@shared/zoned-date";
 import { grantedSyncScopes } from "~/lib/scopes.server";
 import { getBlockSeen, markBlockAdded } from "~/lib/block-seen.server";
-import { BlockMissingBanner, postedPlacements } from "~/components/block-missing";
-import { checkoutEditorUrl, placementsMissingBlock } from "~/lib/checkout-editor";
+import { BlockMissingBanner } from "~/components/block-missing";
+import { checkoutEditorUrl } from "~/lib/checkout-editor";
 import { effectivePlan } from "~/lib/plans";
 import { LANGUAGES } from "~/lib/i18n";
 import { LIMITS } from "@shared/survey-rules";
 import { planTier } from "@shared/plan-features";
 import { getReadiness, readinessBlocksGoLive } from "@shared/templates/readiness";
 import { templateById } from "@shared/templates";
-import type { Placement } from "@shared/survey-config";
 
 /**
  * The survey editor.
@@ -95,8 +94,8 @@ export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) =>
     templatePresets: template?.smartActions ?? [],
     overActiveLimit: survey.status !== "active" && (await isOverActiveLimit(shop.id, survey.id)),
     liveLimit: usage.limit,
-    // Which pages have ever shown the SourceTrac block. "Live" is only claimed
-    // for those; anywhere else the merchant is sent to add the block.
+    // Whether the SourceTrac block has ever loaded on the Thank-you page. "Live"
+    // is only claimed once it has; until then the merchant is sent to add it.
     blockSeen: await getBlockSeen(shop.id),
   };
 });
@@ -139,7 +138,7 @@ export const action = guarded(async ({ request, params }: ActionFunctionArgs) =>
   }
 
   if (intent === "block-added") {
-    await markBlockAdded(shop.id, postedPlacements(form));
+    await markBlockAdded(shop.id);
     return redirect(`/app/surveys/${id}`);
   }
 
@@ -290,7 +289,6 @@ export default function SurveyEditorPage() {
       layout: draft.layout,
       questions: draft.questions,
     },
-    placements: draft.placements,
     maxQuestions: null,
     overActiveLimit: data.overActiveLimit,
     configBytes: new TextEncoder().encode(JSON.stringify(draft)).length,
@@ -310,18 +308,17 @@ export default function SurveyEditorPage() {
 
   const notice = NOTICES.find((key) => params.get(key) === "1");
 
-  // Pages this survey is on where the SourceTrac block has never loaded. The
-  // app cannot see the checkout editor, so "live" is only claimed where a
-  // block has asked for a survey; everywhere else the merchant is told to add it.
-  const missing = survey.status === "active" ? placementsMissingBlock(survey.placements, data.blockSeen) : [];
-  const editorHref = checkoutEditorUrl(data.shopHandle, missing[0] ?? "thank_you");
-  const checkoutPlacements = survey.placements.filter((p) => p === "thank_you" || p === "order_status");
+  // The survey is on but the SourceTrac block has never loaded. The app cannot
+  // see the checkout editor, so "live" is only claimed once a block has asked
+  // for a survey; until then the merchant is told to add it.
+  const missing = survey.status === "active" && !data.blockSeen;
+  const editorHref = checkoutEditorUrl(data.shopHandle);
 
   // Straight after turning the survey on or publishing it, go to the checkout
   // editor to add the block. The flag is dropped from the address first, and
   // remembered per revision, so going back to this page never bounces the
   // merchant out again.
-  const openCheckout = params.get(OPEN_CHECKOUT) === "1" && missing.length > 0;
+  const openCheckout = params.get(OPEN_CHECKOUT) === "1" && missing;
   useEffect(() => {
     if (params.get(OPEN_CHECKOUT) !== "1") return;
     const next = new URLSearchParams(params);
@@ -366,7 +363,7 @@ export default function SurveyEditorPage() {
           <s-text fontSize="large-100" fontWeight="bold">
             {draft.name || t("editor.untitled")}
           </s-text>
-          <StatusBadge status={draft.status} hasDraft={draft.hasDraft} noBlock={missing.length > 0 && missing.length === checkoutPlacements.length} t={t} />
+          <StatusBadge status={draft.status} hasDraft={draft.hasDraft} noBlock={missing} t={t} />
         </s-stack>
         <StatusLine draft={draft} missing={missing} t={t} />
       </s-stack>
@@ -387,10 +384,8 @@ export default function SurveyEditorPage() {
         <Banner tone="success" heading={t("editor.created_title")}>
           <s-text>{freeVersion ? t("editor.created_free_version", { plan: t("plans.growth") }) : t("editor.created_body")}</s-text>
         </Banner>
-      ) : missing.length > 0 && !dirty ? (
+      ) : missing && !dirty ? (
         <BlockMissingBanner
-          missing={missing}
-          anySeen={missing.length < checkoutPlacements.length}
           shopHandle={data.shopHandle}
           heading={notice === "launched" || notice === "published" ? t(`editor.notice_${notice}_no_block`) : undefined}
           t={t}
@@ -408,30 +403,6 @@ export default function SurveyEditorPage() {
               <s-stack gap="base">
                 <s-text color="subdued">{t("editor.questions_help")}</s-text>
                 <QuestionList draft={draft} update={update} t={t} limits={limits} errors={errors} plan={plan} />
-              </s-stack>
-            </s-section>
-
-            <s-section heading={t("editor.where_title")}>
-              <s-stack gap="small">
-                {(["thank_you", "order_status"] as const).map((p) => (
-                  <s-checkbox
-                    key={p}
-                    label={t(`editor.placement_${p}`)}
-                    details={t(`editor.placement_${p}_details`)}
-                    checked={draft.placements.includes(p) || undefined}
-                    error={p === "thank_you" ? errors.get("placements") : undefined}
-                    onChange={(e: Event) => {
-                      const checked = (e.currentTarget as { checked?: boolean }).checked === true;
-                      const next: Placement[] = checked
-                        ? [...new Set([...draft.placements, p])]
-                        : draft.placements.filter((x) => x !== p);
-                      update({ placements: next });
-                    }}
-                  />
-                ))}
-                <s-text color="subdued" fontSize="small">
-                  {t("editor.placement_once")}
-                </s-text>
               </s-stack>
             </s-section>
 
@@ -546,16 +517,14 @@ export default function SurveyEditorPage() {
   );
 }
 
-function StatusLine({ draft, missing, t }: { draft: EditorSurvey; missing: Placement[]; t: TFn }) {
-  const shown = draft.placements.filter((p) => !missing.includes(p));
-  const places = shown.map((p) => t(`editor.placement_${p}`)).join(", ");
+function StatusLine({ draft, missing, t }: { draft: EditorSurvey; missing: boolean; t: TFn }) {
   const text =
     draft.status === "active"
       ? draft.hasDraft
         ? t("editor.status_live_draft")
-        : draft.placements.length > 0 && shown.length === 0
+        : missing
           ? t("editor.status_on_no_block")
-          : t("editor.status_live", { places: places || t("editor.placement_none") })
+          : t("editor.status_live", { places: t("editor.placement_thank_you") })
       : draft.status === "paused"
         ? draft.pausedAutomatically
           ? t("editor.status_auto_paused")

@@ -6,7 +6,6 @@ import {
   catalogDetail,
   currentSpotlight,
   filterCards,
-  templatePlacements,
   templateRequiredPlan,
 } from "@shared/templates/catalog";
 import { TEMPLATES, templateById } from "@shared/templates";
@@ -14,26 +13,18 @@ import { TEMPLATE_BUNDLES } from "@shared/templates/locales";
 import { TAG_EN, isTagId } from "@shared/templates/tags";
 import { regionPackFor } from "@shared/templates/packs";
 
-const base = { locale: "en", plan: "free" as const, country: "US", surveyLinkEnabled: false };
+const base = { locale: "en", plan: "free" as const, country: "US" };
 
 describe("template catalogue", () => {
   it("builds a card for every template, in the admin language", () => {
     const cards = catalogCards(base);
-    const libraryTemplates = TEMPLATES.filter((t) => t.category !== "after_delivery");
-    expect(cards).toHaveLength(libraryTemplates.length);
+    expect(cards).toHaveLength(TEMPLATES.length);
     for (const card of cards) {
       expect(card.name.length).toBeGreaterThan(0);
       expect(card.oneLiner.length).toBeGreaterThan(0);
       expect(card.tags.length).toBeGreaterThanOrEqual(1);
       expect(card.tags.length).toBeLessThanOrEqual(3);
     }
-  });
-
-  it("hides the After delivery category unless the survey link flag is on", () => {
-    const off = catalogCards(base).map((c) => c.id);
-    const on = catalogCards({ ...base, surveyLinkEnabled: true }).map((c) => c.id);
-    expect(off).not.toContain("after-delivery");
-    expect(on).toContain("after-delivery");
   });
 
   it("marks a template requiring an exclusive option as Growth", () => {
@@ -120,13 +111,6 @@ describe("template detail", () => {
   });
 });
 
-describe("template placements", () => {
-  it("maps survey_link to the config's link placement", () => {
-    expect(templatePlacements(templateById("after-delivery")!)).toEqual(["link"]);
-    expect(templatePlacements(templateById("loyalty-pulse")!)).toEqual(["thank_you", "order_status"]);
-  });
-});
-
 describe("seasonal spotlight (T15)", () => {
   it("shows a spotlight for a US shop in late November", () => {
     const spot = currentSpotlight({
@@ -191,7 +175,6 @@ describe("locale coverage", () => {
       "delivery",
       "loyalty",
       "know_customer",
-      "after_delivery",
     ]);
   });
 });

@@ -72,14 +72,6 @@ export function EditorPreview({ survey }: { survey: SurveyState }) {
       : previewInfo?.status === "paused"
         ? t("sourcetrac.editorPaused", "Paused. Buyers won't see it until you resume it in SourceTrac.")
         : null;
-  const otherPage =
-    previewInfo?.onThisPage === false
-      ? t(
-          "sourcetrac.editorOtherPage",
-          "This survey is not set to show on this page. Turn this page on under \"Where it shows\" in SourceTrac.",
-        )
-      : null;
-
   const planHidden = previewInfo?.planHidden
     ? t(
         "sourcetrac.editorPlanHidden",
@@ -96,7 +88,6 @@ export function EditorPreview({ survey }: { survey: SurveyState }) {
         {t("sourcetrac.editorShowing", "SourceTrac survey: {{name}}").replace("{{name}}", name)}
       </s-text>
       {status ? <s-banner tone="warning">{status}</s-banner> : null}
-      {otherPage ? <s-banner tone="warning">{otherPage}</s-banner> : null}
       {planHidden ? <s-banner tone="warning">{planHidden}</s-banner> : null}
       {audience ? <s-banner tone="info">{audience}</s-banner> : null}
       <MultiSurveyView

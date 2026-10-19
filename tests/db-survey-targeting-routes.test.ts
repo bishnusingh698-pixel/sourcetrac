@@ -8,10 +8,8 @@
  *    read as a network error and retried for a minute on "Loading…".
  *  - The order-value rule never applied: `valueCurrency` was never set, and on
  *    the Thank-you page the order webhook has not landed, so there was no total.
- *  - A first-time/returning survey could never show on the Order status page,
- *    which has no first-order signal.
- *  - Nothing told the merchant why: every decision is now kept for the Surveys
- *    page's "Recent checkouts".
+ *  - First-time/returning, country, language and date rules each decide from
+ *    what the Thank-you block reports.
  */
 import crypto from "node:crypto";
 
@@ -21,9 +19,7 @@ import { PrismaClient } from "@prisma/client";
 import { upsertShop } from "~/lib/shop.server";
 import { clearConfigCache, createSurvey, type SurveyInput } from "~/lib/surveys.server";
 import { resetBuckets } from "~/lib/rate-limit.server";
-import { clearServeLog, recentServes } from "~/lib/serve-log.server";
 import { loader as surveyLoader } from "~/routes/api.survey";
-import { BLOCK_BUILD } from "../extensions/shared/src/survey-logic";
 
 const prisma = new PrismaClient();
 const DOMAIN = "targeting-routes-test.myshopify.com";
@@ -62,7 +58,6 @@ function input(name: string, over: Partial<SurveyInput> = {}): SurveyInput {
   return {
     name,
     status: "active",
-    placements: ["thank_you", "order_status"],
     layout: "all",
     title: name,
     intro: null,
@@ -97,9 +92,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await prisma.survey.deleteMany({ where: { shopId } });
-  await prisma.orderFact.deleteMany({ where: { shopId } });
   clearConfigCache();
-  clearServeLog();
   resetBuckets();
 });
 
@@ -135,7 +128,6 @@ describe("the order-value rule", () => {
     // Another currency is not filtered: the bounds are in the store's currency.
     const euro = await config(`placement=thank_you&orderId=${nextOrder()}&total=5&totalCurrency=EUR`);
     expect(euro.survey?.id).toBe(survey.id);
-    expect(recentServes(shopId).find((e) => e.reason === "order_value")).toBeTruthy();
   });
 
   it("prefers the webhook's total once the order is cached", async () => {
@@ -151,27 +143,16 @@ describe("the order-value rule", () => {
 });
 
 describe("first-time and returning buyers", () => {
-  it("shows a first-order survey on Order status when the Thank-you page reported a first order", async () => {
+  it("decides from what the Thank-you page reports, and hides when it reports nothing", async () => {
     const survey = await createSurvey(shopId, input("Newcomers", { targeting: { customerType: "first_order" } }));
-    const first = nextOrder();
-    const repeat = nextOrder();
-    // Thank-you reports the flag; it is remembered for the order.
-    expect((await config(`placement=thank_you&orderId=${first}&isFirstOrder=1`)).survey?.id).toBe(survey.id);
-    expect((await config(`placement=thank_you&orderId=${repeat}&isFirstOrder=0`)).enabled).toBe(false);
-
-    // Order status has no signal of its own and reads what Thank-you saw.
-    expect((await config(`placement=order_status&orderId=${first}`)).survey?.id).toBe(survey.id);
-    expect((await config(`placement=order_status&orderId=${repeat}`)).enabled).toBe(false);
-
-    // An order Thank-you never reported stays unknown, and the merchant is told why.
-    expect((await config(`placement=order_status&orderId=${nextOrder()}`)).enabled).toBe(false);
-    expect(recentServes(shopId)[0]?.reason).toBe("customer_type_unknown");
+    expect((await config(`placement=thank_you&orderId=${nextOrder()}&isFirstOrder=1`)).survey?.id).toBe(survey.id);
+    expect((await config(`placement=thank_you&orderId=${nextOrder()}&isFirstOrder=0`)).enabled).toBe(false);
+    expect((await config(`placement=thank_you&orderId=${nextOrder()}`)).enabled).toBe(false);
   });
 
   it("shows an everyone survey whatever the page knows", async () => {
     const survey = await createSurvey(shopId, input("Everyone"));
-    expect((await config(`placement=order_status&orderId=${nextOrder()}`)).survey?.id).toBe(survey.id);
-    expect(recentServes(shopId)[0]?.reason).toBe("shown");
+    expect((await config(`placement=thank_you&orderId=${nextOrder()}`)).survey?.id).toBe(survey.id);
   });
 });
 
@@ -180,9 +161,7 @@ describe("countries and languages", () => {
     const survey = await createSurvey(shopId, input("US only", { targeting: { countries: ["US"] } }));
     expect((await config(`placement=thank_you&orderId=${nextOrder()}&country=us`)).survey?.id).toBe(survey.id);
     expect((await config(`placement=thank_you&orderId=${nextOrder()}&country=DE`)).enabled).toBe(false);
-    expect(recentServes(shopId)[0]).toMatchObject({ reason: "country", country: "DE" });
     expect((await config(`placement=thank_you&orderId=${nextOrder()}`)).enabled).toBe(false);
-    expect(recentServes(shopId)[0]?.reason).toBe("country_unknown");
   });
 
   it("matches a regional language tag to its base language", async () => {
@@ -212,46 +191,32 @@ describe("dates", () => {
     const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     await createSurvey(shopId, input("Later", { targeting: { startsAt: tomorrow } }));
     expect((await config(`placement=thank_you&orderId=${nextOrder()}`)).enabled).toBe(false);
-    expect(recentServes(shopId)[0]?.reason).toBe("not_started");
   });
 });
 
-describe("recent checkouts", () => {
-  it("records which block build asked, so an old deployed block can be named", async () => {
-    await createSurvey(shopId, input("Any"));
-    await config(`placement=thank_you&orderId=${nextOrder()}`);
-    expect(recentServes(shopId)[0]?.blockBuild).toBeNull();
-    await config(`placement=thank_you&orderId=${nextOrder()}&build=${BLOCK_BUILD}`);
-    expect(recentServes(shopId)[0]?.blockBuild).toBe(BLOCK_BUILD);
-  });
-
-  it("says when no live survey is set to show on the page", async () => {
-    await createSurvey(shopId, input("Thank-you only", { placements: ["thank_you"] }));
-    expect((await config(`placement=order_status&orderId=${nextOrder()}`)).enabled).toBe(false);
-    expect(recentServes(shopId)[0]?.reason).toBe("not_on_page");
-  });
-
-  it("says when nothing is live at all", async () => {
+describe("nothing to show", () => {
+  it("shows nothing when no survey is live", async () => {
     expect((await config(`placement=thank_you&orderId=${nextOrder()}`)).enabled).toBe(false);
-    expect(recentServes(shopId)[0]?.reason).toBe("none_live");
   });
 
-  it("says when the order has already answered", async () => {
+  it("never shows a survey on any page but Thank-you", async () => {
+    await createSurvey(shopId, input("Any"));
+    expect((await config(`placement=order_status&orderId=${nextOrder()}`)).enabled).toBe(false);
+  });
+
+  it("tells the block when the order has already answered", async () => {
     const survey = await createSurvey(shopId, input("Any"));
     const orderId = nextOrder();
     await prisma.response.create({
       data: { shopId, surveyId: survey.id, surveyVersion: 1, orderId, placement: "thank_you" },
     });
-    expect(recentServes(shopId)).toHaveLength(0);
-    const body = (await (await call(`placement=order_status&orderId=${orderId}`)).json()) as { alreadyAnswered: boolean };
+    const body = (await (await call(`placement=thank_you&orderId=${orderId}`)).json()) as { alreadyAnswered: boolean };
     expect(body.alreadyAnswered).toBe(true);
-    expect(recentServes(shopId)[0]?.reason).toBe("already_answered");
   });
 
-  it("names the pinned survey that is not live", async () => {
+  it("shows nothing in place of a pinned survey that is not live", async () => {
     const paused = await createSurvey(shopId, input("Paused", { status: "paused" }));
     await createSurvey(shopId, input("Live"));
     expect((await config(`placement=thank_you&orderId=${nextOrder()}&surveyId=${paused.id}`)).enabled).toBe(false);
-    expect(recentServes(shopId)[0]).toMatchObject({ reason: "pinned_not_live", surveyId: paused.id, pinned: true });
   });
 });

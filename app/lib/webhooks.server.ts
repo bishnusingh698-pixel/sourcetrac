@@ -261,6 +261,8 @@ export type ShopifyOrder = {
   financial_status?: string | null;
   test?: boolean;
   cancelled_at?: string | null;
+  /** Where the order was placed: "web", "pos", "subscription_contract", an app id. */
+  source_name?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -484,6 +486,9 @@ export async function upsertOrderCache(
     cancelledAt,
     updatedAtShop: updatedAt,
     triggeredAt,
+    // Only written when the payload carries it, so an update without it never
+    // erases a source an earlier delivery recorded.
+    ...(typeof order.source_name === "string" && order.source_name !== "" ? { sourceName: order.source_name } : {}),
   };
 
   // Shopify cannot un-cancel an order, so an update never clears cancellation.

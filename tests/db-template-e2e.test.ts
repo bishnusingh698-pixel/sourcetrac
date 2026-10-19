@@ -17,7 +17,6 @@ import { clearConfigCache, compileSurvey, createSurvey, getSurveyRow, rowToEdito
 import { submitAnswers } from "~/lib/answers.server";
 import { templateSurveyInput, templateUsableOnPlan } from "~/lib/template-survey";
 import { TEMPLATES } from "@shared/templates";
-import { isEnabled } from "@shared/feature-flags";
 import { stableOptionId, stableQuestionId } from "@shared/templates/resolve";
 import { regionPackFor } from "@shared/templates/packs";
 import { resolveSmartActionWrites, SMART_ACTION_PRESETS } from "@shared/templates/smart-actions";
@@ -104,7 +103,7 @@ afterAll(async () => {
 for (const plan of ["free", "scale"] as const) {
   describe(`every template on ${plan}`, () => {
     // The library only offers After delivery when the survey-link page is on.
-    for (const template of TEMPLATES.filter((t) => t.category !== "after_delivery" || isEnabled("SURVEY_LINK_PAGE"))) {
+    for (const template of TEMPLATES) {
       it(`${template.id}: creates, compiles, opens every follow-up and stores an answer`, async () => {
         await prisma.shop.update({ where: { id: shopId }, data: { plan, planStatus: "active" } });
         // A store has a survey cap; each case starts from an empty store.

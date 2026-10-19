@@ -1,10 +1,10 @@
 /**
- * Whether the SourceTrac block is really in a merchant's checkout.
+ * Whether the SourceTrac block is really on a merchant's Thank-you page.
  *
  * The survey editor used to say "Your survey is live" the moment it was turned
  * on, though buyers see nothing until the block is added in Shopify's checkout
  * editor. Shopify reports no "block added" state, so the block loading is the
- * only proof: a buyer's order page calling `/api/survey`, or the checkout
+ * only proof: a buyer's Thank-you page calling `/api/survey`, or the checkout
  * editor calling `/api/survey-preview`. Driven through the real routes with a
  * signed session token against Postgres.
  */
@@ -14,7 +14,6 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaClient } from "@prisma/client";
 
 import { getBlockSeen, markBlockAdded, recordBlockSeen, resetBlockSeenThrottle } from "~/lib/block-seen.server";
-import { placementsMissingBlock } from "~/lib/checkout-editor";
 import { upsertShop } from "~/lib/shop.server";
 import { clearConfigCache, createSurvey } from "~/lib/surveys.server";
 import { processWebhook } from "~/lib/webhooks.server";
@@ -57,8 +56,7 @@ beforeAll(async () => {
   await createSurvey(shopId, {
     name: "Channels",
     status: "active",
-    placements: ["thank_you", "order_status"],
-    layout: "all",
+        layout: "all",
     title: "Channels",
     intro: null,
     buttonLabel: "Submit",
@@ -79,7 +77,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   resetBlockSeenThrottle();
-  await prisma.shop.update({ where: { id: shopId }, data: { thankYouBlockSeenAt: null, orderStatusBlockSeenAt: null } });
+  await prisma.shop.update({ where: { id: shopId }, data: { thankYouBlockSeenAt: null } });
 });
 
 afterAll(async () => {
@@ -89,45 +87,43 @@ afterAll(async () => {
 
 describe("checkout block seen", () => {
   it("is unseen on a new shop, so a live survey is not called live", async () => {
-    const seen = await getBlockSeen(shopId);
-    expect(seen).toEqual({ thank_you: false, order_status: false });
-    expect(placementsMissingBlock(["thank_you", "order_status"], seen)).toEqual(["thank_you", "order_status"]);
+    expect(await getBlockSeen(shopId)).toBe(false);
   });
 
-  it("is seen on the page a buyer's block asked from, and only that page", async () => {
+  it("is seen once a buyer's Thank-you block asks for a survey", async () => {
     await get(surveyLoader, `/api/survey?orderId=${ORDER}&placement=thank_you`);
-    expect(await getBlockSeen(shopId)).toEqual({ thank_you: true, order_status: false });
+    expect(await getBlockSeen(shopId)).toBe(true);
   });
 
   it("is seen when the checkout editor draws the block", async () => {
-    await get(previewLoader, `/api/survey-preview?placement=order_status`);
-    expect(await getBlockSeen(shopId)).toEqual({ thank_you: false, order_status: true });
+    await get(previewLoader, `/api/survey-preview?placement=thank_you`);
+    expect(await getBlockSeen(shopId)).toBe(true);
   });
 
-  it("writes at most once an hour per page", async () => {
+  it("writes at most once an hour", async () => {
     await recordBlockSeen(shopId, "thank_you");
     await prisma.shop.update({ where: { id: shopId }, data: { thankYouBlockSeenAt: null } });
     await recordBlockSeen(shopId, "thank_you");
-    expect((await getBlockSeen(shopId)).thank_you).toBe(false);
+    expect(await getBlockSeen(shopId)).toBe(false);
 
     await recordBlockSeen(shopId, "thank_you", new Date(Date.now() + 61 * 60 * 1000));
-    expect((await getBlockSeen(shopId)).thank_you).toBe(true);
+    expect(await getBlockSeen(shopId)).toBe(true);
   });
 
   it("ignores pages that have no checkout block", async () => {
+    await recordBlockSeen(shopId, "order_status");
     await recordBlockSeen(shopId, "onsite");
-    expect(await getBlockSeen(shopId)).toEqual({ thank_you: false, order_status: false });
+    expect(await getBlockSeen(shopId)).toBe(false);
   });
 
   it("can be confirmed by the merchant when the block has not loaded yet", async () => {
-    await markBlockAdded(shopId, ["order_status", "onsite"]);
-    expect(await getBlockSeen(shopId)).toEqual({ thank_you: false, order_status: true });
+    await markBlockAdded(shopId);
+    expect(await getBlockSeen(shopId)).toBe(true);
   });
 
-  it("is forgotten on uninstall, which removes the blocks", async () => {
+  it("is forgotten on uninstall, which removes the block", async () => {
     await recordBlockSeen(shopId, "thank_you");
-    await recordBlockSeen(shopId, "order_status");
     await processWebhook({ topic: "app/uninstalled", shopDomain: DOMAIN, payload: {}, accessToken: null });
-    expect(await getBlockSeen(shopId)).toEqual({ thank_you: false, order_status: false });
+    expect(await getBlockSeen(shopId)).toBe(false);
   });
 });

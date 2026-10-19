@@ -16,7 +16,7 @@ Read `docs/01-verification-report.md` before writing any code — it contains th
 
 - **API version `2026-07`** is latest stable. 2026-10 is RC only.
 - **React Router template**, not Remix. `shopify app init` → "Build a React Router app".
-- **Two extension directories, not one.** `purchase.thank-you.block.render` is a Checkout UI Extension; `customer-account.order-status.block.render` is a Customer Account UI Extension. Different API namespaces.
+- **Thank-you page only (since 2026-10-19).** `purchase.thank-you.block.render` is the one checkout target. The Order status target (`customer-account.order-status.block.render`, a Customer Account UI Extension) was removed; see "Thank-you page only" below.
 - **Thank-you + Order-status extensions work on all plans except Shopify Starter.** (Confirmed.)
 - **`network_access` requires Partner Dashboard opt-in** (API access → "Allow network access in checkout UI extensions"). Self-serve, auto-approved, but a **deploy blocker** if not done.
 - **Extensions need `Access-Control-Allow-Origin: *`** — they run in a Web Worker with an unstable origin.
@@ -246,8 +246,8 @@ Source: `node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenti
 
 ## Checkout extensions: Preact on api_version 2026-07 (rewritten 2026-10-11)
 
-Targets: `purchase.thank-you.block.render` and
-`customer-account.order-status.block.render`, both `api_version = "2026-07"`.
+Target: `purchase.thank-you.block.render`, `api_version = "2026-07"` (the
+Order status target was removed 2026-10-19).
 
 **The block rendered nothing, anywhere, until 2026-10-11.** Two independent
 causes, both invisible to every type check and test at the time:
@@ -1518,12 +1518,12 @@ call, while auth itself still succeeded.
 
 Turning a survey on does not put it in front of buyers: the merchant must add
 the SourceTrac block in Shopify's checkout editor, and Shopify exposes no
-"block added" state. `Shop.thankYouBlockSeenAt` / `orderStatusBlockSeenAt`
-(`app/lib/block-seen.server.ts`) are set when a block calls `/api/survey`
+"block added" state. `Shop.thankYouBlockSeenAt`
+(`app/lib/block-seen.server.ts`) is set when a block calls `/api/survey`
 (buyer) or `/api/survey-preview` (checkout editor), at most hourly per process,
 and cleared on `app/uninstalled`. The editor and Surveys list show "Buyers
-can't see this survey yet" with an Open checkout editor button for any page
-the block never loaded on, and after Go live / Save and publish the editor
+can't see this survey yet" with an Open checkout editor button until the
+block has loaded once, and after Go live / Save and publish the editor
 opens the checkout editor itself (`open_checkout=1`, dropped from the URL and
 remembered per revision so Back does not bounce out again). It never opens
 once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
@@ -1558,12 +1558,11 @@ once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
   disables it. Whether a self-request counts as Render traffic was inferred
   from Render's "inbound traffic" wording, not observed.
 - **`/api/survey` runs its reads with `Promise.all`** (block seen, already
-  answered, compiled config, order facts, pinned-survey check).
+  answered, compiled config, order, pinned-survey check).
 - **Why a pinned survey shows nothing**, in the order they bite: the order
-  already answered (one answer per order across both pages and all surveys),
-  the survey is beyond the plan's live share (`getCompiledConfig`), audience
-  rules, the page is not in its placements, or the checkout editor was not
-  saved. `/api/survey-preview` returns `planHidden` and `audienceRules`
+  already answered (one answer per order across all surveys), the survey is
+  beyond the plan's live share (`getCompiledConfig`), audience rules, or the
+  checkout editor was not saved. `/api/survey-preview` returns `planHidden` and `audienceRules`
   (`hasAudienceRules` in `shared/survey-config.ts`) and the editor block shows
   a banner for each, plus a "test with a new order" line. Extension change:
   needs `shopify app deploy`.
@@ -1585,17 +1584,15 @@ once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
   once), logs `checkout_auth_rejected` with a reason (`bad_signature` for a
   known store means `SHOPIFY_API_SECRET` is wrong), and normalises `dest`.
 - **`explainTargeting`** (`shared/survey-config.ts`) is the only place targeting
-  is decided; `matchesTargeting` wraps it. `/api/survey` records every decision
-  with its reason in an in-memory ring buffer (`serve-log.server.ts`), shown as
-  "Recent checkouts" on the Surveys page. A new rule needs a `TargetingMiss`
-  code and a `surveys.reason_*` string in all ten locales.
+  is decided; `matchesTargeting` wraps it. `/api/survey` logs the reason in
+  `survey_config_served_v2`. (The in-app "Recent checkouts" / "Checkout check"
+  diagnostics were removed 2026-10-19 as testing aids.)
 - **Order value** never applied: `valueCurrency` was never set. The editor (and
   the route, as a backstop) set it to the store currency, and the block sends
   `cost.totalAmount` (`total`/`totalCurrency`) because on the Thank-you page the
   webhook has not landed. The cached webhook total wins when it exists.
-- **First-time/returning on Order status** reads `OrderFact`, written once
-  (create-only) when the Thank-you block reports `isFirstOrder`. Unknown still
-  hides the survey. 90-day retention; deleted on customers/redact.
+- **First-time/returning** comes from the Thank-you block's `isFirstOrder`.
+  Unknown hides a targeted survey.
 - **Dates are the store's calendar days** (`shared/zoned-date.ts`): start =
   00:00 local, end = 00:00 the day after the end date (inclusive), stored as ISO
   instants. Older bare `YYYY-MM-DD` rules still read, the end now inclusive.
@@ -1646,16 +1643,35 @@ once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
   `visibleQuestionsFor`) and submits every template on Free and Scale, and checks
   every preset writes. A new template is covered automatically.
 
-## Block build stamp: merging does not update the checkout (2026-10-18)
+## Thank-you page only, and testing aids removed (2026-10-19)
 
-Verified 2026-10-18 by driving the production build over real HTTP (OPTIONS
-preflight -> CORS 204, signed GET -> survey) and by running the CLI-built bundle
-in a worker-shaped `vm` sandbox with no `window`: both work. A store that shows
-no survey with a live server is almost always running an old block (blocks
-before 2026-10-11 rendered nothing), a block not placed and saved in the
-checkout editor, or network access not approved in the Partner Dashboard.
-
-`BLOCK_BUILD` (extensions/shared/src/survey-logic.ts) and `CURRENT_BLOCK_BUILD`
-(shared/block-build.ts) must be equal and bumped together whenever block code
-changes. The block sends it as `build=`; Recent checkouts shows a critical
-banner when the newest load came from another build or none.
+- **Surveys show on the Thank-you page only.** The Order status block
+  (`customer-account.order-status.block.render`) needs new customer accounts
+  and many merchants had no way to place it, so `extensions/sourcetrac-order-status`
+  was deleted. `SURVEY_PLACEMENTS` in `surveys.server.ts` is `["thank_you"]`
+  and `sanitizeSurveyInput` ignores posted placements; there is no "Where it
+  shows" section, no readiness `has_placement` check (an old draft saved with
+  no pages must still go live) and no `no_placements` refusal. Migration
+  `20261019090000_thank_you_only` set every survey to `["thank_you"]`, dropped
+  `OrderFact` and `Shop.orderStatusBlockSeenAt`. `PLACEMENTS` keeps the retired
+  values so historic answers still read. `shopify app deploy` will offer to
+  remove the order-status extension: confirm it.
+- **Removed as testing aids:** Recent checkouts, Checkout check, the block
+  build stamp (`BLOCK_BUILD` / `shared/block-build.ts`) and the feature flags
+  (`shared/feature-flags.ts`) with the On-site, Survey link and After delivery
+  features they gated. Do not bring them back without a merchant-facing reason.
+- **Block seen is one boolean** (`getBlockSeen` returns `boolean`;
+  `markBlockAdded(shopId)`).
+- **No link opens the checkout editor with the block placed.** `checkoutEditorUrl`
+  opens it on `?page=thank-you`; every button that uses it sits next to the
+  steps ("choose Thank you from the page menu, add the SourceTrac survey block,
+  Save"): `editor.store_step_block`, `editor.block_missing_body`,
+  `onboarding.step2_body`. `tests/unit/checkout-editor.test.ts` pins that.
+- **The Home setup guide ticks what it can prove**: a live survey, and the
+  block having loaded. Step 3 tells the merchant each order is asked once, so
+  tests need a new order (the most common "it doesn't show" report was a
+  re-used test order).
+- **POS orders are left out of answer rates** (`app/lib/order-sources.ts`,
+  `OrderCache.sourceName` from the webhook's `source_name` / GraphQL
+  `sourceName`). Only `pos` is listed: subscription renewals have no reliable
+  `source_name`. Revenue is unaffected. Test: `tests/db-survey-stats.test.ts`.

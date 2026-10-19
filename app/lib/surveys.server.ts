@@ -30,7 +30,6 @@ import {
 } from "@shared/plan-features";
 import { templateById } from "@shared/templates";
 import { stableQuestionId } from "@shared/templates/resolve";
-import { isEnabled } from "@shared/feature-flags";
 import {
   DEFAULT_SURVEY_TEXT,
   type CompiledConfig,
@@ -148,7 +147,8 @@ export type SurveyInput = {
   name: string;
   status?: SurveyStatus;
   priority?: number;
-  placements: Placement[];
+  /** Ignored: always `SURVEY_PLACEMENTS`. Kept so older drafts still parse. */
+  placements?: Placement[];
   layout: "all" | "one_by_one";
   title: string;
   intro: string | null;
@@ -175,6 +175,13 @@ const surveyInclude = {
 } satisfies Prisma.SurveyInclude;
 
 type SurveyWithQuestions = Prisma.SurveyGetPayload<{ include: typeof surveyInclude }>;
+
+/**
+ * Where every survey shows. The Thank-you page is the only checkout page every
+ * buyer sees and every store can customise; the Order status block worked only
+ * on stores with new customer accounts, so it was removed.
+ */
+export const SURVEY_PLACEMENTS: readonly Placement[] = ["thank_you"];
 
 // ---------------------------------------------------------------------------
 // Serialisation
@@ -616,14 +623,10 @@ function sanitizeSurveyInput(input: SurveyInput): SurveyInput {
   };
 
   if (!Array.isArray(input.questions)) fail("questions", "invalid", "The survey could not be read.");
-  if (!Array.isArray(input.placements)) fail("placements", "invalid_placement", "Choose where the survey shows.");
-  const enabled = new Set<Placement>(["thank_you", "order_status"]);
-  if (isEnabled("ONSITE_SURVEYS")) enabled.add("onsite");
-  if (isEnabled("SURVEY_LINK_PAGE")) enabled.add("link");
-  for (const placement of input.placements) {
-    if (!enabled.has(placement)) fail("placements", "invalid_placement", "That placement is not available.");
-  }
-  const placements = [...new Set(input.placements)];
+  // Every survey shows on the Thank-you page, the one page every buyer sees
+  // and every store can customise. Whatever an older draft or client posts
+  // (Order status, which needs new customer accounts) is replaced.
+  const placements: Placement[] = [...SURVEY_PLACEMENTS];
 
   if (input.rotationWeight !== undefined) {
     const w = input.rotationWeight;
@@ -1130,16 +1133,6 @@ export async function publishSurveyDraft(
   await assertPlanAllowsEdit(shopId, draftInput, existing);
   assertValid(inputToDefinition(draftInput, surveyId));
   assertTypesUnchanged(draftInput, existing);
-  if (existing.status === "active" && draftInput.placements.length === 0) {
-    // The same guard as activation: a live survey with no placement shows
-    // nowhere while reading "active".
-    throw new ValidationError(
-      "Choose where the survey shows before publishing.",
-      "Pick at least one placement, or pause the survey instead.",
-      { field: "placements", code: "no_placements" },
-    );
-  }
-
   const hasResponses = existing.responseCount > 0;
 
   await db.$transaction(async (tx) => {
@@ -1203,14 +1196,6 @@ export async function setSurveyStatus(shopId: string, surveyId: string, status: 
         "Add at least one question before activating.",
         "Open the survey and add a question, then activate it.",
         { field: "status", code: "no_questions" },
-      );
-    }
-    const placements = parseJson<Placement[]>(existing.placements, []);
-    if (placements.length === 0) {
-      throw new ValidationError(
-        "Choose where the survey shows before activating.",
-        "Pick at least one placement, then activate it.",
-        { field: "placements", code: "no_placements" },
       );
     }
   }

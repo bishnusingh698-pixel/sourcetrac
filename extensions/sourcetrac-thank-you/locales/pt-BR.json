@@ -29,10 +29,9 @@
     "editorUnavailable": "Não foi possível carregar sua pesquisa no editor, então este é um exemplo. Os compradores continuam vendo a pesquisa que você definiu no SourceTrac.",
     "editorPinnedNote": "Prévia. Nada é enviado a partir do editor. As regras de segmentação valem para pedidos reais.",
     "editorPriorityNote": "Prévia. Este bloco mostra sua pesquisa ativa de maior prioridade. Para escolher uma, cole o ID dela nas configurações deste bloco.",
-    "editorOtherPage": "Esta pesquisa não está configurada para aparecer nesta página. Ative esta página em \"Onde aparece\" no SourceTrac.",
     "editorPlanHidden": "Seu plano mostra menos pesquisas ativas do que você tem, e esta não está entre elas, então os compradores não vão vê-la. Mude de plano no SourceTrac ou pause uma pesquisa com prioridade maior.",
     "editorAudience": "Esta pesquisa tem regras em \"Quem a vê\", então alguns pedidos não vão vê-la.",
-    "editorOncePerOrder": "Cada pedido é perguntado uma vez. Depois que o comprador responde em qualquer uma das páginas, esse pedido não mostra mais pesquisas, então teste com um pedido novo.",
+    "editorOncePerOrder": "Cada pedido é perguntado uma vez. Depois de uma resposta, aquele pedido não mostra mais a pesquisa, então teste com um pedido novo.",
     "editorWaking": "O SourceTrac está iniciando. Depois de um tempo sem uso, isso pode levar até um minuto."
   }
 }

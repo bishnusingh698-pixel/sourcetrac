@@ -103,7 +103,6 @@ export const CATEGORY_ORDER: readonly TemplateCategory[] = [
   "delivery",
   "loyalty",
   "know_customer",
-  "after_delivery",
 ];
 
 export type CatalogTag = { id: TagId; text: string; tip: string };
@@ -128,10 +127,6 @@ export type CatalogCard = {
   hasLite: boolean;
   /** ISO country codes for "Popular in your region"; empty = everywhere. */
   popularIn: readonly string[];
-  /** True when the template is marketed on the Thank you page. */
-  thankYou: boolean;
-  /** True when the template is marketed on the survey link page. */
-  surveyLink: boolean;
   /** 1–2 questions on the full version. */
   isShort: boolean;
   seasons: readonly SeasonId[];
@@ -142,8 +137,6 @@ export type CatalogOptions = {
   plan: CatalogPlan;
   /** The shop's ISO country code, for the region pack and "popular here". */
   country: string | null;
-  /** Whether the survey-link bonus placement is enabled. */
-  surveyLinkEnabled: boolean;
 };
 
 function tagText(locale: string, id: TagId): CatalogTag {
@@ -158,8 +151,8 @@ function tagText(locale: string, id: TagId): CatalogTag {
 const SECONDS_PER_QUESTION = 8;
 
 export function catalogCards(options: CatalogOptions): CatalogCard[] {
-  const { locale, plan, country, surveyLinkEnabled } = options;
-  return TEMPLATES.filter((t) => t.category !== "after_delivery" || surveyLinkEnabled).map((t) => {
+  const { locale, plan } = options;
+  return TEMPLATES.map((t) => {
     const tagIds = t.outcomeTags.filter(isTagId);
     const tags = tagIds.slice(0, 3).map((id) => tagText(locale, id));
     const requiredPlan = templateRequiredPlan(t);
@@ -176,8 +169,6 @@ export function catalogCards(options: CatalogOptions): CatalogCard[] {
       requiredPlan,
       hasLite: templateHasFreeVersion(t),
       popularIn: t.popularIn ?? [],
-      thankYou: t.defaults.placements.includes("thank_you"),
-      surveyLink: t.defaults.placements.includes("survey_link"),
       isShort: t.questions.length <= 2,
       seasons: (t.seasons ?? []) as SeasonId[],
     };
@@ -210,8 +201,6 @@ export function filterCards(
     freeOnly?: boolean;
     popularHere?: boolean;
     country?: string | null;
-    thankYou?: boolean;
-    surveyLink?: boolean;
   },
 ): CatalogCard[] {
   const q = filters.q?.trim().toLowerCase();
@@ -220,8 +209,6 @@ export function filterCards(
     if (filters.shortOnly && !card.isShort) return false;
     if (filters.freeOnly && (card.planLocked || !card.hasLite)) return false;
     if (filters.popularHere && !(filters.country && isPopularHere(card, filters.country))) return false;
-    if (filters.thankYou && !card.thankYou) return false;
-    if (filters.surveyLink && !card.surveyLink) return false;
     if (q) {
       const haystack = `${card.name}\n${card.oneLiner}\n${card.tags.map((t) => t.text).join("\n")}`.toLowerCase();
       if (!haystack.includes(q)) return false;
@@ -235,22 +222,6 @@ export function catalogRegion(country: string | null): RegionPack {
   return regionPackFor(country);
 }
 
-/**
- * A template's default placements mapped to the survey config's placement ids.
- *
- * The template type uses `survey_link` (a shopper-facing name); the compiled
- * config uses `link` for the same placement. One mapping keeps the two from
- * drifting.
- */
-export const TEMPLATE_PLACEMENT_MAP = {
-  thank_you: "thank_you",
-  order_status: "order_status",
-  survey_link: "link",
-} as const;
-
-export function templatePlacements(template: TemplateDefinition): Array<"thank_you" | "order_status" | "link"> {
-  return template.defaults.placements.map((p) => TEMPLATE_PLACEMENT_MAP[p]);
-}
 
 // ---------------------------------------------------------------------------
 // Detail page (T2)

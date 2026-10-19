@@ -189,7 +189,7 @@ describe("v2 survey routes, as the multi-question extension calls them", () => {
         body: JSON.stringify({
           surveyId,
           orderId: ORDER_GID,
-          placement: "order_status",
+          placement: "thank_you",
           answers: [{ questionId: question.id, optionIds: [google.id] }],
         }),
       }),
@@ -201,10 +201,10 @@ describe("v2 survey routes, as the multi-question extension calls them", () => {
     expect(count).toBe(1);
   });
 
-  it("hides the survey on the other page once the order has answered", async () => {
+  it("hides the survey once the order has answered, whichever id form the page sends", async () => {
     const res = await call(
       surveyLoader,
-      request(`/api/survey?placement=order_status&orderId=${encodeURIComponent(`gid://shopify/Order/${ORDER_ID}`)}`),
+      request(`/api/survey?placement=thank_you&orderId=${encodeURIComponent(`gid://shopify/Order/${ORDER_ID}`)}`),
     );
     expect(((await res.json()) as { alreadyAnswered?: boolean }).alreadyAnswered).toBe(true);
   });

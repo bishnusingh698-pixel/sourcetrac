@@ -32,9 +32,6 @@ export const DATA_REQUEST_RETENTION_DAYS = 30;
  */
 export const UNINSTALLED_SHOP_RETENTION_DAYS = 30;
 
-/** How long the Thank-you page's first-order flag for an order is kept. */
-export const ORDER_FACT_RETENTION_DAYS = 90;
-
 export type RetentionReport = {
   webhookEventsDeleted: number;
   orderCacheDeleted: number;
@@ -47,7 +44,6 @@ export type RetentionReport = {
   /** Deferred redacts executed (not discarded) by this pass. */
   pendingDeletionsDeleted: number;
   redactedOrdersDeleted: number;
-  orderFactsDeleted: number;
   uninstalledShopsDeleted: number;
   ranAt: string;
 };
@@ -152,12 +148,6 @@ export async function runRetentionPurge(now: Date = new Date()): Promise<Retenti
     await retryDb(() => db.redactedOrder.deleteMany({ where: { createdAt: { lt: recordCutoff } } }))
   ).count;
 
-  // A first-order flag only matters while the buyer may still open the order's
-  // status page, so it is kept far shorter than the answers.
-  const orderFactsDeleted = (
-    await retryDb(() => db.orderFact.deleteMany({ where: { createdAt: { lt: daysAgo(ORDER_FACT_RETENTION_DAYS, now) } } }))
-  ).count;
-
   // Backstop for a shop/redact that never arrived: an uninstalled shop past
   // the window is deleted with everything it owns, sessions included.
   const uninstalledCutoff = daysAgo(UNINSTALLED_SHOP_RETENTION_DAYS, now);
@@ -201,7 +191,6 @@ export async function runRetentionPurge(now: Date = new Date()): Promise<Retenti
     dataRequestsDeleted,
     pendingDeletionsDeleted,
     redactedOrdersDeleted,
-    orderFactsDeleted,
     uninstalledShopsDeleted,
     ranAt: now.toISOString(),
   };
