@@ -283,7 +283,9 @@
     "q_sync": "Varför körs inte Shopify-synken?",
     "a_sync": "Synken taggar beställningar och kunder och körs bara om Shopify har beviljat rätt behörighet. Öppna appen igen och godkänn behörigheterna, eller låt dem vara av. Din enkät fungerar ändå.",
     "q_once_per_order": "Jag svarade en gång och nu visas inte enkäten. Varför?",
-    "a_once_per_order": "Varje beställning tillfrågas bara en gång. Efter ett svar visar SourceTrac aldrig enkäten för den beställningen igen, inte ens om sidan laddas om, så ingen tillfrågas två gånger. Lägg en ny beställning för att testa igen."
+    "a_once_per_order": "Varje beställning tillfrågas bara en gång. Efter ett svar visar SourceTrac aldrig enkäten för den beställningen igen, inte ens om sidan laddas om, så ingen tillfrågas två gånger. Lägg en ny beställning för att testa igen.",
+    "q_order_status": "Kan enkäten även visas på orderstatussidan?",
+    "a_order_status": "Ja, som ett valfritt tillägg. Orderstatussidan är sidan köpare kommer till när de öppnar ”Visa din beställning” i sina ordermejl. Markera den under ”Var den visas” i enkäten, välj sedan Orderstatus i sidmenyn i kassaredigeraren, lägg till blocket ”SourceTrac survey” och klicka på Spara. Den finns bara i menyn om din butik använder Shopifys nya kundkonton (Inställningar › Kundkonton). Varje beställning tillfrågas fortfarande bara en gång."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac är inte tillgängligt med din plan",
@@ -565,18 +567,19 @@
     "check_title": "Kassakontroll",
     "check_plan_hidden_one": "{{count}} aktiv enkät ligger över planens gräns, så köpare ser den inte.",
     "check_plan_hidden_other": "{{count}} aktiva enkäter ligger över planens gräns, så köpare ser dem inte.",
-    "recent_help": "Varje gång SourceTrac-blocket laddas på en köpares tacksida listas det här, med enkäten som visades eller varför ingenting visades. De senaste 20 sparas i 30 dagar.",
+    "recent_help": "Varje gång SourceTrac-blocket laddas på en köpares tacksida eller orderstatussida listas det här med enkäten som visades, eller varför ingenting visades. De senaste 20 sparas i 30 dagar.",
     "recent_empty": "Ingen köpares tacksida har laddat SourceTrac-blocket än. Lägg en testbeställning. Om den ändå inte syns här finns blocket inte i din kassa: öppna kassaredigeraren, välj Tack i sidmenyn, lägg till blocket ”SourceTrac survey” och klicka på Spara.",
-    "reason_not_on_page": "Ingen aktiv enkät visas på den här sidan.",
-    "reason_pinned_other_page": "Blockets enkät-ID pekar på ”{{survey}}”, som inte kan visas på den här sidan.",
-    "reason_customer_type_unknown": "”{{survey}}” är för förstagångsköpare eller återkommande köpare, och Shopify angav inte om köparen hade beställt tidigare.",
-    "check_survey": "”{{survey}}” är aktiv och visas på din tacksida.",
-    "check_survey_rules": "”{{survey}}” är aktiv, men reglerna under ”Vem som ser den” gör att bara vissa beställningar ser den.",
-    "check_no_survey": "Ingen enkät är aktiv, så köpare ser ingenting. Slå på en enkät för att börja samla in svar.",
+    "reason_not_on_page": "Ingen aktiv enkät är inställd för den här sidan. Markera sidan under ”Var den visas”.",
+    "reason_pinned_other_page": "Blockets enkät-ID pekar på ”{{survey}}”, som inte är inställd för den här sidan.",
+    "reason_customer_type_unknown": "”{{survey}}” är för nya eller återkommande köpare, och den här sidan kunde inte avgöra vilket. Lägg till SourceTrac-blocket på tacksidan också.",
+    "check_survey": "{{page}}: ”{{survey}}” är aktiv och visas här.",
+    "check_survey_rules": "{{page}}: ”{{survey}}” är aktiv här, men reglerna under ”Vem ser den” gör att bara vissa beställningar ser den.",
+    "check_no_survey": "{{page}}: ingen aktiv enkät är inställd här. Slå på en enkät och markera sidan under ”Var den visas”.",
     "check_block_never": "SourceTrac-blocket har inte laddats på din tacksida än. Öppna kassaredigeraren, välj Tack i sidmenyn högst upp, lägg till blocket ”SourceTrac survey” och klicka på Spara.",
-    "check_block_buyer": "SourceTrac-blocket laddades på en köpares tacksida {{when}}.",
-    "check_block_placed": "SourceTrac-blocket är tillagt (sett {{when}}), men ingen köpares tacksida har laddat det än. Lägg en testbeställning för att bekräfta.",
-    "check_new_order": "Varje beställning tillfrågas bara en gång. Testa med en ny beställning och se sedan ”Senaste kassor” nedan för vad som hände."
+    "check_block_buyer": "{{page}}: SourceTrac-blocket laddades för en köpare {{when}}.",
+    "check_block_placed": "{{page}}: SourceTrac-blocket är tillagt (sågs {{when}}), men har inte laddats för någon köpare ännu. Lägg en testbeställning för att bekräfta.",
+    "check_new_order": "Varje beställning tillfrågas bara en gång. Testa med en ny beställning och se sedan ”Senaste kassor” nedan för vad som hände.",
+    "check_block_never_order_status": "Orderstatussidan: SourceTrac-blocket har inte laddats här ännu. Välj Orderstatus i sidmenyn i kassaredigeraren, lägg till blocket ”SourceTrac survey” och klicka på Spara. Sidan finns bara i menyn om din butik använder de nya kundkontona."
   },
   "templates": {
     "nps": {
@@ -981,7 +984,16 @@
     "status_auto_paused": "Pausad automatiskt: resultaten är tillförlitliga. Köpare ser inte enkäten. Slå på den igen när du vill; den pausas inte igen.",
     "other_label": "Text för svaret ”Annat”",
     "channel_question": "Räkna i kanalrapporten",
-    "channel_question_details": "Markera för en fråga som ”Hur hörde du talas om oss?”. Svaren blir dina kanaler, med intäkter, på översikten och i kanalrapporten."
+    "channel_question_details": "Markera för en fråga som ”Hur hörde du talas om oss?”. Svaren blir dina kanaler, med intäkter, på översikten och i kanalrapporten.",
+    "where_title": "Var den visas",
+    "placement_order_status": "Orderstatussidan",
+    "audience_order_status_note": "På orderstatussidan vet SourceTrac bara om det är en första beställning när tacksidan också har SourceTrac-blocket. Andra beställningar ser inte enkäten där.",
+    "placement_thank_you_details": "Alltid på. Direkt efter köpet, när köpare oftast svarar.",
+    "placement_order_status_details": "Valfritt. Frågar även köpare som kommer tillbaka för att kolla sin beställning. Kräver Shopifys nya kundkonton och SourceTrac-blocket på orderstatussidan.",
+    "placement_once": "Varje beställning tillfrågas bara en gång. Svarar köparen på en sida döljs enkäten på den andra.",
+    "store_step_order_status": "För orderstatussidan: välj Orderstatus i samma sidmeny, lägg till blocket ”SourceTrac survey” där och klicka på Spara. Den finns bara i menyn om din butik använder de nya kundkontona (Inställningar › Kundkonton).",
+    "block_order_status_title": "Lägg till SourceTrac-blocket på orderstatussidan också",
+    "block_missing_order_status_body": "Enkäten ska också visas på orderstatussidan, men blocket har inte laddats där ännu. Välj Orderstatus i sidmenyn i kassaredigeraren, lägg till blocket ”SourceTrac survey” och klicka på Spara. Om Orderstatus inte finns i menyn använder din butik klassiska kundkonton: byt under Inställningar › Kundkonton eller avmarkera sidan under ”Var den visas”."
   },
   "preview": {
     "title": "Förhandsvisning",

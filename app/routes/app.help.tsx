@@ -28,6 +28,7 @@ const FAQ = [
   "question_types",
   "not_showing",
   "once_per_order",
+  "order_status",
   "missing_revenue",
   "refunds",
   "limit",

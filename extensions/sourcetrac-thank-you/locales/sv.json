@@ -32,6 +32,7 @@
     "editorPlanHidden": "Din plan visar färre aktiva enkäter än du har, och den här är inte en av dem, så köpare ser den inte. Byt plan i SourceTrac eller pausa en enkät med högre prioritet.",
     "editorAudience": "Den här enkäten har regler under \"Vem som ser den\", så vissa beställningar ser den inte.",
     "editorOncePerOrder": "Varje beställning tillfrågas en gång. Efter ett svar visar den beställningen ingen enkät igen, så testa med en ny beställning.",
-    "editorWaking": "SourceTrac startar. Efter en lugn period kan det ta upp till en minut."
+    "editorWaking": "SourceTrac startar. Efter en lugn period kan det ta upp till en minut.",
+    "editorOtherPage": "Den här enkäten är inte inställd att visas på den här sidan. Slå på sidan under ”Var den visas” i SourceTrac."
   }
 }

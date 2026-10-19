@@ -1,17 +1,19 @@
 /**
  * Surface-agnostic survey behaviour.
  *
- * The rules about retrying, collapsing and never showing a buyer an error live
- * here, apart from the Thank-you block's components, so they can be tested
- * without a checkout host and shared with the admin blocks.
+ * The Thank-you page and the Order status page render the same survey, so the
+ * rules about retrying, collapsing and never showing a buyer an error live here
+ * once, apart from the blocks' components, so they can be tested without a
+ * checkout host and shared with the admin blocks.
  */
 
 export type SurveySurface = "thank-you" | "order-status";
 
 /**
  * Where a survey can appear. Mirrors PLACEMENTS in shared/survey-config.ts,
- * which keeps the retired pages so historic answers still read. Surveys now
- * only show on `thank_you`.
+ * which keeps the retired pages (On-site, Survey link) so historic answers
+ * still read. Surveys show on `thank_you`, and on `order_status` when the
+ * merchant opts in.
  */
 export type Placement = "thank_you" | "order_status" | "onsite" | "link";
 
@@ -81,6 +83,8 @@ export type SurveyPreview = {
   name: string | null;
   status: "draft" | "active" | "paused" | null;
   pinned: boolean;
+  /** False when the survey is not set to show on the page this block is on. */
+  onThisPage: boolean;
   reason: "not_found" | "none_live" | null;
   /** Live, but beyond the plan's number of live surveys. Absent from older servers. */
   planHidden?: boolean;
@@ -237,8 +241,8 @@ export interface ApiBinding {
   /**
    * The selected payment option `type`s for this checkout (T7). Only the
    * Thank-you block can provide this; elsewhere it is absent and the server
-   * treats an empty list as "not a manual payment". Optional so the admin
-   * blocks need not implement it.
+   * treats an empty list as "not a manual payment". Optional so the
+   * order-status and admin blocks need not implement it.
    */
   getPaymentTypes?: () => readonly string[];
   /**
@@ -247,8 +251,9 @@ export interface ApiBinding {
    * route passed `null` and any survey targeting first/returning customers or a
    * country never matched, so it silently never appeared. Optional: an
    * unavailable value is simply not sent, and the server then treats a
-   * first/returning or country rule as not met, so a targeted survey is never
-   * shown to an unknown audience.
+   * first/returning or country rule as not met (the Order status page has no
+   * first-order signal of its own and relies on what the Thank-you page
+   * reported), so a targeted survey is never shown to an unknown audience.
    */
   getIsFirstOrder?: () => boolean | null | undefined;
   getCountry?: () => string | null | undefined;

@@ -17,7 +17,8 @@ import {
 } from "~/lib/surveys.server";
 import { formatDay } from "~/lib/format-day";
 import { getBlockSeen, markBlockAdded } from "~/lib/block-seen.server";
-import { BlockMissingBanner } from "~/components/block-missing";
+import { BlockMissingBanner, postedPlacements } from "~/components/block-missing";
+import { placementsMissingBlock } from "~/lib/checkout-editor";
 import { NotFoundError, ValidationError } from "~/lib/errors";
 import { RecentCheckouts, type RecentCheckoutRow } from "~/components/recent-checkouts";
 import { CheckoutCheck, type CheckoutCheckView } from "~/components/checkout-check";
@@ -69,14 +70,18 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     runCheckoutCheck(shop.id, surveyNames),
   ]);
   const checkView: CheckoutCheckView = {
-    survey: check.survey,
-    block: check.block.kind === "never" ? check.block : { kind: check.block.kind, when: format.format(new Date(check.block.at)) },
+    pages: check.pages.map((page) => ({
+      placement: page.placement,
+      survey: page.survey,
+      block: page.block.kind === "never" ? page.block : { kind: page.block.kind, when: format.format(new Date(page.block.at)) },
+    })),
     planHidden: check.planHidden,
   };
 
-  // A survey is live but the block has never loaded on the Thank-you page, so
-  // buyers cannot see it yet.
-  const missing = !blockSeen && surveys.some((s) => s.status === "active");
+  // Pages a live survey is set to show on where the block has never loaded.
+  const missing = [
+    ...new Set(surveys.filter((s) => s.status === "active").flatMap((s) => placementsMissingBlock(s.placements, blockSeen))),
+  ];
 
   return {
     surveys,
@@ -88,7 +93,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   };
 });
 
-/** The last Thank-you page decisions, with order and survey names filled in. */
+/** The last checkout page decisions, with order and survey names filled in. */
 async function recentCheckoutRows(
   shopId: string,
   surveyNames: ReadonlyMap<string, string>,
@@ -104,6 +109,7 @@ async function recentCheckoutRows(
   return entries.map((entry) => ({
     at: entry.at,
     when: format.format(new Date(entry.at)),
+    placement: entry.placement,
     // The order's name (#1001) once its webhook landed; its id until then.
     order: entry.orderId ? (names.get(entry.orderId) ?? entry.orderId) : null,
     surveyName: entry.surveyId ? (surveyNames.get(entry.surveyId) ?? null) : null,
@@ -149,7 +155,7 @@ async function runListAction(shopId: string, intent: string, surveyId: string, f
       return { ok: true as const };
 
     case "block-added":
-      await markBlockAdded(shop.id);
+      await markBlockAdded(shop.id, postedPlacements(form));
       return { ok: true as const };
 
     case "delete":
@@ -199,10 +205,10 @@ export default function Surveys() {
     <s-stack gap="base">
       <PageIntro actions={createActions}>{t("surveys.subtitle")}</PageIntro>
       {failureText ? <s-banner tone="critical">{failureText}</s-banner> : null}
-      {missing ? (
+      {missing.length > 0 ? (
         // "Live" here means turned on. Buyers only see it once the block is in
         // the checkout, which the app can only tell from the block loading.
-        <BlockMissingBanner shopHandle={shopHandle} t={t} />
+        <BlockMissingBanner missing={missing} shopHandle={shopHandle} t={t} />
       ) : null}
       {usage.limit !== null && usage.live > usage.limit ? (
         // A downgrade leaves more surveys live than the plan serves. Buyers only

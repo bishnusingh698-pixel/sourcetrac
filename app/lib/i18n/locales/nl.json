@@ -283,7 +283,9 @@
     "q_sync": "Waarom loopt de Shopify-synchronisatie niet?",
     "a_sync": "Synchronisatie tagt bestellingen en klanten en werkt alleen als Shopify de juiste rechten heeft verleend. Heropen de app en keur de rechten goed, of laat ze uit. Je enquête werkt sowieso.",
     "q_once_per_order": "Ik heb één keer geantwoord en nu verschijnt de enquête niet meer. Waarom?",
-    "a_once_per_order": "Elke bestelling wordt maar één keer gevraagd. Na een antwoord toont SourceTrac die bestelling de enquête nooit meer, ook niet na herladen, zodat niemand twee keer wordt gevraagd. Plaats een nieuwe bestelling om opnieuw te testen."
+    "a_once_per_order": "Elke bestelling wordt maar één keer gevraagd. Na een antwoord toont SourceTrac die bestelling de enquête nooit meer, ook niet na herladen, zodat niemand twee keer wordt gevraagd. Plaats een nieuwe bestelling om opnieuw te testen.",
+    "q_order_status": "Kan de enquête ook op de bestelstatuspagina verschijnen?",
+    "a_order_status": "Ja, als optionele extra. De bestelstatuspagina is waar kopers terechtkomen als ze ‘Bestelling bekijken’ openen in hun bestelmails. Vink hem aan bij ‘Waar hij verschijnt’ in de enquête, kies daarna in de checkout-editor in het paginamenu Bestelstatus, voeg het blok ‘SourceTrac survey’ toe en klik op Opslaan. Hij staat alleen in het menu als je winkel de nieuwe klantaccounts van Shopify gebruikt (Instellingen › Klantaccounts). Elke bestelling wordt nog steeds maar één keer gevraagd."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac is niet beschikbaar in je abonnement",
@@ -565,18 +567,19 @@
     "check_title": "Checkoutcontrole",
     "check_plan_hidden_one": "{{count}} live enquête valt buiten de limiet van je abonnement, dus kopers zien hem niet.",
     "check_plan_hidden_other": "{{count}} live enquêtes vallen buiten de limiet van je abonnement, dus kopers zien ze niet.",
-    "recent_help": "Elke keer dat het SourceTrac-blok laadt op de bedankpagina van een koper, staat het hier, met de enquête die het toonde of waarom het niets toonde. De laatste 20 worden 30 dagen bewaard.",
+    "recent_help": "Elke keer dat het SourceTrac-blok laadt op de bedank- of bestelstatuspagina van een koper, staat het hier met de getoonde enquête of de reden waarom er niets verscheen. De laatste 20 worden 30 dagen bewaard.",
     "recent_empty": "Nog geen bedankpagina van een koper heeft het SourceTrac-blok geladen. Plaats een testbestelling. Verschijnt het hier dan nog steeds niet, dan staat het blok niet in je checkout: open de checkout-editor, kies Bedankt in het paginamenu, voeg het blok ‘SourceTrac survey’ toe en klik op Opslaan.",
-    "reason_not_on_page": "Op deze pagina wordt geen live enquête getoond.",
-    "reason_pinned_other_page": "De enquête-ID van het blok verwijst naar ‘{{survey}}’, die niet op deze pagina kan worden getoond.",
-    "reason_customer_type_unknown": "‘{{survey}}’ is voor nieuwe of terugkerende kopers, en Shopify meldde niet of deze koper al eerder had besteld.",
-    "check_survey": "‘{{survey}}’ is live en wordt getoond op je bedankpagina.",
-    "check_survey_rules": "‘{{survey}}’ is live, maar door de regels onder ‘Wie hem ziet’ zien alleen sommige bestellingen hem.",
-    "check_no_survey": "Er is geen enquête live, dus kopers zien niets. Zet een enquête aan om antwoorden te verzamelen.",
+    "reason_not_on_page": "Geen live enquête staat ingesteld voor deze pagina. Vink deze pagina aan onder ‘Waar hij verschijnt’.",
+    "reason_pinned_other_page": "De enquête-ID van het blok verwijst naar ‘{{survey}}’, die niet voor deze pagina is ingesteld.",
+    "reason_customer_type_unknown": "‘{{survey}}’ is voor nieuwe of terugkerende kopers, en deze pagina kon dat niet zien. Voeg het SourceTrac-blok ook toe aan de bedankpagina.",
+    "check_survey": "{{page}}: ‘{{survey}}’ is live en wordt hier getoond.",
+    "check_survey_rules": "{{page}}: ‘{{survey}}’ is hier live, maar door de regels onder ‘Wie ziet hem’ zien alleen sommige bestellingen hem.",
+    "check_no_survey": "{{page}}: hier staat geen live enquête ingesteld. Zet een enquête aan en vink deze pagina aan onder ‘Waar hij verschijnt’.",
     "check_block_never": "Het SourceTrac-blok is nog niet geladen op je bedankpagina. Open de checkout-editor, kies bovenaan in het paginamenu Bedankt, voeg het blok ‘SourceTrac survey’ toe en klik op Opslaan.",
-    "check_block_buyer": "Het SourceTrac-blok is {{when}} geladen op de bedankpagina van een koper.",
-    "check_block_placed": "Het SourceTrac-blok is toegevoegd (gezien {{when}}), maar nog geen bedankpagina van een koper heeft het geladen. Plaats een testbestelling om dit te bevestigen.",
-    "check_new_order": "Elke bestelling wordt maar één keer gevraagd. Test met een nieuwe bestelling en kijk daarna hieronder bij ‘Recente checkouts’ wat er gebeurde."
+    "check_block_buyer": "{{page}}: het SourceTrac-blok is op {{when}} voor een koper geladen.",
+    "check_block_placed": "{{page}}: het SourceTrac-blok is toegevoegd (gezien op {{when}}), maar nog bij geen enkele koper geladen. Plaats een testbestelling om het te controleren.",
+    "check_new_order": "Elke bestelling wordt maar één keer gevraagd. Test met een nieuwe bestelling en kijk daarna hieronder bij ‘Recente checkouts’ wat er gebeurde.",
+    "check_block_never_order_status": "Bestelstatuspagina: het SourceTrac-blok is hier nog niet geladen. Kies in de checkout-editor in het paginamenu Bestelstatus, voeg het blok ‘SourceTrac survey’ toe en klik op Opslaan. De pagina staat alleen in het menu als je winkel de nieuwe klantaccounts gebruikt."
   },
   "templates": {
     "nps": {
@@ -981,7 +984,16 @@
     "status_auto_paused": "Automatisch gepauzeerd: de resultaten zijn betrouwbaar geworden. Kopers zien deze enquête niet. Zet hem wanneer je wilt weer aan; hij pauzeert niet opnieuw.",
     "other_label": "Tekst van het antwoord ‘Anders’",
     "channel_question": "Meetellen in het kanaalrapport",
-    "channel_question_details": "Vink dit aan bij een vraag als ‘Hoe heb je ons leren kennen?’. De antwoorden worden je kanalen, met hun omzet, op het dashboard en in het kanaalrapport."
+    "channel_question_details": "Vink dit aan bij een vraag als ‘Hoe heb je ons leren kennen?’. De antwoorden worden je kanalen, met hun omzet, op het dashboard en in het kanaalrapport.",
+    "where_title": "Waar hij verschijnt",
+    "placement_order_status": "Orderstatuspagina",
+    "audience_order_status_note": "Op de bestelstatuspagina weet SourceTrac alleen of het een eerste bestelling is als de bedankpagina ook het SourceTrac-blok heeft. Andere bestellingen zien deze enquête daar niet.",
+    "placement_thank_you_details": "Altijd aan. Direct na de checkout, wanneer kopers het vaakst antwoorden.",
+    "placement_order_status_details": "Optioneel. Vraagt ook kopers die terugkomen om hun bestelling te bekijken. Vereist de nieuwe klantaccounts van Shopify en het SourceTrac-blok op de bestelstatuspagina.",
+    "placement_once": "Elke bestelling wordt maar één keer gevraagd. Antwoordt een koper op de ene pagina, dan wordt de enquête op de andere verborgen.",
+    "store_step_order_status": "Voor de bestelstatuspagina: kies in hetzelfde paginamenu Bestelstatus, voeg daar het blok ‘SourceTrac survey’ toe en klik op Opslaan. Die staat alleen in het menu als je winkel de nieuwe klantaccounts gebruikt (Instellingen › Klantaccounts).",
+    "block_order_status_title": "Voeg het SourceTrac-blok ook toe aan je bestelstatuspagina",
+    "block_missing_order_status_body": "Deze enquête staat ook ingesteld voor de bestelstatuspagina, maar het blok is daar nog niet geladen. Kies in de checkout-editor in het paginamenu Bestelstatus, voeg het blok ‘SourceTrac survey’ toe en klik op Opslaan. Staat Bestelstatus niet in het menu, dan gebruikt je winkel klassieke klantaccounts: schakel over via Instellingen › Klantaccounts of vink de pagina uit bij ‘Waar hij verschijnt’."
   },
   "preview": {
     "title": "Voorbeeld",

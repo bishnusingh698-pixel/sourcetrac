@@ -79,45 +79,46 @@ enum SurveyPlacement {
 
 /// One row per merchant store. Access tokens are AES-256-GCM encrypted at rest.
 model Shop {
-  id                   String       @id @default(cuid())
-  shopDomain           String       @unique
-  shopId               String       @unique
-  accessTokenEncrypted String?
-  accessTokenIv        String?
-  accessTokenTag       String?
-  installState         InstallState @default(installed)
-  uninstalledAt        DateTime?
+  id                     String       @id @default(cuid())
+  shopDomain             String       @unique
+  shopId                 String       @unique
+  accessTokenEncrypted   String?
+  accessTokenIv          String?
+  accessTokenTag         String?
+  installState           InstallState @default(installed)
+  uninstalledAt          DateTime?
   /// When the current installation began. A late app/uninstalled or
   /// shop/redact from an earlier installation is recognised by it.
-  installedAt          DateTime?
-  plan                 Plan         @default(free)
-  planStatus           PlanStatus   @default(active)
-  subscriptionGid      String?
-  planDisplayName      String?
-  checkoutSupported    Boolean?
-  checkoutCheckedAt    DateTime?
-  /// When the SourceTrac block last asked us for a survey on the Thank-you page,
+  installedAt            DateTime?
+  plan                   Plan         @default(free)
+  planStatus             PlanStatus   @default(active)
+  subscriptionGid        String?
+  planDisplayName        String?
+  checkoutSupported      Boolean?
+  checkoutCheckedAt      DateTime?
+  /// When a SourceTrac checkout block last asked us for a survey on each page,
   /// from a buyer's order or the checkout editor. Shopify reports no "block
   /// added" state, so this is the only proof the block is really there. Null
   /// means never seen; cleared on uninstall, which removes the blocks.
-  thankYouBlockSeenAt  DateTime?
-  questionText         String       @default("How did you hear about us?")
+  thankYouBlockSeenAt    DateTime?
+  orderStatusBlockSeenAt DateTime?
+  questionText           String       @default("How did you hear about us?")
   /// Defaulted so a shop row is always valid: a freshly installed store must be
   /// able to render a working survey before the merchant visits Settings.
-  optionsJson          String       @default("[]")
-  allowOther           Boolean      @default(false)
+  optionsJson            String       @default("[]")
+  allowOther             Boolean      @default(false)
   /// Merchant's chosen admin UI language, e.g. "de" or "pt-BR". Null means they
   /// have never chosen one, so we fall back to detecting Shopify's admin locale.
   /// Deliberately a free String rather than an enum: adding a language must not
   /// require a migration, and `resolveLanguage` already rejects anything we do
   /// not ship, so a stale value degrades to English instead of erroring.
-  language             String?
+  language               String?
   /// The Shopify admin's own locale (`?locale=` on the first document load),
   /// remembered because later in-app navigations do not carry it. Only a
   /// fallback below `language`; never set by the merchant directly.
-  adminLocale          String?
-  createdAt            DateTime     @default(now())
-  updatedAt            DateTime     @updatedAt
+  adminLocale            String?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
 
   responses   SurveyResponse[]
   orders      OrderCache[]
@@ -133,6 +134,7 @@ model Shop {
   dataRequests     DataRequest[]
   redactedOrders   RedactedOrder[]
   checkoutLoads    CheckoutLoad[]
+  orderFacts       OrderFact[]
 
   @@index([installState])
 }
@@ -547,6 +549,24 @@ model RedactedOrder {
   @@index([createdAt])
 }
 
+/// What the Thank-you page told us about an order that the Order status page
+/// cannot see: whether it was the buyer's first order with the shop. The
+/// Order status page has no first-order signal, so a "first-time buyers" or
+/// "returning buyers" survey could never show there. Written when the
+/// Thank-you block loads; no buyer data, only the order id and the flag.
+/// Deleted with the shop, on customers/redact, and after 90 days.
+model OrderFact {
+  shopId       String
+  orderId      String
+  isFirstOrder Boolean
+  createdAt    DateTime @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@id([shopId, orderId])
+  @@index([createdAt])
+}
+
 /// A stored customers/data_request export, shown on Settings for 30 days.
 model DataRequest {
   id         String   @id @default(cuid())
@@ -560,7 +580,7 @@ model DataRequest {
   @@index([shopId, createdAt])
 }
 
-/// One Thank-you page load of the SourceTrac block and what it was told: the
+/// One page load of the SourceTrac block (Thank-you or Order status) and what it was told: the
 /// survey it showed, or why it showed nothing. The Surveys page lists the
 /// newest 20 per shop as "Recent checkouts", so a merchant can see why a test
 /// order showed no survey. Kept 30 days; deleted with the order on
@@ -569,6 +589,8 @@ model CheckoutLoad {
   id           String   @id @default(cuid())
   shopId       String
   at           DateTime @default(now())
+  /// "thank_you" or "order_status".
+  placement    String   @default("thank_you")
   orderId      String?
   /// The survey shown, or the one whose rule hid it.
   surveyId     String?

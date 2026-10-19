@@ -16,7 +16,7 @@ Read `docs/01-verification-report.md` before writing any code — it contains th
 
 - **API version `2026-07`** is latest stable. 2026-10 is RC only.
 - **React Router template**, not Remix. `shopify app init` → "Build a React Router app".
-- **Thank-you page only (since 2026-10-19).** `purchase.thank-you.block.render` is the one checkout target. The Order status target (`customer-account.order-status.block.render`, a Customer Account UI Extension) was removed; see "Thank-you page only" below.
+- **Two extension directories, not one.** `purchase.thank-you.block.render` is a Checkout UI Extension; `customer-account.order-status.block.render` is a Customer Account UI Extension. Different API namespaces. The Thank-you page is always on; the Order status page is an optional extra per survey (see "Order status is an optional extra" below).
 - **Thank-you + Order-status extensions work on all plans except Shopify Starter.** (Confirmed.)
 - **`network_access` requires Partner Dashboard opt-in** (API access → "Allow network access in checkout UI extensions"). Self-serve, auto-approved, but a **deploy blocker** if not done.
 - **Extensions need `Access-Control-Allow-Origin: *`** — they run in a Web Worker with an unstable origin.
@@ -246,8 +246,8 @@ Source: `node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenti
 
 ## Checkout extensions: Preact on api_version 2026-07 (rewritten 2026-10-11)
 
-Target: `purchase.thank-you.block.render`, `api_version = "2026-07"` (the
-Order status target was removed 2026-10-19).
+Targets: `purchase.thank-you.block.render` and
+`customer-account.order-status.block.render`, both `api_version = "2026-07"`.
 
 **The block rendered nothing, anywhere, until 2026-10-11.** Two independent
 causes, both invisible to every type check and test at the time:
@@ -1642,35 +1642,40 @@ once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
   `visibleQuestionsFor`) and submits every template on Free and Scale, and checks
   every preset writes. A new template is covered automatically.
 
-## Thank-you page only, and testing aids removed (2026-10-19)
+## Order status is an optional extra; testing aids removed (2026-10-19)
 
-- **Surveys show on the Thank-you page only.** The Order status block
-  (`customer-account.order-status.block.render`) needs new customer accounts
-  and many merchants had no way to place it, so `extensions/sourcetrac-order-status`
-  was deleted. `SURVEY_PLACEMENTS` in `surveys.server.ts` is `["thank_you"]`
-  and `sanitizeSurveyInput` ignores posted placements; there is no "Where it
-  shows" section, no readiness `has_placement` check (an old draft saved with
-  no pages must still go live) and no `no_placements` refusal. Migration
-  `20261019090000_thank_you_only` set every survey to `["thank_you"]`, dropped
-  `OrderFact` and `Shop.orderStatusBlockSeenAt`. `PLACEMENTS` keeps the retired
-  values so historic answers still read. `shopify app deploy` will offer to
-  remove the order-status extension: confirm it.
+- **The Thank-you page is always on; the Order status page is opt-in per
+  survey.** `sanitizeSurveyInput` always adds `SURVEY_PLACEMENTS`
+  (`["thank_you"]`) and adds `order_status` only when posted
+  (`OPTIONAL_PLACEMENTS`); retired values (On-site, Survey link) are dropped.
+  So a survey can never sit on no page: there is no readiness `has_placement`
+  check and no `no_placements` refusal. The editor's "Where it shows" has the
+  Thank-you box checked and disabled, and one Order status checkbox. New
+  surveys (templates and Start from scratch) start Thank-you only.
+- The Order status block (`extensions/sourcetrac-order-status`) only exists on
+  stores with new customer accounts; the copy says so wherever it is offered
+  (`editor.placement_order_status_details`, `editor.store_step_order_status`,
+  `editor.block_missing_order_status_body`, Help `order_status`).
+- **Briefly removed and restored the same day**, so it never reached `main`:
+  the order-status extension, `OrderFact` (the Thank-you page's first-order
+  flag, read by `/api/survey` and `/api/survey-responses` on Order status),
+  `Shop.orderStatusBlockSeenAt`, the per-page block banner and the preview's
+  `onThisPage`. Migration `20261019090000_order_source_name` only adds
+  `OrderCache.sourceName`.
 - **Removed as testing aids:** the block build stamp (`BLOCK_BUILD` /
   `shared/block-build.ts`) and the feature flags (`shared/feature-flags.ts`)
   with the On-site, Survey link and After delivery features they gated (never
   built). Recent checkouts and Checkout check were removed too, wrongly: they
   are merchant features, and were restored the same day (below).
-- **Block seen is one boolean** (`getBlockSeen` returns `boolean`;
-  `markBlockAdded(shopId)`).
 - **No link opens the checkout editor with the block placed.** `checkoutEditorUrl`
-  opens it on `?page=thank-you`; every button that uses it sits next to the
-  steps ("choose Thank you from the page menu, add the SourceTrac survey block,
-  Save"): `editor.store_step_block`, `editor.block_missing_body`,
-  `onboarding.step2_body`. `tests/unit/checkout-editor.test.ts` pins that.
+  opens it on `?page=thank-you` (no Order status `page` value is verified);
+  every button that uses it sits next to the steps ("choose Thank you / Order
+  status from the page menu, add the SourceTrac survey block, Save").
+  `tests/unit/checkout-editor.test.ts` pins that.
 - **The Home setup guide ticks what it can prove**: a live survey, and the
-  block having loaded. Step 3 tells the merchant each order is asked once, so
-  tests need a new order (the most common "it doesn't show" report was a
-  re-used test order).
+  Thank-you block having loaded. Step 3 tells the merchant each order is asked
+  once, so tests need a new order (the most common "it doesn't show" report was
+  a re-used test order).
 - **POS orders are left out of answer rates** (`app/lib/order-sources.ts`,
   `OrderCache.sourceName` from the webhook's `source_name` / GraphQL
   `sourceName`). Only `pos` is listed: subscription renewals have no reliable
@@ -1680,23 +1685,26 @@ once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
 
 - **Recent checkouts and Checkout check are merchant features, not test aids.**
   They answer "why didn't my survey show?" (usually "this order already
-  answered"). Both are on the Surveys page, Thank-you page only.
+  answered"). Both are on the Surveys page and cover both pages; the Checkout
+  check lists the Order status page only once a live survey uses it or its
+  block has loaded.
 - **Recent checkouts is stored** in `CheckoutLoad` (`app/lib/serve-log.server.ts`),
-  not memory: the old in-memory list was wiped by every restart and deploy,
+  with a `placement` column, not memory: the old in-memory list was wiped by every restart and deploy,
   exactly when merchants test. `recordServe` is not awaited by `/api/survey` and
   never throws; tests call `flushServeLog()`. One row per order+reason (a reload
   moves it up), the newest `PER_SHOP` (20) kept, 30-day retention, deleted with
   the order on customers/redact. The privacy page says so.
 - **Checkout check** (`checkout-check.server.ts`) lists only what a merchant can
-  act on: a live survey (and whether rules narrow it), the block (a buyer's
-  load from `CheckoutLoad` > "placed" from `thankYouBlockSeenAt`, which the
+  act on, per page: a live survey (and whether rules narrow it), the block (a
+  buyer's load from `CheckoutLoad` > "placed" from `*BlockSeenAt`, which the
   "It's already added" button also sets > never), plan-hidden surveys, and the
   new-order tip. The server-version and database lines were dropped.
 - **Submit needs at least one answer.** `/api/survey-responses` refuses an
   empty set (`min(1)`), but the block's `complete` (and `previewComplete`) was
   true for an all-optional survey with nothing picked, so the tap failed.
   `almost-left`, `age-range`, `missing-piece` and `household-snapshot` are
-  all-optional. Block change: needs `shopify app deploy`.
+  all-optional. Both blocks share the hook. Block change: needs
+  `shopify app deploy`.
 - **Templates is its own nav item** (`/app/surveys/library`, in Shopify's
   sidebar; Responses moved off the sidebar and is linked from Results). The top
   bar is 10 tiles: 5 columns, 10 on desktop. The library groups templates by

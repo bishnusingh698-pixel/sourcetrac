@@ -2,10 +2,11 @@
 import { OTHER_CHANNEL, surveyChoices } from "./survey-logic";
 
 /**
- * The rendered survey on the Thank-you page.
+ * The rendered survey, shared by both surfaces.
  *
  * Written with Polaris web components (`s-stack`, `s-clickable`, ...), which
- * the 2025-10+ extension runtime provides, so no primitives are injected.
+ * the 2025-10+ extension runtime provides on both the thank-you and the
+ * order-status page, so one view serves both without injected primitives.
  *
  * Why Preact and not React: with `api_version` 2025-10 or later the Shopify CLI
  * builds the entry as `shopify.extend(target, (...args) => Default(...args))`,

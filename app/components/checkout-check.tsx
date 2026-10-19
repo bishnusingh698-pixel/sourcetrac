@@ -3,13 +3,16 @@ import { checkoutEditorUrl } from "~/lib/checkout-editor";
 
 /**
  * "Checkout check" on the Surveys page: one line per thing that has to be true
- * for buyers to see a survey on the Thank-you page, green or with what to do
- * next. Built from `runCheckoutCheck`; times are formatted on the server.
+ * for buyers to see a survey, page by page, green or with what to do next.
+ * Built from `runCheckoutCheck`; times are formatted on the server.
  */
 
 export type CheckoutCheckView = {
-  survey: { name: string; audienceRules: boolean } | null;
-  block: { kind: "buyer" | "placed"; when: string } | { kind: "never" };
+  pages: Array<{
+    placement: "thank_you" | "order_status";
+    survey: { name: string; audienceRules: boolean } | null;
+    block: { kind: "buyer" | "placed"; when: string } | { kind: "never" };
+  }>;
   planHidden: number;
 };
 
@@ -36,22 +39,34 @@ function Row({ line }: { line: Line }) {
 }
 
 export function CheckoutCheck({ check, shopHandle, t }: { check: CheckoutCheckView; shopHandle: string; t: TFn }) {
-  const editor = { href: checkoutEditorUrl(shopHandle), label: t("editor.open_checkout_editor") };
-  const lines: Line[] = [
-    check.survey
-      ? {
-          ok: true,
-          text: t(check.survey.audienceRules ? "surveys.check_survey_rules" : "surveys.check_survey", {
-            survey: check.survey.name,
-          }),
-        }
-      : { ok: false, text: t("surveys.check_no_survey") },
-    check.block.kind === "buyer"
-      ? { ok: true, text: t("surveys.check_block_buyer", { when: check.block.when }) }
-      : check.block.kind === "placed"
-        ? { ok: null, text: t("surveys.check_block_placed", { when: check.block.when }) }
-        : { ok: false, text: t("surveys.check_block_never"), action: editor },
-  ];
+  const lines: Line[] = [];
+  for (const page of check.pages) {
+    const pageName = t(`surveys.placement_${page.placement}`);
+    const editor = { href: checkoutEditorUrl(shopHandle, page.placement), label: t("editor.open_checkout_editor") };
+    lines.push(
+      page.survey
+        ? {
+            ok: true,
+            text: t(page.survey.audienceRules ? "surveys.check_survey_rules" : "surveys.check_survey", {
+              page: pageName,
+              survey: page.survey.name,
+            }),
+          }
+        : // Nothing live is the merchant's own choice on the optional page.
+          { ok: page.placement === "thank_you" ? false : null, text: t("surveys.check_no_survey", { page: pageName }) },
+    );
+    lines.push(
+      page.block.kind === "buyer"
+        ? { ok: true, text: t("surveys.check_block_buyer", { page: pageName, when: page.block.when }) }
+        : page.block.kind === "placed"
+          ? { ok: null, text: t("surveys.check_block_placed", { page: pageName, when: page.block.when }) }
+          : {
+              ok: false,
+              text: t(page.placement === "thank_you" ? "surveys.check_block_never" : "surveys.check_block_never_order_status"),
+              action: editor,
+            },
+    );
+  }
   if (check.planHidden > 0) {
     lines.push({ ok: false, text: t("surveys.check_plan_hidden", { count: check.planHidden }) });
   }

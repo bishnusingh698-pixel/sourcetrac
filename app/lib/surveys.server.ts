@@ -147,7 +147,10 @@ export type SurveyInput = {
   name: string;
   status?: SurveyStatus;
   priority?: number;
-  /** Ignored: always `SURVEY_PLACEMENTS`. Kept so older drafts still parse. */
+  /**
+   * Thank-you is always added. `order_status` is the one optional extra;
+   * anything else is ignored. Optional so older drafts still parse.
+   */
   placements?: Placement[];
   layout: "all" | "one_by_one";
   title: string;
@@ -177,11 +180,13 @@ const surveyInclude = {
 type SurveyWithQuestions = Prisma.SurveyGetPayload<{ include: typeof surveyInclude }>;
 
 /**
- * Where every survey shows. The Thank-you page is the only checkout page every
- * buyer sees and every store can customise; the Order status block worked only
- * on stores with new customer accounts, so it was removed.
+ * Where a survey shows. The Thank-you page always: it is the one page every
+ * buyer sees and every store can customise. The Order status page is an
+ * optional extra, because its block only exists on stores with new customer
+ * accounts (Settings › Customer accounts).
  */
 export const SURVEY_PLACEMENTS: readonly Placement[] = ["thank_you"];
+export const OPTIONAL_PLACEMENTS: readonly Placement[] = ["order_status"];
 
 // ---------------------------------------------------------------------------
 // Serialisation
@@ -624,9 +629,14 @@ function sanitizeSurveyInput(input: SurveyInput): SurveyInput {
 
   if (!Array.isArray(input.questions)) fail("questions", "invalid", "The survey could not be read.");
   // Every survey shows on the Thank-you page, the one page every buyer sees
-  // and every store can customise. Whatever an older draft or client posts
-  // (Order status, which needs new customer accounts) is replaced.
-  const placements: Placement[] = [...SURVEY_PLACEMENTS];
+  // and every store can customise, so a survey can never end up on no page.
+  // The Order status page is added only when asked for; retired values (On-site,
+  // Survey link) from older drafts are dropped.
+  const posted = Array.isArray(input.placements) ? input.placements : [];
+  const placements: Placement[] = [
+    ...SURVEY_PLACEMENTS,
+    ...OPTIONAL_PLACEMENTS.filter((placement) => posted.includes(placement)),
+  ];
 
   if (input.rotationWeight !== undefined) {
     const w = input.rotationWeight;

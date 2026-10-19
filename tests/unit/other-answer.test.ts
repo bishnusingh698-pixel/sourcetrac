@@ -41,7 +41,7 @@ describe("other channel answer", () => {
   });
 
   it("never labels the field optional, since a blank answer cannot be sent", () => {
-    for (const dir of ["sourcetrac-thank-you"]) {
+    for (const dir of ["sourcetrac-thank-you", "sourcetrac-order-status"]) {
       const base = `extensions/${dir}/locales`;
       for (const file of readdirSync(base)) {
         const label = JSON.parse(readFileSync(`${base}/${file}`, "utf8")).sourcetrac.otherLabel as string;

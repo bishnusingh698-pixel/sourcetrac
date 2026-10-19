@@ -3,7 +3,7 @@ import type { ServeReason } from "~/lib/serve-log.server";
 
 /**
  * "Recent checkouts": what the SourceTrac block was told on the last few
- * Thank-you page loads, and why nothing showed when nothing did. The answer to
+ * Thank-you and Order status page loads, and why nothing showed when nothing did. The answer to
  * "my survey doesn't show", which before this had no answer anywhere a
  * merchant could see.
  */
@@ -12,6 +12,7 @@ export type RecentCheckoutRow = {
   at: string;
   /** Formatted on the server in the store's zone, so hydration matches. */
   when: string;
+  placement: "thank_you" | "order_status";
   order: string | null;
   surveyName: string | null;
   reason: ServeReason;
@@ -54,7 +55,7 @@ export function RecentCheckouts({ rows, t }: { rows: RecentCheckoutRow[]; t: TFn
                         {row.order ? t("surveys.recent_order", { order: row.order }) : t("surveys.recent_no_order")}
                       </s-text>
                       <s-text color="subdued" fontSize="small">
-                        {row.when}
+                        {t(`surveys.placement_${row.placement}`)} · {row.when}
                       </s-text>
                     </s-stack>
                     <s-text>

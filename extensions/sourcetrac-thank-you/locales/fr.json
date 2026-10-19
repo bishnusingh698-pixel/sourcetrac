@@ -32,6 +32,7 @@
     "editorPlanHidden": "Votre forfait affiche moins d'enquêtes en ligne que vous n'en avez, et celle-ci n'en fait pas partie : les acheteurs ne la verront pas. Changez de forfait dans SourceTrac ou mettez en pause une enquête plus prioritaire.",
     "editorAudience": "Cette enquête a des règles dans « Qui le voit », donc certaines commandes ne la verront pas.",
     "editorOncePerOrder": "Chaque commande n'est interrogée qu'une fois. Après une réponse, cette commande n'affiche plus de sondage : teste avec une nouvelle commande.",
-    "editorWaking": "SourceTrac démarre. Après une période calme, cela peut prendre jusqu'à une minute."
+    "editorWaking": "SourceTrac démarre. Après une période calme, cela peut prendre jusqu'à une minute.",
+    "editorOtherPage": "Cette enquête n'est pas configurée pour s'afficher sur cette page. Activez cette page dans « Où il s'affiche » dans SourceTrac."
   }
 }

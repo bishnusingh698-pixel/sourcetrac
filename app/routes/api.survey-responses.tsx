@@ -16,6 +16,7 @@ import {
 import { submitAnswers } from "~/lib/answers.server";
 import { findShopByDomain, isKnownOrder } from "~/lib/shop.server";
 import { recordBlockSeen } from "~/lib/block-seen.server";
+import { readOrderFact } from "~/lib/order-facts.server";
 import { getSurveyRow, rowToEditor } from "~/lib/surveys.server";
 import { authenticateCheckout } from "~/lib/checkout-auth.server";
 import { PLACEMENTS, type Placement } from "@shared/survey-config";
@@ -176,7 +177,8 @@ export const action = async ({ request }: { request: Request }) => {
       placement,
       locale: parsed.data.locale ?? null,
       productIds: parsed.data.productIds,
-      isFirstOrder: parsed.data.isFirstOrder ?? null,
+      // Only the Thank-you page knows; an Order status answer reads what it saw.
+      isFirstOrder: parsed.data.isFirstOrder ?? (orderId ? await readOrderFact(shop.id, orderId) : null),
       country: parsed.data.country?.toUpperCase() ?? null,
       answers: parsed.data.answers as AnswerInput[],
       plan: effectivePlan(shop),

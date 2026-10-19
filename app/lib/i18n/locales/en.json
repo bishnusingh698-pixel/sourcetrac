@@ -283,7 +283,9 @@
     "q_sync": "Why is Shopify sync not running?",
     "a_sync": "Sync tags orders and customers and only runs when Shopify has granted the matching permission. Reopen the app and approve the permissions, or leave them off. Your survey collects and reports either way.",
     "q_once_per_order": "I answered once and now the survey doesn't show. Why?",
-    "a_once_per_order": "Each order is asked only once. After an answer, SourceTrac never shows that order the survey again, even if the page is reloaded, so buyers are never asked twice. To test again, place a new order."
+    "a_once_per_order": "Each order is asked only once. After an answer, SourceTrac never shows that order the survey again, even if the page is reloaded, so buyers are never asked twice. To test again, place a new order.",
+    "q_order_status": "Can the survey also show on the Order status page?",
+    "a_order_status": "Yes, as an optional extra. The Order status page is where buyers land when they open “View your order” from their order emails. Tick it under “Where it shows” in the survey, then in the checkout editor choose Order status from the page menu, add the “SourceTrac survey” block and press Save. It's in the menu only if your store uses Shopify's new customer accounts (Settings › Customer accounts). Each order is still asked only once."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac is not available on your plan",
@@ -558,18 +560,19 @@
     "check_title": "Checkout check",
     "check_plan_hidden_one": "{{count}} live survey is beyond your plan's live-survey limit, so buyers don't see it.",
     "check_plan_hidden_other": "{{count}} live surveys are beyond your plan's live-survey limit, so buyers don't see them.",
-    "recent_help": "Each time the SourceTrac block loads on a buyer's Thank-you page, it's listed here with the survey it showed, or why it showed nothing. The last 20 are kept for 30 days.",
+    "recent_help": "Each time the SourceTrac block loads on a buyer's Thank-you or Order status page, it's listed here with the survey it showed, or why it showed nothing. The last 20 are kept for 30 days.",
     "recent_empty": "No buyer's Thank-you page has loaded the SourceTrac block yet. Place a test order. If it still doesn't appear here, the block isn't in your checkout: open the checkout editor, choose Thank you from the page menu, add the “SourceTrac survey” block and press Save.",
-    "reason_not_on_page": "No live survey shows on this page.",
-    "reason_pinned_other_page": "The block's Survey ID names “{{survey}}”, which can't show on this page.",
-    "reason_customer_type_unknown": "“{{survey}}” is for first-time or returning buyers, and Shopify didn't say whether this buyer had ordered before.",
-    "check_survey": "“{{survey}}” is live and shows on your Thank-you page.",
-    "check_survey_rules": "“{{survey}}” is live, but its rules under “Who sees it” mean only some orders see it.",
-    "check_no_survey": "No survey is live, so buyers see nothing. Turn a survey on to start collecting answers.",
+    "reason_not_on_page": "No live survey is set to show on this page. Tick this page under “Where it shows”.",
+    "reason_pinned_other_page": "The block's Survey ID names “{{survey}}”, which isn't set to show on this page.",
+    "reason_customer_type_unknown": "“{{survey}}” is for first-time or returning buyers, and this page couldn't tell which. Add the SourceTrac block to the Thank-you page too.",
+    "check_survey": "{{page}}: “{{survey}}” is live and set to show here.",
+    "check_survey_rules": "{{page}}: “{{survey}}” is live here, but its rules under “Who sees it” mean only some orders see it.",
+    "check_no_survey": "{{page}}: no live survey is set to show here. Turn a survey on and tick this page under “Where it shows”.",
     "check_block_never": "The SourceTrac block hasn't loaded on your Thank-you page yet. Open the checkout editor, choose Thank you from the page menu at the top, add the “SourceTrac survey” block and press Save.",
-    "check_block_buyer": "The SourceTrac block loaded on a buyer's Thank-you page {{when}}.",
-    "check_block_placed": "The SourceTrac block is added (seen {{when}}), but no buyer's Thank-you page has loaded it yet. Place a test order to confirm.",
-    "check_new_order": "Each order is asked only once. Test with a new order, then see “Recent checkouts” below for what happened."
+    "check_block_buyer": "{{page}}: the SourceTrac block loaded for a buyer {{when}}.",
+    "check_block_placed": "{{page}}: the SourceTrac block is added (seen {{when}}), but no buyer's page has loaded it yet. Place a test order to confirm.",
+    "check_new_order": "Each order is asked only once. Test with a new order, then see “Recent checkouts” below for what happened.",
+    "check_block_never_order_status": "Order status page: the SourceTrac block hasn't loaded here yet. In the checkout editor, choose Order status from the page menu, add the “SourceTrac survey” block and press Save. The page is in the menu only if your store uses new customer accounts."
   },
   "templates": {
     "nps": {
@@ -981,7 +984,16 @@
     "status_auto_paused": "Paused automatically: the results became reliable. Buyers don't see this survey. Turn it back on any time; it won't pause itself again.",
     "other_label": "Label for the “Other” answer",
     "channel_question": "Count this in the Channel report",
-    "channel_question_details": "Tick this for a “How did you hear about us?” question. Its answers become your channels, with their revenue, on the Dashboard and the Channel report."
+    "channel_question_details": "Tick this for a “How did you hear about us?” question. Its answers become your channels, with their revenue, on the Dashboard and the Channel report.",
+    "where_title": "Where it shows",
+    "placement_order_status": "Order status page",
+    "audience_order_status_note": "On the Order status page, SourceTrac knows whether it is a first order only when the Thank-you page also has the SourceTrac block. Other orders don't see this survey there.",
+    "placement_thank_you_details": "Always on. Right after checkout, when buyers are most likely to answer.",
+    "placement_order_status_details": "Optional. Also asks buyers who come back to check on their order. Needs Shopify's new customer accounts and the SourceTrac block on the Order status page.",
+    "placement_once": "Each order is asked once. If a buyer answers on one page, the survey is hidden on the other.",
+    "store_step_order_status": "For the Order status page: in the same page menu choose Order status, add the “SourceTrac survey” block there and press Save. It's in the menu only if your store uses new customer accounts (Settings › Customer accounts).",
+    "block_order_status_title": "Add the SourceTrac block to your Order status page too",
+    "block_missing_order_status_body": "This survey is also set to show on the Order status page, but the block hasn't loaded there yet. In the checkout editor, choose Order status from the page menu, add the “SourceTrac survey” block and press Save. If Order status isn't in the menu, your store uses classic customer accounts: switch under Settings › Customer accounts, or untick the page in “Where it shows”."
   },
   "preview": {
     "title": "Preview",

@@ -31,6 +31,14 @@ const SURFACES = [
     signal: "orderConfirmation",
     value: { order: { id: "gid://shopify/OrderIdentity/5551234" }, isFirstOrder: true },
   },
+  {
+    name: "order-status",
+    dir: "extensions/sourcetrac-order-status",
+    target: "customer-account.order-status.block.render",
+    module: "./src/OrderStatusBlock.tsx",
+    signal: "order",
+    value: { id: "gid://shopify/Order/5551234" },
+  },
 ] as const;
 
 /** Same entry and esbuild options the CLI uses for api_version >= 2025-10. */

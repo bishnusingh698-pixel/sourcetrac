@@ -283,7 +283,9 @@
     "q_sync": "Por que a sincronização com a Shopify não roda?",
     "a_sync": "A sincronização marca pedidos e clientes e só roda quando a Shopify concedeu a permissão correspondente. Reabra o app e aprove as permissões, ou deixe-as desativadas. Sua pesquisa funciona de qualquer forma.",
     "q_once_per_order": "Respondi uma vez e agora a pesquisa não aparece. Por quê?",
-    "a_once_per_order": "Cada pedido é perguntado só uma vez. Depois de uma resposta, o SourceTrac não mostra mais a pesquisa para aquele pedido, mesmo recarregando a página, para ninguém responder duas vezes. Para testar de novo, faça um pedido novo."
+    "a_once_per_order": "Cada pedido é perguntado só uma vez. Depois de uma resposta, o SourceTrac não mostra mais a pesquisa para aquele pedido, mesmo recarregando a página, para ninguém responder duas vezes. Para testar de novo, faça um pedido novo.",
+    "q_order_status": "A pesquisa também pode aparecer na página de status do pedido?",
+    "a_order_status": "Sim, como extra opcional. A página de status do pedido é onde os compradores chegam ao abrir “Ver pedido” nos e-mails do pedido. Marque-a em “Onde aparece” na pesquisa e, depois, no editor de checkout, escolha Status do pedido no menu de páginas, adicione o bloco “SourceTrac survey” e clique em Salvar. Ela só aparece no menu se sua loja usa as novas contas de cliente da Shopify (Configurações › Contas de cliente). Cada pedido continua sendo perguntado só uma vez."
   },
   "shell": {
     "plan_blocked_title": "O SourceTrac não está disponível no seu plano",
@@ -565,18 +567,19 @@
     "check_title": "Verificação do checkout",
     "check_plan_hidden_one": "{{count}} pesquisa ativa passa do limite do seu plano, então os compradores não a veem.",
     "check_plan_hidden_other": "{{count}} pesquisas ativas passam do limite do seu plano, então os compradores não as veem.",
-    "recent_help": "Cada vez que o bloco do SourceTrac carrega na página de agradecimento de um comprador, ele aparece aqui com a pesquisa que mostrou, ou o motivo de não ter mostrado nada. Os últimos 20 ficam guardados por 30 dias.",
+    "recent_help": "Sempre que o bloco do SourceTrac carrega na página de agradecimento ou de status do pedido de um comprador, ele aparece aqui com a pesquisa exibida ou o motivo de nada ter aparecido. Os últimos 20 ficam guardados por 30 dias.",
     "recent_empty": "Nenhuma página de agradecimento de comprador carregou o bloco do SourceTrac ainda. Faça um pedido de teste. Se mesmo assim nada aparecer aqui, o bloco não está no seu checkout: abra o editor de checkout, escolha Agradecimento no menu de páginas, adicione o bloco “SourceTrac survey” e clique em Salvar.",
-    "reason_not_on_page": "Nenhuma pesquisa ativa aparece nesta página.",
-    "reason_pinned_other_page": "O ID da pesquisa no bloco aponta para “{{survey}}”, que não pode aparecer nesta página.",
-    "reason_customer_type_unknown": "“{{survey}}” é para compradores de primeira vez ou recorrentes, e a Shopify não informou se este comprador já tinha comprado antes.",
-    "check_survey": "“{{survey}}” está no ar e aparece na sua página de agradecimento.",
-    "check_survey_rules": "“{{survey}}” está no ar, mas as regras em “Quem vê” fazem com que só alguns pedidos a vejam.",
-    "check_no_survey": "Nenhuma pesquisa está no ar, então os compradores não veem nada. Ative uma pesquisa para começar a coletar respostas.",
+    "reason_not_on_page": "Nenhuma pesquisa ativa está configurada para esta página. Marque esta página em “Onde aparece”.",
+    "reason_pinned_other_page": "O ID da pesquisa no bloco aponta para “{{survey}}”, que não está configurada para esta página.",
+    "reason_customer_type_unknown": "“{{survey}}” é para compradores novos ou recorrentes, e esta página não conseguiu saber. Adicione o bloco do SourceTrac também à página de agradecimento.",
+    "check_survey": "{{page}}: “{{survey}}” está ativa e configurada para aparecer aqui.",
+    "check_survey_rules": "{{page}}: “{{survey}}” está ativa aqui, mas pelas regras de “Quem vê” só alguns pedidos a veem.",
+    "check_no_survey": "{{page}}: nenhuma pesquisa ativa está configurada aqui. Ative uma pesquisa e marque esta página em “Onde aparece”.",
     "check_block_never": "O bloco do SourceTrac ainda não carregou na sua página de agradecimento. Abra o editor de checkout, escolha Agradecimento no menu de páginas no topo, adicione o bloco “SourceTrac survey” e clique em Salvar.",
-    "check_block_buyer": "O bloco do SourceTrac carregou na página de agradecimento de um comprador {{when}}.",
-    "check_block_placed": "O bloco do SourceTrac foi adicionado (visto {{when}}), mas nenhuma página de agradecimento de comprador o carregou ainda. Faça um pedido de teste para confirmar.",
-    "check_new_order": "Cada pedido é perguntado só uma vez. Teste com um pedido novo e veja em “Checkouts recentes” abaixo o que aconteceu."
+    "check_block_buyer": "{{page}}: o bloco do SourceTrac carregou para um comprador em {{when}}.",
+    "check_block_placed": "{{page}}: o bloco do SourceTrac foi adicionado (visto em {{when}}), mas ainda não carregou para nenhum comprador. Faça um pedido de teste para confirmar.",
+    "check_new_order": "Cada pedido é perguntado só uma vez. Teste com um pedido novo e veja em “Checkouts recentes” abaixo o que aconteceu.",
+    "check_block_never_order_status": "Página de status do pedido: o bloco do SourceTrac ainda não carregou aqui. No editor de checkout, escolha Status do pedido no menu de páginas, adicione o bloco “SourceTrac survey” e clique em Salvar. Ela só aparece no menu se sua loja usa as novas contas de cliente."
   },
   "templates": {
     "nps": {
@@ -981,7 +984,16 @@
     "status_auto_paused": "Pausada automaticamente: os resultados ficaram confiáveis. Os compradores não veem esta pesquisa. Ative de novo quando quiser; ela não vai pausar outra vez.",
     "other_label": "Texto da resposta “Outro”",
     "channel_question": "Contar no relatório de canais",
-    "channel_question_details": "Marque numa pergunta como “Como você nos conheceu?”. As respostas viram seus canais, com a receita, no Painel e no relatório de canais."
+    "channel_question_details": "Marque numa pergunta como “Como você nos conheceu?”. As respostas viram seus canais, com a receita, no Painel e no relatório de canais.",
+    "where_title": "Onde aparece",
+    "placement_order_status": "Página de status do pedido",
+    "audience_order_status_note": "Na página de status do pedido, o SourceTrac só sabe se é um primeiro pedido quando a página de agradecimento também tem o bloco do SourceTrac. Os outros pedidos não veem esta pesquisa ali.",
+    "placement_thank_you_details": "Sempre ativa. Logo depois do checkout, quando os compradores mais respondem.",
+    "placement_order_status_details": "Opcional. Também pergunta aos compradores que voltam para acompanhar o pedido. Exige as novas contas de cliente da Shopify e o bloco do SourceTrac na página de status do pedido.",
+    "placement_once": "Cada pedido é perguntado só uma vez. Se o comprador responder em uma página, a pesquisa some da outra.",
+    "store_step_order_status": "Para a página de status do pedido: no mesmo menu de páginas, escolha Status do pedido, adicione lá o bloco “SourceTrac survey” e clique em Salvar. Ela só aparece no menu se sua loja usa as novas contas de cliente (Configurações › Contas de cliente).",
+    "block_order_status_title": "Adicione o bloco do SourceTrac também à página de status do pedido",
+    "block_missing_order_status_body": "Esta pesquisa também está configurada para a página de status do pedido, mas o bloco ainda não carregou lá. No editor de checkout, escolha Status do pedido no menu de páginas, adicione o bloco “SourceTrac survey” e clique em Salvar. Se Status do pedido não estiver no menu, sua loja usa contas de cliente clássicas: mude em Configurações › Contas de cliente ou desmarque a página em “Onde aparece”."
   },
   "preview": {
     "title": "Prévia",

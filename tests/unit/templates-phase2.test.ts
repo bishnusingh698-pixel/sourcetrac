@@ -234,8 +234,8 @@ describe("getReadiness (S9)", () => {
   });
 
   it("has no page check: every survey shows on the Thank-you page", () => {
-    // An older draft saved with no pages must still go live; the editor has
-    // no page picker left to fix it with.
+    // The Thank-you page is always on (the server adds it), so an older draft
+    // saved with no pages must still go live rather than be blocked.
     const items = getReadiness({ definition: good, maxQuestions: 5, overActiveLimit: false });
     expect(items.map((i) => i.id)).not.toContain("has_placement");
   });

@@ -1,10 +1,11 @@
 import { db } from "~/db.server";
 import { logger } from "~/lib/logger";
 import type { Placement, TargetingMiss } from "@shared/survey-config";
+import { isCheckoutPlacement, type CheckoutPlacement } from "~/lib/block-seen.server";
 
 /**
- * "Recent checkouts": what the Thank-you block was told on its last page
- * loads, per shop.
+ * "Recent checkouts": what the checkout blocks (Thank-you and Order status) were
+ * told on their last page loads, per shop.
  *
  * "The survey doesn't show" had no answer a merchant could find: the block
  * hides itself without a word (it must never show a buyer an error), and the
@@ -33,6 +34,7 @@ export type ServeReason =
 
 export type ServeEntry = {
   at: string;
+  placement: CheckoutPlacement;
   orderId: string | null;
   /** The survey shown, or the one whose rule hid it. */
   surveyId: string | null;
@@ -50,24 +52,24 @@ export const CHECKOUT_LOAD_RETENTION_DAYS = 30;
 const pending = new Set<Promise<void>>();
 
 /**
- * Records one Thank-you page decision. Never throws and is not awaited by the
+ * Records one checkout page decision. Never throws and is not awaited by the
  * route: a buyer's survey must not wait on, or fail because of, this
- * bookkeeping. Other pages have no block and are ignored.
+ * bookkeeping. Pages with no checkout block are ignored.
  */
 export function recordServe(
   shopId: string,
-  entry: Omit<ServeEntry, "at"> & { placement: Placement; at?: Date },
+  entry: Omit<ServeEntry, "at" | "placement"> & { placement: Placement; at?: Date },
 ): Promise<void> {
-  if (entry.placement !== "thank_you") return Promise.resolve();
-  const { at, placement: _placement, ...rest } = entry;
+  const { at, placement, ...rest } = entry;
+  if (!isCheckoutPlacement(placement)) return Promise.resolve();
   const write = (async () => {
     try {
       // A buyer reloading the page asks again with the same answer: keep one
       // line, moved to the top.
       if (rest.orderId) {
-        await db.checkoutLoad.deleteMany({ where: { shopId, orderId: rest.orderId, reason: rest.reason } });
+        await db.checkoutLoad.deleteMany({ where: { shopId, placement, orderId: rest.orderId, reason: rest.reason } });
       }
-      await db.checkoutLoad.create({ data: { shopId, ...rest, ...(at ? { at } : {}) } });
+      await db.checkoutLoad.create({ data: { shopId, placement, ...rest, ...(at ? { at } : {}) } });
       const stale = await db.checkoutLoad.findMany({
         where: { shopId },
         orderBy: { at: "desc" },
@@ -87,11 +89,12 @@ export function recordServe(
   return write;
 }
 
-/** The newest Thank-you page loads, newest first. */
+/** The newest checkout page loads, newest first. */
 export async function recentServes(shopId: string): Promise<ServeEntry[]> {
   const rows = await db.checkoutLoad.findMany({ where: { shopId }, orderBy: { at: "desc" }, take: PER_SHOP });
   return rows.map((row) => ({
     at: row.at.toISOString(),
+    placement: row.placement === "order_status" ? "order_status" : "thank_you",
     orderId: row.orderId,
     surveyId: row.surveyId,
     reason: row.reason as ServeReason,

@@ -269,6 +269,7 @@ describe("checkout editor preview", () => {
    */
   for (const file of [
     ["sourcetrac-thank-you", "ThankYouBlock.tsx"],
+    ["sourcetrac-order-status", "OrderStatusBlock.tsx"],
   ] as const) {
     it(`${file[1]} renders the preview in the editor without an order id`, () => {
       const source = readFileSync(

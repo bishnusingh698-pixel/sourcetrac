@@ -10,6 +10,7 @@ import { BUCKETS, consumeShopBackstop, consumeToken } from "~/lib/rate-limit.ser
 import { hasAnyAnswerForOrder } from "~/lib/answers.server";
 import { findShopByDomain, isKnownOrder } from "~/lib/shop.server";
 import { recordBlockSeen } from "~/lib/block-seen.server";
+import { readOrderFact, recordOrderFact } from "~/lib/order-facts.server";
 import { recordServe, type ServeReason } from "~/lib/serve-log.server";
 import { getCompiledConfig } from "~/lib/surveys.server";
 import { authenticateCheckout } from "~/lib/checkout-auth.server";
@@ -106,13 +107,13 @@ export const loader = async ({ request }: { request: Request }) => {
       return cors(toResponse(data({ enabled: false, reason: "not_installed" })));
     }
 
-    const isFirstOrder = parsed.data.isFirstOrder === undefined ? null : parsed.data.isFirstOrder === "1";
+    const reportedFirstOrder = parsed.data.isFirstOrder === undefined ? null : parsed.data.isFirstOrder === "1";
 
     // Independent queries, run together. On a database that has just woken
     // each round trip is slow, and the buyer is watching the page meanwhile.
-    // `recordBlockSeen` never throws.
+    // `recordBlockSeen`, `recordOrderFact` and `readOrderFact` never throw.
     const pinnedId = parsed.data.surveyId ?? null;
-    const [, alreadyAnswered, config, order, pinnedRows] = await Promise.all([
+    const [, alreadyAnswered, config, order, pinnedRows, rememberedFirstOrder] = await Promise.all([
       recordBlockSeen(shop.id, placement),
       orderId ? hasAnyAnswerForOrder(shop.id, orderId) : Promise.resolve(false),
       getCompiledConfig(shop.id),
@@ -124,7 +125,15 @@ export const loader = async ({ request }: { request: Request }) => {
           })
         : Promise.resolve(null),
       pinnedId ? db.survey.count({ where: { id: pinnedId, shopId: shop.id } }) : Promise.resolve(0),
+      // The Thank-you page reports whether this is the buyer's first order;
+      // the Order status page cannot, so it reads what Thank-you reported.
+      orderId && reportedFirstOrder === null
+        ? readOrderFact(shop.id, orderId)
+        : orderId && reportedFirstOrder !== null && placement === "thank_you"
+          ? recordOrderFact(shop.id, orderId, reportedFirstOrder).then(() => null)
+          : Promise.resolve(null),
     ]);
+    const isFirstOrder = reportedFirstOrder ?? rememberedFirstOrder;
     const now = new Date();
 
     // The order's total for the order-value rule: the webhook's when it has
@@ -165,8 +174,9 @@ export const loader = async ({ request }: { request: Request }) => {
         orderTotalMinor,
         currency: totalCurrency,
         currencyDigits: totalCurrency ? minorUnitDigits(totalCurrency) : 2,
-        // From the Thank-you page's order confirmation. Unknown fails a
-        // first/returning rule: the merchant asked for that audience only.
+        // Unknown (no Thank-you report for this order) fails a first/returning
+        // rule: the merchant asked for that audience only, so an unknown buyer
+        // is not shown the survey.
         isFirstOrder,
         country,
         language: parsed.data.locale ?? null,

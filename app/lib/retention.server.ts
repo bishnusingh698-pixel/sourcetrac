@@ -32,6 +32,8 @@ export const DATA_REQUEST_RETENTION_DAYS = 30;
  * sends it 48 hours after uninstall) is deleted by retention as a backstop.
  */
 export const UNINSTALLED_SHOP_RETENTION_DAYS = 30;
+/** How long the Thank-you page's first-order flag for an order is kept. */
+export const ORDER_FACT_RETENTION_DAYS = 90;
 
 export type RetentionReport = {
   webhookEventsDeleted: number;
@@ -44,6 +46,7 @@ export type RetentionReport = {
   dataRequestsDeleted: number;
   /** "Recent checkouts" rows past their 30 days. */
   checkoutLoadsDeleted: number;
+  orderFactsDeleted: number;
   /** Deferred redacts executed (not discarded) by this pass. */
   pendingDeletionsDeleted: number;
   redactedOrdersDeleted: number;
@@ -139,6 +142,12 @@ export async function runRetentionPurge(now: Date = new Date()): Promise<Retenti
     )
   ).count;
 
+  // A first-order flag only matters while the buyer may still open the order's
+  // status page, so it is kept far shorter than the answers.
+  const orderFactsDeleted = (
+    await retryDb(() => db.orderFact.deleteMany({ where: { createdAt: { lt: daysAgo(ORDER_FACT_RETENTION_DAYS, now) } } }))
+  ).count;
+
   // Deferred redacts are a deletion obligation, never something to discard:
   // every queued one is EXECUTED here, whatever its age.
   const pendingShops = await retryDb(() =>
@@ -200,6 +209,7 @@ export async function runRetentionPurge(now: Date = new Date()): Promise<Retenti
     pendingSyncDeleted,
     dataRequestsDeleted,
     checkoutLoadsDeleted,
+    orderFactsDeleted,
     pendingDeletionsDeleted,
     redactedOrdersDeleted,
     uninstalledShopsDeleted,

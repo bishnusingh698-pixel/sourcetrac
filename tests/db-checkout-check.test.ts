@@ -28,7 +28,10 @@ beforeAll(async () => {
 beforeEach(async () => {
   await prisma.survey.deleteMany({ where: { shopId } });
   await prisma.checkoutLoad.deleteMany({ where: { shopId } });
-  await prisma.shop.update({ where: { id: shopId }, data: { thankYouBlockSeenAt: null, plan: "free", planStatus: "active" } });
+  await prisma.shop.update({
+    where: { id: shopId },
+    data: { thankYouBlockSeenAt: null, orderStatusBlockSeenAt: null, plan: "free", planStatus: "active" },
+  });
   clearConfigCache();
 });
 afterAll(async () => {
@@ -36,8 +39,9 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
-const survey = (name: string) => ({
+const survey = (name: string, placements: Array<"thank_you" | "order_status"> = ["thank_you"]) => ({
   name,
+  placements,
   status: "active" as const,
   layout: "all" as const,
   title: name,
@@ -49,25 +53,47 @@ const survey = (name: string) => ({
   ],
 });
 
-const load = (orderId: string, reason: "shown" | "already_answered" = "shown", at?: Date) =>
-  recordServe(shopId, { placement: "thank_you", orderId, surveyId: null, reason, pinned: false, country: "US", isFirstOrder: true, at });
+const load = (
+  orderId: string,
+  reason: "shown" | "already_answered" = "shown",
+  at?: Date,
+  placement: "thank_you" | "order_status" = "thank_you",
+) => recordServe(shopId, { placement, orderId, surveyId: null, reason, pinned: false, country: "US", isFirstOrder: true, at });
+
+const page = async (names: Map<string, string>, placement: "thank_you" | "order_status") =>
+  (await runCheckoutCheck(shopId, names)).pages.find((p) => p.placement === placement);
 
 describe("checkout check", () => {
-  it("reports no survey and no block for an empty shop", async () => {
-    expect(await runCheckoutCheck(shopId, new Map())).toEqual({ survey: null, block: { kind: "never" }, planHidden: 0 });
+  it("checks only the Thank-you page for an empty shop: Order status is an optional extra", async () => {
+    expect(await runCheckoutCheck(shopId, new Map())).toEqual({
+      pages: [{ placement: "thank_you", survey: null, block: { kind: "never" } }],
+      planHidden: 0,
+    });
   });
 
   it("names the live survey, and tells a buyer's load from a block that is only placed", async () => {
     const created = await createSurvey(shopId, survey("Channels"));
     const names = new Map([[created.id, "Channels"]]);
-    expect((await runCheckoutCheck(shopId, names)).survey).toEqual({ name: "Channels", audienceRules: false });
+    expect((await page(names, "thank_you"))?.survey).toEqual({ name: "Channels", audienceRules: false });
 
     // "It's already added" (or the checkout editor) proves placement, not that buyers see it.
-    await markBlockAdded(shopId);
-    expect((await runCheckoutCheck(shopId, names)).block.kind).toBe("placed");
+    await markBlockAdded(shopId, ["thank_you"]);
+    expect((await page(names, "thank_you"))?.block.kind).toBe("placed");
 
     await load("7000000000001");
-    expect((await runCheckoutCheck(shopId, names)).block.kind).toBe("buyer");
+    expect((await page(names, "thank_you"))?.block.kind).toBe("buyer");
+  });
+
+  it("checks the Order status page once a survey shows there, page by page", async () => {
+    const created = await createSurvey(shopId, survey("Both", ["thank_you", "order_status"]));
+    const names = new Map([[created.id, "Both"]]);
+    expect((await page(names, "order_status"))).toMatchObject({ survey: { name: "Both" }, block: { kind: "never" } });
+
+    // A Thank-you load says nothing about the Order status block.
+    await load("7000000000010");
+    expect((await page(names, "order_status"))?.block.kind).toBe("never");
+    await load("7000000000010", "already_answered", undefined, "order_status");
+    expect((await page(names, "order_status"))?.block.kind).toBe("buyer");
   });
 
   it("counts live surveys the plan does not serve", async () => {
@@ -105,7 +131,7 @@ describe("recent checkouts", () => {
   });
 
   it("ignores pages with no block, and ages out after 30 days", async () => {
-    await recordServe(shopId, { placement: "order_status", orderId: "1", surveyId: null, reason: "shown", pinned: false, country: null, isFirstOrder: null });
+    await recordServe(shopId, { placement: "onsite", orderId: "1", surveyId: null, reason: "shown", pinned: false, country: null, isFirstOrder: null });
     expect(await recentServes(shopId)).toHaveLength(0);
 
     await load("7000000000005", "shown", new Date(Date.now() - 31 * 24 * 60 * 60 * 1000));

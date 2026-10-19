@@ -168,11 +168,14 @@ describe("duplicate (H14)", () => {
 });
 
 describe("server-side guards", () => {
-  it("shows every survey on the Thank-you page, and rejects a bad sample and rotation weight (M25)", async () => {
-    // Placements are not the merchant's to pick: whatever is posted, the
-    // survey shows on the Thank-you page.
-    const placed = await createSurvey(shopId, input({ placements: ["order_status", "bogus" as never] }));
-    expect(placed.placements).toEqual(["thank_you"]);
+  it("always shows on the Thank-you page, keeps the optional Order status page, and rejects a bad sample and rotation weight (M25)", async () => {
+    // A survey can never end up on no page: Thank-you is always added, the
+    // Order status page only when asked for, and retired values are dropped.
+    expect((await createSurvey(shopId, input({ placements: ["bogus" as never] }))).placements).toEqual(["thank_you"]);
+    expect((await createSurvey(shopId, input({ placements: ["order_status", "onsite"] }))).placements).toEqual([
+      "thank_you",
+      "order_status",
+    ]);
     await expect(createSurvey(shopId, input({ targeting: { samplePercent: 0 } }))).rejects.toMatchObject({ fields: { code: "invalid_sample" } });
     await expect(createSurvey(shopId, input({ rotationWeight: 1.5 }))).rejects.toMatchObject({ fields: { code: "invalid_rotation_weight" } });
   });

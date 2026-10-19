@@ -283,7 +283,9 @@
     "q_sync": "为什么 Shopify 同步没有运行？",
     "a_sync": "同步会为订单和客户打标签，仅在 Shopify 授予相应权限时运行。请重新打开应用并批准权限，或保持关闭。无论如何，您的问卷都能正常工作。",
     "q_once_per_order": "我回答过一次后问卷就不显示了，为什么？",
-    "a_once_per_order": "每个订单只会被询问一次。回答后，即使刷新页面，SourceTrac 也不会再为该订单显示问卷，因此买家不会被重复询问。要再次测试，请下一个新订单。"
+    "a_once_per_order": "每个订单只会被询问一次。回答后，即使刷新页面，SourceTrac 也不会再为该订单显示问卷，因此买家不会被重复询问。要再次测试，请下一个新订单。",
+    "q_order_status": "问卷也可以显示在订单状态页面吗？",
+    "a_order_status": "可以，作为可选的附加功能。订单状态页面是买家在订单邮件中点击“查看订单”后看到的页面。请在问卷的“显示位置”中勾选它，然后在结账编辑器的页面菜单中选择“订单状态”，添加“SourceTrac survey”区块并保存。只有店铺使用 Shopify 新版客户账户时菜单中才会出现该页面（设置 › 客户账户）。每个订单仍然只询问一次。"
   },
   "shell": {
     "plan_blocked_title": "SourceTrac 在您当前的套餐中不可用",
@@ -565,18 +567,19 @@
     "check_title": "结账检查",
     "check_plan_hidden_one": "{{count}} 个上线问卷超出了套餐上限，买家看不到。",
     "check_plan_hidden_other": "{{count}} 个上线问卷超出了套餐上限，买家看不到。",
-    "recent_help": "每当 SourceTrac 区块在买家的感谢页面加载时，都会记录在这里，并注明显示了哪份问卷，或为什么没有显示。保留最近 20 条，保存 30 天。",
+    "recent_help": "每当 SourceTrac 区块在买家的感谢页面或订单状态页面加载时，都会在这里列出它显示的问卷，或没有显示任何内容的原因。最近 20 条保留 30 天。",
     "recent_empty": "还没有买家的感谢页面加载过 SourceTrac 区块。请下一个测试订单。如果这里仍然没有记录，说明区块不在你的结账页面中：打开结账编辑器，从页面菜单选择“感谢”，添加“SourceTrac survey”区块并点击“保存”。",
-    "reason_not_on_page": "此页面没有可显示的已上线问卷。",
-    "reason_pinned_other_page": "区块的问卷 ID 指向“{{survey}}”，但它不能在此页面显示。",
-    "reason_customer_type_unknown": "“{{survey}}”面向首次购买的买家或回头客，而 Shopify 没有说明此买家之前是否下过订单。",
-    "check_survey": "“{{survey}}”已上线，会显示在你的感谢页面上。",
-    "check_survey_rules": "“{{survey}}”已上线，但由于“查看对象”中的规则，只有部分订单会看到它。",
-    "check_no_survey": "没有已上线的问卷，所以买家什么也看不到。开启一份问卷即可开始收集回答。",
+    "reason_not_on_page": "没有设置在此页面显示的已上线问卷。请在“显示位置”中勾选此页面。",
+    "reason_pinned_other_page": "区块的问卷 ID 指向“{{survey}}”，但它未设置在此页面显示。",
+    "reason_customer_type_unknown": "“{{survey}}”面向首次或回头客，但此页面无法判断。请把 SourceTrac 区块也添加到感谢页面。",
+    "check_survey": "{{page}}：“{{survey}}”已上线并设置在此显示。",
+    "check_survey_rules": "{{page}}：“{{survey}}”已在此上线，但受“谁能看到”规则限制，只有部分订单能看到。",
+    "check_no_survey": "{{page}}：没有设置在此显示的上线问卷。请开启问卷并在“显示位置”中勾选此页面。",
     "check_block_never": "SourceTrac 区块尚未在你的感谢页面加载。请打开结账编辑器，从顶部页面菜单选择“感谢”，添加“SourceTrac survey”区块并点击“保存”。",
-    "check_block_buyer": "SourceTrac 区块已于 {{when}} 在买家的感谢页面加载。",
-    "check_block_placed": "SourceTrac 区块已添加（于 {{when}} 检测到），但还没有买家的感谢页面加载过它。请下一个测试订单来确认。",
-    "check_new_order": "每个订单只会被询问一次。请用新订单测试，然后在下方“最近的结账”中查看结果。"
+    "check_block_buyer": "{{page}}：SourceTrac 区块已于 {{when}} 为买家加载。",
+    "check_block_placed": "{{page}}：SourceTrac 区块已添加（{{when}} 检测到），但尚未在任何买家的页面加载。请下一个测试订单确认。",
+    "check_new_order": "每个订单只会被询问一次。请用新订单测试，然后在下方“最近的结账”中查看结果。",
+    "check_block_never_order_status": "订单状态页面：SourceTrac 区块尚未在此加载。请在结账编辑器的页面菜单中选择“订单状态”，添加“SourceTrac survey”区块并保存。只有店铺使用新版客户账户时菜单中才会出现该页面。"
   },
   "templates": {
     "nps": {
@@ -981,7 +984,16 @@
     "status_auto_paused": "已自动暂停：结果已经可靠。买家看不到此问卷。您可以随时重新开启，它不会再次自动暂停。",
     "other_label": "“其他”选项的文字",
     "channel_question": "计入渠道报告",
-    "channel_question_details": "用于“你是如何知道我们的？”这类问题。它的回答会作为你的渠道（附收入）显示在仪表板和渠道报告中。"
+    "channel_question_details": "用于“你是如何知道我们的？”这类问题。它的回答会作为你的渠道（附收入）显示在仪表板和渠道报告中。",
+    "where_title": "显示位置",
+    "placement_order_status": "订单状态页",
+    "audience_order_status_note": "在订单状态页面上，只有当感谢页面也添加了 SourceTrac 区块时，SourceTrac 才知道这是否为首次订单。其他订单在那里不会看到此问卷。",
+    "placement_thank_you_details": "始终开启。在结账后立即显示，此时买家最愿意回答。",
+    "placement_order_status_details": "可选。也会询问回来查看订单的买家。需要使用 Shopify 新版客户账户，并在订单状态页面添加 SourceTrac 区块。",
+    "placement_once": "每个订单只询问一次。买家在一个页面回答后，另一个页面就不会再显示问卷。",
+    "store_step_order_status": "订单状态页面：在同一页面菜单中选择“订单状态”，在那里添加“SourceTrac survey”区块并保存。只有店铺使用新版客户账户时菜单中才会出现该页面（设置 › 客户账户）。",
+    "block_order_status_title": "也请将 SourceTrac 区块添加到订单状态页面",
+    "block_missing_order_status_body": "此问卷也设置为在订单状态页面显示，但该页面尚未加载区块。请在结账编辑器的页面菜单中选择“订单状态”，添加“SourceTrac survey”区块并保存。如果菜单中没有“订单状态”，说明店铺使用的是经典客户账户：请在“设置 › 客户账户”中切换，或在“显示位置”中取消勾选该页面。"
   },
   "preview": {
     "title": "预览",

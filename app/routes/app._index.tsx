@@ -106,7 +106,9 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
         ? {
             shopHandle: shop.shopDomain.replace(/\.myshopify\.com$/, ""),
             hasLiveSurvey: liveSurveys > 0,
-            blockSeen,
+            // The setup guide is about the Thank-you page; Order status is an
+            // optional extra the editor explains.
+            blockSeen: blockSeen.thank_you,
             // False until the merchant picks a language themselves; while it is
             // false the full picker is offered as the first setup step.
             hasExplicitLanguage: isSupportedLanguage(shop.language),

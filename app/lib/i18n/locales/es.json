@@ -283,7 +283,9 @@
     "q_sync": "¿Por qué no se ejecuta la sincronización con Shopify?",
     "a_sync": "La sincronización etiqueta pedidos y clientes y solo funciona si Shopify ha concedido el permiso correspondiente. Vuelva a abrir la app y apruebe los permisos, o déjelos desactivados. Su encuesta funciona igual.",
     "q_once_per_order": "Respondí una vez y ahora la encuesta no aparece. ¿Por qué?",
-    "a_once_per_order": "Cada pedido se pregunta una sola vez. Tras una respuesta, SourceTrac no vuelve a mostrar la encuesta a ese pedido, aunque se recargue la página, para que nadie responda dos veces. Para volver a probar, haz un pedido nuevo."
+    "a_once_per_order": "Cada pedido se pregunta una sola vez. Tras una respuesta, SourceTrac no vuelve a mostrar la encuesta a ese pedido, aunque se recargue la página, para que nadie responda dos veces. Para volver a probar, haz un pedido nuevo.",
+    "q_order_status": "¿La encuesta puede mostrarse también en la página de estado del pedido?",
+    "a_order_status": "Sí, como extra opcional. La página de estado del pedido es la que ven los compradores al abrir «Ver tu pedido» en los correos del pedido. Márcala en «Dónde se muestra» dentro de la encuesta y luego, en el editor de checkout, elige Estado del pedido en el menú de páginas, añade el bloque «SourceTrac survey» y pulsa Guardar. Solo aparece en el menú si tu tienda usa las nuevas cuentas de cliente de Shopify (Configuración › Cuentas de cliente). Cada pedido se sigue preguntando una sola vez."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac no está disponible en tu plan",
@@ -565,18 +567,19 @@
     "check_title": "Comprobación del checkout",
     "check_plan_hidden_one": "{{count}} encuesta activa supera el límite de tu plan, así que los compradores no la ven.",
     "check_plan_hidden_other": "{{count}} encuestas activas superan el límite de tu plan, así que los compradores no las ven.",
-    "recent_help": "Cada vez que el bloque de SourceTrac se carga en la página de agradecimiento de un comprador, aparece aquí con la encuesta que mostró o el motivo por el que no mostró nada. Se guardan los últimos 20 durante 30 días.",
+    "recent_help": "Cada vez que el bloque de SourceTrac se carga en la página de agradecimiento o de estado del pedido de un comprador, aparece aquí con la encuesta que mostró o el motivo por el que no mostró nada. Se guardan las últimas 20 durante 30 días.",
     "recent_empty": "Aún no se ha cargado el bloque de SourceTrac en la página de agradecimiento de ningún comprador. Haz un pedido de prueba. Si sigue sin aparecer aquí, el bloque no está en tu checkout: abre el editor de checkout, elige Gracias en el menú de páginas, añade el bloque «SourceTrac survey» y pulsa Guardar.",
-    "reason_not_on_page": "Ninguna encuesta activa se muestra en esta página.",
-    "reason_pinned_other_page": "El ID de encuesta del bloque indica «{{survey}}», que no puede mostrarse en esta página.",
-    "reason_customer_type_unknown": "«{{survey}}» es para compradores nuevos o recurrentes, y Shopify no indicó si este comprador ya había pedido antes.",
-    "check_survey": "«{{survey}}» está activa y se muestra en tu página de agradecimiento.",
-    "check_survey_rules": "«{{survey}}» está activa, pero por sus reglas en «Quién la ve» solo la ven algunos pedidos.",
-    "check_no_survey": "No hay ninguna encuesta activa, así que los compradores no ven nada. Activa una encuesta para empezar a recoger respuestas.",
+    "reason_not_on_page": "Ninguna encuesta activa está configurada para esta página. Marca esta página en «Dónde se muestra».",
+    "reason_pinned_other_page": "El ID de encuesta del bloque indica «{{survey}}», que no está configurada para esta página.",
+    "reason_customer_type_unknown": "«{{survey}}» es para compradores nuevos o recurrentes, y esta página no pudo saberlo. Añade también el bloque de SourceTrac a la página de agradecimiento.",
+    "check_survey": "{{page}}: «{{survey}}» está activa y configurada para mostrarse aquí.",
+    "check_survey_rules": "{{page}}: «{{survey}}» está activa aquí, pero por sus reglas de «Quién la ve» solo algunos pedidos la ven.",
+    "check_no_survey": "{{page}}: ninguna encuesta activa está configurada aquí. Activa una encuesta y marca esta página en «Dónde se muestra».",
     "check_block_never": "El bloque de SourceTrac aún no se ha cargado en tu página de agradecimiento. Abre el editor de checkout, elige Gracias en el menú de páginas de arriba, añade el bloque «SourceTrac survey» y pulsa Guardar.",
-    "check_block_buyer": "El bloque de SourceTrac se cargó en la página de agradecimiento de un comprador {{when}}.",
-    "check_block_placed": "El bloque de SourceTrac está añadido (visto {{when}}), pero aún no se ha cargado en la página de agradecimiento de ningún comprador. Haz un pedido de prueba para confirmarlo.",
-    "check_new_order": "Cada pedido se pregunta una sola vez. Prueba con un pedido nuevo y luego mira «Pagos recientes» más abajo para ver qué pasó."
+    "check_block_buyer": "{{page}}: el bloque de SourceTrac se cargó para un comprador el {{when}}.",
+    "check_block_placed": "{{page}}: el bloque de SourceTrac está añadido (visto el {{when}}), pero aún no se ha cargado para ningún comprador. Haz un pedido de prueba para confirmarlo.",
+    "check_new_order": "Cada pedido se pregunta una sola vez. Prueba con un pedido nuevo y luego mira «Pagos recientes» más abajo para ver qué pasó.",
+    "check_block_never_order_status": "Página de estado del pedido: el bloque de SourceTrac aún no se ha cargado aquí. En el editor de checkout, elige Estado del pedido en el menú de páginas, añade el bloque «SourceTrac survey» y pulsa Guardar. Solo aparece en el menú si tu tienda usa las nuevas cuentas de cliente."
   },
   "templates": {
     "nps": {
@@ -981,7 +984,16 @@
     "status_auto_paused": "Pausada automáticamente: los resultados ya son fiables. Los compradores no ven esta encuesta. Vuelve a activarla cuando quieras; no se pausará de nuevo.",
     "other_label": "Texto de la respuesta «Otro»",
     "channel_question": "Contar en el informe de canales",
-    "channel_question_details": "Márcalo en una pregunta tipo «¿Cómo nos conociste?». Sus respuestas serán tus canales, con sus ingresos, en el Panel y el informe de canales."
+    "channel_question_details": "Márcalo en una pregunta tipo «¿Cómo nos conociste?». Sus respuestas serán tus canales, con sus ingresos, en el Panel y el informe de canales.",
+    "where_title": "Dónde se muestra",
+    "placement_order_status": "Página de estado del pedido",
+    "audience_order_status_note": "En la página de estado del pedido, SourceTrac solo sabe si es un primer pedido cuando la página de agradecimiento también tiene el bloque de SourceTrac. Los demás pedidos no ven esta encuesta ahí.",
+    "placement_thank_you_details": "Siempre activa. Justo después del pago, cuando los compradores más responden.",
+    "placement_order_status_details": "Opcional. También pregunta a los compradores que vuelven a consultar su pedido. Requiere las nuevas cuentas de cliente de Shopify y el bloque de SourceTrac en la página de estado del pedido.",
+    "placement_once": "Cada pedido se pregunta una sola vez. Si el comprador responde en una página, la encuesta se oculta en la otra.",
+    "store_step_order_status": "Para la página de estado del pedido: en el mismo menú de páginas elige Estado del pedido, añade allí el bloque «SourceTrac survey» y pulsa Guardar. Solo aparece en el menú si tu tienda usa las nuevas cuentas de cliente (Configuración › Cuentas de cliente).",
+    "block_order_status_title": "Añade también el bloque de SourceTrac a tu página de estado del pedido",
+    "block_missing_order_status_body": "Esta encuesta también está configurada para la página de estado del pedido, pero el bloque aún no se ha cargado allí. En el editor de checkout, elige Estado del pedido en el menú de páginas, añade el bloque «SourceTrac survey» y pulsa Guardar. Si Estado del pedido no está en el menú, tu tienda usa las cuentas de cliente clásicas: cámbialas en Configuración › Cuentas de cliente o desmarca la página en «Dónde se muestra»."
   },
   "preview": {
     "title": "Vista previa",

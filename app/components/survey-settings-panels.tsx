@@ -38,7 +38,11 @@ function NumberField({ label, value, onInput, details }: { label: string; value:
 export function Audience({ draft, update, t }: { draft: EditorSurvey; update: Update; t: TFn }) {
   const targeting = draft.targeting;
   const value = targeting.customerType ?? "everyone";
+  // The Order status page has no first-order signal of its own; it reads what
+  // the Thank-you block reported for the order.
+  const orderStatusNote = value !== "everyone" && draft.placements.includes("order_status");
   return (
+    <s-stack gap="small">
     <s-choice-list
       label={t("editor.audience")}
       name="audience"
@@ -53,6 +57,12 @@ export function Audience({ draft, update, t }: { draft: EditorSurvey; update: Up
       <s-choice value="first_order">{t("editor.audience_first")}</s-choice>
       <s-choice value="returning">{t("editor.audience_returning")}</s-choice>
     </s-choice-list>
+    {orderStatusNote ? (
+      <s-text color="subdued" fontSize="small">
+        {t("editor.audience_order_status_note")}
+      </s-text>
+    ) : null}
+    </s-stack>
   );
 }
 

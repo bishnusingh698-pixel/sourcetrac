@@ -8,8 +8,11 @@
  *    read as a network error and retried for a minute on "Loading…".
  *  - The order-value rule never applied: `valueCurrency` was never set, and on
  *    the Thank-you page the order webhook has not landed, so there was no total.
- *  - First-time/returning, country, language and date rules each decide from
- *    what the Thank-you block reports.
+ *  - A first-time/returning survey could never show on the Order status page,
+ *    which has no first-order signal: it now reads what the Thank-you page
+ *    reported for the order.
+ *  - Nothing told the merchant why: every decision is kept for the Surveys
+ *    page's "Recent checkouts".
  */
 import crypto from "node:crypto";
 
@@ -65,6 +68,7 @@ function input(name: string, over: Partial<SurveyInput> = {}): SurveyInput {
   return {
     name,
     status: "active",
+    placements: ["thank_you", "order_status"],
     layout: "all",
     title: name,
     intro: null,
@@ -100,6 +104,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   await prisma.survey.deleteMany({ where: { shopId } });
   await prisma.checkoutLoad.deleteMany({ where: { shopId } });
+  await prisma.orderFact.deleteMany({ where: { shopId } });
   clearConfigCache();
   resetBuckets();
 });
@@ -158,6 +163,23 @@ describe("first-time and returning buyers", () => {
     expect((await config(`placement=thank_you&orderId=${nextOrder()}`)).enabled).toBe(false);
   });
 
+  it("shows a first-order survey on Order status when the Thank-you page reported a first order", async () => {
+    const survey = await createSurvey(shopId, input("Newcomers", { targeting: { customerType: "first_order" } }));
+    const first = nextOrder();
+    const repeat = nextOrder();
+    // Thank-you reports the flag; it is remembered for the order.
+    expect((await config(`placement=thank_you&orderId=${first}&isFirstOrder=1`)).survey?.id).toBe(survey.id);
+    expect((await config(`placement=thank_you&orderId=${repeat}&isFirstOrder=0`)).enabled).toBe(false);
+
+    // Order status has no signal of its own and reads what Thank-you saw.
+    expect((await config(`placement=order_status&orderId=${first}`)).survey?.id).toBe(survey.id);
+    expect((await config(`placement=order_status&orderId=${repeat}`)).enabled).toBe(false);
+
+    // An order Thank-you never reported stays unknown, and the merchant is told why.
+    expect((await config(`placement=order_status&orderId=${nextOrder()}`)).enabled).toBe(false);
+    expect(await lastServe()).toMatchObject({ placement: "order_status", reason: "customer_type_unknown" });
+  });
+
   it("shows an everyone survey whatever the page knows", async () => {
     const survey = await createSurvey(shopId, input("Everyone"));
     expect((await config(`placement=thank_you&orderId=${nextOrder()}`)).survey?.id).toBe(survey.id);
@@ -210,9 +232,11 @@ describe("nothing to show", () => {
     expect((await lastServe())?.reason).toBe("none_live");
   });
 
-  it("never shows a survey on any page but Thank-you", async () => {
-    await createSurvey(shopId, input("Any"));
+  it("shows nothing on the Order status page unless the survey is set to show there", async () => {
+    await createSurvey(shopId, input("Thank-you only", { placements: ["thank_you"] }));
     expect((await config(`placement=order_status&orderId=${nextOrder()}`)).enabled).toBe(false);
+    expect(await lastServe()).toMatchObject({ placement: "order_status", reason: "not_on_page" });
+    expect((await config(`placement=thank_you&orderId=${nextOrder()}`)).enabled).toBe(true);
   });
 
   it("tells the block when the order has already answered", async () => {
@@ -221,7 +245,8 @@ describe("nothing to show", () => {
     await prisma.response.create({
       data: { shopId, surveyId: survey.id, surveyVersion: 1, orderId, placement: "thank_you" },
     });
-    const body = (await (await call(`placement=thank_you&orderId=${orderId}`)).json()) as { alreadyAnswered: boolean };
+    // Answered on the Thank-you page, so the Order status page asks nothing.
+    const body = (await (await call(`placement=order_status&orderId=${orderId}`)).json()) as { alreadyAnswered: boolean };
     expect(body.alreadyAnswered).toBe(true);
     // The reason a merchant re-using a test order most needs to see.
     expect((await lastServe())?.reason).toBe("already_answered");

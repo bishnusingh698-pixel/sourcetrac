@@ -283,7 +283,9 @@
     "q_sync": "Perché la sincronizzazione Shopify non parte?",
     "a_sync": "La sincronizzazione etichetta ordini e clienti e funziona solo se Shopify ha concesso l’autorizzazione corrispondente. Riapri l’app e approva le autorizzazioni, oppure lasciale disattivate. Il sondaggio funziona comunque.",
     "q_once_per_order": "Ho risposto una volta e ora il sondaggio non appare. Perché?",
-    "a_once_per_order": "Ogni ordine viene interrogato una sola volta. Dopo una risposta, SourceTrac non mostra più il sondaggio a quell'ordine, nemmeno ricaricando la pagina, così nessuno risponde due volte. Per riprovare, fai un nuovo ordine."
+    "a_once_per_order": "Ogni ordine viene interrogato una sola volta. Dopo una risposta, SourceTrac non mostra più il sondaggio a quell'ordine, nemmeno ricaricando la pagina, così nessuno risponde due volte. Per riprovare, fai un nuovo ordine.",
+    "q_order_status": "Il sondaggio può comparire anche nella pagina di stato dell'ordine?",
+    "a_order_status": "Sì, come extra facoltativo. La pagina di stato dell'ordine è quella che gli acquirenti aprono con «Visualizza ordine» dalle email dell'ordine. Selezionala in «Dove appare» nel sondaggio, poi nell'editor del checkout scegli Stato dell'ordine dal menu delle pagine, aggiungi il blocco «SourceTrac survey» e premi Salva. È nel menu solo se il tuo negozio usa i nuovi account cliente di Shopify (Impostazioni › Account cliente). Ogni ordine viene comunque interrogato una sola volta."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac non è disponibile con il tuo piano",
@@ -565,18 +567,19 @@
     "check_title": "Controllo del checkout",
     "check_plan_hidden_one": "{{count}} sondaggio attivo supera il limite del tuo piano, quindi gli acquirenti non lo vedono.",
     "check_plan_hidden_other": "{{count}} sondaggi attivi superano il limite del tuo piano, quindi gli acquirenti non li vedono.",
-    "recent_help": "Ogni volta che il blocco SourceTrac si carica nella pagina di ringraziamento di un acquirente, compare qui con il sondaggio mostrato, o con il motivo per cui non è stato mostrato nulla. Gli ultimi 20 vengono conservati per 30 giorni.",
+    "recent_help": "Ogni volta che il blocco SourceTrac si carica nella pagina di ringraziamento o di stato dell'ordine di un acquirente, compare qui con il sondaggio mostrato o il motivo per cui non è stato mostrato nulla. Gli ultimi 20 restano per 30 giorni.",
     "recent_empty": "Il blocco SourceTrac non si è ancora caricato nella pagina di ringraziamento di nessun acquirente. Fai un ordine di prova. Se non compare ancora qui, il blocco non è nel tuo checkout: apri l'editor del checkout, scegli Grazie dal menu delle pagine, aggiungi il blocco «SourceTrac survey» e premi Salva.",
-    "reason_not_on_page": "Nessun sondaggio attivo viene mostrato in questa pagina.",
-    "reason_pinned_other_page": "L'ID sondaggio del blocco indica «{{survey}}», che non può essere mostrato in questa pagina.",
-    "reason_customer_type_unknown": "«{{survey}}» è per chi acquista per la prima volta o per chi è già cliente, e Shopify non ha indicato se questo acquirente aveva già ordinato.",
-    "check_survey": "«{{survey}}» è attivo e viene mostrato nella tua pagina di ringraziamento.",
-    "check_survey_rules": "«{{survey}}» è attivo, ma per le sue regole in «Chi lo vede» lo vedono solo alcuni ordini.",
-    "check_no_survey": "Nessun sondaggio è attivo, quindi gli acquirenti non vedono nulla. Attiva un sondaggio per iniziare a raccogliere risposte.",
+    "reason_not_on_page": "Nessun sondaggio attivo è impostato per questa pagina. Seleziona questa pagina in «Dove appare».",
+    "reason_pinned_other_page": "L'ID sondaggio del blocco indica «{{survey}}», che non è impostato per questa pagina.",
+    "reason_customer_type_unknown": "«{{survey}}» è per acquirenti nuovi o abituali, e questa pagina non ha potuto saperlo. Aggiungi il blocco SourceTrac anche alla pagina di ringraziamento.",
+    "check_survey": "{{page}}: «{{survey}}» è attivo e impostato per apparire qui.",
+    "check_survey_rules": "{{page}}: «{{survey}}» è attivo qui, ma per le regole in «Chi lo vede» lo vedono solo alcuni ordini.",
+    "check_no_survey": "{{page}}: nessun sondaggio attivo è impostato qui. Attiva un sondaggio e seleziona questa pagina in «Dove appare».",
     "check_block_never": "Il blocco SourceTrac non si è ancora caricato nella tua pagina di ringraziamento. Apri l'editor del checkout, scegli Grazie dal menu delle pagine in alto, aggiungi il blocco «SourceTrac survey» e premi Salva.",
-    "check_block_buyer": "Il blocco SourceTrac si è caricato nella pagina di ringraziamento di un acquirente {{when}}.",
-    "check_block_placed": "Il blocco SourceTrac è stato aggiunto (visto {{when}}), ma non si è ancora caricato nella pagina di ringraziamento di nessun acquirente. Fai un ordine di prova per verificarlo.",
-    "check_new_order": "Ogni ordine viene interrogato una sola volta. Prova con un nuovo ordine, poi guarda «Checkout recenti» qui sotto per vedere cosa è successo."
+    "check_block_buyer": "{{page}}: il blocco SourceTrac si è caricato per un acquirente il {{when}}.",
+    "check_block_placed": "{{page}}: il blocco SourceTrac è aggiunto (visto il {{when}}), ma non si è ancora caricato per nessun acquirente. Fai un ordine di prova per confermarlo.",
+    "check_new_order": "Ogni ordine viene interrogato una sola volta. Prova con un nuovo ordine, poi guarda «Checkout recenti» qui sotto per vedere cosa è successo.",
+    "check_block_never_order_status": "Pagina di stato dell'ordine: il blocco SourceTrac non si è ancora caricato qui. Nell'editor del checkout scegli Stato dell'ordine dal menu delle pagine, aggiungi il blocco «SourceTrac survey» e premi Salva. È nel menu solo se il tuo negozio usa i nuovi account cliente."
   },
   "templates": {
     "nps": {
@@ -981,7 +984,16 @@
     "status_auto_paused": "In pausa automaticamente: i risultati sono diventati affidabili. Gli acquirenti non vedono questo sondaggio. Riattivalo quando vuoi; non si fermerà di nuovo.",
     "other_label": "Testo della risposta «Altro»",
     "channel_question": "Conta nel report dei canali",
-    "channel_question_details": "Selezionalo per una domanda tipo «Come ci hai conosciuto?». Le risposte diventano i tuoi canali, con il fatturato, nella Dashboard e nel report dei canali."
+    "channel_question_details": "Selezionalo per una domanda tipo «Come ci hai conosciuto?». Le risposte diventano i tuoi canali, con il fatturato, nella Dashboard e nel report dei canali.",
+    "where_title": "Dove appare",
+    "placement_order_status": "Pagina di stato dell'ordine",
+    "audience_order_status_note": "Nella pagina dello stato dell'ordine, SourceTrac sa se è un primo ordine solo quando anche la pagina di ringraziamento ha il blocco SourceTrac. Gli altri ordini lì non vedono questo sondaggio.",
+    "placement_thank_you_details": "Sempre attiva. Subito dopo il checkout, quando gli acquirenti rispondono più volentieri.",
+    "placement_order_status_details": "Facoltativa. Chiede anche agli acquirenti che tornano a controllare l'ordine. Richiede i nuovi account cliente di Shopify e il blocco SourceTrac nella pagina di stato dell'ordine.",
+    "placement_once": "Ogni ordine viene interrogato una sola volta. Se l'acquirente risponde su una pagina, il sondaggio è nascosto sull'altra.",
+    "store_step_order_status": "Per la pagina di stato dell'ordine: nello stesso menu delle pagine scegli Stato dell'ordine, aggiungi lì il blocco «SourceTrac survey» e premi Salva. È nel menu solo se il tuo negozio usa i nuovi account cliente (Impostazioni › Account cliente).",
+    "block_order_status_title": "Aggiungi il blocco SourceTrac anche alla pagina di stato dell'ordine",
+    "block_missing_order_status_body": "Questo sondaggio è impostato anche per la pagina di stato dell'ordine, ma il blocco non si è ancora caricato lì. Nell'editor del checkout scegli Stato dell'ordine dal menu delle pagine, aggiungi il blocco «SourceTrac survey» e premi Salva. Se Stato dell'ordine non è nel menu, il tuo negozio usa gli account cliente classici: cambiali in Impostazioni › Account cliente oppure deseleziona la pagina in «Dove appare»."
   },
   "preview": {
     "title": "Anteprima",
