@@ -94,7 +94,7 @@ beforeAll(async () => {
   await prisma.shop.deleteMany({ where: { shopDomain: { in: [DOMAIN, OTHER_DOMAIN] } } });
   clearConfigCache();
 
-  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9700001", accessToken: null });
+  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9700001" });
   // Several live surveys are a paid feature.
   await prisma.shop.update({ where: { id: shop.id }, data: { plan: "scale", planStatus: "active" } });
   first = (await createSurvey(shop.id, input("First", { priority: 10 }))).id;
@@ -103,7 +103,7 @@ beforeAll(async () => {
   draft = (await createSurvey(shop.id, input("Draft", { status: "draft" }))).id;
   thankYouOnly = (await createSurvey(shop.id, input("Thank-you only", { placements: ["thank_you"] }))).id;
 
-  const other = await upsertShop({ shopDomain: OTHER_DOMAIN, shopId: "gid://shopify/Shop/9700002", accessToken: null });
+  const other = await upsertShop({ shopDomain: OTHER_DOMAIN, shopId: "gid://shopify/Shop/9700002" });
   foreign = (await createSurvey(other.id, input("Someone else's"))).id;
   clearConfigCache();
 });

@@ -76,7 +76,7 @@ beforeAll(async () => {
   }
   await cleanup();
 
-  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9600001", accessToken: null });
+  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9600001" });
   const survey = await createSurvey(shop.id, {
     name: "How did you hear?",
     status: "active",

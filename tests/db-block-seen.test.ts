@@ -52,7 +52,7 @@ beforeAll(async () => {
   const url = process.env.DATABASE_URL ?? "";
   if (!url.includes("_test")) throw new Error(`Refusing to run: DATABASE_URL must name a *_test database (got "${url}").`);
   await prisma.shop.deleteMany({ where: { shopDomain: DOMAIN } });
-  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9710001", accessToken: null });
+  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9710001" });
   shopId = shop.id;
   await createSurvey(shopId, {
     name: "Channels",

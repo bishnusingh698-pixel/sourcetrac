@@ -13,7 +13,6 @@ import {
   findShopByDomain,
   findShopById,
   getAccessToken,
-  refreshStoredToken,
   setCheckoutSupport,
   setPlan,
 } from "~/lib/shop.server";
@@ -49,14 +48,9 @@ function retryDb<T>(operation: () => Promise<T>): Promise<T> {
  * "installed" with no token; now it finds an uninstalled shop and is ignored.
  * Reinstalling happens only through OAuth / token exchange, via provisionShop.
  */
-export async function resolveInstalledShop(shopDomain: string, accessToken: string | null): Promise<string | null> {
+export async function resolveInstalledShop(shopDomain: string): Promise<string | null> {
   const existing = await findShopByDomain(shopDomain);
   if (!existing || existing.installState !== "installed") return null;
-
-  // Keep the stored copy of the offline token fresh, for an installed shop only.
-  if (accessToken) {
-    await refreshStoredToken(existing.id, accessToken);
-  }
 
   // Only probe the Admin API while the plan check is unresolved or failed, and
   // at most once per CHECKOUT_RECHECK_MS: a shop on an unsupported plan used to
@@ -297,7 +291,7 @@ export async function processWebhook(params: {
     case "orders/create":
     case "orders/updated":
     case "orders/cancelled": {
-      const shopInternalId = await resolveInstalledShop(shopDomain, accessToken);
+      const shopInternalId = await resolveInstalledShop(shopDomain);
       if (!shopInternalId) {
         // Unknown shop, or one that has uninstalled. Acknowledge and do nothing:
         // a webhook must never resurrect a shop.

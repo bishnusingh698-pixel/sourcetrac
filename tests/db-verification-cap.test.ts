@@ -53,7 +53,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await cleanup();
-  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: GID, accessToken: null });
+  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: GID });
   shopId = shop.id;
   const survey = await createSurvey(shopId, {
     name: "Verify",

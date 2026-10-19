@@ -95,7 +95,7 @@ beforeAll(async () => {
   const url = process.env.DATABASE_URL ?? "";
   if (!url.includes("_test")) throw new Error(`Refusing to run: DATABASE_URL must name a *_test database (got "${url}").`);
   await prisma.shop.deleteMany({ where: { shopDomain: DOMAIN } });
-  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9800001", accessToken: null });
+  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9800001" });
   shopId = shop.id;
   // Targeting rules are a Growth feature; Scale includes them.
   await prisma.shop.update({ where: { id: shopId }, data: { plan: "scale", planStatus: "active" } });

@@ -57,7 +57,7 @@ beforeAll(() => {
 
 beforeEach(async () => {
   await prisma.shop.deleteMany({ where: { shopDomain: DOMAIN } });
-  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9800001", accessToken: null });
+  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9800001" });
   shopId = shop.id;
   await prisma.shop.update({ where: { id: shopId }, data: { plan: "scale", planStatus: "active" } });
 });

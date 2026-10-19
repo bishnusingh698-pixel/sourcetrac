@@ -33,7 +33,7 @@ beforeAll(() => {
 
 beforeEach(async () => {
   await prisma.shop.deleteMany({ where: { shopDomain: DOMAIN } });
-  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9900001", accessToken: null });
+  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9900001" });
   shopId = shop.id;
   const survey = await createSurvey(shopId, {
     name: "Channels",

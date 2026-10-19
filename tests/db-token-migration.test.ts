@@ -12,6 +12,7 @@ import { Session } from "@shopify/shopify-api";
 import { db } from "~/db.server";
 import { getAccessToken, upsertShop } from "~/lib/shop.server";
 import { sessionFromTokenResponse } from "~/lib/token-migration.server";
+import { encryptSecret } from "~/lib/crypto.server";
 import { sessionStorage } from "~/session-storage.server";
 
 const SHOP = "token-migration-test.myshopify.com";
@@ -98,17 +99,29 @@ describe("legacy offline token migration", () => {
 });
 
 describe("getAccessToken", () => {
-  it("prefers the live offline session over the shop row's copy", async () => {
-    const { id } = await upsertShop({ shopDomain: SHOP, shopId: "gid://shopify/Shop/990001", accessToken: "shpat_stale_copy" });
+  it("reads the live offline session", async () => {
+    const { id } = await upsertShop({ shopDomain: SHOP, shopId: "gid://shopify/Shop/990001" });
     const live = expiringFrom(legacySession());
     await sessionStorage.storeSession(live);
 
     expect(await getAccessToken(id)).toBe("shpat_expiring");
   });
 
-  it("falls back to the copy when the shop has no session", async () => {
-    const { id } = await upsertShop({ shopDomain: SHOP, shopId: "gid://shopify/Shop/990001", accessToken: "shpat_copy" });
-    expect(await getAccessToken(id)).toBe("shpat_copy");
+  it("returns null without a session, never an old stored copy Shopify would refuse", async () => {
+    const { id } = await upsertShop({ shopDomain: SHOP, shopId: "gid://shopify/Shop/990001" });
+    // A copy left on the row by an older version: a non-expiring token.
+    const copy = encryptSecret("shpat_legacy_copy");
+    await db.shop.update({
+      where: { id },
+      data: { accessTokenEncrypted: copy.ciphertext, accessTokenIv: copy.iv, accessTokenTag: copy.tag },
+    });
+    expect(await getAccessToken(id)).toBeNull();
+  });
+
+  it("never stores a token on the shop row", async () => {
+    const { id } = await upsertShop({ shopDomain: SHOP, shopId: "gid://shopify/Shop/990001" });
+    const row = await db.shop.findUniqueOrThrow({ where: { id } });
+    expect(row.accessTokenEncrypted).toBeNull();
   });
 });
 

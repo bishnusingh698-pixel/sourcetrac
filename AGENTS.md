@@ -1508,9 +1508,15 @@ call, while auth itself still succeeded.
   exchange: Shopify revokes the legacy token on the first. If the exchange
   fails the session loads as absent, so the next admin open runs token
   exchange. Nothing is deleted.
-- Expiring tokens last about an hour, so `getAccessToken` reads the live
-  offline session through `unauthenticated.admin` first. The encrypted copy on
-  `Shop` is only a fallback and may be stale.
+- Expiring tokens last about an hour, so `getAccessToken` reads only the live
+  offline session through `unauthenticated.admin`. **No token is stored on
+  `Shop` any more** (2026-10-19): the old encrypted copy was its fallback, and
+  on a store installed before the switch it was the legacy non-expiring token,
+  so a missing session turned into a 403 instead of a clean skip. `upsertShop`
+  takes no token, `refreshStoredToken` is gone, and migration
+  `20261019130000_drop_stored_token_copy` erased existing copies. The columns
+  stay (`clearAccessToken` still nulls them). `tests/db-token-migration.test.ts`
+  fails if the fallback comes back.
 - A Shopify 4xx now carries Shopify's own text (`httpErrorDetail`), and the
   Plans page shows it. That is how this was found: the log line was not visible.
 

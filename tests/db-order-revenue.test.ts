@@ -427,7 +427,7 @@ describe("uninstalled and unknown shops stay that way", () => {
     expect((await send("orders/create", LIFE_DOMAIN)).action).toBe("ignored_shop_not_installed");
 
     // provisionShop's persistence step.
-    await upsertShop({ shopDomain: LIFE_DOMAIN, shopId: LIFE_GID, accessToken: null });
+    await upsertShop({ shopDomain: LIFE_DOMAIN, shopId: LIFE_GID });
     expect((await shopState())?.installState).toBe("installed");
 
     expect(await send("orders/create", LIFE_DOMAIN)).toMatchObject({ action: "orders_upserted" });
