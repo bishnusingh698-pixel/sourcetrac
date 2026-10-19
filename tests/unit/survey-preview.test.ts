@@ -195,6 +195,12 @@ describe("preview rules", () => {
     expect(previewComplete([multi], { m: { questionId: "m", optionIds: ["a", "b"] } })).toBe(true);
   });
 
+  it("needs at least one answer when every question is optional", () => {
+    const optional: EditorQuestion = { id: "o", type: "text", text: "Anything else?", required: false, options: [] };
+    expect(previewComplete([optional], {})).toBe(false);
+    expect(previewComplete([optional], { o: { questionId: "o", textValue: "More colours" } })).toBe(true);
+  });
+
   it("only a single tap question laid out in full submits on the tap", () => {
     const tap = { questionId: "q1", optionIds: ["insta"] };
     expect(tapSubmits([channel], "all", channel, tap)).toBe(true);

@@ -62,7 +62,8 @@ export default function PrivacyPolicy() {
       <h2>How long we keep it</h2>
       <p>
         Survey answers and cached orders are deleted after 24 months, and webhook
-        delivery records (which hold no order or buyer details) after 30 days. These periods are fixed and the same for
+        delivery records (which hold no order or buyer details) after 30 days, as is the &ldquo;Recent checkouts&rdquo;
+        list merchants see (which survey each order was shown, with its country). These periods are fixed and the same for
         every store.
       </p>
 

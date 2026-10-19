@@ -313,6 +313,8 @@ async function deleteOrdersForShop(
   }
   const deletedV2Responses = (await retryDb(() => db.response.deleteMany({ where: scope }))).count;
   const deletedOrders = (await retryDb(() => db.orderCache.deleteMany({ where: scope }))).count;
+  // "Recent checkouts" rows name the order and its country.
+  await retryDb(() => db.checkoutLoad.deleteMany({ where: scope }));
   const deletedResponses = (await retryDb(() => db.surveyResponse.deleteMany({ where: scope }))).count;
 
   // A submit landing between the read above and the delete leaves a sync row

@@ -19,6 +19,15 @@ import { formatDay } from "~/lib/format-day";
 import { getBlockSeen, markBlockAdded } from "~/lib/block-seen.server";
 import { BlockMissingBanner } from "~/components/block-missing";
 import { NotFoundError, ValidationError } from "~/lib/errors";
+import { RecentCheckouts, type RecentCheckoutRow } from "~/components/recent-checkouts";
+import { CheckoutCheck, type CheckoutCheckView } from "~/components/checkout-check";
+import { runCheckoutCheck } from "~/lib/checkout-check.server";
+import { recentServes } from "~/lib/serve-log.server";
+import { getShopLocaleInfo } from "~/lib/studio.server";
+import { intlLocaleFor } from "~/lib/i18n";
+import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
+import { isValidTimeZone } from "@shared/zoned-date";
+import { db } from "~/db.server";
 
 /**
  * Surveys list.
@@ -42,11 +51,28 @@ function statusTone(status: SurveyListItem["status"]): BadgeTone {
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await ensureShop(session);
-  const [surveys, usage, blockSeen] = await Promise.all([
+  const [surveys, usage, blockSeen, localeInfo] = await Promise.all([
     listSurveys(shop.id),
     liveSurveyUsage(shop.id),
     getBlockSeen(shop.id),
+    getShopLocaleInfo(shop.id, shop.shopDomain, session.accessToken),
   ]);
+  // Times read in the store's own zone and the merchant's language.
+  const format = new Intl.DateTimeFormat(intlLocaleFor(resolveAdminLanguage(request, shop.language, shop.adminLocale)), {
+    timeZone: isValidTimeZone(localeInfo.timeZone) ? localeInfo.timeZone : "UTC",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+  const surveyNames = new Map(surveys.map((s) => [s.id, s.name]));
+  const [recent, check] = await Promise.all([
+    recentCheckoutRows(shop.id, surveyNames, format),
+    runCheckoutCheck(shop.id, surveyNames),
+  ]);
+  const checkView: CheckoutCheckView = {
+    survey: check.survey,
+    block: check.block.kind === "never" ? check.block : { kind: check.block.kind, when: format.format(new Date(check.block.at)) },
+    planHidden: check.planHidden,
+  };
 
   // A survey is live but the block has never loaded on the Thank-you page, so
   // buyers cannot see it yet.
@@ -56,9 +82,35 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     surveys,
     usage,
     missing,
+    recent,
+    check: checkView,
     shopHandle: shop.shopDomain.replace(".myshopify.com", ""),
   };
 });
+
+/** The last Thank-you page decisions, with order and survey names filled in. */
+async function recentCheckoutRows(
+  shopId: string,
+  surveyNames: ReadonlyMap<string, string>,
+  format: Intl.DateTimeFormat,
+): Promise<RecentCheckoutRow[]> {
+  const entries = await recentServes(shopId);
+  if (entries.length === 0) return [];
+  const orderIds = [...new Set(entries.map((e) => e.orderId).filter((id): id is string => Boolean(id)))];
+  const orders = orderIds.length
+    ? await db.orderCache.findMany({ where: { shopId, orderId: { in: orderIds } }, select: { orderId: true, orderNumber: true } })
+    : [];
+  const names = new Map(orders.map((o) => [o.orderId, o.orderNumber]));
+  return entries.map((entry) => ({
+    at: entry.at,
+    when: format.format(new Date(entry.at)),
+    // The order's name (#1001) once its webhook landed; its id until then.
+    order: entry.orderId ? (names.get(entry.orderId) ?? entry.orderId) : null,
+    surveyName: entry.surveyId ? (surveyNames.get(entry.surveyId) ?? null) : null,
+    reason: entry.reason,
+    country: entry.country,
+  }));
+}
 
 export const action = guarded(async ({ request }: ActionFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -124,7 +176,7 @@ function StatusBadge({ status }: { status: SurveyListItem["status"] }) {
 }
 
 export default function Surveys() {
-  const { surveys, usage, missing, shopHandle } = useLoaderData<typeof loader>();
+  const { surveys, usage, missing, recent, check, shopHandle } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const { t, locale } = useAdminI18n();
   const failureKey = actionData && actionData.ok === false ? `surveys.validation_${actionData.code}` : null;
@@ -289,6 +341,10 @@ export default function Surveys() {
         </s-section>
       )}
 
+      {/* Whether buyers can see a survey, and why the last checkouts did or
+          did not show one. Shown once the merchant has a survey to check. */}
+      {surveys.length > 0 ? <CheckoutCheck check={check} shopHandle={shopHandle} t={t} /> : null}
+      {surveys.length > 0 ? <RecentCheckouts rows={recent} t={t} /> : null}
     </s-stack>
   );
 }

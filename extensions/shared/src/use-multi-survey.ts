@@ -402,12 +402,17 @@ export function useMultiSurvey(
   );
 
   const complete = useMemo(() => {
+    // At least one answer: the server refuses an empty set, so a survey whose
+    // questions are all optional must not offer Submit before anything is
+    // picked (the tap used to fail and the buyer saw nothing happen).
+    let answered = 0;
     for (const question of visibleQuestions) {
       const answer = answers[question.id];
       if (!hasContent(answer)) {
         if (question.required) return false;
         continue;
       }
+      answered += 1;
       if (question.type === "single_choice" || question.type === "dropdown" || question.type === "multi_choice") {
         // The same rules the server enforces, so Submit is never enabled for a
         // set the server would refuse (and the answer lost).
@@ -423,7 +428,7 @@ export function useMultiSurvey(
         }
       }
     }
-    return true;
+    return answered > 0;
   }, [visibleQuestions, answers]);
 
   const next = useCallback(() => setStep((s) => Math.min(s + 1, Math.max(visibleQuestions.length - 1, 0))), [

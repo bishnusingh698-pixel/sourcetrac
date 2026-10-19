@@ -132,6 +132,7 @@ model Shop {
   pendingDeletions PendingDeletion[]
   dataRequests     DataRequest[]
   redactedOrders   RedactedOrder[]
+  checkoutLoads    CheckoutLoad[]
 
   @@index([installState])
 }
@@ -318,38 +319,38 @@ model Survey {
 
   /// Incremented on every save of an active survey. Responses store the version
   /// they answered.
-  version       Int      @default(1)
-  responseCount Int      @default(0)
+  version         Int       @default(1)
+  responseCount   Int       @default(0)
   /// Template provenance, for display and analytics only. A survey is an
   /// independent copy: template updates never touch it.
   templateId      String?
   templateVersion Int?
   /// T11: join this survey into the rotation group for its placements.
-  rotation       Boolean @default(false)
+  rotation        Boolean   @default(false)
   /// 1 (low) / 2 (normal) / 3 (high). Weighted, deterministic per order.
-  rotationWeight Int     @default(2)
+  rotationWeight  Int       @default(2)
   /// T10: pause automatically once results are reliable.
-  learnAndStop   Boolean @default(false)
+  learnAndStop    Boolean   @default(false)
   /// When learn & stop paused the survey. Set once: a merchant who resumes an
   /// auto-paused survey keeps it running (it used to re-pause on the very next
   /// answer), and the editor says why the survey was paused.
-  autoPausedAt   DateTime?
+  autoPausedAt    DateTime?
   /// S11/S12 design settings (JSON). Empty means the defaults.
-  designJson     String  @default("{}")
+  designJson      String    @default("{}")
   /// S7: the full editable definition held back while a live survey keeps
   /// running the published version. Null when there are no unpublished changes.
-  draft          String?
-  draftUpdatedAt DateTime?
+  draft           String?
+  draftUpdatedAt  DateTime?
   /// Optimistic-concurrency token (section 6.6). The editor posts back the value
   /// it loaded; a mismatch means another window changed the survey. Bumped on
   /// every save, publish and status change. Not `@updatedAt`, so answer counting
   /// (which increments `responseCount`) cannot raise a false conflict.
-  revision      Int      @default(0)
+  revision        Int       @default(0)
   /// Last merchant change (save, publish, discard, status). Shown as "Updated"
   /// on the survey list; `updatedAt` also moves on every buyer answer.
-  editedAt      DateTime @default(now())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  editedAt        DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   shop       Shop               @relation(fields: [shopId], references: [id], onDelete: Cascade)
   questions  Question[]
@@ -430,19 +431,19 @@ model Response {
   /// rows that predate the column.
   productIds   String?  @default("[]")
 
-  placement SurveyPlacement
-  locale    String?
-  country   String?
-  flagged   Boolean         @default(false)
+  placement        SurveyPlacement
+  locale           String?
+  country          String?
+  flagged          Boolean         @default(false)
   /// Order verification snapshot. `null` = the row predates verification (the
   /// migration backfills existing rows to null); `true` = a known, countable
   /// order (not test, not cancelled) whose real total is stored; `false` = the
   /// order is unknown or not countable, so revenue is excluded.
-  verified  Boolean?
+  verified         Boolean?
   /// Set when the order never arrived within 24h and no total could be attached,
   /// so the row is no longer Pending but deliberately excluded from revenue.
-  unverifiedFailed Boolean @default(false)
-  createdAt DateTime        @default(now())
+  unverifiedFailed Boolean         @default(false)
+  createdAt        DateTime        @default(now())
 
   shop    Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
   survey  Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
@@ -557,4 +558,27 @@ model DataRequest {
   shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
   @@index([shopId, createdAt])
+}
+
+/// One Thank-you page load of the SourceTrac block and what it was told: the
+/// survey it showed, or why it showed nothing. The Surveys page lists the
+/// newest 20 per shop as "Recent checkouts", so a merchant can see why a test
+/// order showed no survey. Kept 30 days; deleted with the order on
+/// customers/redact and with the shop on shop/redact.
+model CheckoutLoad {
+  id           String   @id @default(cuid())
+  shopId       String
+  at           DateTime @default(now())
+  orderId      String?
+  /// The survey shown, or the one whose rule hid it.
+  surveyId     String?
+  /// A ServeReason code ("shown", "already_answered", a TargetingMiss...).
+  reason       String
+  pinned       Boolean  @default(false)
+  country      String?
+  isFirstOrder Boolean?
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, at])
 }

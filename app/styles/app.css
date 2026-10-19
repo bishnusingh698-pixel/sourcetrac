@@ -252,29 +252,23 @@
  * The grid of page tiles in `TopNav`. The links are Polaris `s-clickable`s;
  * only their arrangement and the tile's inner layout live here.
  *
- * No row ever scrolls. Columns are 3 on a phone, 5 on a mid-width frame and 9
- * on desktop, so the nine pages always fill whole rows (3 x 3, 5 + 4, 9) and
- * look the same everywhere. Media queries respond to the admin iframe's width,
- * which is the width the tiles actually have.
+ * No row ever scrolls. Columns are 5 up to desktop width and 10 on desktop,
+ * so the ten pages always fill whole rows (5 + 5, or 10) and look the same
+ * everywhere. Media queries respond to the admin iframe's width, which is the
+ * width the tiles actually have.
  */
 .st-topnav-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.25rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-@media (min-width: 36rem) {
-  .st-topnav-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-}
-
 @media (min-width: 56rem) {
   .st-topnav-grid {
-    grid-template-columns: repeat(9, minmax(0, 1fr));
+    grid-template-columns: repeat(10, minmax(0, 1fr));
   }
 }
 

@@ -187,13 +187,7 @@ export default function TemplateLibrary() {
   const searching = terms.length > 0;
 
   const recommended = cards.find((card) => card.id === recommendedId);
-  // The recommended card has its own spot above the list, so it is left out
-  // of "All"; once a category is picked, or the merchant searches, it is
-  // listed with the others again, or it could never be found.
-  const rest = cards.filter(
-    (card) =>
-      (category ? card.category === category : searching || card.id !== recommendedId) && matchesSearch(card.search, terms),
-  );
+  const found = cards.filter((card) => (!category || card.category === category) && matchesSearch(card.search, terms));
 
   const failureKey = actionData?.ok === false ? `surveys.validation_${actionData.code}` : null;
   const failure = failureKey ? (t(failureKey) === failureKey ? t("library.create_failed") : t(failureKey)) : null;
@@ -207,7 +201,6 @@ export default function TemplateLibrary() {
 
   return (
     <s-stack gap="base">
-      <s-link href="/app/surveys">{t("library.back")}</s-link>
       <PageIntro
         actions={
           <Form method="post">
@@ -229,66 +222,92 @@ export default function TemplateLibrary() {
         onInput={(e: Event) => setQuery((e.currentTarget as { value?: string }).value ?? "")}
       />
 
-      {recommended && !category && !searching ? (
-        <s-section>
-          <s-stack gap="small">
-            <s-stack direction="inline" gap="small" alignItems="center">
-              <s-badge tone="success" icon="star">
-                {t("library.recommended")}
-              </s-badge>
-              <s-text color="subdued" fontSize="small">
-                {t("library.recommended_why")}
-              </s-text>
-            </s-stack>
-            <TemplateCard card={recommended} primary />
+      {/* One chip per goal, with how many templates it holds. A plain inline
+          stack, not a button group: long labels must wrap on a phone. */}
+      <s-stack direction="inline" gap="small">
+        <s-button type="button" variant={!category ? "primary" : "secondary"} onClick={() => setCategory(null)}>
+          {t("library.category_all_count", { count: cards.length })}
+        </s-button>
+        {categories.map((c) => (
+          <s-button key={c} type="button" variant={category === c ? "primary" : "secondary"} onClick={() => setCategory(c)}>
+            {t("library.category_count", {
+              name: t(`library.category_${c}`),
+              count: cards.filter((card) => card.category === c).length,
+            })}
+          </s-button>
+        ))}
+      </s-stack>
+
+      {searching || category ? (
+        // A search or a picked goal: one flat list of what matches.
+        <s-section
+          heading={
+            searching ? t("library.search_results", { count: found.length }) : t(`library.category_${category}`)
+          }
+        >
+          <s-stack gap="base">
+            {!searching && category ? <s-text color="subdued">{t(`library.category_${category}_help`)}</s-text> : null}
+            {found.length === 0 ? (
+              <s-box padding="base" borderRadius="base" background="subdued">
+                <s-stack gap="small">
+                  <s-text>{t("library.search_empty", { query: query.trim() })}</s-text>
+                  <s-stack direction="inline" gap="small">
+                    <s-button type="button" onClick={() => setQuery("")}>
+                      {t("library.search_clear")}
+                    </s-button>
+                    {category ? (
+                      <s-button type="button" variant="tertiary" onClick={() => setCategory(null)}>
+                        {t("library.category_all")}
+                      </s-button>
+                    ) : null}
+                  </s-stack>
+                </s-stack>
+              </s-box>
+            ) : (
+              <CardGrid cards={found} />
+            )}
           </s-stack>
         </s-section>
-      ) : null}
-
-      <s-section heading={searching ? t("library.search_results", { count: rest.length }) : t("library.more_title")}>
-        <s-stack gap="base">
-          <s-stack direction="inline" gap="small">
-            <s-button type="button" variant={!category ? "primary" : "secondary"} onClick={() => setCategory(null)}>
-              {t("library.category_all")}
-            </s-button>
-            {categories.map((c) => (
-              <s-button key={c} type="button" variant={category === c ? "primary" : "secondary"} onClick={() => setCategory(c)}>
-                {t(`library.category_${c}`)}
-              </s-button>
-            ))}
-          </s-stack>
-
-          {rest.length === 0 ? (
-            <s-box padding="base" borderRadius="base" background="subdued">
+      ) : (
+        <>
+          {recommended ? (
+            <s-section>
               <s-stack gap="small">
-                <s-text>{t("library.search_empty", { query: query.trim() })}</s-text>
-                <s-stack direction="inline" gap="small">
-                  <s-button type="button" onClick={() => setQuery("")}>
-                    {t("library.search_clear")}
-                  </s-button>
-                  {category ? (
-                    <s-button type="button" variant="tertiary" onClick={() => setCategory(null)}>
-                      {t("library.category_all")}
-                    </s-button>
-                  ) : null}
+                <s-stack direction="inline" gap="small" alignItems="center">
+                  <s-badge tone="success" icon="star">
+                    {t("library.recommended")}
+                  </s-badge>
+                  <s-text color="subdued" fontSize="small">
+                    {t("library.recommended_why")}
+                  </s-text>
                 </s-stack>
+                <TemplateCard card={recommended} primary />
               </s-stack>
-            </s-box>
+            </s-section>
           ) : null}
-
-          <s-query-container>
-            <s-grid
-              gridTemplateColumns="repeat(auto-fill, minmax(min(100%, 16rem), 1fr))"
-              gap="base"
-            >
-              {rest.map((card) => (
-                <TemplateCard key={card.id} card={card} />
-              ))}
-            </s-grid>
-          </s-query-container>
-        </s-stack>
-      </s-section>
+          {/* Everything, grouped by what the merchant wants to learn, so the
+              page reads as a few short lists instead of one long wall. */}
+          {categories.map((c) => (
+            <s-section key={c} heading={t(`library.category_${c}`)}>
+              <s-stack gap="base">
+                <s-text color="subdued">{t(`library.category_${c}_help`)}</s-text>
+                <CardGrid cards={cards.filter((card) => card.category === c && card.id !== recommendedId)} />
+              </s-stack>
+            </s-section>
+          ))}
+        </>
+      )}
     </s-stack>
+  );
+}
+
+function CardGrid({ cards }: { cards: Card[] }) {
+  return (
+    <s-grid gridTemplateColumns="repeat(auto-fill, minmax(min(100%, 16rem), 1fr))" gap="base">
+      {cards.map((card) => (
+        <TemplateCard key={card.id} card={card} />
+      ))}
+    </s-grid>
   );
 }
 
@@ -296,7 +315,6 @@ function TemplateCard({ card, primary = false }: { card: Card; primary?: boolean
   const { t } = useAdminI18n();
   const navigation = useNavigation();
   const creating = navigation.state !== "idle" && navigation.formData?.get("templateId") === card.id;
-  const [first, ...more] = card.questions;
 
   return (
     <s-box padding="base" border="base" borderRadius="large" background={primary ? "subdued" : undefined}>
@@ -307,36 +325,28 @@ function TemplateCard({ card, primary = false }: { card: Card; primary?: boolean
           {card.fullyFree ? <s-badge tone="success">{t("plans.free")}</s-badge> : null}
         </s-stack>
         <s-text color="subdued">{card.oneLiner}</s-text>
-
-        {first ? (
-          <s-box padding="small" borderRadius="base" background="base" border="base">
-            <s-stack gap="small-200">
-              <s-text type="strong">{`“${first.text}”`}</s-text>
-              {more.length > 0 ? (
-                <details className="st-details">
-                  <summary>{t("library.more_questions", { count: more.length })}</summary>
-                  <ol className="st-question-list" start={2}>
-                    {more.map((q, i) => (
-                      <li key={i}>
-                        <s-text>{q.text}</s-text>
-                        {q.followUp ? (
-                          <s-text color="subdued" fontSize="small">
-                            {" "}
-                            {t("library.follow_up", { n: q.followUp.parentNumber })}
-                          </s-text>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ol>
-                </details>
-              ) : null}
-            </s-stack>
-          </s-box>
-        ) : null}
-
         <s-text color="subdued" fontSize="small">
           {t("library.meta", { count: card.questions.length, seconds: card.questions.length * 8 })}
         </s-text>
+
+        {/* The exact questions buyers see, folded so a card stays short. */}
+        <details className="st-details">
+          <summary>{t("library.see_questions", { count: card.questions.length })}</summary>
+          <ol className="st-question-list">
+            {card.questions.map((q, i) => (
+              <li key={i}>
+                <s-text>{q.text}</s-text>
+                {q.followUp ? (
+                  <s-text color="subdued" fontSize="small">
+                    {" "}
+                    {t("library.follow_up", { n: q.followUp.parentNumber })}
+                  </s-text>
+                ) : null}
+              </li>
+            ))}
+          </ol>
+        </details>
+
         {card.access === "free_version" ? (
           <s-text color="subdued" fontSize="small">
             {t("library.free_version_note", { n: card.questions.length, total: card.fullCount, plan: t("plans.growth") })}

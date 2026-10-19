@@ -20,6 +20,7 @@ import { upsertShop } from "~/lib/shop.server";
 import { clearConfigCache, createSurvey, type SurveyInput } from "~/lib/surveys.server";
 import { resetBuckets } from "~/lib/rate-limit.server";
 import { loader as surveyLoader } from "~/routes/api.survey";
+import { flushServeLog, recentServes } from "~/lib/serve-log.server";
 
 const prisma = new PrismaClient();
 const DOMAIN = "targeting-routes-test.myshopify.com";
@@ -52,6 +53,12 @@ async function config(query: string): Promise<{ enabled: boolean; survey: { id: 
   const res = await call(query);
   expect(res.status).toBe(200);
   return (await res.json()) as { enabled: boolean; survey: { id: string } | null };
+}
+
+/** What "Recent checkouts" shows for the newest Thank-you page load. */
+async function lastServe() {
+  await flushServeLog();
+  return (await recentServes(shopId))[0];
 }
 
 function input(name: string, over: Partial<SurveyInput> = {}): SurveyInput {
@@ -92,6 +99,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await prisma.survey.deleteMany({ where: { shopId } });
+  await prisma.checkoutLoad.deleteMany({ where: { shopId } });
   clearConfigCache();
   resetBuckets();
 });
@@ -161,6 +169,7 @@ describe("countries and languages", () => {
     const survey = await createSurvey(shopId, input("US only", { targeting: { countries: ["US"] } }));
     expect((await config(`placement=thank_you&orderId=${nextOrder()}&country=us`)).survey?.id).toBe(survey.id);
     expect((await config(`placement=thank_you&orderId=${nextOrder()}&country=DE`)).enabled).toBe(false);
+    expect(await lastServe()).toMatchObject({ reason: "country", country: "DE", surveyId: survey.id });
     expect((await config(`placement=thank_you&orderId=${nextOrder()}`)).enabled).toBe(false);
   });
 
@@ -191,12 +200,14 @@ describe("dates", () => {
     const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     await createSurvey(shopId, input("Later", { targeting: { startsAt: tomorrow } }));
     expect((await config(`placement=thank_you&orderId=${nextOrder()}`)).enabled).toBe(false);
+    expect((await lastServe())?.reason).toBe("not_started");
   });
 });
 
 describe("nothing to show", () => {
   it("shows nothing when no survey is live", async () => {
     expect((await config(`placement=thank_you&orderId=${nextOrder()}`)).enabled).toBe(false);
+    expect((await lastServe())?.reason).toBe("none_live");
   });
 
   it("never shows a survey on any page but Thank-you", async () => {
@@ -212,11 +223,14 @@ describe("nothing to show", () => {
     });
     const body = (await (await call(`placement=thank_you&orderId=${orderId}`)).json()) as { alreadyAnswered: boolean };
     expect(body.alreadyAnswered).toBe(true);
+    // The reason a merchant re-using a test order most needs to see.
+    expect((await lastServe())?.reason).toBe("already_answered");
   });
 
   it("shows nothing in place of a pinned survey that is not live", async () => {
     const paused = await createSurvey(shopId, input("Paused", { status: "paused" }));
     await createSurvey(shopId, input("Live"));
     expect((await config(`placement=thank_you&orderId=${nextOrder()}&surveyId=${paused.id}`)).enabled).toBe(false);
+    expect(await lastServe()).toMatchObject({ reason: "pinned_not_live", surveyId: paused.id, pinned: true });
   });
 });

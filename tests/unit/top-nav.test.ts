@@ -36,7 +36,7 @@ describe("activeNavPath", () => {
     ["/app", "/app"],
     ["/app/", "/app"],
     ["/app/surveys", "/app/surveys"],
-    ["/app/surveys/library", "/app/surveys"],
+    ["/app/surveys/library", "/app/surveys/library"],
     ["/app/surveys/cm123", "/app/surveys"],
     ["/app/results", "/app/results"],
     ["/app/dashboard", "/app/dashboard"],
@@ -71,6 +71,10 @@ describe("the nav list", () => {
     expect(sidebar).not.toContain("/app");
   });
 
+  it("puts templates in Shopify's sidebar, so they are found without knowing where they hide", () => {
+    expect(NAV.find((item) => item.to === "/app/surveys/library")?.sidebar).toBe(true);
+  });
+
   it("puts NPS (Results) and the channel report one tap away", () => {
     const paths = NAV.map((item) => item.to);
     expect(paths).toContain("/app/results");
@@ -90,7 +94,7 @@ describe("TopNav", () => {
   });
 
   it("marks exactly one item as the current page, and says so to screen readers", () => {
-    const html = render("/app/surveys/library");
+    const html = render("/app/surveys/cm123");
     const current = [...html.matchAll(/<s-clickable[^>]*data-current="true"[^>]*>/g)].map((m) => m[0]);
     expect(current).toHaveLength(1);
     expect(current[0]).toContain('href="/app/surveys"');

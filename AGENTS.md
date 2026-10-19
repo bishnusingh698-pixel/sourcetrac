@@ -1585,8 +1585,7 @@ once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
   known store means `SHOPIFY_API_SECRET` is wrong), and normalises `dest`.
 - **`explainTargeting`** (`shared/survey-config.ts`) is the only place targeting
   is decided; `matchesTargeting` wraps it. `/api/survey` logs the reason in
-  `survey_config_served_v2`. (The in-app "Recent checkouts" / "Checkout check"
-  diagnostics were removed 2026-10-19 as testing aids.)
+  `survey_config_served_v2` and stores it for "Recent checkouts" (below).
 - **Order value** never applied: `valueCurrency` was never set. The editor (and
   the route, as a backstop) set it to the store currency, and the block sends
   `cost.totalAmount` (`total`/`totalCurrency`) because on the Thank-you page the
@@ -1656,10 +1655,11 @@ once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
   `OrderFact` and `Shop.orderStatusBlockSeenAt`. `PLACEMENTS` keeps the retired
   values so historic answers still read. `shopify app deploy` will offer to
   remove the order-status extension: confirm it.
-- **Removed as testing aids:** Recent checkouts, Checkout check, the block
-  build stamp (`BLOCK_BUILD` / `shared/block-build.ts`) and the feature flags
-  (`shared/feature-flags.ts`) with the On-site, Survey link and After delivery
-  features they gated. Do not bring them back without a merchant-facing reason.
+- **Removed as testing aids:** the block build stamp (`BLOCK_BUILD` /
+  `shared/block-build.ts`) and the feature flags (`shared/feature-flags.ts`)
+  with the On-site, Survey link and After delivery features they gated (never
+  built). Recent checkouts and Checkout check were removed too, wrongly: they
+  are merchant features, and were restored the same day (below).
 - **Block seen is one boolean** (`getBlockSeen` returns `boolean`;
   `markBlockAdded(shopId)`).
 - **No link opens the checkout editor with the block placed.** `checkoutEditorUrl`
@@ -1675,3 +1675,38 @@ once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
   `OrderCache.sourceName` from the webhook's `source_name` / GraphQL
   `sourceName`). Only `pos` is listed: subscription renewals have no reliable
   `source_name`. Revenue is unaffected. Test: `tests/db-survey-stats.test.ts`.
+
+## Recent checkouts, Checkout check, templates and Submit (2026-10-19, second pass)
+
+- **Recent checkouts and Checkout check are merchant features, not test aids.**
+  They answer "why didn't my survey show?" (usually "this order already
+  answered"). Both are on the Surveys page, Thank-you page only.
+- **Recent checkouts is stored** in `CheckoutLoad` (`app/lib/serve-log.server.ts`),
+  not memory: the old in-memory list was wiped by every restart and deploy,
+  exactly when merchants test. `recordServe` is not awaited by `/api/survey` and
+  never throws; tests call `flushServeLog()`. One row per order+reason (a reload
+  moves it up), the newest `PER_SHOP` (20) kept, 30-day retention, deleted with
+  the order on customers/redact. The privacy page says so.
+- **Checkout check** (`checkout-check.server.ts`) lists only what a merchant can
+  act on: a live survey (and whether rules narrow it), the block (a buyer's
+  load from `CheckoutLoad` > "placed" from `thankYouBlockSeenAt`, which the
+  "It's already added" button also sets > never), plan-hidden surveys, and the
+  new-order tip. The server-version and database lines were dropped.
+- **Submit needs at least one answer.** `/api/survey-responses` refuses an
+  empty set (`min(1)`), but the block's `complete` (and `previewComplete`) was
+  true for an all-optional survey with nothing picked, so the tap failed.
+  `almost-left`, `age-range`, `missing-piece` and `household-snapshot` are
+  all-optional. Block change: needs `shopify app deploy`.
+- **Templates is its own nav item** (`/app/surveys/library`, in Shopify's
+  sidebar; Responses moved off the sidebar and is linked from Results). The top
+  bar is 10 tiles: 5 columns, 10 on desktop. The library groups templates by
+  goal (category names are goals: "Where buyers find you", "Why they buy", ...)
+  with a one-line description each; a chip or a search shows one flat list.
+- **50 templates.** Sixteen added with branching follow-ups: `podcast-creator-trace`,
+  `social-deep-dive`, `search-terms`, `offline-trace`, `email-sms-impact`,
+  `review-sources`, `payment-preference`, `pre-purchase-questions`,
+  `shipping-threshold`, `cross-border-clarity`, `referral-readiness`,
+  `next-purchase`, `sustainability-values`, `use-case`, `household-snapshot`,
+  `life-moment`, with 16 outcome tags and six presets (`first_heard_order_tag`,
+  `social_app_order_tag`, `referral_ready_customer_tag`, `buy_again_customer_tag`,
+  `eco_customer_tag`, `life_moment_customer_tag`).

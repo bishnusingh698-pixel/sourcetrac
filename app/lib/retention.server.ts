@@ -2,6 +2,7 @@ import { db, isRetryableDbError } from "~/db.server";
 import { logger } from "~/lib/logger";
 import { withRetry } from "~/lib/retry.server";
 import { processPendingDeletions } from "~/lib/compliance.server";
+import { CHECKOUT_LOAD_RETENTION_DAYS } from "~/lib/serve-log.server";
 
 /**
  * Retention enforcement.
@@ -41,6 +42,8 @@ export type RetentionReport = {
   dailyStatsDeleted: number;
   pendingSyncDeleted: number;
   dataRequestsDeleted: number;
+  /** "Recent checkouts" rows past their 30 days. */
+  checkoutLoadsDeleted: number;
   /** Deferred redacts executed (not discarded) by this pass. */
   pendingDeletionsDeleted: number;
   redactedOrdersDeleted: number;
@@ -129,6 +132,13 @@ export async function runRetentionPurge(now: Date = new Date()): Promise<Retenti
     await retryDb(() => db.dataRequest.deleteMany({ where: { createdAt: { lt: dataRequestCutoff } } }))
   ).count;
 
+  // "Recent checkouts" is a short diagnostic window, not a record.
+  const checkoutLoadsDeleted = (
+    await retryDb(() =>
+      db.checkoutLoad.deleteMany({ where: { at: { lt: daysAgo(CHECKOUT_LOAD_RETENTION_DAYS, now) } } }),
+    )
+  ).count;
+
   // Deferred redacts are a deletion obligation, never something to discard:
   // every queued one is EXECUTED here, whatever its age.
   const pendingShops = await retryDb(() =>
@@ -189,6 +199,7 @@ export async function runRetentionPurge(now: Date = new Date()): Promise<Retenti
     dailyStatsDeleted,
     pendingSyncDeleted,
     dataRequestsDeleted,
+    checkoutLoadsDeleted,
     pendingDeletionsDeleted,
     redactedOrdersDeleted,
     uninstalledShopsDeleted,

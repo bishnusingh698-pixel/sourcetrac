@@ -10,6 +10,7 @@ import { BUCKETS, consumeShopBackstop, consumeToken } from "~/lib/rate-limit.ser
 import { hasAnyAnswerForOrder } from "~/lib/answers.server";
 import { findShopByDomain, isKnownOrder } from "~/lib/shop.server";
 import { recordBlockSeen } from "~/lib/block-seen.server";
+import { recordServe, type ServeReason } from "~/lib/serve-log.server";
 import { getCompiledConfig } from "~/lib/surveys.server";
 import { authenticateCheckout } from "~/lib/checkout-auth.server";
 import {
@@ -20,7 +21,6 @@ import {
   PLACEMENTS,
   type CompiledConfig,
   type Placement,
-  type TargetingMiss,
 } from "@shared/survey-config";
 import { db } from "~/db.server";
 
@@ -64,16 +64,6 @@ const querySchema = z.object({
 
 type Candidate = CompiledConfig["surveys"][number];
 
-/** Why a survey was or was not served, for the log line support reads. */
-type ServeReason =
-  | "shown"
-  | "already_answered"
-  | "none_live"
-  | "not_on_page"
-  | "pinned_not_live"
-  | "pinned_other_page"
-  | "payment_rule"
-  | TargetingMiss;
 
 export const loader = async ({ request }: { request: Request }) => {
   const requestId = `srv_${Date.now().toString(36)}`;
@@ -225,6 +215,9 @@ export const loader = async ({ request }: { request: Request }) => {
       }
     }
     if (survey && alreadyAnswered) reason = "already_answered";
+
+    // For "Recent checkouts" on the Surveys page. Not awaited, never throws.
+    void recordServe(shop.id, { placement, orderId, surveyId: reasonSurveyId, reason, pinned: pinnedExists, country, isFirstOrder });
 
     logger.info("survey_config_served_v2", {
       request_id: requestId,
