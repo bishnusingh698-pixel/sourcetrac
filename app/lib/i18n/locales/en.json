@@ -584,7 +584,22 @@
     "reason_language": "“{{survey}}” is limited to other languages.",
     "reason_order_value": "This order's total is outside the order value range of “{{survey}}”.",
     "recent_outdated_title": "Your checkout is running an old version of the SourceTrac block",
-    "recent_outdated_body": "Updating the app's server does not update the block in your checkout. Whoever manages the app must run “shopify app deploy” (and release the new version if asked). Older blocks may show nothing at all."
+    "recent_outdated_body": "Updating the app's server does not update the block in your checkout. Whoever manages the app must run “shopify app deploy” (and release the new version if asked). Older blocks may show nothing at all.",
+    "check_title": "Checkout check",
+    "check_server": "The SourceTrac server is running.",
+    "check_server_version": "The SourceTrac server is running (version {{commit}}).",
+    "check_database_ok": "The database is up to date.",
+    "check_database_fail": "The database update did not run ({{code}}), so buyers can't load surveys. Redeploy the app on Render and look for “migrate” in the deploy log.",
+    "check_survey": "{{page}}: “{{survey}}” is live and set to show here.",
+    "check_survey_rules": "{{page}}: “{{survey}}” is live here, but its rules under “Who sees it” mean only some orders see it.",
+    "check_no_survey": "{{page}}: no live survey is set to show here. Turn a survey on and tick this page under “Where it shows”.",
+    "check_block_never": "{{page}}: the SourceTrac block hasn't loaded here since the app last restarted. In the checkout editor, add the “SourceTrac survey” block to this page and press Save, then reopen the editor or place a test order.",
+    "check_block_old": "{{page}}: the block loaded {{when}}, but it's an old version. Run “shopify app deploy” and release the new version.",
+    "check_block_buyer": "{{page}}: the block loaded for a buyer {{when}} (latest version).",
+    "check_block_editor": "{{page}}: the block loaded in the checkout editor {{when}} (latest version).",
+    "check_new_order": "Each order is asked only once. Test with a new order, then see “Recent checkouts” below for what happened.",
+    "check_plan_hidden_one": "{{count}} live survey is beyond your plan's live-survey limit, so buyers don't see it.",
+    "check_plan_hidden_other": "{{count}} live surveys are beyond your plan's live-survey limit, so buyers don't see them."
   },
   "templates": {
     "how_did_you_hear": {

@@ -21,6 +21,8 @@ import { placementsMissingBlock } from "~/lib/checkout-editor";
 import { BlockMissingBanner, postedPlacements } from "~/components/block-missing";
 import { NotFoundError, ValidationError } from "~/lib/errors";
 import { RecentCheckouts, type RecentCheckoutRow } from "~/components/recent-checkouts";
+import { CheckoutCheck, type CheckoutCheckView } from "~/components/checkout-check";
+import { runCheckoutCheck } from "~/lib/checkout-check.server";
 import { recentServes } from "~/lib/serve-log.server";
 import { getShopLocaleInfo } from "~/lib/studio.server";
 import { intlLocaleFor } from "~/lib/i18n";
@@ -57,10 +59,30 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     getBlockSeen(shop.id),
     getShopLocaleInfo(shop.id, shop.shopDomain, session.accessToken),
   ]);
-  const recent = await recentCheckoutRows(shop.id, surveys, {
+  const formatOptions = {
     locale: intlLocaleFor(resolveAdminLanguage(request, shop.language, shop.adminLocale)),
     timeZone: isValidTimeZone(localeInfo.timeZone) ? localeInfo.timeZone : "UTC",
+  };
+  const [recent, check] = await Promise.all([
+    recentCheckoutRows(shop.id, surveys, formatOptions),
+    runCheckoutCheck(shop.id, new Map(surveys.map((s) => [s.id, s.name]))),
+  ]);
+  const format = new Intl.DateTimeFormat(formatOptions.locale, {
+    timeZone: formatOptions.timeZone,
+    dateStyle: "medium",
+    timeStyle: "short",
   });
+  const checkView: CheckoutCheckView = {
+    commit: check.commit,
+    databaseOk: check.database.ok,
+    databaseCode: check.database.ok ? null : check.database.code,
+    planHidden: check.planHidden,
+    pages: check.pages.map((page) => ({
+      placement: page.placement,
+      survey: page.survey,
+      block: page.block ? { when: format.format(new Date(page.block.at)), outdated: page.block.outdated, where: page.block.where } : null,
+    })),
+  };
 
   // Pages a live survey is set to show on where the block has never loaded.
   const missing = [
@@ -77,6 +99,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     missing,
     anySeen,
     recent,
+    check: checkView,
     shopHandle: shop.shopDomain.replace(".myshopify.com", ""),
   };
 });
@@ -174,7 +197,7 @@ function StatusBadge({ status }: { status: SurveyListItem["status"] }) {
 }
 
 export default function Surveys() {
-  const { surveys, usage, missing, anySeen, recent, shopHandle } = useLoaderData<typeof loader>();
+  const { surveys, usage, missing, anySeen, recent, check, shopHandle } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const { t, locale } = useAdminI18n();
   const failureKey = actionData && actionData.ok === false ? `surveys.validation_${actionData.code}` : null;
@@ -339,6 +362,7 @@ export default function Surveys() {
         </s-section>
       )}
 
+      {surveys.length > 0 ? <CheckoutCheck check={check} shopHandle={shopHandle} t={t} /> : null}
       {surveys.length > 0 ? <RecentCheckouts rows={recent} t={t} /> : null}
     </s-stack>
   );

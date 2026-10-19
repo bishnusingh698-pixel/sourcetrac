@@ -7,6 +7,7 @@ import { logger } from "~/lib/logger";
 import { BUCKETS, consumeToken } from "~/lib/rate-limit.server";
 import { findShopByDomain } from "~/lib/shop.server";
 import { recordBlockSeen } from "~/lib/block-seen.server";
+import { recordPreviewLoad } from "~/lib/serve-log.server";
 import { compileSurvey, getCompiledConfig, getSurveyRow } from "~/lib/surveys.server";
 import { authenticateCheckout } from "~/lib/checkout-auth.server";
 import { hasAudienceRules, PLACEMENTS, type Placement } from "@shared/survey-config";
@@ -81,6 +82,7 @@ export const loader = async ({ request }: { request: Request }) => {
     }
     // The checkout editor only draws a block that has been placed on the page.
     await recordBlockSeen(shop.id, placement);
+    recordPreviewLoad(shop.id, placement, url.searchParams.get("build")?.slice(0, 32) || null);
 
     let body: SurveyPreviewBody;
     if (surveyId) {

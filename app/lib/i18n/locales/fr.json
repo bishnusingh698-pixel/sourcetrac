@@ -638,7 +638,22 @@
     "reason_language": "« {{survey}} » est limité à d'autres langues.",
     "reason_order_value": "Le total de cette commande est hors de la plage de montant de « {{survey}} ».",
     "recent_outdated_title": "Votre checkout utilise une ancienne version du bloc SourceTrac",
-    "recent_outdated_body": "Mettre à jour le serveur de l'application ne met pas à jour le bloc de votre checkout. La personne qui gère l'application doit lancer « shopify app deploy » (et publier la nouvelle version si demandé). Les anciens blocs peuvent ne rien afficher du tout."
+    "recent_outdated_body": "Mettre à jour le serveur de l'application ne met pas à jour le bloc de votre checkout. La personne qui gère l'application doit lancer « shopify app deploy » (et publier la nouvelle version si demandé). Les anciens blocs peuvent ne rien afficher du tout.",
+    "check_title": "Vérification du checkout",
+    "check_server": "Le serveur SourceTrac fonctionne.",
+    "check_server_version": "Le serveur SourceTrac fonctionne (version {{commit}}).",
+    "check_database_ok": "La base de données est à jour.",
+    "check_database_fail": "La mise à jour de la base de données n'a pas été exécutée ({{code}}) : les acheteurs ne peuvent pas charger les sondages. Redéployez l'application sur Render et cherchez « migrate » dans le journal.",
+    "check_survey": "{{page}} : « {{survey}} » est actif et s'affiche ici.",
+    "check_survey_rules": "{{page}} : « {{survey}} » est actif ici, mais ses règles « Qui le voit » limitent les commandes qui le voient.",
+    "check_no_survey": "{{page}} : aucun sondage actif n'est prévu ici. Activez un sondage et cochez cette page sous « Où il s'affiche ».",
+    "check_block_never": "{{page}} : le bloc SourceTrac ne s'est pas chargé ici depuis le dernier redémarrage. Dans l'éditeur de checkout, ajoutez le bloc « SourceTrac survey » à cette page, cliquez sur Enregistrer, puis rouvrez l'éditeur ou passez une commande test.",
+    "check_block_old": "{{page}} : le bloc s'est chargé le {{when}}, mais c'est une ancienne version. Lancez « shopify app deploy » et publiez la nouvelle version.",
+    "check_block_buyer": "{{page}} : le bloc s'est chargé pour un acheteur le {{when}} (dernière version).",
+    "check_block_editor": "{{page}} : le bloc s'est chargé dans l'éditeur de checkout le {{when}} (dernière version).",
+    "check_new_order": "Chaque commande n'est interrogée qu'une fois. Testez avec une nouvelle commande, puis regardez « Paiements récents » ci-dessous.",
+    "check_plan_hidden_one": "{{count}} sondage actif dépasse la limite de votre forfait : les acheteurs ne le voient pas.",
+    "check_plan_hidden_other": "{{count}} sondages actifs dépassent la limite de votre forfait : les acheteurs ne les voient pas."
   },
   "templates": {
     "how_did_you_hear": {

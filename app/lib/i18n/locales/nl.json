@@ -638,7 +638,22 @@
     "reason_language": "‘{{survey}}’ is beperkt tot andere talen.",
     "reason_order_value": "Het totaal van deze bestelling valt buiten het waardebereik van ‘{{survey}}’.",
     "recent_outdated_title": "Je checkout gebruikt een oude versie van het SourceTrac-blok",
-    "recent_outdated_body": "Een update van de app-server werkt het blok in je checkout niet bij. Wie de app beheert, moet ‘shopify app deploy’ uitvoeren (en de nieuwe versie vrijgeven als dat gevraagd wordt). Oudere blokken tonen soms helemaal niets."
+    "recent_outdated_body": "Een update van de app-server werkt het blok in je checkout niet bij. Wie de app beheert, moet ‘shopify app deploy’ uitvoeren (en de nieuwe versie vrijgeven als dat gevraagd wordt). Oudere blokken tonen soms helemaal niets.",
+    "check_title": "Checkoutcontrole",
+    "check_server": "De SourceTrac-server draait.",
+    "check_server_version": "De SourceTrac-server draait (versie {{commit}}).",
+    "check_database_ok": "De database is bijgewerkt.",
+    "check_database_fail": "De database-update is niet uitgevoerd ({{code}}), dus kopers kunnen geen enquêtes laden. Deploy de app opnieuw op Render en zoek in het deploylog naar ‘migrate’.",
+    "check_survey": "{{page}}: ‘{{survey}}’ is live en wordt hier getoond.",
+    "check_survey_rules": "{{page}}: ‘{{survey}}’ is hier live, maar door de regels onder ‘Wie ziet hem’ zien alleen sommige bestellingen hem.",
+    "check_no_survey": "{{page}}: hier staat geen live enquête ingesteld. Zet een enquête aan en vink deze pagina aan onder ‘Waar hij verschijnt’.",
+    "check_block_never": "{{page}}: het SourceTrac-blok is hier niet geladen sinds de laatste herstart van de app. Voeg in de checkout-editor het blok ‘SourceTrac survey’ toe aan deze pagina, klik op Opslaan en open de editor opnieuw of plaats een testbestelling.",
+    "check_block_old": "{{page}}: het blok laadde {{when}}, maar het is een oude versie. Voer ‘shopify app deploy’ uit en geef de nieuwe versie vrij.",
+    "check_block_buyer": "{{page}}: het blok laadde {{when}} voor een koper (nieuwste versie).",
+    "check_block_editor": "{{page}}: het blok laadde {{when}} in de checkout-editor (nieuwste versie).",
+    "check_new_order": "Elke bestelling wordt maar één keer gevraagd. Test met een nieuwe bestelling en kijk hieronder bij ‘Recente checkouts’ wat er gebeurde.",
+    "check_plan_hidden_one": "{{count}} live enquête valt buiten de limiet van je abonnement, dus kopers zien hem niet.",
+    "check_plan_hidden_other": "{{count}} live enquêtes vallen buiten de limiet van je abonnement, dus kopers zien ze niet."
   },
   "templates": {
     "how_did_you_hear": {
