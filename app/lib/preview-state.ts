@@ -50,14 +50,20 @@ export function isOtherOption(question: SurveyQuestionDef, optionId: string | un
   return optionId === OTHER_CHANNEL_VALUE || resolveOptions(question).some((o) => o.id === optionId && o.isOther);
 }
 
-/** Whether Submit can be pressed: every visible required question answered, "Other" filled in. */
+/**
+ * Whether Submit can be pressed: every visible required question answered,
+ * "Other" filled in, and at least one answer (the server refuses an empty set),
+ * the same rule as the checkout block's `complete`.
+ */
 export function previewComplete(visible: readonly SurveyQuestionDef[], answers: PreviewAnswers): boolean {
+  let answered = 0;
   for (const question of visible) {
     const answer = answers[question.id];
     if (!hasContent(answer)) {
       if (question.required) return false;
       continue;
     }
+    answered += 1;
     const chosen = answer?.optionIds ?? [];
     if (chosen.some((id) => isOtherOption(question, id)) && (answer?.otherText?.trim().length ?? 0) === 0) return false;
     if (question.type === "multi_choice") {
@@ -66,7 +72,7 @@ export function previewComplete(visible: readonly SurveyQuestionDef[], answers: 
       if (typeof question.maxSelections === "number" && count > question.maxSelections) return false;
     }
   }
-  return true;
+  return answered > 0;
 }
 
 /** Question types answered with one tap. A survey of one such question submits on the tap. */

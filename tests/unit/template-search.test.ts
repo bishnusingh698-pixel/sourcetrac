@@ -26,7 +26,7 @@ describe("template search", () => {
     expect(find("csat")).toContain("customer-satisfaction");
     expect(find("attribution")).toContain("channel-compass");
     expect(find("discount")).toContain("offer-impact");
-    expect(find("amazon")).toEqual(["where-else"]);
+    expect(find("amazon")).toEqual(["where-else", "search-terms"]);
   });
 
   it("needs every word, matches word starts, and ignores case and accents", () => {

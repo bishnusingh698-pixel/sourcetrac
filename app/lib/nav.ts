@@ -7,7 +7,8 @@
  *   screen, on desktop and on a phone, so nothing is more than one tap away.
  * - Shopify's own admin navigation (`<s-app-nav>`), which shows the items marked
  *   `sidebar`. Shopify allows at most seven there, and none may repeat the home
- *   page (the app name itself links to it), so Dashboard and Export stay out.
+ *   page (the app name itself links to it), so Dashboard, Responses and Export
+ *   stay out.
  *
  * `key` is an i18next key, not display text: this is a module-level constant
  * shared by every request, so a translated string could never be stored here
@@ -26,9 +27,14 @@ export type NavItem = {
 export const NAV = [
   { to: "/app", key: "nav.dashboard", icon: "home", sidebar: false },
   { to: "/app/surveys", key: "nav.surveys", icon: "clipboard-checklist", sidebar: true },
+  // Its own item, so a merchant finds templates without knowing they sit
+  // behind Surveys › New survey.
+  { to: "/app/surveys/library", key: "nav.templates", icon: "collection", sidebar: true },
   { to: "/app/results", key: "nav.results", icon: "chart-vertical", sidebar: true },
   { to: "/app/dashboard", key: "nav.channels", icon: "channels", sidebar: true },
-  { to: "/app/responses", key: "nav.responses", icon: "chat", sidebar: true },
+  // Off Shopify's sidebar (seven items at most) to make room for Templates;
+  // still in the top bar and linked from Results.
+  { to: "/app/responses", key: "nav.responses", icon: "chat", sidebar: false },
   { to: "/app/export", key: "nav.export", icon: "export", sidebar: false },
   { to: "/app/plans", key: "nav.plans", icon: "plan", sidebar: true },
   { to: "/app/settings", key: "nav.preferences", icon: "settings", sidebar: true },
@@ -40,8 +46,8 @@ export const NAV = [
  * has no item of its own).
  *
  * A page belongs to the item whose path is its longest whole-segment prefix, so
- * the template library and the survey editor (`/app/surveys/...`) light up
- * Surveys, and the results CSV lights up Results. `/app` itself matches only
+ * the survey editor (`/app/surveys/...`) lights up Surveys, the template library
+ * lights up Templates, and the results CSV lights up Results. `/app` itself matches only
  * exactly, or every page would light up Dashboard. `/app/surveysx` does not
  * match `/app/surveys`: the prefix has to end at a `/`.
  */

@@ -7,7 +7,7 @@ import { PrismaClient } from "@prisma/client";
 import { handleCustomerRedact, handleDataRequest, REDACT_BATCH_SIZE } from "~/lib/compliance.server";
 import { submitResponse } from "~/lib/responses.server";
 import { runRetentionPurge } from "~/lib/retention.server";
-import { refreshStoredToken, upsertShop } from "~/lib/shop.server";
+import { upsertShop } from "~/lib/shop.server";
 import { processWebhook, upsertOrderCache } from "~/lib/webhooks.server";
 
 const prisma = new PrismaClient();
@@ -22,7 +22,7 @@ beforeAll(() => {
 beforeEach(async () => {
   await prisma.shop.deleteMany({ where: { shopDomain: DOMAIN } });
   await prisma.session.deleteMany({ where: { shop: DOMAIN } });
-  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/950000", accessToken: "shpat_x" });
+  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/950000" });
   shopId = shop.id;
   surveyId = (await prisma.survey.create({ data: { shopId, name: "S", placements: '["thank_you"]' } })).id;
 });
@@ -51,7 +51,14 @@ describe("uninstall", () => {
 
   it("never flips an uninstalled shop back to installed from a webhook (L1)", async () => {
     await processWebhook({ topic: "app/uninstalled", shopDomain: DOMAIN, payload: {}, accessToken: null });
-    await refreshStoredToken(shopId, "shpat_revoked");
+    // A late order webhook, with a session token, must not resurrect the shop.
+    const now = new Date().toISOString();
+    await processWebhook({
+      topic: "orders/create",
+      shopDomain: DOMAIN,
+      payload: { id: 950777, currency: "USD", current_total_price: "1.00", created_at: now, updated_at: now },
+      accessToken: "shpat_revoked",
+    });
     const shop = await prisma.shop.findUniqueOrThrow({ where: { id: shopId } });
     expect(shop.installState).toBe("uninstalled");
     expect(shop.accessTokenEncrypted).toBeNull();
@@ -111,7 +118,7 @@ describe("retention", () => {
     await prisma.orderCache.create({
       data: { shopId, orderId: "950200", currency: "USD", totalPrice: "1.00", createdAtShop: old, updatedAtShop: old },
     });
-    const gone = await upsertShop({ shopDomain: "gdpr-gone.myshopify.com", shopId: "gid://shopify/Shop/950001", accessToken: null });
+    const gone = await upsertShop({ shopDomain: "gdpr-gone.myshopify.com", shopId: "gid://shopify/Shop/950001" });
     await prisma.shop.update({
       where: { id: gone.id },
       data: { installState: "uninstalled", uninstalledAt: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000) },

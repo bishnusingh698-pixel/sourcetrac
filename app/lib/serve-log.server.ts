@@ -1,19 +1,25 @@
+import { db } from "~/db.server";
+import { logger } from "~/lib/logger";
 import type { Placement, TargetingMiss } from "@shared/survey-config";
+import { isCheckoutPlacement, type CheckoutPlacement } from "~/lib/block-seen.server";
 
 /**
- * What the checkout blocks were told on the last few page loads, per shop.
+ * "Recent checkouts": what the checkout blocks (Thank-you and Order status) were
+ * told on their last page loads, per shop.
  *
  * "The survey doesn't show" had no answer a merchant could find: the block
  * hides itself without a word (it must never show a buyer an error), and the
- * reason lived only in our logs. Each `/api/survey` decision is kept here with
- * the rule that decided it, and the Surveys page lists them as "Recent
- * checkouts", so a merchant who places a test order can see straight away
- * whether the block loaded and, if nothing showed, which setting hid it.
+ * reason lived only in our logs. Each `/api/survey` decision is stored with the
+ * rule that decided it, and the Surveys page lists the newest ones, so a
+ * merchant who places a test order sees straight away whether the block loaded
+ * and, if nothing showed, which setting hid it ("this order already answered"
+ * is the usual one).
  *
- * In memory on purpose: it is a short diagnostic window, not a record. It holds
- * an order id, a page, a survey id and a reason code; nothing about the buyer
- * beyond the two facts targeting reads (country, first order), both of which
- * an answer stores anyway. Lost on restart, bounded per shop and overall.
+ * In the database, not memory: an in-memory list was wiped by every restart
+ * and deploy, which is exactly when a merchant tests. Bounded to `PER_SHOP`
+ * rows per shop and 30 days (retention). It holds an order id, a survey id, a
+ * reason code and the two facts targeting reads (country, first order), both of
+ * which an answer stores anyway.
  */
 
 export type ServeReason =
@@ -28,7 +34,7 @@ export type ServeReason =
 
 export type ServeEntry = {
   at: string;
-  placement: Placement;
+  placement: CheckoutPlacement;
   orderId: string | null;
   /** The survey shown, or the one whose rule hid it. */
   surveyId: string | null;
@@ -36,73 +42,69 @@ export type ServeEntry = {
   pinned: boolean;
   country: string | null;
   isFirstOrder: boolean | null;
-  /** The block build that asked (`BLOCK_BUILD`), or null for one too old to say. */
-  blockBuild: string | null;
 };
 
-const PER_SHOP = 20;
-const MAX_SHOPS = 2_000;
+/** How many loads the Surveys page lists, and the most kept per shop. */
+export const PER_SHOP = 20;
+export const CHECKOUT_LOAD_RETENTION_DAYS = 30;
 
-declare global {
-  var __sourcetracServeLog: Map<string, ServeEntry[]> | undefined;
-}
-
-const log: Map<string, ServeEntry[]> = globalThis.__sourcetracServeLog ?? new Map();
-globalThis.__sourcetracServeLog = log;
-
-export function recordServe(shopId: string, entry: Omit<ServeEntry, "at"> & { at?: Date }): void {
-  const { at, ...rest } = entry;
-  const list = log.get(shopId) ?? [];
-  // A buyer reloading the page asks again with the same answer: keep one line.
-  const last = list[0];
-  if (last && last.orderId === rest.orderId && last.placement === rest.placement && last.reason === rest.reason) {
-    list.shift();
-  }
-  list.unshift({ ...rest, at: (at ?? new Date()).toISOString() });
-  if (list.length > PER_SHOP) list.length = PER_SHOP;
-  // Re-insert so the most recently active shops are the last to be evicted.
-  log.delete(shopId);
-  log.set(shopId, list);
-  if (log.size > MAX_SHOPS) {
-    const oldest = log.keys().next().value;
-    if (oldest !== undefined) log.delete(oldest);
-  }
-}
-
-export function recentServes(shopId: string): ServeEntry[] {
-  return [...(log.get(shopId) ?? [])];
-}
+/** Writes still in flight, so tests can wait for them (`flushServeLog`). */
+const pending = new Set<Promise<void>>();
 
 /**
- * The last time the block loaded inside Shopify's checkout editor, per shop
- * and page. The editor has no order, so these never appear in `recentServes`,
- * but they prove the block is placed and that its code runs.
+ * Records one checkout page decision. Never throws and is not awaited by the
+ * route: a buyer's survey must not wait on, or fail because of, this
+ * bookkeeping. Pages with no checkout block are ignored.
  */
-export type PreviewLoad = { at: string; blockBuild: string | null };
-
-declare global {
-  var __sourcetracPreviewLog: Map<string, PreviewLoad> | undefined;
+export function recordServe(
+  shopId: string,
+  entry: Omit<ServeEntry, "at" | "placement"> & { placement: Placement; at?: Date },
+): Promise<void> {
+  const { at, placement, ...rest } = entry;
+  if (!isCheckoutPlacement(placement)) return Promise.resolve();
+  const write = (async () => {
+    try {
+      // A buyer reloading the page asks again with the same answer: keep one
+      // line, moved to the top.
+      if (rest.orderId) {
+        await db.checkoutLoad.deleteMany({ where: { shopId, placement, orderId: rest.orderId, reason: rest.reason } });
+      }
+      await db.checkoutLoad.create({ data: { shopId, placement, ...rest, ...(at ? { at } : {}) } });
+      const stale = await db.checkoutLoad.findMany({
+        where: { shopId },
+        orderBy: { at: "desc" },
+        skip: PER_SHOP,
+        select: { id: true },
+      });
+      if (stale.length > 0) await db.checkoutLoad.deleteMany({ where: { id: { in: stale.map((row) => row.id) } } });
+    } catch (error) {
+      logger.warn("checkout_load_write_failed", {
+        shop_id: shopId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  })();
+  pending.add(write);
+  void write.finally(() => pending.delete(write));
+  return write;
 }
 
-const previews: Map<string, PreviewLoad> = globalThis.__sourcetracPreviewLog ?? new Map();
-globalThis.__sourcetracPreviewLog = previews;
-
-export function recordPreviewLoad(shopId: string, placement: Placement, blockBuild: string | null, at = new Date()): void {
-  const key = `${shopId}:${placement}`;
-  previews.delete(key);
-  previews.set(key, { at: at.toISOString(), blockBuild });
-  if (previews.size > MAX_SHOPS * 2) {
-    const oldest = previews.keys().next().value;
-    if (oldest !== undefined) previews.delete(oldest);
-  }
+/** The newest checkout page loads, newest first. */
+export async function recentServes(shopId: string): Promise<ServeEntry[]> {
+  const rows = await db.checkoutLoad.findMany({ where: { shopId }, orderBy: { at: "desc" }, take: PER_SHOP });
+  return rows.map((row) => ({
+    at: row.at.toISOString(),
+    placement: row.placement === "order_status" ? "order_status" : "thank_you",
+    orderId: row.orderId,
+    surveyId: row.surveyId,
+    reason: row.reason as ServeReason,
+    pinned: row.pinned,
+    country: row.country,
+    isFirstOrder: row.isFirstOrder,
+  }));
 }
 
-export function lastPreviewLoad(shopId: string, placement: Placement): PreviewLoad | null {
-  return previews.get(`${shopId}:${placement}`) ?? null;
-}
-
-/** Test seam. */
-export function clearServeLog(): void {
-  log.clear();
-  previews.clear();
+/** Test seam: wait for every write `recordServe` started. */
+export async function flushServeLog(): Promise<void> {
+  await Promise.all([...pending]);
 }

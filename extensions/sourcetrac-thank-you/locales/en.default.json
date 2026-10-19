@@ -29,10 +29,10 @@
     "editorUnavailable": "Your survey could not be loaded in the editor, so this is a sample. Buyers still see the survey you set in SourceTrac.",
     "editorPinnedNote": "Preview. Nothing is sent from the editor. Targeting rules apply on real orders.",
     "editorPriorityNote": "Preview. This block shows your highest-priority live survey. To choose one, paste its Survey ID into this block's settings.",
-    "editorOtherPage": "This survey is not set to show on this page. Turn this page on under \"Where it shows\" in SourceTrac.",
     "editorPlanHidden": "Your plan shows fewer live surveys than you have, and this one is not among them, so buyers won't see it. Upgrade in SourceTrac, or pause a survey with higher priority.",
     "editorAudience": "This survey has rules under \"Who sees it\", so some orders won't see it.",
-    "editorOncePerOrder": "Each order is asked once. After a buyer answers on either page, that order shows no survey again, so test with a new order.",
-    "editorWaking": "SourceTrac is starting up. This can take up to a minute after a quiet spell."
+    "editorOncePerOrder": "Each order is asked once. After a buyer answers, that order shows no survey again, so test with a new order.",
+    "editorWaking": "SourceTrac is starting up. This can take up to a minute after a quiet spell.",
+    "editorOtherPage": "This survey is not set to show on this page. Turn this page on under \"Where it shows\" in SourceTrac."
   }
 }

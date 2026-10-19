@@ -29,10 +29,10 @@
     "editorUnavailable": "Ihre Umfrage konnte im Editor nicht geladen werden, daher sehen Sie ein Beispiel. Käufer sehen trotzdem die Umfrage, die Sie in SourceTrac festgelegt haben.",
     "editorPinnedNote": "Vorschau. Aus dem Editor wird nichts gesendet. Zielgruppenregeln gelten bei echten Bestellungen.",
     "editorPriorityNote": "Vorschau. Dieser Block zeigt Ihre Live-Umfrage mit der höchsten Priorität. Um eine bestimmte zu wählen, fügen Sie ihre Umfrage-ID in die Einstellungen dieses Blocks ein.",
-    "editorOtherPage": "Diese Umfrage ist für diese Seite nicht aktiviert. Aktivieren Sie die Seite in SourceTrac unter „Wo sie erscheint“.",
     "editorPlanHidden": "Ihr Tarif zeigt weniger Live-Umfragen, als Sie haben, und diese gehört nicht dazu. Käufer sehen sie daher nicht. Wechseln Sie in SourceTrac den Tarif oder pausieren Sie eine Umfrage mit höherer Priorität.",
     "editorAudience": "Für diese Umfrage gibt es Regeln unter „Wer sie sieht“, daher sehen manche Bestellungen sie nicht.",
-    "editorOncePerOrder": "Jede Bestellung wird einmal gefragt. Nach einer Antwort auf einer der beiden Seiten zeigt diese Bestellung keine Umfrage mehr. Testen Sie daher mit einer neuen Bestellung.",
-    "editorWaking": "SourceTrac startet. Nach einer ruhigen Phase kann das bis zu einer Minute dauern."
+    "editorOncePerOrder": "Jede Bestellung wird einmal gefragt. Nach einer Antwort zeigt diese Bestellung keine Umfrage mehr, teste also mit einer neuen Bestellung.",
+    "editorWaking": "SourceTrac startet. Nach einer ruhigen Phase kann das bis zu einer Minute dauern.",
+    "editorOtherPage": "Diese Umfrage ist für diese Seite nicht aktiviert. Aktivieren Sie die Seite in SourceTrac unter „Wo sie erscheint“."
   }
 }

@@ -8,6 +8,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@prisma/client";
+import { upsertOrderCache } from "~/lib/webhooks.server";
 
 import { submitAnswers } from "~/lib/answers.server";
 import { ALL_SURVEYS_HEADERS, tableToCsv } from "~/lib/csv";
@@ -99,7 +100,7 @@ beforeAll(async () => {
   const url = process.env.DATABASE_URL ?? "";
   if (!url.includes("_test")) throw new Error(`Refusing to run: DATABASE_URL must name a *_test database (got "${url}").`);
   await prisma.shop.deleteMany({ where: { shopDomain: DOMAIN } });
-  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9800001", accessToken: null });
+  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9800001" });
   shopId = shop.id;
   // Two live surveys need a paid plan.
   await prisma.shop.update({ where: { id: shopId }, data: { plan: "scale", planStatus: "active" } });
@@ -220,6 +221,26 @@ describe("a survey's headline numbers", () => {
     expect(answerRatePercent(rates.get(channelSurvey.id))).toBe(60);
     expect(rates.get(deliverySurvey.id)).toEqual({ orders: 5, answered: 1 });
     expect(answerRatePercent(rates.get(deliverySurvey.id))).toBe(20);
+  });
+
+  it("leaves POS orders out of the answer rate, since they never see a Thank-you page", async () => {
+    const rate = async () =>
+      (await surveyAnswerRates({ shopId, surveys: [channelSurvey], start: null, end: new Date(Date.now() + 1000) })).get(
+        channelSurvey.id,
+      );
+    const before = await rate();
+    const now = new Date().toISOString();
+    const pos = { id: "9810000000500", currency: "USD", current_total_price: "20.00", created_at: now, updated_at: now };
+    // Through the webhook's own writer, so the source is stored the way orders/create stores it.
+    await upsertOrderCache(shopId, { ...pos, source_name: "pos" }, false);
+    expect(await rate()).toEqual(before);
+    // A later update that omits the source must not turn it back into an online order.
+    await upsertOrderCache(shopId, { ...pos, updated_at: new Date(Date.now() + 1000).toISOString() }, false);
+    expect(await rate()).toEqual(before);
+
+    await upsertOrderCache(shopId, { ...pos, id: "9810000000501", source_name: "web" }, false);
+    expect((await rate())?.orders).toBe((before?.orders ?? 0) + 1);
+    await prisma.orderCache.deleteMany({ where: { shopId, orderId: { in: ["9810000000500", "9810000000501"] } } });
   });
 
   it("has no answer rate without orders, rather than 0%", () => {

@@ -2,6 +2,7 @@ import { db, isRetryableDbError } from "~/db.server";
 import { logger } from "~/lib/logger";
 import { withRetry } from "~/lib/retry.server";
 import { processPendingDeletions } from "~/lib/compliance.server";
+import { CHECKOUT_LOAD_RETENTION_DAYS } from "~/lib/serve-log.server";
 
 /**
  * Retention enforcement.
@@ -31,7 +32,6 @@ export const DATA_REQUEST_RETENTION_DAYS = 30;
  * sends it 48 hours after uninstall) is deleted by retention as a backstop.
  */
 export const UNINSTALLED_SHOP_RETENTION_DAYS = 30;
-
 /** How long the Thank-you page's first-order flag for an order is kept. */
 export const ORDER_FACT_RETENTION_DAYS = 90;
 
@@ -44,10 +44,12 @@ export type RetentionReport = {
   dailyStatsDeleted: number;
   pendingSyncDeleted: number;
   dataRequestsDeleted: number;
+  /** "Recent checkouts" rows past their 30 days. */
+  checkoutLoadsDeleted: number;
+  orderFactsDeleted: number;
   /** Deferred redacts executed (not discarded) by this pass. */
   pendingDeletionsDeleted: number;
   redactedOrdersDeleted: number;
-  orderFactsDeleted: number;
   uninstalledShopsDeleted: number;
   ranAt: string;
 };
@@ -133,6 +135,19 @@ export async function runRetentionPurge(now: Date = new Date()): Promise<Retenti
     await retryDb(() => db.dataRequest.deleteMany({ where: { createdAt: { lt: dataRequestCutoff } } }))
   ).count;
 
+  // "Recent checkouts" is a short diagnostic window, not a record.
+  const checkoutLoadsDeleted = (
+    await retryDb(() =>
+      db.checkoutLoad.deleteMany({ where: { at: { lt: daysAgo(CHECKOUT_LOAD_RETENTION_DAYS, now) } } }),
+    )
+  ).count;
+
+  // A first-order flag only matters while the buyer may still open the order's
+  // status page, so it is kept far shorter than the answers.
+  const orderFactsDeleted = (
+    await retryDb(() => db.orderFact.deleteMany({ where: { createdAt: { lt: daysAgo(ORDER_FACT_RETENTION_DAYS, now) } } }))
+  ).count;
+
   // Deferred redacts are a deletion obligation, never something to discard:
   // every queued one is EXECUTED here, whatever its age.
   const pendingShops = await retryDb(() =>
@@ -150,12 +165,6 @@ export async function runRetentionPurge(now: Date = new Date()): Promise<Retenti
   // age out on the record clock like the orders they stand for.
   const redactedOrdersDeleted = (
     await retryDb(() => db.redactedOrder.deleteMany({ where: { createdAt: { lt: recordCutoff } } }))
-  ).count;
-
-  // A first-order flag only matters while the buyer may still open the order's
-  // status page, so it is kept far shorter than the answers.
-  const orderFactsDeleted = (
-    await retryDb(() => db.orderFact.deleteMany({ where: { createdAt: { lt: daysAgo(ORDER_FACT_RETENTION_DAYS, now) } } }))
   ).count;
 
   // Backstop for a shop/redact that never arrived: an uninstalled shop past
@@ -199,9 +208,10 @@ export async function runRetentionPurge(now: Date = new Date()): Promise<Retenti
     dailyStatsDeleted,
     pendingSyncDeleted,
     dataRequestsDeleted,
+    checkoutLoadsDeleted,
+    orderFactsDeleted,
     pendingDeletionsDeleted,
     redactedOrdersDeleted,
-    orderFactsDeleted,
     uninstalledShopsDeleted,
     ranAt: now.toISOString(),
   };

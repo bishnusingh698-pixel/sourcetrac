@@ -13,7 +13,6 @@ import {
   findShopByDomain,
   findShopById,
   getAccessToken,
-  refreshStoredToken,
   setCheckoutSupport,
   setPlan,
 } from "~/lib/shop.server";
@@ -49,14 +48,9 @@ function retryDb<T>(operation: () => Promise<T>): Promise<T> {
  * "installed" with no token; now it finds an uninstalled shop and is ignored.
  * Reinstalling happens only through OAuth / token exchange, via provisionShop.
  */
-export async function resolveInstalledShop(shopDomain: string, accessToken: string | null): Promise<string | null> {
+export async function resolveInstalledShop(shopDomain: string): Promise<string | null> {
   const existing = await findShopByDomain(shopDomain);
   if (!existing || existing.installState !== "installed") return null;
-
-  // Keep the stored copy of the offline token fresh, for an installed shop only.
-  if (accessToken) {
-    await refreshStoredToken(existing.id, accessToken);
-  }
 
   // Only probe the Admin API while the plan check is unresolved or failed, and
   // at most once per CHECKOUT_RECHECK_MS: a shop on an unsupported plan used to
@@ -261,6 +255,8 @@ export type ShopifyOrder = {
   financial_status?: string | null;
   test?: boolean;
   cancelled_at?: string | null;
+  /** Where the order was placed: "web", "pos", "subscription_contract", an app id. */
+  source_name?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -295,7 +291,7 @@ export async function processWebhook(params: {
     case "orders/create":
     case "orders/updated":
     case "orders/cancelled": {
-      const shopInternalId = await resolveInstalledShop(shopDomain, accessToken);
+      const shopInternalId = await resolveInstalledShop(shopDomain);
       if (!shopInternalId) {
         // Unknown shop, or one that has uninstalled. Acknowledge and do nothing:
         // a webhook must never resurrect a shop.
@@ -484,6 +480,9 @@ export async function upsertOrderCache(
     cancelledAt,
     updatedAtShop: updatedAt,
     triggeredAt,
+    // Only written when the payload carries it, so an update without it never
+    // erases a source an earlier delivery recorded.
+    ...(typeof order.source_name === "string" && order.source_name !== "" ? { sourceName: order.source_name } : {}),
   };
 
   // Shopify cannot un-cancel an order, so an update never clears cancellation.

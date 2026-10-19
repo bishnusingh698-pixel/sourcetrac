@@ -3,7 +3,7 @@ api_version = "2026-07"
 [[extensions]]
 name = "SourceTrac survey"
 handle = "sourcetrac-survey-order-status"
-description = "Asks the customer how they heard about us, then attributes their order to that channel."
+description = "Shows your SourceTrac survey on the Order status page and ties each answer to its order."
 uid = "a4d314ed-131c-4826-9804-33b94da63e00"
 type = "ui_extension"
 

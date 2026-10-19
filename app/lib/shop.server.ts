@@ -3,7 +3,6 @@ import type { PlanStatus } from "@prisma/client";
 import { SessionNotFoundError } from "@shopify/shopify-app-react-router/server";
 
 import { db, isRetryableDbError } from "~/db.server";
-import { decryptSecret, encryptSecret } from "~/lib/crypto.server";
 import { NotFoundError } from "~/lib/errors";
 import { logger } from "~/lib/logger";
 import { DEFAULT_OPTIONS, type SurveyOption } from "~/lib/settings";
@@ -61,14 +60,15 @@ async function retryUniqueRace<T>(operation: () => Promise<T>): Promise<T> {
   }
 }
 
-/** Upsert on shopDomain. Used by OAuth and by reinstall. */
-export async function upsertShop(params: {
-  shopDomain: string;
-  shopId: string;
-  accessToken?: string | null;
-}): Promise<{ id: string }> {
+/**
+ * Upsert on shopDomain. Used by OAuth and by reinstall.
+ *
+ * No access token is stored here. The offline token lives only in the session
+ * storage, which refreshes it (see `getAccessToken`); a copy on this row would
+ * be expired within the hour, or a legacy non-expiring token Shopify rejects.
+ */
+export async function upsertShop(params: { shopDomain: string; shopId: string }): Promise<{ id: string }> {
   const { shopDomain, shopId } = params;
-  const encrypted = params.accessToken ? encryptSecret(params.accessToken) : null;
 
   // A new installation starts now; a re-auth of a live one keeps its start.
   const prior = await retryDb(() =>
@@ -83,13 +83,6 @@ export async function upsertShop(params: {
         shopDomain,
         shopId,
         optionsJson: defaultOptionsJson(),
-        ...(encrypted
-          ? {
-              accessTokenEncrypted: encrypted.ciphertext,
-              accessTokenIv: encrypted.iv,
-              accessTokenTag: encrypted.tag,
-            }
-          : {}),
         installState: "installed",
         uninstalledAt: null,
         installedAt: new Date(),
@@ -98,16 +91,6 @@ export async function upsertShop(params: {
         // provisionShop falls back to the domain when Shopify's identity lookup
         // fails; that placeholder must never replace a real GID already stored.
         ...(shopId.startsWith("gid://") ? { shopId } : {}),
-        // Only overwrite the token when we actually have a new one. An
-        // uninstalled shop being reinstalled gets a fresh one; a plain
-        // re-auth without a token must not blank a valid stored token.
-        ...(encrypted
-          ? {
-              accessTokenEncrypted: encrypted.ciphertext,
-              accessTokenIv: encrypted.iv,
-              accessTokenTag: encrypted.tag,
-            }
-          : {}),
         installState: "installed",
         uninstalledAt: null,
         ...(startsInstallation ? { installedAt: new Date() } : {}),
@@ -182,36 +165,17 @@ export async function findShopById(shopId: string): Promise<ShopRecord | null> {
  * the admin blocks). Returns null when there is none — callers must handle null
  * by skipping, not by crashing.
  *
- * Offline tokens expire after about an hour, so the live source is the
+ * Offline tokens expire after about an hour, so the only source is the
  * library's offline session, which `unauthenticated.admin` refreshes with the
- * stored refresh token. The copy on the shop row is only a fallback for a shop
- * whose session is missing; it can be stale.
+ * stored refresh token (and which `EncryptedSessionStorage` swaps for an
+ * expiring one if it still holds a legacy token). There is deliberately no
+ * fallback to a stored copy: Shopify refuses a non-expiring token with 403, so
+ * an old copy could only turn a skipped call into a failed one.
  */
 export async function getAccessToken(internalShopId: string): Promise<string | null> {
-  const row = await retryDb(() =>
-    db.shop.findUnique({
-      where: { id: internalShopId },
-      select: { shopDomain: true, accessTokenEncrypted: true, accessTokenIv: true, accessTokenTag: true },
-    }),
-  );
+  const row = await retryDb(() => db.shop.findUnique({ where: { id: internalShopId }, select: { shopDomain: true } }));
   if (!row) return null;
-
-  const live = await freshOfflineToken(row.shopDomain);
-  if (live) return live;
-
-  if (!row.accessTokenEncrypted || !row.accessTokenIv || !row.accessTokenTag) return null;
-
-  const token = decryptSecret({
-    ciphertext: row.accessTokenEncrypted,
-    iv: row.accessTokenIv,
-    tag: row.accessTokenTag,
-  });
-
-  if (!token) {
-    logger.error("access_token_decrypt_failed", { shop_id: internalShopId });
-  }
-
-  return token;
+  return freshOfflineToken(row.shopDomain);
 }
 
 /**
@@ -239,25 +203,9 @@ async function freshOfflineToken(shopDomain: string): Promise<string | null> {
 }
 
 /**
- * Store a fresh copy of the offline token for an INSTALLED shop only. Unlike
- * `upsertShop` it never flips a shop back to installed: a webhook racing an
- * uninstall used to resurrect the shop with the revoked token.
+ * Mark the shop uninstalled. Also clears the token columns, which nothing writes
+ * any more but older rows may still hold.
  */
-export async function refreshStoredToken(internalShopId: string, accessToken: string): Promise<void> {
-  const encrypted = encryptSecret(accessToken);
-  await retryDb(() =>
-    db.shop.updateMany({
-      where: { id: internalShopId, installState: "installed" },
-      data: {
-        accessTokenEncrypted: encrypted.ciphertext,
-        accessTokenIv: encrypted.iv,
-        accessTokenTag: encrypted.tag,
-      },
-    }),
-  );
-}
-
-/** Erase the token on uninstall so no credential outlives the installation. */
 export async function clearAccessToken(internalShopId: string): Promise<void> {
   await retryDb(() =>
     db.shop.update({

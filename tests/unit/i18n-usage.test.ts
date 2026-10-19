@@ -108,7 +108,7 @@ describe("i18n key usage", () => {
   it("reads every nav item's key", () => {
     // The nav list is the one place these keys live; a regex that silently
     // stopped matching it would let a renamed key ship as a raw string.
-    expect(declarativeKeys().size).toBe(9);
+    expect(declarativeKeys().size).toBe(10);
   });
 
   it("finds keys in source", () => {

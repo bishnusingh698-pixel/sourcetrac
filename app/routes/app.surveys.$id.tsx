@@ -47,7 +47,6 @@ import { LIMITS } from "@shared/survey-rules";
 import { planTier } from "@shared/plan-features";
 import { getReadiness, readinessBlocksGoLive } from "@shared/templates/readiness";
 import { templateById } from "@shared/templates";
-import type { Placement } from "@shared/survey-config";
 
 /**
  * The survey editor.
@@ -290,7 +289,6 @@ export default function SurveyEditorPage() {
       layout: draft.layout,
       questions: draft.questions,
     },
-    placements: draft.placements,
     maxQuestions: null,
     overActiveLimit: data.overActiveLimit,
     configBytes: new TextEncoder().encode(JSON.stringify(draft)).length,
@@ -314,8 +312,10 @@ export default function SurveyEditorPage() {
   // app cannot see the checkout editor, so "live" is only claimed where a
   // block has asked for a survey; everywhere else the merchant is told to add it.
   const missing = survey.status === "active" ? placementsMissingBlock(survey.placements, data.blockSeen) : [];
+  // Buyers see nothing until the Thank-you block is in; the Order status page
+  // is an optional extra on top.
+  const thankYouMissing = missing.includes("thank_you");
   const editorHref = checkoutEditorUrl(data.shopHandle, missing[0] ?? "thank_you");
-  const checkoutPlacements = survey.placements.filter((p) => p === "thank_you" || p === "order_status");
 
   // Straight after turning the survey on or publishing it, go to the checkout
   // editor to add the block. The flag is dropped from the address first, and
@@ -366,7 +366,7 @@ export default function SurveyEditorPage() {
           <s-text fontSize="large-100" fontWeight="bold">
             {draft.name || t("editor.untitled")}
           </s-text>
-          <StatusBadge status={draft.status} hasDraft={draft.hasDraft} noBlock={missing.length > 0 && missing.length === checkoutPlacements.length} t={t} />
+          <StatusBadge status={draft.status} hasDraft={draft.hasDraft} noBlock={thankYouMissing} t={t} />
         </s-stack>
         <StatusLine draft={draft} missing={missing} t={t} />
       </s-stack>
@@ -390,7 +390,6 @@ export default function SurveyEditorPage() {
       ) : missing.length > 0 && !dirty ? (
         <BlockMissingBanner
           missing={missing}
-          anySeen={missing.length < checkoutPlacements.length}
           shopHandle={data.shopHandle}
           heading={notice === "launched" || notice === "published" ? t(`editor.notice_${notice}_no_block`) : undefined}
           t={t}
@@ -413,22 +412,23 @@ export default function SurveyEditorPage() {
 
             <s-section heading={t("editor.where_title")}>
               <s-stack gap="small">
-                {(["thank_you", "order_status"] as const).map((p) => (
-                  <s-checkbox
-                    key={p}
-                    label={t(`editor.placement_${p}`)}
-                    details={t(`editor.placement_${p}_details`)}
-                    checked={draft.placements.includes(p) || undefined}
-                    error={p === "thank_you" ? errors.get("placements") : undefined}
-                    onChange={(e: Event) => {
-                      const checked = (e.currentTarget as { checked?: boolean }).checked === true;
-                      const next: Placement[] = checked
-                        ? [...new Set([...draft.placements, p])]
-                        : draft.placements.filter((x) => x !== p);
-                      update({ placements: next });
-                    }}
-                  />
-                ))}
+                {/* The Thank-you page is always on, so a survey can never sit on
+                    no page. The Order status page is an optional extra. */}
+                <s-checkbox
+                  label={t("editor.placement_thank_you")}
+                  details={t("editor.placement_thank_you_details")}
+                  checked
+                  disabled
+                />
+                <s-checkbox
+                  label={t("editor.placement_order_status")}
+                  details={t("editor.placement_order_status_details")}
+                  checked={draft.placements.includes("order_status") || undefined}
+                  onChange={(e: Event) => {
+                    const checked = (e.currentTarget as { checked?: boolean }).checked === true;
+                    update({ placements: checked ? ["thank_you", "order_status"] : ["thank_you"] });
+                  }}
+                />
                 <s-text color="subdued" fontSize="small">
                   {t("editor.placement_once")}
                 </s-text>
@@ -519,6 +519,9 @@ export default function SurveyEditorPage() {
               <s-stack gap="small">
                 <s-ordered-list>
                   <s-list-item>{t("editor.store_step_block")}</s-list-item>
+                  {draft.placements.includes("order_status") ? (
+                    <s-list-item>{t("editor.store_step_order_status")}</s-list-item>
+                  ) : null}
                   <s-list-item>{t("editor.store_step_live")}</s-list-item>
                   <s-list-item>{t("editor.store_step_test")}</s-list-item>
                 </s-ordered-list>
@@ -546,16 +549,16 @@ export default function SurveyEditorPage() {
   );
 }
 
-function StatusLine({ draft, missing, t }: { draft: EditorSurvey; missing: Placement[]; t: TFn }) {
+function StatusLine({ draft, missing, t }: { draft: EditorSurvey; missing: readonly string[]; t: TFn }) {
   const shown = draft.placements.filter((p) => !missing.includes(p));
   const places = shown.map((p) => t(`editor.placement_${p}`)).join(", ");
   const text =
     draft.status === "active"
       ? draft.hasDraft
         ? t("editor.status_live_draft")
-        : draft.placements.length > 0 && shown.length === 0
+        : shown.length === 0
           ? t("editor.status_on_no_block")
-          : t("editor.status_live", { places: places || t("editor.placement_none") })
+          : t("editor.status_live", { places })
       : draft.status === "paused"
         ? draft.pausedAutomatically
           ? t("editor.status_auto_paused")

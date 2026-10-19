@@ -282,6 +282,27 @@ describe.each(SURFACES)("$name extension bundle", (surface) => {
     });
   });
 
+  it("keeps Submit off on an all-optional survey until something is answered", async () => {
+    // The server refuses an empty answer set, so an enabled Submit with
+    // nothing picked failed on tap (three shipped templates are all-optional).
+    const page = await mount(await bundle(surface), surface, false, {
+      layout: "all",
+      questions: [
+        { id: "q1", type: "text", text: "Anything else?", textMultiline: false, required: false, randomizeOptions: false, allowOther: false, options: [] },
+        { id: "q2", type: "text", text: "Anything more?", textMultiline: false, required: false, randomizeOptions: false, allowOther: false, options: [] },
+      ],
+    });
+    page.setOrder(surface.value);
+    await page.settle();
+    await page.settle();
+
+    const submit = () => [...page.body().querySelectorAll("s-button")].at(-1) as unknown as Element;
+    expect(submit().hasAttribute("disabled")).toBe(true);
+    page.type(page.body().querySelector("s-text-field") as unknown as Element, "more colours");
+    await page.settle();
+    expect(submit().hasAttribute("disabled")).toBe(false);
+  });
+
   it("shows the merchant's real survey in the checkout editor, and sends nothing", async () => {
     const survey = {
       id: "survey-7",

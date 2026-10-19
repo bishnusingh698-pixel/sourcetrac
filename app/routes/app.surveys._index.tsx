@@ -17,8 +17,8 @@ import {
 } from "~/lib/surveys.server";
 import { formatDay } from "~/lib/format-day";
 import { getBlockSeen, markBlockAdded } from "~/lib/block-seen.server";
-import { placementsMissingBlock } from "~/lib/checkout-editor";
 import { BlockMissingBanner, postedPlacements } from "~/components/block-missing";
+import { placementsMissingBlock } from "~/lib/checkout-editor";
 import { NotFoundError, ValidationError } from "~/lib/errors";
 import { RecentCheckouts, type RecentCheckoutRow } from "~/components/recent-checkouts";
 import { CheckoutCheck, type CheckoutCheckView } from "~/components/checkout-check";
@@ -28,7 +28,6 @@ import { getShopLocaleInfo } from "~/lib/studio.server";
 import { intlLocaleFor } from "~/lib/i18n";
 import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
 import { isValidTimeZone } from "@shared/zoned-date";
-import { isOutdatedBlock } from "@shared/block-build";
 import { db } from "~/db.server";
 
 /**
@@ -59,29 +58,24 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     getBlockSeen(shop.id),
     getShopLocaleInfo(shop.id, shop.shopDomain, session.accessToken),
   ]);
-  const formatOptions = {
-    locale: intlLocaleFor(resolveAdminLanguage(request, shop.language, shop.adminLocale)),
+  // Times read in the store's own zone and the merchant's language.
+  const format = new Intl.DateTimeFormat(intlLocaleFor(resolveAdminLanguage(request, shop.language, shop.adminLocale)), {
     timeZone: isValidTimeZone(localeInfo.timeZone) ? localeInfo.timeZone : "UTC",
-  };
-  const [recent, check] = await Promise.all([
-    recentCheckoutRows(shop.id, surveys, formatOptions),
-    runCheckoutCheck(shop.id, new Map(surveys.map((s) => [s.id, s.name]))),
-  ]);
-  const format = new Intl.DateTimeFormat(formatOptions.locale, {
-    timeZone: formatOptions.timeZone,
     dateStyle: "medium",
     timeStyle: "short",
   });
+  const surveyNames = new Map(surveys.map((s) => [s.id, s.name]));
+  const [recent, check] = await Promise.all([
+    recentCheckoutRows(shop.id, surveyNames, format),
+    runCheckoutCheck(shop.id, surveyNames),
+  ]);
   const checkView: CheckoutCheckView = {
-    commit: check.commit,
-    databaseOk: check.database.ok,
-    databaseCode: check.database.ok ? null : check.database.code,
-    planHidden: check.planHidden,
     pages: check.pages.map((page) => ({
       placement: page.placement,
       survey: page.survey,
-      block: page.block ? { when: format.format(new Date(page.block.at)), outdated: page.block.outdated, where: page.block.where } : null,
+      block: page.block.kind === "never" ? page.block : { kind: page.block.kind, when: format.format(new Date(page.block.at)) },
     })),
+    planHidden: check.planHidden,
   };
 
   // Pages a live survey is set to show on where the block has never loaded.
@@ -89,36 +83,29 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     ...new Set(surveys.filter((s) => s.status === "active").flatMap((s) => placementsMissingBlock(s.placements, blockSeen))),
   ];
 
-  // Whether the block has loaded on any page at all, which softens the banner
-  // from "buyers can't see it" to "add it to this page too".
-  const anySeen = blockSeen.thank_you || blockSeen.order_status;
-
   return {
     surveys,
     usage,
     missing,
-    anySeen,
     recent,
     check: checkView,
     shopHandle: shop.shopDomain.replace(".myshopify.com", ""),
   };
 });
 
-/** The last checkout decisions, with order names and survey names filled in. */
+/** The last checkout page decisions, with order and survey names filled in. */
 async function recentCheckoutRows(
   shopId: string,
-  surveys: SurveyListItem[],
-  { locale, timeZone }: { locale: string; timeZone: string },
+  surveyNames: ReadonlyMap<string, string>,
+  format: Intl.DateTimeFormat,
 ): Promise<RecentCheckoutRow[]> {
-  const entries = recentServes(shopId);
+  const entries = await recentServes(shopId);
   if (entries.length === 0) return [];
   const orderIds = [...new Set(entries.map((e) => e.orderId).filter((id): id is string => Boolean(id)))];
   const orders = orderIds.length
     ? await db.orderCache.findMany({ where: { shopId, orderId: { in: orderIds } }, select: { orderId: true, orderNumber: true } })
     : [];
   const names = new Map(orders.map((o) => [o.orderId, o.orderNumber]));
-  const surveyNames = new Map(surveys.map((s) => [s.id, s.name]));
-  const format = new Intl.DateTimeFormat(locale, { timeZone, dateStyle: "medium", timeStyle: "short" });
   return entries.map((entry) => ({
     at: entry.at,
     when: format.format(new Date(entry.at)),
@@ -128,8 +115,6 @@ async function recentCheckoutRows(
     surveyName: entry.surveyId ? (surveyNames.get(entry.surveyId) ?? null) : null,
     reason: entry.reason,
     country: entry.country,
-    isFirstOrder: entry.isFirstOrder,
-    outdatedBlock: isOutdatedBlock(entry.blockBuild),
   }));
 }
 
@@ -197,7 +182,7 @@ function StatusBadge({ status }: { status: SurveyListItem["status"] }) {
 }
 
 export default function Surveys() {
-  const { surveys, usage, missing, anySeen, recent, check, shopHandle } = useLoaderData<typeof loader>();
+  const { surveys, usage, missing, recent, check, shopHandle } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const { t, locale } = useAdminI18n();
   const failureKey = actionData && actionData.ok === false ? `surveys.validation_${actionData.code}` : null;
@@ -223,7 +208,7 @@ export default function Surveys() {
       {missing.length > 0 ? (
         // "Live" here means turned on. Buyers only see it once the block is in
         // the checkout, which the app can only tell from the block loading.
-        <BlockMissingBanner missing={missing} anySeen={anySeen} shopHandle={shopHandle} t={t} />
+        <BlockMissingBanner missing={missing} shopHandle={shopHandle} t={t} />
       ) : null}
       {usage.limit !== null && usage.live > usage.limit ? (
         // A downgrade leaves more surveys live than the plan serves. Buyers only
@@ -362,6 +347,8 @@ export default function Surveys() {
         </s-section>
       )}
 
+      {/* Whether buyers can see a survey, and why the last checkouts did or
+          did not show one. Shown once the merchant has a survey to check. */}
       {surveys.length > 0 ? <CheckoutCheck check={check} shopHandle={shopHandle} t={t} /> : null}
       {surveys.length > 0 ? <RecentCheckouts rows={recent} t={t} /> : null}
     </s-stack>

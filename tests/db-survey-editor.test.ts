@@ -57,7 +57,7 @@ beforeAll(() => {
 
 beforeEach(async () => {
   await prisma.shop.deleteMany({ where: { shopDomain: DOMAIN } });
-  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9800001", accessToken: null });
+  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9800001" });
   shopId = shop.id;
   await prisma.shop.update({ where: { id: shopId }, data: { plan: "scale", planStatus: "active" } });
 });
@@ -168,8 +168,14 @@ describe("duplicate (H14)", () => {
 });
 
 describe("server-side guards", () => {
-  it("rejects bad placements, sample and rotation weight (M25)", async () => {
-    await expect(createSurvey(shopId, input({ placements: ["bogus" as never] }))).rejects.toMatchObject({ fields: { code: "invalid_placement" } });
+  it("always shows on the Thank-you page, keeps the optional Order status page, and rejects a bad sample and rotation weight (M25)", async () => {
+    // A survey can never end up on no page: Thank-you is always added, the
+    // Order status page only when asked for, and retired values are dropped.
+    expect((await createSurvey(shopId, input({ placements: ["bogus" as never] }))).placements).toEqual(["thank_you"]);
+    expect((await createSurvey(shopId, input({ placements: ["order_status", "onsite"] }))).placements).toEqual([
+      "thank_you",
+      "order_status",
+    ]);
     await expect(createSurvey(shopId, input({ targeting: { samplePercent: 0 } }))).rejects.toMatchObject({ fields: { code: "invalid_sample" } });
     await expect(createSurvey(shopId, input({ rotationWeight: 1.5 }))).rejects.toMatchObject({ fields: { code: "invalid_rotation_weight" } });
   });
@@ -186,11 +192,12 @@ describe("server-side guards", () => {
     expect(typeof JSON.parse(row.designJson)).toBe("object");
   });
 
-  it("refuses to publish a live survey with no placements, and a corrupt draft (M26, L53)", async () => {
+  it("publishes a draft saved with no placements onto the Thank-you page, and refuses a corrupt draft (M26, L53)", async () => {
     const survey = await createSurvey(shopId, input({ status: "active" }));
     const posted = await asPosted(survey.id);
     const saved = await updateSurvey(shopId, survey.id, { ...posted, placements: [] }, posted.revision);
-    await expect(publishSurveyDraft(shopId, survey.id, saved.revision)).rejects.toMatchObject({ fields: { code: "no_placements" } });
+    const published = await publishSurveyDraft(shopId, survey.id, saved.revision);
+    expect(published.placements).toEqual(["thank_you"]);
     await prisma.survey.update({ where: { id: survey.id }, data: { draft: "null" } });
     await expect(publishSurveyDraft(shopId, survey.id)).rejects.toMatchObject({ fields: { code: "no_draft" } });
   });

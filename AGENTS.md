@@ -16,7 +16,7 @@ Read `docs/01-verification-report.md` before writing any code — it contains th
 
 - **API version `2026-07`** is latest stable. 2026-10 is RC only.
 - **React Router template**, not Remix. `shopify app init` → "Build a React Router app".
-- **Two extension directories, not one.** `purchase.thank-you.block.render` is a Checkout UI Extension; `customer-account.order-status.block.render` is a Customer Account UI Extension. Different API namespaces.
+- **Two extension directories, not one.** `purchase.thank-you.block.render` is a Checkout UI Extension; `customer-account.order-status.block.render` is a Customer Account UI Extension. Different API namespaces. The Thank-you page is always on; the Order status page is an optional extra per survey (see "Order status is an optional extra" below).
 - **Thank-you + Order-status extensions work on all plans except Shopify Starter.** (Confirmed.)
 - **`network_access` requires Partner Dashboard opt-in** (API access → "Allow network access in checkout UI extensions"). Self-serve, auto-approved, but a **deploy blocker** if not done.
 - **Extensions need `Access-Control-Allow-Origin: *`** — they run in a Web Worker with an unstable origin.
@@ -1508,9 +1508,15 @@ call, while auth itself still succeeded.
   exchange: Shopify revokes the legacy token on the first. If the exchange
   fails the session loads as absent, so the next admin open runs token
   exchange. Nothing is deleted.
-- Expiring tokens last about an hour, so `getAccessToken` reads the live
-  offline session through `unauthenticated.admin` first. The encrypted copy on
-  `Shop` is only a fallback and may be stale.
+- Expiring tokens last about an hour, so `getAccessToken` reads only the live
+  offline session through `unauthenticated.admin`. **No token is stored on
+  `Shop` any more** (2026-10-19): the old encrypted copy was its fallback, and
+  on a store installed before the switch it was the legacy non-expiring token,
+  so a missing session turned into a 403 instead of a clean skip. `upsertShop`
+  takes no token, `refreshStoredToken` is gone, and migration
+  `20261019130000_drop_stored_token_copy` erased existing copies. The columns
+  stay (`clearAccessToken` still nulls them). `tests/db-token-migration.test.ts`
+  fails if the fallback comes back.
 - A Shopify 4xx now carries Shopify's own text (`httpErrorDetail`), and the
   Plans page shows it. That is how this was found: the log line was not visible.
 
@@ -1518,12 +1524,12 @@ call, while auth itself still succeeded.
 
 Turning a survey on does not put it in front of buyers: the merchant must add
 the SourceTrac block in Shopify's checkout editor, and Shopify exposes no
-"block added" state. `Shop.thankYouBlockSeenAt` / `orderStatusBlockSeenAt`
-(`app/lib/block-seen.server.ts`) are set when a block calls `/api/survey`
+"block added" state. `Shop.thankYouBlockSeenAt`
+(`app/lib/block-seen.server.ts`) is set when a block calls `/api/survey`
 (buyer) or `/api/survey-preview` (checkout editor), at most hourly per process,
 and cleared on `app/uninstalled`. The editor and Surveys list show "Buyers
-can't see this survey yet" with an Open checkout editor button for any page
-the block never loaded on, and after Go live / Save and publish the editor
+can't see this survey yet" with an Open checkout editor button until the
+block has loaded once, and after Go live / Save and publish the editor
 opens the checkout editor itself (`open_checkout=1`, dropped from the URL and
 remembered per revision so Back does not bounce out again). It never opens
 once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
@@ -1558,12 +1564,11 @@ once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
   disables it. Whether a self-request counts as Render traffic was inferred
   from Render's "inbound traffic" wording, not observed.
 - **`/api/survey` runs its reads with `Promise.all`** (block seen, already
-  answered, compiled config, order facts, pinned-survey check).
+  answered, compiled config, order, pinned-survey check).
 - **Why a pinned survey shows nothing**, in the order they bite: the order
-  already answered (one answer per order across both pages and all surveys),
-  the survey is beyond the plan's live share (`getCompiledConfig`), audience
-  rules, the page is not in its placements, or the checkout editor was not
-  saved. `/api/survey-preview` returns `planHidden` and `audienceRules`
+  already answered (one answer per order across all surveys), the survey is
+  beyond the plan's live share (`getCompiledConfig`), audience rules, or the
+  checkout editor was not saved. `/api/survey-preview` returns `planHidden` and `audienceRules`
   (`hasAudienceRules` in `shared/survey-config.ts`) and the editor block shows
   a banner for each, plus a "test with a new order" line. Extension change:
   needs `shopify app deploy`.
@@ -1585,17 +1590,14 @@ once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
   once), logs `checkout_auth_rejected` with a reason (`bad_signature` for a
   known store means `SHOPIFY_API_SECRET` is wrong), and normalises `dest`.
 - **`explainTargeting`** (`shared/survey-config.ts`) is the only place targeting
-  is decided; `matchesTargeting` wraps it. `/api/survey` records every decision
-  with its reason in an in-memory ring buffer (`serve-log.server.ts`), shown as
-  "Recent checkouts" on the Surveys page. A new rule needs a `TargetingMiss`
-  code and a `surveys.reason_*` string in all ten locales.
+  is decided; `matchesTargeting` wraps it. `/api/survey` logs the reason in
+  `survey_config_served_v2` and stores it for "Recent checkouts" (below).
 - **Order value** never applied: `valueCurrency` was never set. The editor (and
   the route, as a backstop) set it to the store currency, and the block sends
   `cost.totalAmount` (`total`/`totalCurrency`) because on the Thank-you page the
   webhook has not landed. The cached webhook total wins when it exists.
-- **First-time/returning on Order status** reads `OrderFact`, written once
-  (create-only) when the Thank-you block reports `isFirstOrder`. Unknown still
-  hides the survey. 90-day retention; deleted on customers/redact.
+- **First-time/returning** comes from the Thank-you block's `isFirstOrder`.
+  Unknown hides a targeted survey.
 - **Dates are the store's calendar days** (`shared/zoned-date.ts`): start =
   00:00 local, end = 00:00 the day after the end date (inclusive), stored as ISO
   instants. Older bare `YYYY-MM-DD` rules still read, the end now inclusive.
@@ -1646,16 +1648,79 @@ once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
   `visibleQuestionsFor`) and submits every template on Free and Scale, and checks
   every preset writes. A new template is covered automatically.
 
-## Block build stamp: merging does not update the checkout (2026-10-18)
+## Order status is an optional extra; testing aids removed (2026-10-19)
 
-Verified 2026-10-18 by driving the production build over real HTTP (OPTIONS
-preflight -> CORS 204, signed GET -> survey) and by running the CLI-built bundle
-in a worker-shaped `vm` sandbox with no `window`: both work. A store that shows
-no survey with a live server is almost always running an old block (blocks
-before 2026-10-11 rendered nothing), a block not placed and saved in the
-checkout editor, or network access not approved in the Partner Dashboard.
+- **The Thank-you page is always on; the Order status page is opt-in per
+  survey.** `sanitizeSurveyInput` always adds `SURVEY_PLACEMENTS`
+  (`["thank_you"]`) and adds `order_status` only when posted
+  (`OPTIONAL_PLACEMENTS`); retired values (On-site, Survey link) are dropped.
+  So a survey can never sit on no page: there is no readiness `has_placement`
+  check and no `no_placements` refusal. The editor's "Where it shows" has the
+  Thank-you box checked and disabled, and one Order status checkbox. New
+  surveys (templates and Start from scratch) start Thank-you only.
+- The Order status block (`extensions/sourcetrac-order-status`) only exists on
+  stores with new customer accounts; the copy says so wherever it is offered
+  (`editor.placement_order_status_details`, `editor.store_step_order_status`,
+  `editor.block_missing_order_status_body`, Help `order_status`).
+- **Briefly removed and restored the same day**, so it never reached `main`:
+  the order-status extension, `OrderFact` (the Thank-you page's first-order
+  flag, read by `/api/survey` and `/api/survey-responses` on Order status),
+  `Shop.orderStatusBlockSeenAt`, the per-page block banner and the preview's
+  `onThisPage`. Migration `20261019090000_order_source_name` only adds
+  `OrderCache.sourceName`.
+- **Removed as testing aids:** the block build stamp (`BLOCK_BUILD` /
+  `shared/block-build.ts`) and the feature flags (`shared/feature-flags.ts`)
+  with the On-site, Survey link and After delivery features they gated (never
+  built). Recent checkouts and Checkout check were removed too, wrongly: they
+  are merchant features, and were restored the same day (below).
+- **No link opens the checkout editor with the block placed.** `checkoutEditorUrl`
+  opens it on `?page=thank-you` (no Order status `page` value is verified);
+  every button that uses it sits next to the steps ("choose Thank you / Order
+  status from the page menu, add the SourceTrac survey block, Save").
+  `tests/unit/checkout-editor.test.ts` pins that.
+- **The Home setup guide ticks what it can prove**: a live survey, and the
+  Thank-you block having loaded. Step 3 tells the merchant each order is asked
+  once, so tests need a new order (the most common "it doesn't show" report was
+  a re-used test order).
+- **POS orders are left out of answer rates** (`app/lib/order-sources.ts`,
+  `OrderCache.sourceName` from the webhook's `source_name` / GraphQL
+  `sourceName`). Only `pos` is listed: subscription renewals have no reliable
+  `source_name`. Revenue is unaffected. Test: `tests/db-survey-stats.test.ts`.
 
-`BLOCK_BUILD` (extensions/shared/src/survey-logic.ts) and `CURRENT_BLOCK_BUILD`
-(shared/block-build.ts) must be equal and bumped together whenever block code
-changes. The block sends it as `build=`; Recent checkouts shows a critical
-banner when the newest load came from another build or none.
+## Recent checkouts, Checkout check, templates and Submit (2026-10-19, second pass)
+
+- **Recent checkouts and Checkout check are merchant features, not test aids.**
+  They answer "why didn't my survey show?" (usually "this order already
+  answered"). Both are on the Surveys page and cover both pages; the Checkout
+  check lists the Order status page only once a live survey uses it or its
+  block has loaded.
+- **Recent checkouts is stored** in `CheckoutLoad` (`app/lib/serve-log.server.ts`),
+  with a `placement` column, not memory: the old in-memory list was wiped by every restart and deploy,
+  exactly when merchants test. `recordServe` is not awaited by `/api/survey` and
+  never throws; tests call `flushServeLog()`. One row per order+reason (a reload
+  moves it up), the newest `PER_SHOP` (20) kept, 30-day retention, deleted with
+  the order on customers/redact. The privacy page says so.
+- **Checkout check** (`checkout-check.server.ts`) lists only what a merchant can
+  act on, per page: a live survey (and whether rules narrow it), the block (a
+  buyer's load from `CheckoutLoad` > "placed" from `*BlockSeenAt`, which the
+  "It's already added" button also sets > never), plan-hidden surveys, and the
+  new-order tip. The server-version and database lines were dropped.
+- **Submit needs at least one answer.** `/api/survey-responses` refuses an
+  empty set (`min(1)`), but the block's `complete` (and `previewComplete`) was
+  true for an all-optional survey with nothing picked, so the tap failed.
+  `almost-left`, `age-range`, `missing-piece` and `household-snapshot` are
+  all-optional. Both blocks share the hook. Block change: needs
+  `shopify app deploy`.
+- **Templates is its own nav item** (`/app/surveys/library`, in Shopify's
+  sidebar; Responses moved off the sidebar and is linked from Results). The top
+  bar is 10 tiles: 5 columns, 10 on desktop. The library groups templates by
+  goal (category names are goals: "Where buyers find you", "Why they buy", ...)
+  with a one-line description each; a chip or a search shows one flat list.
+- **50 templates.** Sixteen added with branching follow-ups: `podcast-creator-trace`,
+  `social-deep-dive`, `search-terms`, `offline-trace`, `email-sms-impact`,
+  `review-sources`, `payment-preference`, `pre-purchase-questions`,
+  `shipping-threshold`, `cross-border-clarity`, `referral-readiness`,
+  `next-purchase`, `sustainability-values`, `use-case`, `household-snapshot`,
+  `life-moment`, with 16 outcome tags and six presets (`first_heard_order_tag`,
+  `social_app_order_tag`, `referral_ready_customer_tag`, `buy_again_customer_tag`,
+  `eco_customer_tag`, `life_moment_customer_tag`).

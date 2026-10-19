@@ -5,39 +5,39 @@ import { checkoutEditorUrl } from "~/lib/checkout-editor";
 import type { Placement } from "@shared/survey-config";
 
 /**
- * Says which pages the SourceTrac block has not loaded on yet, with the way to
- * add it and a way to say it is already there.
+ * Says which pages the SourceTrac block has not loaded on yet, with the steps
+ * to add it and a way to say it is already there.
  *
  * The app only learns the block is in place when it loads (see
  * `block-seen.server.ts`), so a block added a minute ago can still read as
- * missing. "It's added" records it, and the editor and the Surveys list both
- * post it with `intent=block-added`.
+ * missing. "It's already added" records it, and the editor and the Surveys list
+ * both post it with `intent=block-added`.
  */
 export function BlockMissingBanner({
   missing,
-  anySeen,
   shopHandle,
   heading,
   t,
 }: {
   missing: readonly Placement[];
-  /** True when the block has loaded on at least one of the survey's pages. */
-  anySeen: boolean;
   shopHandle: string;
   /** Overrides the heading, e.g. straight after going live. */
   heading?: string;
   t: TFunction;
 }) {
-  const places = missing.map((p) => t(`editor.placement_${p}`)).join(", ");
+  const thankYouMissing = missing.includes("thank_you");
   return (
+    // Missing on the Thank-you page means buyers see nothing at all; missing
+    // only on the optional Order status page is a gentler note.
     <s-banner
-      tone={anySeen ? "info" : "warning"}
-      heading={heading ?? (anySeen ? t("editor.block_partial_title", { places }) : t("editor.block_missing_title"))}
+      tone={thankYouMissing ? "warning" : "info"}
+      heading={heading ?? (thankYouMissing ? t("editor.block_missing_title") : t("editor.block_order_status_title"))}
     >
       <s-stack gap="small">
-        <s-text>{t("editor.block_missing_body", { places })}</s-text>
+        {thankYouMissing ? <s-text>{t("editor.block_missing_body")}</s-text> : null}
+        {missing.includes("order_status") ? <s-text>{t("editor.block_missing_order_status_body")}</s-text> : null}
         <s-stack direction="inline" gap="small">
-          <s-button href={checkoutEditorUrl(shopHandle, missing[0])} target="_top" icon="external">
+          <s-button href={checkoutEditorUrl(shopHandle, thankYouMissing ? "thank_you" : "order_status")} target="_top" icon="external">
             {t("editor.open_checkout_editor")}
           </s-button>
           <Form method="post">

@@ -24,7 +24,7 @@ beforeAll(async () => {
     throw new Error(`Refusing to run: DATABASE_URL must name a *_test database (got "${url}").`);
   }
   await cleanup();
-  await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9200001", accessToken: null });
+  await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9200001" });
 });
 
 afterAll(async () => {
@@ -101,7 +101,7 @@ describe("uninstall ends the paid plan", () => {
     expect((await prisma.shop.findUniqueOrThrow({ where: { shopDomain: DOMAIN } })).plan).toBe("scale");
 
     await processWebhook({ topic: "app/uninstalled", shopDomain: DOMAIN, accessToken: null, payload: {} });
-    await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9200001", accessToken: "shpat_new" });
+    await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9200001" });
 
     const shop = await prisma.shop.findUniqueOrThrow({ where: { shopDomain: DOMAIN } });
     expect(shop).toMatchObject({ plan: "free", subscriptionGid: null });
@@ -111,7 +111,7 @@ describe("uninstall ends the paid plan", () => {
     await notice(NEW, "SourceTrac Scale", "ACTIVE");
     await processWebhook({ topic: "app/uninstalled", shopDomain: DOMAIN, accessToken: null, payload: {} });
     await notice(NEW, "SourceTrac Scale", "ACTIVE");
-    await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9200001", accessToken: "shpat_new" });
+    await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9200001" });
 
     expect((await prisma.shop.findUniqueOrThrow({ where: { shopDomain: DOMAIN } })).plan).toBe("free");
   });

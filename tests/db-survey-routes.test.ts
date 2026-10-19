@@ -79,7 +79,7 @@ beforeAll(async () => {
   }
   await cleanup();
   clearConfigCache();
-  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9400001", accessToken: null });
+  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9400001" });
   shopId = shop.id;
   // Several live surveys, targeting rules and Shopify actions are paid features.
   await prisma.shop.update({ where: { id: shopId }, data: { plan: "scale", planStatus: "active" } });

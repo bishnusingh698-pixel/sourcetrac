@@ -3,13 +3,14 @@ import { logger } from "~/lib/logger";
 import type { Placement } from "@shared/survey-config";
 
 /**
- * Whether the SourceTrac block is really in the merchant's checkout.
+ * Whether the SourceTrac block is really on the merchant's Thank-you and Order
+ * status pages.
  *
  * Shopify exposes no "block added" state and sends no event when a checkout
  * block is placed or removed. A block that asks us for a survey, on a buyer's
- * order page or inside the checkout editor, is the only proof. The editor
- * reads this so it never tells a merchant their survey is showing in checkout
- * when the block was never added.
+ * page or inside the checkout editor, is the only proof. The editor reads this
+ * so it never tells a merchant their survey is showing when the block was never
+ * added.
  */
 
 /** The two pages a checkout block can sit on. */
@@ -20,7 +21,7 @@ const COLUMN = {
   order_status: "orderStatusBlockSeenAt",
 } as const satisfies Record<CheckoutPlacement, string>;
 
-function isCheckoutPlacement(placement: Placement): placement is CheckoutPlacement {
+export function isCheckoutPlacement(placement: Placement): placement is CheckoutPlacement {
   return placement in COLUMN;
 }
 
@@ -64,6 +65,15 @@ export async function getBlockSeen(shopId: string): Promise<BlockSeen> {
     thank_you: Boolean(row?.thankYouBlockSeenAt),
     order_status: Boolean(row?.orderStatusBlockSeenAt),
   };
+}
+
+/** When the block was last seen on each page (null: never), for the Checkout check. */
+export async function getBlockSeenAt(shopId: string): Promise<Record<CheckoutPlacement, Date | null>> {
+  const row = await db.shop.findUnique({
+    where: { id: shopId },
+    select: { thankYouBlockSeenAt: true, orderStatusBlockSeenAt: true },
+  });
+  return { thank_you: row?.thankYouBlockSeenAt ?? null, order_status: row?.orderStatusBlockSeenAt ?? null };
 }
 
 /**

@@ -10,6 +10,8 @@ import { BUCKETS, consumeShopBackstop, consumeToken } from "~/lib/rate-limit.ser
 import { hasAnyAnswerForOrder } from "~/lib/answers.server";
 import { findShopByDomain, isKnownOrder } from "~/lib/shop.server";
 import { recordBlockSeen } from "~/lib/block-seen.server";
+import { readOrderFact, recordOrderFact } from "~/lib/order-facts.server";
+import { recordServe, type ServeReason } from "~/lib/serve-log.server";
 import { getCompiledConfig } from "~/lib/surveys.server";
 import { authenticateCheckout } from "~/lib/checkout-auth.server";
 import {
@@ -21,8 +23,6 @@ import {
   type CompiledConfig,
   type Placement,
 } from "@shared/survey-config";
-import { readOrderFact, recordOrderFact } from "~/lib/order-facts.server";
-import { recordServe, type ServeReason } from "~/lib/serve-log.server";
 import { db } from "~/db.server";
 
 /**
@@ -64,6 +64,7 @@ const querySchema = z.object({
 });
 
 type Candidate = CompiledConfig["surveys"][number];
+
 
 export const loader = async ({ request }: { request: Request }) => {
   const requestId = `srv_${Date.now().toString(36)}`;
@@ -132,8 +133,8 @@ export const loader = async ({ request }: { request: Request }) => {
           ? recordOrderFact(shop.id, orderId, reportedFirstOrder).then(() => null)
           : Promise.resolve(null),
     ]);
-    const now = new Date();
     const isFirstOrder = reportedFirstOrder ?? rememberedFirstOrder;
+    const now = new Date();
 
     // The order's total for the order-value rule: the webhook's when it has
     // landed (shop currency, the currency the merchant set the rule in),
@@ -175,7 +176,7 @@ export const loader = async ({ request }: { request: Request }) => {
         currencyDigits: totalCurrency ? minorUnitDigits(totalCurrency) : 2,
         // Unknown (no Thank-you report for this order) fails a first/returning
         // rule: the merchant asked for that audience only, so an unknown buyer
-        // is not shown the survey. See DECISIONS.md (L17).
+        // is not shown the survey.
         isFirstOrder,
         country,
         language: parsed.data.locale ?? null,
@@ -225,16 +226,8 @@ export const loader = async ({ request }: { request: Request }) => {
     }
     if (survey && alreadyAnswered) reason = "already_answered";
 
-    recordServe(shop.id, {
-      placement,
-      orderId,
-      surveyId: reasonSurveyId,
-      reason,
-      pinned: pinnedExists,
-      country,
-      isFirstOrder,
-      blockBuild: url.searchParams.get("build")?.slice(0, 32) || null,
-    });
+    // For "Recent checkouts" on the Surveys page. Not awaited, never throws.
+    void recordServe(shop.id, { placement, orderId, surveyId: reasonSurveyId, reason, pinned: pinnedExists, country, isFirstOrder });
 
     logger.info("survey_config_served_v2", {
       request_id: requestId,
@@ -245,7 +238,6 @@ export const loader = async ({ request }: { request: Request }) => {
       reason,
       pinned: pinnedExists,
       already_answered: alreadyAnswered,
-      block_build: url.searchParams.get("build")?.slice(0, 32) || null,
     });
 
     return cors(

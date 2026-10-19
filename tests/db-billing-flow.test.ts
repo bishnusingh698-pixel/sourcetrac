@@ -43,7 +43,7 @@ beforeAll(() => {
 
 beforeEach(async () => {
   await prisma.shop.deleteMany({ where: { shopDomain: DOMAIN } });
-  shopId = (await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/960000", accessToken: "shpat_x" })).id;
+  shopId = (await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/960000" })).id;
 });
 
 afterEach(() => vi.unstubAllGlobals());

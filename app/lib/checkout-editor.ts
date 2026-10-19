@@ -1,12 +1,15 @@
 import type { Placement } from "@shared/survey-config";
 
 /**
- * The Shopify checkout editor, where the SourceTrac block is added.
+ * Shopify's checkout editor, where the SourceTrac block is added.
  *
- * Thank-you and order-status blocks only exist in the *checkout* editor
+ * Thank-you and Order status blocks only exist in the *checkout* editor
  * (Settings › Checkout › Customize), never the Online Store theme editor.
- * `?page=thank-you` opens it on the Thank-you page; for the Order status page
- * no `page` value could be verified, so the editor opens on its default page.
+ * Shopify offers no link that opens the editor with an app block already
+ * placed or selected. `?page=thank-you` opens it on the Thank-you page; for the
+ * Order status page no `page` value could be verified, so the editor opens on
+ * its default page. Every button that uses this sits next to the steps for
+ * adding the block (`editor.store_step_block`, `editor.store_step_order_status`).
  */
 export function checkoutEditorUrl(shopHandle: string, placement: Placement = "thank_you"): string {
   const base = `https://admin.shopify.com/store/${shopHandle}/settings/checkout/editor`;

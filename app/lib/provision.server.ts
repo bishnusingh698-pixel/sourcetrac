@@ -48,7 +48,7 @@ async function provisionShopOnce(session: {
     }
   }
 
-  const row = await upsertShop({ shopDomain, shopId, accessToken });
+  const row = await upsertShop({ shopDomain, shopId });
 
   // Best-effort plan probe, in the background: the first page load after
   // install used to wait on it (a second Admin call with its own timeout and
@@ -91,7 +91,7 @@ export async function ensureShop(session: {
       placeholderRetried.add(session.shop);
       try {
         const identity = await fetchShopIdentity(session.shop, session.accessToken);
-        await upsertShop({ shopDomain: session.shop, shopId: identity.id, accessToken: null });
+        await upsertShop({ shopDomain: session.shop, shopId: identity.id });
         return requireShopByDomain(session.shop);
       } catch (error) {
         logger.warn("shop_placeholder_id_retry_failed", {

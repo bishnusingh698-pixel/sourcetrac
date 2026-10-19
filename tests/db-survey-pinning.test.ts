@@ -85,7 +85,7 @@ let first = "";
 let second = "";
 let paused = "";
 let draft = "";
-let orderStatusOnly = "";
+let thankYouOnly = "";
 let foreign = "";
 
 beforeAll(async () => {
@@ -94,16 +94,16 @@ beforeAll(async () => {
   await prisma.shop.deleteMany({ where: { shopDomain: { in: [DOMAIN, OTHER_DOMAIN] } } });
   clearConfigCache();
 
-  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9700001", accessToken: null });
+  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9700001" });
   // Several live surveys are a paid feature.
   await prisma.shop.update({ where: { id: shop.id }, data: { plan: "scale", planStatus: "active" } });
   first = (await createSurvey(shop.id, input("First", { priority: 10 }))).id;
   second = (await createSurvey(shop.id, input("Second", { priority: 1 }))).id;
   paused = (await createSurvey(shop.id, input("Paused", { status: "paused" }))).id;
   draft = (await createSurvey(shop.id, input("Draft", { status: "draft" }))).id;
-  orderStatusOnly = (await createSurvey(shop.id, input("Order status only", { placements: ["order_status"] }))).id;
+  thankYouOnly = (await createSurvey(shop.id, input("Thank-you only", { placements: ["thank_you"] }))).id;
 
-  const other = await upsertShop({ shopDomain: OTHER_DOMAIN, shopId: "gid://shopify/Shop/9700002", accessToken: null });
+  const other = await upsertShop({ shopDomain: OTHER_DOMAIN, shopId: "gid://shopify/Shop/9700002" });
   foreign = (await createSurvey(other.id, input("Someone else's"))).id;
   clearConfigCache();
 });
@@ -143,7 +143,7 @@ describe("a block pinned to one survey", () => {
   it("shows nothing on a page the pinned survey is not set for", async () => {
     const config = await get<ConfigBody>(
       surveyLoader,
-      `/api/survey?placement=thank_you&orderId=${ORDER}&surveyId=${orderStatusOnly}`,
+      `/api/survey?placement=order_status&orderId=${ORDER}&surveyId=${thankYouOnly}`,
     );
     expect(config.enabled).toBe(false);
   });
@@ -170,7 +170,7 @@ describe("the checkout editor preview", () => {
   it("says when the pinned survey is not set for this page", async () => {
     const preview = await get<SurveyPreviewBody>(
       previewLoader,
-      `/api/survey-preview?placement=thank_you&surveyId=${orderStatusOnly}`,
+      `/api/survey-preview?placement=order_status&surveyId=${thankYouOnly}`,
     );
     expect(preview).toMatchObject({ pinned: true, onThisPage: false });
   });

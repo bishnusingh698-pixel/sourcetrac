@@ -37,7 +37,7 @@ describe("auth flow", () => {
   });
 
   it("treats an order answered on either path as answered on both (I17)", async () => {
-    const shop = await upsertShop({ shopDomain: SHOP, shopId: "gid://shopify/Shop/970000", accessToken: null });
+    const shop = await upsertShop({ shopDomain: SHOP, shopId: "gid://shopify/Shop/970000" });
     const survey = await db.survey.create({ data: { shopId: shop.id, name: "S", placements: "[]" } });
     await db.response.create({ data: { shopId: shop.id, surveyId: survey.id, surveyVersion: 1, orderId: "970001", placement: "thank_you" } });
     const legacy = await submitResponse({ shopId: shop.id, orderId: "970001", channel: "google", otherText: null, locale: null, plan: "growth" });

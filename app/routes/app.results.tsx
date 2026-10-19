@@ -284,9 +284,16 @@ export default function Results() {
     <s-stack gap="base">
       <PageIntro
         actions={
-          <s-button icon="download" loading={downloading} onClick={download}>
-            {t("results.download")}
-          </s-button>
+          <s-stack direction="inline" gap="small">
+            {/* Every single answer, one by one: the Responses page left
+                Shopify's sidebar, so Results is where merchants look for it. */}
+            <s-button href={data.selected ? `/app/responses?survey=${data.selected}` : "/app/responses"} icon="chat">
+              {t("results.see_answers")}
+            </s-button>
+            <s-button icon="download" loading={downloading} onClick={download}>
+              {t("results.download")}
+            </s-button>
+          </s-stack>
         }
       >
         {t("results.subtitle")}

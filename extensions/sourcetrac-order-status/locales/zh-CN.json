@@ -32,7 +32,7 @@
     "editorOtherPage": "此问卷未设置在此页面显示。请在 SourceTrac 的“显示位置”中开启此页面。",
     "editorPlanHidden": "您的套餐可展示的上线问卷少于您现有的数量，此问卷不在其中，因此买家看不到它。请在 SourceTrac 中升级套餐，或暂停一个优先级更高的问卷。",
     "editorAudience": "此问卷在“查看对象”中设置了规则，因此部分订单看不到它。",
-    "editorOncePerOrder": "每个订单只询问一次。买家在任一页面回答后，该订单不会再显示问卷，请用新订单测试。",
+    "editorOncePerOrder": "每个订单只询问一次。买家回答后，该订单不会再显示问卷，请用新订单测试。",
     "editorWaking": "SourceTrac 正在启动。闲置一段时间后，最多可能需要一分钟。"
   }
 }

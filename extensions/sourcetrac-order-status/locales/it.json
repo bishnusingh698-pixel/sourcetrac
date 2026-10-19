@@ -32,7 +32,7 @@
     "editorOtherPage": "Questo sondaggio non è impostato per apparire in questa pagina. Attiva questa pagina in \"Dove appare\" in SourceTrac.",
     "editorPlanHidden": "Il tuo piano mostra meno sondaggi attivi di quanti ne hai, e questo non è tra quelli, quindi gli acquirenti non lo vedranno. Cambia piano in SourceTrac o metti in pausa un sondaggio con priorità più alta.",
     "editorAudience": "Questo sondaggio ha regole in \"Chi lo vede\", quindi alcuni ordini non lo vedranno.",
-    "editorOncePerOrder": "Ogni ordine riceve la domanda una sola volta. Dopo una risposta su una delle due pagine, quell'ordine non mostra più sondaggi, quindi fai la prova con un nuovo ordine.",
+    "editorOncePerOrder": "Ogni ordine viene interrogato una volta. Dopo una risposta quell'ordine non mostra più il sondaggio, quindi prova con un nuovo ordine.",
     "editorWaking": "SourceTrac si sta avviando. Dopo un periodo di inattività può volerci fino a un minuto."
   }
 }

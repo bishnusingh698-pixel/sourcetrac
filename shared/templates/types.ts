@@ -16,8 +16,7 @@ export type TemplateCategory =
   | "product_page"
   | "delivery"
   | "loyalty"
-  | "know_customer"
-  | "after_delivery";
+  | "know_customer";
 
 export const TEMPLATE_CATEGORIES: readonly TemplateCategory[] = [
   "marketing",
@@ -25,7 +24,6 @@ export const TEMPLATE_CATEGORIES: readonly TemplateCategory[] = [
   "delivery",
   "loyalty",
   "know_customer",
-  "after_delivery",
 ];
 
 /** Answer-pack families, defined in `packs.ts`. */
@@ -72,7 +70,6 @@ export interface TemplateQuestion {
 
 export interface TemplateDefaults {
   audience: "everyone" | "first_order" | "returning";
-  placements: Array<"thank_you" | "order_status" | "survey_link">;
   samplePercent: number;
   /** T7: only orders paid with a manual payment method. */
   paymentManualOnly?: boolean;

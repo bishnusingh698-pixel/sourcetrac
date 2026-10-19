@@ -20,6 +20,16 @@ describe("checkout editor link", () => {
     expect(checkoutEditorUrl("demo")).toBe("https://admin.shopify.com/store/demo/settings/checkout/editor?page=thank-you");
     expect(checkoutEditorUrl("demo", "order_status")).toBe("https://admin.shopify.com/store/demo/settings/checkout/editor");
   });
+
+  it("sits next to the steps for adding the block wherever it appears", () => {
+    // Shopify has no link that opens the editor with the block placed, so the
+    // merchant must be told which page to pick and to add it.
+    expect(read("app/components/block-missing.tsx")).toContain('t("editor.block_missing_body")');
+    expect(read("app/components/block-missing.tsx")).toContain('t("editor.block_missing_order_status_body")');
+    expect(read("app/routes/app.surveys.$id.tsx")).toContain('t("editor.store_step_block")');
+    expect(read("app/routes/app.surveys.$id.tsx")).toContain('t("editor.store_step_order_status")');
+    expect(read("app/routes/app._index.tsx")).toContain('t("onboarding.step2_body")');
+  });
 });
 
 describe("pages missing the block", () => {

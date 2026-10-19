@@ -7,6 +7,7 @@ import { minorToDecimalString, parseMoneyToMinor } from "~/lib/money";
 import { evaluateResponseRevenue, type RevenueDecision } from "~/lib/revenue";
 import { OTHER_CHANNEL_VALUE, parseSurveySettings } from "~/lib/settings";
 import { withRetry } from "~/lib/retry.server";
+import { couldSeeSurveySql, couldSeeSurveyWhere } from "~/lib/order-sources";
 
 /**
  * Read queries for the dashboard and the export. Keeps SQL in one place and
@@ -273,6 +274,7 @@ export async function countAnsweredEligibleOrdersInWindow(params: {
       WHERE o."shopId" = ${params.shopId}
         AND o."createdAtShop" >= ${params.start} AND o."createdAtShop" < ${params.end}
         AND o."isTest" = false AND o."isCancelled" = false
+        AND ${couldSeeSurveySql("o")}
         -- A semi-join on the answers' order ids, evaluated once, not a
         -- correlated subquery over the whole union per order.
         AND o."orderId" IN (SELECT r."orderId" FROM (${channelAnswersSql(params.shopId)}) r)
@@ -283,7 +285,8 @@ export async function countAnsweredEligibleOrdersInWindow(params: {
 
 /**
  * Denominator for response rate: eligible orders in the window.
- * Test and cancelled orders are excluded so the rate is honest.
+ * Test, cancelled and POS orders are excluded so the rate is honest: none of
+ * them could have been asked.
  */
 export async function countEligibleOrdersInWindow(params: { shopId: string; start: Date; end: Date }): Promise<number> {
   return retryDb(() =>
@@ -293,6 +296,7 @@ export async function countEligibleOrdersInWindow(params: { shopId: string; star
         createdAtShop: { gte: params.start, lt: params.end },
         isTest: false,
         isCancelled: false,
+        ...couldSeeSurveyWhere,
       },
     }),
   );

@@ -9,7 +9,6 @@ import { RECORD_RETENTION_DAYS, WEBHOOK_RETENTION_DAYS } from "~/lib/retention.s
 import { ensureShop } from "~/lib/provision.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
-import { FEATURE_FLAGS } from "@shared/feature-flags";
 import { countFailedSync } from "~/lib/sync.server";
 import { formatDay } from "~/lib/format-day";
 import { grantedSyncScopes } from "~/lib/scopes.server";
@@ -57,7 +56,6 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     // Which Phase 7 scopes the merchant granted. Sync features are gated on
     // this, so a store that has not re-approved keeps working unchanged.
     grantedScopes: grantedSyncScopes(session.scope),
-    bonusFlagsOn: FEATURE_FLAGS.ONSITE_SURVEYS || FEATURE_FLAGS.SURVEY_LINK_PAGE,
     failedSync,
     dataRequests: dataRequests.map((request) => ({
       id: request.id,
@@ -110,11 +108,6 @@ export default function Settings() {
           {data.failedSync.count > 0 ? (
             <s-text tone="critical">
               {t("settings.sync_failed", { count: data.failedSync.count, error: data.failedSync.lastError ?? "—" })}
-            </s-text>
-          ) : null}
-          {data.bonusFlagsOn ? (
-            <s-text color="subdued" fontSize="small">
-              {t("settings.sync_flags_on")}
             </s-text>
           ) : null}
         </s-stack>

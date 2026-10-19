@@ -229,32 +229,33 @@ describe("getReadiness (S9)", () => {
   };
 
   it("passes when everything is in order", () => {
-    const items = getReadiness({ definition: good, placements: ["thank_you"], maxQuestions: 5, overActiveLimit: false });
+    const items = getReadiness({ definition: good, maxQuestions: 5, overActiveLimit: false });
     expect(readinessBlocksGoLive(items)).toBe(false);
   });
 
-  it("blocks with no placement", () => {
-    const items = getReadiness({ definition: good, placements: [], maxQuestions: 5, overActiveLimit: false });
-    expect(readinessBlocksGoLive(items)).toBe(true);
-    expect(items.find((i) => i.id === "has_placement")?.ok).toBe(false);
+  it("has no page check: every survey shows on the Thank-you page", () => {
+    // The Thank-you page is always on (the server adds it), so an older draft
+    // saved with no pages must still go live rather than be blocked.
+    const items = getReadiness({ definition: good, maxQuestions: 5, overActiveLimit: false });
+    expect(items.map((i) => i.id)).not.toContain("has_placement");
   });
 
   it("blocks invalid questions", () => {
     const bad = { ...good, questions: [{ id: "q1", type: "single_choice" as const, text: "", required: true, options: [{ id: "a", label: "A" }] }] };
-    const items = getReadiness({ definition: bad, placements: ["thank_you"], maxQuestions: 5, overActiveLimit: false });
+    const items = getReadiness({ definition: bad, maxQuestions: 5, overActiveLimit: false });
     expect(readinessBlocksGoLive(items)).toBe(true);
     expect(items.find((i) => i.id === "valid_questions")?.ok).toBe(false);
   });
 
   it("blocks when over the plan question limit", () => {
-    const items = getReadiness({ definition: good, placements: ["thank_you"], maxQuestions: 0, overActiveLimit: false });
+    const items = getReadiness({ definition: good, maxQuestions: 0, overActiveLimit: false });
     expect(items.find((i) => i.id === "fits_plan")?.ok).toBe(false);
   });
 
   it("treats a missing block as a non-blocking warning only when known false", () => {
-    const unknown = getReadiness({ definition: good, placements: ["thank_you"], maxQuestions: 5, overActiveLimit: false, blockAdded: null });
+    const unknown = getReadiness({ definition: good, maxQuestions: 5, overActiveLimit: false, blockAdded: null });
     expect(unknown.find((i) => i.id === "block_added")?.ok).toBe(true);
-    const missing = getReadiness({ definition: good, placements: ["thank_you"], maxQuestions: 5, overActiveLimit: false, blockAdded: false });
+    const missing = getReadiness({ definition: good, maxQuestions: 5, overActiveLimit: false, blockAdded: false });
     expect(readinessBlocksGoLive(missing)).toBe(false);
     expect(missing.find((i) => i.id === "block_added")?.ok).toBe(false);
   });

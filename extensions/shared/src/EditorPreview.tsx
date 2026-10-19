@@ -76,7 +76,7 @@ export function EditorPreview({ survey }: { survey: SurveyState }) {
     previewInfo?.onThisPage === false
       ? t(
           "sourcetrac.editorOtherPage",
-          "This survey is not set to show on this page. Turn this page on under \"Where it shows\" in SourceTrac.",
+          "This survey is not set to show on this page. Tick the Order status page under \"Where it shows\" in SourceTrac.",
         )
       : null;
 

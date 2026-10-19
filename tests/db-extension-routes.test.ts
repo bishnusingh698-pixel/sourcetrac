@@ -80,7 +80,7 @@ beforeAll(async () => {
     throw new Error(`Refusing to run: DATABASE_URL must name a *_test database (got "${url}").`);
   }
   await cleanup();
-  await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9300001", accessToken: null });
+  await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9300001" });
 });
 
 afterAll(async () => {

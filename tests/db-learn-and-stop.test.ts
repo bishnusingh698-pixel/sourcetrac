@@ -21,7 +21,7 @@ beforeAll(async () => {
   const url = process.env.DATABASE_URL ?? "";
   if (!url.includes("_test")) throw new Error(`Refusing to run: DATABASE_URL must name a *_test database (got "${url}").`);
   await prisma.shop.deleteMany({ where: { shopDomain: DOMAIN } });
-  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9810001", accessToken: null });
+  const shop = await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9810001" });
   shopId = shop.id;
   await prisma.shop.update({ where: { id: shopId }, data: { plan: "scale", planStatus: "active" } });
   clearConfigCache();

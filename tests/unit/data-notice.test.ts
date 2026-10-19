@@ -77,6 +77,7 @@ const CLASSIFIED: Record<string, Record<string, Group>> = {
     isTest: "order",
     isCancelled: "order",
     cancelledAt: "order",
+    sourceName: "order",
     createdAtShop: "order",
     updatedAtShop: "order",
     triggeredAt: "internal",

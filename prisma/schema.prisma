@@ -79,46 +79,46 @@ enum SurveyPlacement {
 
 /// One row per merchant store. Access tokens are AES-256-GCM encrypted at rest.
 model Shop {
-  id                   String       @id @default(cuid())
-  shopDomain           String       @unique
-  shopId               String       @unique
-  accessTokenEncrypted String?
-  accessTokenIv        String?
-  accessTokenTag       String?
-  installState         InstallState @default(installed)
-  uninstalledAt        DateTime?
+  id                     String       @id @default(cuid())
+  shopDomain             String       @unique
+  shopId                 String       @unique
+  accessTokenEncrypted   String?
+  accessTokenIv          String?
+  accessTokenTag         String?
+  installState           InstallState @default(installed)
+  uninstalledAt          DateTime?
   /// When the current installation began. A late app/uninstalled or
   /// shop/redact from an earlier installation is recognised by it.
-  installedAt          DateTime?
-  plan                 Plan         @default(free)
-  planStatus           PlanStatus   @default(active)
-  subscriptionGid      String?
-  planDisplayName      String?
-  checkoutSupported    Boolean?
-  checkoutCheckedAt    DateTime?
+  installedAt            DateTime?
+  plan                   Plan         @default(free)
+  planStatus             PlanStatus   @default(active)
+  subscriptionGid        String?
+  planDisplayName        String?
+  checkoutSupported      Boolean?
+  checkoutCheckedAt      DateTime?
   /// When a SourceTrac checkout block last asked us for a survey on each page,
   /// from a buyer's order or the checkout editor. Shopify reports no "block
   /// added" state, so this is the only proof the block is really there. Null
   /// means never seen; cleared on uninstall, which removes the blocks.
   thankYouBlockSeenAt    DateTime?
   orderStatusBlockSeenAt DateTime?
-  questionText         String       @default("How did you hear about us?")
+  questionText           String       @default("How did you hear about us?")
   /// Defaulted so a shop row is always valid: a freshly installed store must be
   /// able to render a working survey before the merchant visits Settings.
-  optionsJson          String       @default("[]")
-  allowOther           Boolean      @default(false)
+  optionsJson            String       @default("[]")
+  allowOther             Boolean      @default(false)
   /// Merchant's chosen admin UI language, e.g. "de" or "pt-BR". Null means they
   /// have never chosen one, so we fall back to detecting Shopify's admin locale.
   /// Deliberately a free String rather than an enum: adding a language must not
   /// require a migration, and `resolveLanguage` already rejects anything we do
   /// not ship, so a stale value degrades to English instead of erroring.
-  language             String?
+  language               String?
   /// The Shopify admin's own locale (`?locale=` on the first document load),
   /// remembered because later in-app navigations do not carry it. Only a
   /// fallback below `language`; never set by the merchant directly.
-  adminLocale          String?
-  createdAt            DateTime     @default(now())
-  updatedAt            DateTime     @updatedAt
+  adminLocale            String?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
 
   responses   SurveyResponse[]
   orders      OrderCache[]
@@ -133,6 +133,7 @@ model Shop {
   pendingDeletions PendingDeletion[]
   dataRequests     DataRequest[]
   redactedOrders   RedactedOrder[]
+  checkoutLoads    CheckoutLoad[]
   orderFacts       OrderFact[]
 
   @@index([installState])
@@ -193,6 +194,10 @@ model OrderCache {
   isTest          Boolean   @default(false)
   isCancelled     Boolean   @default(false)
   cancelledAt     DateTime?
+  /// Shopify's `source_name` ("web", "pos", "subscription_contract", an app
+  /// id...). Orders that never reach a Thank-you page are left out of answer
+  /// rates by it (`NO_THANK_YOU_SOURCES`). Null for rows stored before it.
+  sourceName      String?
   createdAtShop   DateTime
   updatedAtShop   DateTime
   /// X-Shopify-Triggered-At of the delivery that wrote this row. Breaks ties
@@ -316,38 +321,38 @@ model Survey {
 
   /// Incremented on every save of an active survey. Responses store the version
   /// they answered.
-  version       Int      @default(1)
-  responseCount Int      @default(0)
+  version         Int       @default(1)
+  responseCount   Int       @default(0)
   /// Template provenance, for display and analytics only. A survey is an
   /// independent copy: template updates never touch it.
   templateId      String?
   templateVersion Int?
   /// T11: join this survey into the rotation group for its placements.
-  rotation       Boolean @default(false)
+  rotation        Boolean   @default(false)
   /// 1 (low) / 2 (normal) / 3 (high). Weighted, deterministic per order.
-  rotationWeight Int     @default(2)
+  rotationWeight  Int       @default(2)
   /// T10: pause automatically once results are reliable.
-  learnAndStop   Boolean @default(false)
+  learnAndStop    Boolean   @default(false)
   /// When learn & stop paused the survey. Set once: a merchant who resumes an
   /// auto-paused survey keeps it running (it used to re-pause on the very next
   /// answer), and the editor says why the survey was paused.
-  autoPausedAt   DateTime?
+  autoPausedAt    DateTime?
   /// S11/S12 design settings (JSON). Empty means the defaults.
-  designJson     String  @default("{}")
+  designJson      String    @default("{}")
   /// S7: the full editable definition held back while a live survey keeps
   /// running the published version. Null when there are no unpublished changes.
-  draft          String?
-  draftUpdatedAt DateTime?
+  draft           String?
+  draftUpdatedAt  DateTime?
   /// Optimistic-concurrency token (section 6.6). The editor posts back the value
   /// it loaded; a mismatch means another window changed the survey. Bumped on
   /// every save, publish and status change. Not `@updatedAt`, so answer counting
   /// (which increments `responseCount`) cannot raise a false conflict.
-  revision      Int      @default(0)
+  revision        Int       @default(0)
   /// Last merchant change (save, publish, discard, status). Shown as "Updated"
   /// on the survey list; `updatedAt` also moves on every buyer answer.
-  editedAt      DateTime @default(now())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  editedAt        DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   shop       Shop               @relation(fields: [shopId], references: [id], onDelete: Cascade)
   questions  Question[]
@@ -428,19 +433,19 @@ model Response {
   /// rows that predate the column.
   productIds   String?  @default("[]")
 
-  placement SurveyPlacement
-  locale    String?
-  country   String?
-  flagged   Boolean         @default(false)
+  placement        SurveyPlacement
+  locale           String?
+  country          String?
+  flagged          Boolean         @default(false)
   /// Order verification snapshot. `null` = the row predates verification (the
   /// migration backfills existing rows to null); `true` = a known, countable
   /// order (not test, not cancelled) whose real total is stored; `false` = the
   /// order is unknown or not countable, so revenue is excluded.
-  verified  Boolean?
+  verified         Boolean?
   /// Set when the order never arrived within 24h and no total could be attached,
   /// so the row is no longer Pending but deliberately excluded from revenue.
-  unverifiedFailed Boolean @default(false)
-  createdAt DateTime        @default(now())
+  unverifiedFailed Boolean         @default(false)
+  createdAt        DateTime        @default(now())
 
   shop    Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
   survey  Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
@@ -573,4 +578,29 @@ model DataRequest {
   shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
   @@index([shopId, createdAt])
+}
+
+/// One page load of the SourceTrac block (Thank-you or Order status) and what it was told: the
+/// survey it showed, or why it showed nothing. The Surveys page lists the
+/// newest 20 per shop as "Recent checkouts", so a merchant can see why a test
+/// order showed no survey. Kept 30 days; deleted with the order on
+/// customers/redact and with the shop on shop/redact.
+model CheckoutLoad {
+  id           String   @id @default(cuid())
+  shopId       String
+  at           DateTime @default(now())
+  /// "thank_you" or "order_status".
+  placement    String   @default("thank_you")
+  orderId      String?
+  /// The survey shown, or the one whose rule hid it.
+  surveyId     String?
+  /// A ServeReason code ("shown", "already_answered", a TargetingMiss...).
+  reason       String
+  pinned       Boolean  @default(false)
+  country      String?
+  isFirstOrder Boolean?
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, at])
 }
