@@ -71,8 +71,8 @@ describe("session storage (2026-10-20 audit)", () => {
     const loaded = await sessionStorage.loadSession(ID);
     expect(loaded?.accessToken).toBe("shpat_rotating");
     const row = await db.session.findUniqueOrThrow({ where: { id: ID } });
-    expect(opensWith(PREVIOUS_KEY, row.accessToken)).toBe(false);
-    expect(opensWith(process.env.TOKEN_ENCRYPTION_KEY!, row.accessToken)).toBe(true);
+    expect(opensWith(PREVIOUS_KEY, row.accessToken ?? "")).toBe(false);
+    expect(opensWith(process.env.TOKEN_ENCRYPTION_KEY!, row.accessToken ?? "")).toBe(true);
   });
 
   it("never stores an older offline session over a newer one (M2, L19)", async () => {
