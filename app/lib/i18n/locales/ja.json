@@ -579,7 +579,9 @@
     "check_block_buyer": "{{page}}：SourceTracブロックは{{when}}に購入者のページで読み込まれました。",
     "check_block_placed": "{{page}}：SourceTracブロックは追加されています（{{when}}に確認）が、まだ購入者のページでは読み込まれていません。テスト注文で確認してください。",
     "check_new_order": "各注文への質問は1回だけです。新しい注文でテストし、結果は下の「最近のチェックアウト」で確認してください。",
-    "check_block_never_order_status": "注文ステータスページ：ここではまだSourceTracブロックが読み込まれていません。チェックアウトエディタのページメニューで「注文ステータス」を選び、「SourceTrac survey」ブロックを追加して保存してください。ストアが新しい顧客アカウントを使っている場合のみメニューに表示されます。"
+    "check_block_never_order_status": "注文ステータスページ：ここではまだSourceTracブロックが読み込まれていません。チェックアウトエディタのページメニューで「注文ステータス」を選び、「SourceTrac survey」ブロックを追加して保存してください。ストアが新しい顧客アカウントを使っている場合のみメニューに表示されます。",
+    "validation_currency_unavailable": "ストアの通貨を読み込めませんでした。少し待ってからもう一度保存してください。",
+    "validation_order_value_range": "最大注文金額は最小注文金額以上にしてください。"
   },
   "templates": {
     "nps": {
@@ -747,7 +749,9 @@
     "publish": "変更を公開",
     "discard": "下書きを破棄",
     "conflict": "このアンケートは別のウィンドウで変更されました。最新版を見るには再読み込みしてください。",
-    "status_no_block": "チェックアウト未設置"
+    "status_no_block": "チェックアウト未設置",
+    "conflict_kept": "保存されていない変更はまだここにあり、保存されていません。必要な内容をコピーしてから、最新バージョンを読み込んで編集してください。",
+    "conflict_load_latest": "最新バージョンを読み込む"
   },
   "confidence": {
     "too_early": "まだ早い",

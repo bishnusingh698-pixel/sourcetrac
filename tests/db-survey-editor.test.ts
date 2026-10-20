@@ -237,9 +237,10 @@ describe("server-side guards", () => {
     const posted = await asPosted(survey.id);
     const stolen = posted.questions[0]!.options![0]!;
     posted.questions[1]!.options!.push({ ...stolen });
-    const saved = await updateSurvey(shopId, survey.id, posted);
+    // A repeated id is refused outright (L49): it would map a follow-up
+    // condition on it to whichever copy was saved last.
+    await expect(updateSurvey(shopId, survey.id, posted)).rejects.toMatchObject({ fields: { code: "duplicate_id" } });
     const original = await prisma.option.findUniqueOrThrow({ where: { id: stolen.id! } });
-    expect(original.questionId).toBe(saved.questions[0]!.id);
-    expect(saved.questions[1]!.options.map((o) => o.label)).toEqual(["C", "D", "A"]);
+    expect(original.questionId).toBe(survey.questions[0]!.id);
   });
 });

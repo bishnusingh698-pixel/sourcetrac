@@ -79,7 +79,8 @@ export function AdvancedTargeting({
 }: {
   draft: EditorSurvey;
   update: Update;
-  shopCurrency: string;
+  /** The store's currency; null when Shopify could not be asked just now. */
+  shopCurrency: string | null;
   /** The store's IANA zone; dates are the store's calendar days. */
   shopTimeZone: string | null;
   /** The merchant's admin language, for country names. */
@@ -98,8 +99,11 @@ export function AdvancedTargeting({
   // The bounds are in the store's currency, and the rule only applies to
   // orders in that currency. `valueCurrency` was never set, so the rule was
   // skipped on every order and the survey showed whatever the total.
+  // Never a guessed currency: a "USD" stand-in made the rule match no order
+  // on a store in any other currency. The server fills in the real one.
   const setValue = (patch: { minValue?: number | null; maxValue?: number | null }) =>
-    set({ ...patch, valueCurrency: shopCurrency });
+    set({ ...patch, ...(shopCurrency ? { valueCurrency: shopCurrency } : {}) });
+  const currencyLabel = shopCurrency ?? targeting.valueCurrency ?? "";
   const zone = shopTimeZone ?? "UTC";
 
   return (
@@ -107,18 +111,18 @@ export function AdvancedTargeting({
       <s-stack gap="small-200">
         <s-grid gridTemplateColumns="repeat(auto-fit, minmax(min(100%, 11rem), 1fr))" gap="small">
           <NumberField
-            label={t("editor.min_value", { currency: shopCurrency })}
+            label={t("editor.min_value", { currency: currencyLabel })}
             value={targeting.minValue ?? null}
             onInput={(v) => setValue({ minValue: v })}
           />
           <NumberField
-            label={t("editor.max_value", { currency: shopCurrency })}
+            label={t("editor.max_value", { currency: currencyLabel })}
             value={targeting.maxValue ?? null}
             onInput={(v) => setValue({ maxValue: v })}
           />
         </s-grid>
         <s-text color="subdued" fontSize="small">
-          {t("editor.order_value_details", { currency: shopCurrency })}
+          {t("editor.order_value_details", { currency: currencyLabel })}
         </s-text>
       </s-stack>
       <s-number-field

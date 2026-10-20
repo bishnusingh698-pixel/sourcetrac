@@ -579,7 +579,9 @@
     "check_block_buyer": "{{page}}: het SourceTrac-blok is op {{when}} voor een koper geladen.",
     "check_block_placed": "{{page}}: het SourceTrac-blok is toegevoegd (gezien op {{when}}), maar nog bij geen enkele koper geladen. Plaats een testbestelling om het te controleren.",
     "check_new_order": "Elke bestelling wordt maar één keer gevraagd. Test met een nieuwe bestelling en kijk daarna hieronder bij ‘Recente checkouts’ wat er gebeurde.",
-    "check_block_never_order_status": "Bestelstatuspagina: het SourceTrac-blok is hier nog niet geladen. Kies in de checkout-editor in het paginamenu Bestelstatus, voeg het blok ‘SourceTrac survey’ toe en klik op Opslaan. De pagina staat alleen in het menu als je winkel de nieuwe klantaccounts gebruikt."
+    "check_block_never_order_status": "Bestelstatuspagina: het SourceTrac-blok is hier nog niet geladen. Kies in de checkout-editor in het paginamenu Bestelstatus, voeg het blok ‘SourceTrac survey’ toe en klik op Opslaan. De pagina staat alleen in het menu als je winkel de nieuwe klantaccounts gebruikt.",
+    "validation_currency_unavailable": "De valuta van je winkel kon nu niet worden gelezen. Probeer het zo opnieuw op te slaan.",
+    "validation_order_value_range": "De maximale orderwaarde moet minstens de minimale zijn."
   },
   "templates": {
     "nps": {
@@ -747,7 +749,9 @@
     "publish": "Wijzigingen publiceren",
     "discard": "Concept verwijderen",
     "conflict": "Deze enquête is in een ander venster gewijzigd. Herlaad om de nieuwste versie te zien.",
-    "status_no_block": "Nog niet in checkout"
+    "status_no_block": "Nog niet in checkout",
+    "conflict_kept": "Je niet-opgeslagen wijzigingen staan er nog en zijn niet opgeslagen. Kopieer wat je nodig hebt en laad daarna de nieuwste versie om die te bewerken.",
+    "conflict_load_latest": "Nieuwste versie laden"
   },
   "confidence": {
     "too_early": "Te vroeg",

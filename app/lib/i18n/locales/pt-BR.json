@@ -579,7 +579,9 @@
     "check_block_buyer": "{{page}}: o bloco do SourceTrac carregou para um comprador em {{when}}.",
     "check_block_placed": "{{page}}: o bloco do SourceTrac foi adicionado (visto em {{when}}), mas ainda não carregou para nenhum comprador. Faça um pedido de teste para confirmar.",
     "check_new_order": "Cada pedido é perguntado só uma vez. Teste com um pedido novo e veja em “Checkouts recentes” abaixo o que aconteceu.",
-    "check_block_never_order_status": "Página de status do pedido: o bloco do SourceTrac ainda não carregou aqui. No editor de checkout, escolha Status do pedido no menu de páginas, adicione o bloco “SourceTrac survey” e clique em Salvar. Ela só aparece no menu se sua loja usa as novas contas de cliente."
+    "check_block_never_order_status": "Página de status do pedido: o bloco do SourceTrac ainda não carregou aqui. No editor de checkout, escolha Status do pedido no menu de páginas, adicione o bloco “SourceTrac survey” e clique em Salvar. Ela só aparece no menu se sua loja usa as novas contas de cliente.",
+    "validation_currency_unavailable": "Não foi possível ler a moeda da sua loja agora. Tente salvar de novo daqui a pouco.",
+    "validation_order_value_range": "O valor máximo do pedido deve ser pelo menos o mínimo."
   },
   "templates": {
     "nps": {
@@ -747,7 +749,9 @@
     "publish": "Publicar alterações",
     "discard": "Descartar rascunho",
     "conflict": "Esta pesquisa mudou em outra janela. Recarregue para ver a versão mais recente.",
-    "status_no_block": "Ainda não está no checkout"
+    "status_no_block": "Ainda não está no checkout",
+    "conflict_kept": "Suas alterações não salvas ainda estão aqui e não foram salvas. Copie o que precisar e carregue a versão mais recente para editá-la.",
+    "conflict_load_latest": "Carregar a versão mais recente"
   },
   "confidence": {
     "too_early": "Muito cedo",

@@ -572,7 +572,9 @@
     "check_block_buyer": "{{page}}: the SourceTrac block loaded for a buyer {{when}}.",
     "check_block_placed": "{{page}}: the SourceTrac block is added (seen {{when}}), but no buyer's page has loaded it yet. Place a test order to confirm.",
     "check_new_order": "Each order is asked only once. Test with a new order, then see “Recent checkouts” below for what happened.",
-    "check_block_never_order_status": "Order status page: the SourceTrac block hasn't loaded here yet. In the checkout editor, choose Order status from the page menu, add the “SourceTrac survey” block and press Save. The page is in the menu only if your store uses new customer accounts."
+    "check_block_never_order_status": "Order status page: the SourceTrac block hasn't loaded here yet. In the checkout editor, choose Order status from the page menu, add the “SourceTrac survey” block and press Save. The page is in the menu only if your store uses new customer accounts.",
+    "validation_currency_unavailable": "Your store's currency could not be read just now. Try saving again in a moment.",
+    "validation_order_value_range": "The maximum order value must be at least the minimum."
   },
   "templates": {
     "nps": {
@@ -747,7 +749,9 @@
     "publish": "Publish changes",
     "discard": "Discard draft",
     "conflict": "This survey changed in another window. Reload to see the latest version.",
-    "status_no_block": "Not in checkout yet"
+    "status_no_block": "Not in checkout yet",
+    "conflict_kept": "Your unsaved changes are still here and were not saved. Copy what you need, then load the latest version to edit it.",
+    "conflict_load_latest": "Load the latest version"
   },
   "confidence": {
     "too_early": "Too early",

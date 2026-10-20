@@ -329,7 +329,7 @@ Scope notes from the validator (informational):
 - **What is wrong:** the timer only calls `controller.abort()`. `await binding.getSessionToken()` is not raced against it.
 - **Scenario:** if `shopify.sessionToken.get()` never settles, `withRetries` never returns. The block shows "Loading…" or a disabled "sending" button indefinitely. It never hides and never logs, which breaks the "never block the page" rule.
 
-### M11. Removing a question or option from a live survey with 0 answers hard-deletes it [EDIT, SUBMIT] — CONFIRMED
+### [x] M11. Removing a question or option from a live survey with 0 answers hard-deletes it [EDIT, SUBMIT] — CONFIRMED
 - **Where:** `app/lib/surveys.server.ts:1146` (`hasResponses` from `existing.responseCount`, read outside the transaction), `:604-615`; `shared/survey-rules.ts:760-764`; `Answer.question onDelete: Cascade`.
 - **Scenario 1:**
   1. The merchant removes option X from a live survey with no answers yet.
@@ -338,7 +338,7 @@ Scope notes from the validator (informational):
   4. Archived options would have been accepted.
 - **Scenario 2:** if the first answer commits at the same moment as the publish, `question.deleteMany` cascade-deletes that buyer's Answer rows.
 
-### M12. A save conflict silently throws away the merchant's unsaved edits [EDIT] — CONFIRMED
+### [x] M12. A save conflict silently throws away the merchant's unsaved edits [EDIT] — CONFIRMED
 - **Where:** `app/routes/app.surveys.$id.tsx:113-119`, `:250-257`; `app/lib/surveys.server.ts:441-444`, `:819-830`.
 - **What is wrong:** a conflict returns 200 data, so React Router re-runs the loader. The new `revision` changes `dataKey`, the effect calls `setDraft(survey)`, `dirty` turns false, and the unsaved-changes guard switches off.
 - **Scenario:**
@@ -347,7 +347,7 @@ Scope notes from the validator (informational):
   3. Tab A presses Save.
   4. Tab A shows "Reload to see the latest version", but its edits are already gone.
 
-### M13. A config read already in progress can put a stale survey back in the cache after a save [EDIT] — CONFIRMED (small window)
+### [x] M13. A config read already in progress can put a stale survey back in the cache after a save [EDIT] — CONFIRMED (small window)
 - **Where:** `app/lib/surveys.server.ts:1358-1386`.
 - **What is wrong:** `invalidateConfig` only deletes the cache entry. A `getCompiledConfig` that started before the merchant's write finishes afterwards and stores the old rows with a fresh timestamp.
 - **Scenario:** the merchant pauses a survey, or removes an option, while a buyer's `/api/survey` request is reading. The paused survey, or the removed option, is served for up to 60s.
@@ -657,7 +657,7 @@ Scope notes from the validator (informational):
   - The batch is retried 5 times and then given up.
   - The namespace `sourcetrac` is merchant-owned, not app-reserved (`$app:`).
 
-### L49. Several editor problems [EDIT] — CONFIRMED unless noted
+### [x] L49. Several editor problems [EDIT] — CONFIRMED unless noted
 - **Live-survey limit blocks saving a paused survey.** `app/routes/app.surveys.$id.tsx:95`, `:292-298`, `:602`. At the limit, `fits_plan` disables "Save and publish" even for a paused survey, so a Free shop cannot fix a typo in it. The save bar's Save button ignores the block.
 - **Drafts undo an explicit null.** `app/lib/surveys.server.ts:269`, `:272`. `draft.intro ?? published.intro` and the same for `channelReportQuestionId` turn the merchant's "cleared" back into the published value, and the next save re-posts it.
 - **Order-value min above max is accepted.** `app/lib/surveys.server.ts:662-667`. The survey then shows to nobody.
@@ -710,7 +710,7 @@ On a multi-choice question with `minSelections ≥ 2`, an exclusive "None of the
 
 `app/lib/id-token.server.ts:55`, `:91-99`.
 
-### I23. Editor smaller items [EDIT]
+### [x] I23. Editor smaller items [EDIT]
 - The channel-report question's type is not checked on the server (`surveys.server.ts:1008-1018`, `:1107-1118`). On multi_choice only the first pick is counted (`analytics-queries.server.ts:134-149`), and on yes_no "yes" and "no" become channels.
 - Rotation and Learn & stop keep running after a downgrade (`surveys.server.ts:1312-1334`; `api.survey.tsx:212-213`; `answers.server.ts:350`).
 - The save bar posts even when readiness blocks going live (`unsaved-changes.tsx:95`).

@@ -579,7 +579,9 @@
     "check_block_buyer": "{{page}}：SourceTrac 区块已于 {{when}} 为买家加载。",
     "check_block_placed": "{{page}}：SourceTrac 区块已添加（{{when}} 检测到），但尚未在任何买家的页面加载。请下一个测试订单确认。",
     "check_new_order": "每个订单只会被询问一次。请用新订单测试，然后在下方“最近的结账”中查看结果。",
-    "check_block_never_order_status": "订单状态页面：SourceTrac 区块尚未在此加载。请在结账编辑器的页面菜单中选择“订单状态”，添加“SourceTrac survey”区块并保存。只有店铺使用新版客户账户时菜单中才会出现该页面。"
+    "check_block_never_order_status": "订单状态页面：SourceTrac 区块尚未在此加载。请在结账编辑器的页面菜单中选择“订单状态”，添加“SourceTrac survey”区块并保存。只有店铺使用新版客户账户时菜单中才会出现该页面。",
+    "validation_currency_unavailable": "暂时无法读取商店的货币。请稍后再保存一次。",
+    "validation_order_value_range": "最高订单金额不能低于最低订单金额。"
   },
   "templates": {
     "nps": {
@@ -747,7 +749,9 @@
     "publish": "发布更改",
     "discard": "丢弃草稿",
     "conflict": "此问卷在其他窗口中已被修改。请重新加载以查看最新版本。",
-    "status_no_block": "尚未添加到结账"
+    "status_no_block": "尚未添加到结账",
+    "conflict_kept": "未保存的更改仍在此处，尚未保存。请复制所需内容，然后载入最新版本进行编辑。",
+    "conflict_load_latest": "载入最新版本"
   },
   "confidence": {
     "too_early": "尚早",

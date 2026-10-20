@@ -579,7 +579,9 @@
     "check_block_buyer": "{{page}} : le bloc SourceTrac s'est chargé pour un acheteur le {{when}}.",
     "check_block_placed": "{{page}} : le bloc SourceTrac est ajouté (vu le {{when}}), mais ne s'est encore chargé pour aucun acheteur. Passez une commande test pour le confirmer.",
     "check_new_order": "Chaque commande n'est interrogée qu'une fois. Testez avec une nouvelle commande, puis consultez « Paiements récents » ci-dessous pour voir ce qui s'est passé.",
-    "check_block_never_order_status": "Page de statut de commande : le bloc SourceTrac ne s'y est pas encore chargé. Dans l'éditeur de checkout, choisissez Statut de la commande dans le menu des pages, ajoutez le bloc « SourceTrac survey » et cliquez sur Enregistrer. Elle n'apparaît dans le menu que si votre boutique utilise les nouveaux comptes clients."
+    "check_block_never_order_status": "Page de statut de commande : le bloc SourceTrac ne s'y est pas encore chargé. Dans l'éditeur de checkout, choisissez Statut de la commande dans le menu des pages, ajoutez le bloc « SourceTrac survey » et cliquez sur Enregistrer. Elle n'apparaît dans le menu que si votre boutique utilise les nouveaux comptes clients.",
+    "validation_currency_unavailable": "La devise de votre boutique n'a pas pu être lue pour le moment. Réessayez d'enregistrer dans un instant.",
+    "validation_order_value_range": "La valeur de commande maximale doit être au moins égale à la valeur minimale."
   },
   "templates": {
     "nps": {
@@ -747,7 +749,9 @@
     "publish": "Publier les modifications",
     "discard": "Supprimer le brouillon",
     "conflict": "Ce sondage a été modifié dans une autre fenêtre. Rechargez pour voir la dernière version.",
-    "status_no_block": "Pas encore dans le checkout"
+    "status_no_block": "Pas encore dans le checkout",
+    "conflict_kept": "Vos modifications non enregistrées sont toujours là et n'ont pas été enregistrées. Copiez ce dont vous avez besoin, puis chargez la dernière version pour la modifier.",
+    "conflict_load_latest": "Charger la dernière version"
   },
   "confidence": {
     "too_early": "Trop tôt",

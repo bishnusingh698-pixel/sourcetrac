@@ -579,7 +579,9 @@
     "check_block_buyer": "{{page}}: Der SourceTrac-Block wurde {{when}} für einen Käufer geladen.",
     "check_block_placed": "{{page}}: Der SourceTrac-Block ist hinzugefügt (gesehen {{when}}), aber noch bei keinem Käufer geladen. Geben Sie zur Bestätigung eine Testbestellung auf.",
     "check_new_order": "Jede Bestellung wird nur einmal gefragt. Testen Sie mit einer neuen Bestellung und sehen Sie dann unten unter „Letzte Checkouts“, was passiert ist.",
-    "check_block_never_order_status": "Bestellstatusseite: Der SourceTrac-Block wurde hier noch nicht geladen. Wählen Sie im Checkout-Editor im Seitenmenü „Bestellstatus“, fügen Sie den Block „SourceTrac survey“ hinzu und klicken Sie auf Speichern. Die Seite steht nur im Menü, wenn Ihr Shop die neuen Kundenkonten nutzt."
+    "check_block_never_order_status": "Bestellstatusseite: Der SourceTrac-Block wurde hier noch nicht geladen. Wählen Sie im Checkout-Editor im Seitenmenü „Bestellstatus“, fügen Sie den Block „SourceTrac survey“ hinzu und klicken Sie auf Speichern. Die Seite steht nur im Menü, wenn Ihr Shop die neuen Kundenkonten nutzt.",
+    "validation_currency_unavailable": "Die Währung Ihres Shops konnte gerade nicht gelesen werden. Versuchen Sie es gleich noch einmal.",
+    "validation_order_value_range": "Der Höchstbestellwert muss mindestens so hoch sein wie der Mindestbestellwert."
   },
   "templates": {
     "nps": {
@@ -747,7 +749,9 @@
     "publish": "Änderungen veröffentlichen",
     "discard": "Entwurf verwerfen",
     "conflict": "Diese Umfrage wurde in einem anderen Fenster geändert. Lade neu, um die neueste Version zu sehen.",
-    "status_no_block": "Noch nicht im Checkout"
+    "status_no_block": "Noch nicht im Checkout",
+    "conflict_kept": "Ihre ungespeicherten Änderungen sind noch hier und wurden nicht gespeichert. Kopieren Sie, was Sie brauchen, und laden Sie dann die neueste Version, um sie zu bearbeiten.",
+    "conflict_load_latest": "Neueste Version laden"
   },
   "confidence": {
     "too_early": "Zu früh",

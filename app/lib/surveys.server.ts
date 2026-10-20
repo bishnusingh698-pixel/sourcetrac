@@ -266,10 +266,12 @@ export function rowToEditor(
         placements: draft.placements ?? published.placements,
         layout: draft.layout ?? published.layout,
         title: draft.title ?? published.title,
-        intro: draft.intro ?? published.intro,
+        // `null` is the merchant clearing it; only an absent field falls back.
+        intro: draft.intro !== undefined ? draft.intro : published.intro,
         buttonLabel: draft.buttonLabel ?? published.buttonLabel,
         thankYouText: draft.thankYouText ?? published.thankYouText,
-        channelReportQuestionId: draft.channelReportQuestionId ?? published.channelReportQuestionId,
+        channelReportQuestionId:
+          draft.channelReportQuestionId !== undefined ? draft.channelReportQuestionId : published.channelReportQuestionId,
         targeting: draft.targeting ?? published.targeting,
         syncOptions: draft.syncOptions ?? published.syncOptions,
         translations: draft.translations ?? published.translations,
@@ -618,12 +620,21 @@ async function persistQuestions(
     if (remapped) await tx.question.update({ where: { id }, data: { showIf: JSON.stringify(remapped) } });
   }
 
-  // Removed questions and options: delete when the survey has no answers yet
-  // (nothing to lose), otherwise archive so results keep their labels.
+  // Removed questions and options: delete only from a survey no buyer can have
+  // loaded (a draft) and that has no answers; otherwise archive, so results
+  // keep their labels and a buyer who loaded the earlier version can still
+  // submit it (an archived option is a valid answer, a deleted one is not).
+  // The answer count is read here, inside the transaction: the first answer
+  // could commit between an earlier read and this delete, which cascaded it.
   const removedQuestions = [...existingQuestions.keys()].filter((id) => !keptQuestionIds.has(id));
   const removedOptions = [...existingOptions.keys()].filter((id) => !keptOptionIds.has(id));
+  const keepRemoved =
+    hasResponses ||
+    ((removedQuestions.length > 0 || removedOptions.length > 0) &&
+      ((await tx.survey.count({ where: { id: surveyId, status: { not: "draft" } } })) > 0 ||
+        (await tx.response.count({ where: { surveyId } })) > 0));
 
-  if (hasResponses) {
+  if (keepRemoved) {
     if (removedOptions.length > 0) {
       await tx.option.updateMany({ where: { id: { in: removedOptions } }, data: { archived: true } });
     }
@@ -667,6 +678,43 @@ function sanitizeSurveyInput(input: SurveyInput): SurveyInput {
     }
   }
 
+  // Shapes the rest of the code relies on. A crafted post with a number for a
+  // title, or a layout no block knows, used to reach the generic error screen
+  // (or be stored and break the checkout block).
+  if (input.layout !== "all" && input.layout !== "one_by_one") fail("layout", "invalid_layout", "That layout is not supported.");
+  for (const key of ["name", "title", "buttonLabel", "thankYouText"] as const) {
+    if (input[key] != null && typeof input[key] !== "string") fail(key, "invalid_text", "That text could not be read.");
+  }
+  if (input.intro != null && typeof input.intro !== "string") fail("intro", "invalid_text", "That text could not be read.");
+  if (!Array.isArray(input.questions)) fail("questions", "invalid_questions", "The questions could not be read.");
+  const questionIds = new Set<string>();
+  const optionIds = new Set<string>();
+  input.questions.forEach((question, index) => {
+    if (typeof question !== "object" || question === null || typeof question.text !== "string") {
+      fail(`questions[${index}]`, "invalid_questions", "The questions could not be read.");
+    }
+    // A repeated id saved two questions onto one row (one was lost) and could
+    // remap a follow-up condition to the wrong option.
+    if (question.id) {
+      if (questionIds.has(question.id)) fail(`questions[${index}]`, "duplicate_id", "Two questions share an id.");
+      questionIds.add(question.id);
+    }
+    (question.options ?? []).forEach((option, optionIndex) => {
+      if (typeof option !== "object" || option === null || typeof option.label !== "string") {
+        fail(`questions[${index}].options[${optionIndex}]`, "invalid_questions", "The questions could not be read.");
+      }
+      if (option.id) {
+        if (optionIds.has(option.id)) fail(`questions[${index}].options[${optionIndex}]`, "duplicate_id", "Two answers share an id.");
+        optionIds.add(option.id);
+      }
+    });
+  });
+  // The editor checks this before going live; a post from anywhere else is
+  // held to the same per-survey limit.
+  if (Buffer.byteLength(JSON.stringify(input), "utf8") > LIMITS.MAX_COMPILED_CONFIG_BYTES) {
+    fail("questions", "config_too_large", "This survey is too large for the checkout. Shorten it or remove translations.");
+  }
+
   const targeting = input.targeting ?? {};
   if (typeof targeting !== "object" || Array.isArray(targeting)) fail("targeting", "invalid_targeting", "Targeting could not be read.");
   if (targeting.samplePercent != null) {
@@ -686,6 +734,10 @@ function sanitizeSurveyInput(input: SurveyInput): SurveyInput {
     if (v != null && (typeof v !== "number" || !Number.isFinite(v) || v < 0)) {
       fail(`targeting.${key}`, "invalid_order_value", "Order values must be 0 or more.");
     }
+  }
+  // A minimum above the maximum matches no order: the survey would show to nobody.
+  if (targeting.minValue != null && targeting.maxValue != null && targeting.minValue > targeting.maxValue) {
+    fail("targeting.maxValue", "order_value_range", "The maximum must be at least the minimum.");
   }
   const listLimit = (key: "productIds" | "collectionIds" | "resolvedProductIds" | "countries" | "languages", max: number) => {
     const list = targeting[key];
@@ -913,14 +965,19 @@ type GatedSettings = {
  * can keep editing the rest of the survey. They just cannot switch it on anew.
  */
 function firstLockedFeature(tier: PlanTier, input: GatedSettings, baselines: GatedSettings[]): PlanFeature | null {
-  const unchanged = (pick: (settings: GatedSettings) => string) =>
-    baselines.some((baseline) => pick(baseline) === pick(input));
-
   if (!planHas(tier, "advanced_targeting") && usesAdvancedTargeting(input.targeting)) {
-    if (!unchanged((s) => advancedTargetingKey(s.targeting))) return "advanced_targeting";
+    const wanted = JSON.parse(advancedTargetingKey(input.targeting)) as Record<string, unknown>;
+    const kept = baselines.some((baseline) =>
+      withinGrandfathered(wanted, JSON.parse(advancedTargetingKey(baseline.targeting)) as Record<string, unknown>),
+    );
+    if (!kept) return "advanced_targeting";
   }
   if (!planHas(tier, "shopify_actions") && usesShopifyActions(input.syncOptions)) {
-    if (!unchanged((s) => JSON.stringify(s.syncOptions ?? {}))) return "shopify_actions";
+    const wanted = (input.syncOptions ?? {}) as Record<string, unknown>;
+    const kept = baselines.some((baseline) =>
+      withinGrandfathered(wanted, (baseline.syncOptions ?? {}) as Record<string, unknown>),
+    );
+    if (!kept) return "shopify_actions";
   }
   if (!planHas(tier, "auto_stop") && input.learnAndStop === true) {
     if (!baselines.some((b) => b.learnAndStop === true)) return "auto_stop";
@@ -929,6 +986,38 @@ function firstLockedFeature(tier: PlanTier, input: GatedSettings, baselines: Gat
     if (!baselines.some((b) => b.rotation === true)) return "rotation";
   }
   return null;
+}
+
+/**
+ * Whether paid settings stay within what the survey already had: each one is
+ * unchanged, removed, or (for a list) narrowed to some of its entries. Keys
+ * are compared by value, not by the order the client wrote them in. Anything
+ * new or widened is a paid feature switched on anew.
+ */
+function withinGrandfathered(wanted: Record<string, unknown>, had: Record<string, unknown>): boolean {
+  const empty = (value: unknown) =>
+    value === null || value === undefined || value === false || (Array.isArray(value) && value.length === 0);
+  return Object.entries(wanted).every(([key, value]) => {
+    if (empty(value)) return true;
+    const before = had[key];
+    if (Array.isArray(value) && Array.isArray(before)) {
+      const allowed = new Set(before.map((item) => canonicalJson(item)));
+      return value.every((item) => allowed.has(canonicalJson(item)));
+    }
+    return canonicalJson(value) === canonicalJson(before);
+  });
+}
+
+/** JSON with object keys sorted, so equal settings compare equal. */
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, v]) => v !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`).join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
 }
 
 function planFeatureError(feature: PlanFeature): ValidationError {
@@ -1039,7 +1128,13 @@ export async function createSurvey(shopId: string, rawInput: SurveyInput): Promi
       orderBy: { position: "asc" },
       select: { id: true },
     });
-    const requested = input.channelReportQuestionId ? idMap.get(input.channelReportQuestionId) : undefined;
+    const requestedId = input.channelReportQuestionId ? idMap.get(input.channelReportQuestionId) : undefined;
+    // Only a one-answer choice question can be the channel question.
+    const requested =
+      requestedId &&
+      (await tx.question.count({ where: { id: requestedId, type: { in: ["single_choice", "dropdown"] } } })) > 0
+        ? requestedId
+        : undefined;
     // `null` means "this survey has no channel question" (a gift or price
     // survey from a template); only an unset value falls back to the first
     // choice question, which is the blank survey's "How did you hear about us?".
@@ -1138,6 +1233,8 @@ export async function updateSurvey(
   return getEditorSurvey(shopId, surveyId);
 }
 
+const CHANNEL_QUESTION_TYPES = new Set(["single_choice", "dropdown"]);
+
 /** Point the channel report at the posted question, through the id map. */
 async function applyChannelReportQuestion(
   tx: Prisma.TransactionClient,
@@ -1148,7 +1245,13 @@ async function applyChannelReportQuestion(
   // Absent: an older client that does not send it; leave it as it is.
   if (posted === undefined) return;
   // Null, or a question that is no longer in the survey: no channel question.
-  const id = posted ? (idMap.get(posted) ?? null) : null;
+  let id = posted ? (idMap.get(posted) ?? null) : null;
+  // Only a one-answer choice question names a channel: on multiple choice the
+  // report counted the first pick only, and on yes/no "yes" became a channel.
+  if (id) {
+    const question = await tx.question.findUnique({ where: { id }, select: { type: true } });
+    if (!question || !CHANNEL_QUESTION_TYPES.has(question.type)) id = null;
+  }
   await tx.survey.update({ where: { id: surveyId }, data: { channelReportQuestionId: id } });
 }
 
@@ -1251,7 +1354,12 @@ export async function setSurveyStatus(shopId: string, surveyId: string, status: 
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`survey-create:${shopId}`}))`;
       await assertActiveLimit(tx, shopId, surveyId);
     }
-    await tx.survey.update({ where: { id: surveyId }, data: { status, revision: { increment: 1 }, editedAt: new Date() } });
+    // A delete landing meanwhile matches nothing: "not found", not a 500.
+    const changed = await tx.survey.updateMany({
+      where: { id: surveyId, shopId },
+      data: { status, revision: { increment: 1 }, editedAt: new Date() },
+    });
+    if (changed.count === 0) throw new NotFoundError("That survey does not exist.", { surveyId });
   });
   await invalidateConfig(shopId);
 }
@@ -1260,8 +1368,9 @@ export async function deleteSurvey(shopId: string, surveyId: string): Promise<vo
   const existing = await getSurveyRow(shopId, surveyId);
   if (!existing) throw new NotFoundError("That survey does not exist.", { surveyId });
 
-  // Cascades to questions, options, responses, answers and daily stats.
-  await db.survey.delete({ where: { id: surveyId } });
+  // Cascades to questions, options, responses, answers and daily stats. A
+  // second delete racing this one finds nothing, which is the outcome asked for.
+  await db.survey.deleteMany({ where: { id: surveyId, shopId } });
   await invalidateConfig(shopId);
   logger.info("survey_deleted", { shop_id: shopId, survey_id: surveyId });
 }
@@ -1390,9 +1499,17 @@ export function buildConfig(rows: SurveyWithQuestions[]): CompiledConfig {
 
 const configCache = new Map<string, { config: CompiledConfig; at: number }>();
 const CONFIG_TTL_MS = 60_000;
+/**
+ * Bumped by every invalidation. A read that began before a merchant's change
+ * finished after it and cached the old rows for another minute (a paused
+ * survey kept showing); a read only caches if no invalidation happened since
+ * it started.
+ */
+const configGeneration = new Map<string, number>();
 
 export async function invalidateConfig(shopId: string): Promise<void> {
   configCache.delete(shopId);
+  configGeneration.set(shopId, (configGeneration.get(shopId) ?? 0) + 1);
 }
 
 /**
@@ -1404,6 +1521,7 @@ export async function invalidateConfig(shopId: string): Promise<void> {
 export async function getCompiledConfig(shopId: string): Promise<CompiledConfig> {
   const cached = configCache.get(shopId);
   if (cached && Date.now() - cached.at < CONFIG_TTL_MS) return cached.config;
+  const generation = configGeneration.get(shopId) ?? 0;
 
   // Serve only as many live surveys as the plan includes, highest priority
   // first. Activation already enforces the limit; this covers a shop that
@@ -1413,17 +1531,26 @@ export async function getCompiledConfig(shopId: string): Promise<CompiledConfig>
   const limit = activeLimitFor(plan);
   const rows = limit === null ? active : active.slice(0, limit);
   const config = buildConfig(rows);
-  const size = Buffer.byteLength(JSON.stringify(config), "utf8");
-  if (size > LIMITS.MAX_COMPILED_CONFIG_BYTES) {
-    logger.warn("compiled_config_too_large", { shop_id: shopId, bytes: size });
+  // Rotation is a Scale feature. A shop that downgraded keeps the setting (an
+  // upgrade restores it) but its surveys are no longer rotated.
+  if (!planHas(plan, "rotation")) {
+    for (const survey of config.surveys) survey.rotation = false;
   }
-  configCache.set(shopId, { config, at: Date.now() });
+  // The limit is per survey (the whole config holds several).
+  for (const survey of config.surveys) {
+    const size = Buffer.byteLength(JSON.stringify(survey), "utf8");
+    if (size > LIMITS.MAX_COMPILED_CONFIG_BYTES) {
+      logger.warn("compiled_config_too_large", { shop_id: shopId, survey_id: survey.id, bytes: size });
+    }
+  }
+  if ((configGeneration.get(shopId) ?? 0) === generation) configCache.set(shopId, { config, at: Date.now() });
   return config;
 }
 
 /** Reset the cache. Test-only. */
 export function clearConfigCache(): void {
   configCache.clear();
+  configGeneration.clear();
 }
 
 export { editorToDefinition };

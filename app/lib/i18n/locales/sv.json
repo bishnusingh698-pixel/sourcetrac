@@ -579,7 +579,9 @@
     "check_block_buyer": "{{page}}: SourceTrac-blocket laddades för en köpare {{when}}.",
     "check_block_placed": "{{page}}: SourceTrac-blocket är tillagt (sågs {{when}}), men har inte laddats för någon köpare ännu. Lägg en testbeställning för att bekräfta.",
     "check_new_order": "Varje beställning tillfrågas bara en gång. Testa med en ny beställning och se sedan ”Senaste kassor” nedan för vad som hände.",
-    "check_block_never_order_status": "Orderstatussidan: SourceTrac-blocket har inte laddats här ännu. Välj Orderstatus i sidmenyn i kassaredigeraren, lägg till blocket ”SourceTrac survey” och klicka på Spara. Sidan finns bara i menyn om din butik använder de nya kundkontona."
+    "check_block_never_order_status": "Orderstatussidan: SourceTrac-blocket har inte laddats här ännu. Välj Orderstatus i sidmenyn i kassaredigeraren, lägg till blocket ”SourceTrac survey” och klicka på Spara. Sidan finns bara i menyn om din butik använder de nya kundkontona.",
+    "validation_currency_unavailable": "Butikens valuta kunde inte läsas just nu. Försök spara igen om en stund.",
+    "validation_order_value_range": "Det högsta ordervärdet måste vara minst lika högt som det lägsta."
   },
   "templates": {
     "nps": {
@@ -747,7 +749,9 @@
     "publish": "Publicera ändringar",
     "discard": "Kasta utkast",
     "conflict": "Den här enkäten ändrades i ett annat fönster. Ladda om för att se den senaste versionen.",
-    "status_no_block": "Inte i kassan än"
+    "status_no_block": "Inte i kassan än",
+    "conflict_kept": "Dina osparade ändringar finns kvar här och har inte sparats. Kopiera det du behöver och läs sedan in den senaste versionen för att redigera den.",
+    "conflict_load_latest": "Läs in den senaste versionen"
   },
   "confidence": {
     "too_early": "För tidigt",

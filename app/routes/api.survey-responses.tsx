@@ -21,6 +21,7 @@ import { readOrderFact } from "~/lib/order-facts.server";
 import { getSurveyRow, rowToEditor } from "~/lib/surveys.server";
 import { authenticateCheckout } from "~/lib/checkout-auth.server";
 import { PLACEMENTS, type Placement } from "@shared/survey-config";
+import { planHas, planTier } from "@shared/plan-features";
 import type { AnswerInput, SurveyDefinition } from "@shared/survey-rules";
 
 /**
@@ -191,7 +192,9 @@ export const action = async ({ request }: { request: Request }) => {
       plan: effectivePlan(shop),
       definition,
       syncOptions: row.syncOptions,
-      learnAndStop: row.learnAndStop,
+      // Auto-stop is a Scale feature: a downgraded shop keeps the setting but
+      // its surveys are no longer paused by it.
+      learnAndStop: row.learnAndStop && planHas(planTier(effectivePlan(shop)), "auto_stop"),
       mainQuestionId: mainQuestionId(definition),
     });
 
