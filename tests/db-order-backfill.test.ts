@@ -116,3 +116,50 @@ describe("order backfill", () => {
     ).resolves.toBe(0);
   });
 });
+
+describe("order backfill (2026-10-20 audit)", () => {
+  it("does not park a batch for a week when the token is refused (L30)", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ errors: "Invalid API key or access token" }), { status: 401 })));
+    await backfillMissingOrders({ shopId, shopDomain: DOMAIN, accessToken: "t", now: NOW });
+    // The next run, an hour later with a good token, reads the order again.
+    const calls = stubShopify(orderNode());
+    await backfillMissingOrders({ shopId, shopDomain: DOMAIN, accessToken: "t", now: new Date(NOW.getTime() + 61 * 60_000) });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("parks an order whose answer cannot be stored instead of asking every hour (L31)", async () => {
+    stubShopify(orderNode({ currentTotalPriceSet: null }));
+    await backfillMissingOrders({ shopId, shopDomain: DOMAIN, accessToken: "t", now: NOW });
+    const calls = stubShopify(orderNode());
+    await backfillMissingOrders({ shopId, shopDomain: DOMAIN, accessToken: "t", now: new Date(NOW.getTime() + 61 * 60_000) });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("re-reads an order stored with a total it could not read (L26)", async () => {
+    await prisma.orderCache.create({
+      data: {
+        shopId, orderId: "920001", currency: "USD", totalPrice: null,
+        createdAtShop: new Date("2026-10-01T09:00:00Z"), updatedAtShop: new Date("2026-10-01T09:00:00Z"),
+      },
+    });
+    const calls = stubShopify(orderNode());
+    await backfillMissingOrders({ shopId, shopDomain: DOMAIN, accessToken: "t", now: NOW });
+    expect(calls).toHaveLength(1);
+    const order = await prisma.orderCache.findUniqueOrThrow({ where: { shopId_orderId: { shopId, orderId: "920001" } } });
+    expect(order.totalPrice?.toString()).toBe("48.5");
+  });
+
+  it("keeps a webhook's delivery time when the backfill rewrites the order (L25)", async () => {
+    const triggeredAt = new Date("2026-10-01T09:00:00.500Z");
+    await prisma.orderCache.create({
+      data: {
+        shopId, orderId: "920001", currency: "USD", totalPrice: null, triggeredAt,
+        createdAtShop: new Date("2026-10-01T09:00:00Z"), updatedAtShop: new Date("2026-10-01T09:00:00Z"),
+      },
+    });
+    stubShopify(orderNode());
+    await backfillMissingOrders({ shopId, shopDomain: DOMAIN, accessToken: "t", now: NOW });
+    const order = await prisma.orderCache.findUniqueOrThrow({ where: { shopId_orderId: { shopId, orderId: "920001" } } });
+    expect(order.triggeredAt?.toISOString()).toBe(triggeredAt.toISOString());
+  });
+});

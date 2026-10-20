@@ -510,7 +510,10 @@ export async function upsertOrderCache(
     isCancelled: cancelledAt !== null,
     cancelledAt,
     updatedAtShop: updatedAt,
-    triggeredAt,
+    // Only a webhook knows its delivery time. A write without one (the API
+    // backfill) keeps the stored value, or a later same-second delivery that
+    // is older could pass the tie-break and overwrite newer state.
+    ...(triggeredAt !== null ? { triggeredAt } : {}),
     // Only written when the payload carries it, so an update without it never
     // erases a source an earlier delivery recorded.
     ...(typeof order.source_name === "string" && order.source_name !== "" ? { sourceName: order.source_name } : {}),

@@ -606,15 +606,28 @@ export async function markUnverifiedFailedResponses(olderThanHours = 24, now = n
   if (recovered > 0) logger.info("responses_reconciled_late_v2", { count: recovered });
 
   // Only answers that HAVE an order can wait for one: an on-site or link answer
-  // has no order to arrive and is never "unverified failed".
+  // has no order to arrive and is never "unverified failed". `verified` is
+  // matched as false OR NULL explicitly: Prisma's `not: true` is SQL `<> true`,
+  // which skips NULL, so migrated rows without a total waited forever.
+  //
+  // An order that did arrive, with a total we could not read, is not "never
+  // received": it is left as "total unreadable" (and the backfill re-reads it).
+  const arrived = await retryDb(() =>
+    db.$queryRaw<Array<{ id: string }>>`
+      SELECT r.id FROM "Response" r
+      JOIN "OrderCache" o ON o."shopId" = r."shopId" AND o."orderId" = r."orderId"
+      WHERE r."orderTotal" IS NULL AND r."unverifiedFailed" = false AND r."createdAt" < ${cutoff}
+    `,
+  );
   const result = await retryDb(() =>
     db.response.updateMany({
       where: {
         orderId: { not: null },
         orderTotal: null,
-        verified: { not: true },
+        OR: [{ verified: false }, { verified: null }],
         unverifiedFailed: false,
         createdAt: { lt: cutoff },
+        ...(arrived.length > 0 ? { id: { notIn: arrived.map((row) => row.id) } } : {}),
       },
       data: { unverifiedFailed: true },
     }),

@@ -520,7 +520,7 @@ Scope notes from the validator (informational):
 - **What is wrong:** `Shop.shopId` (the GID) is `@unique`, but the upsert is keyed on `shopDomain`.
 - **Scenario:** after a domain change, the create branch hits P2002 and `retryUniqueRace` gives up. `ensureShop` then throws on every admin load, so the merchant is locked out.
 
-### L25. Backfill writes erase the same-second tie-break [ORD] — CONFIRMED; the window is narrow
+### [x] L25. Backfill writes erase the same-second tie-break [ORD] — CONFIRMED; the window is narrow
 - **Where:** `app/lib/webhooks.server.ts:482`, `:500-511`; `app/lib/order-backfill.server.ts:193` (passes no `triggeredAt`).
 - **Scenario:**
   1. The backfill reads an order.
@@ -528,7 +528,7 @@ Scope notes from the validator (informational):
   3. The backfill writes the same U with `triggeredAt = NULL`.
   4. A delayed webhook B (same U, older T1) passes the guard and overwrites A's newer same-second state, for example `financial_status` going from paid back to pending.
 
-### L26. An order with an unreadable total is reported as "order not received", and is never re-fetched [ORD, REP] — CONFIRMED
+### [x] L26. An order with an unreadable total is reported as "order not received", and is never re-fetched [ORD, REP] — CONFIRMED
 - **Where:**
   - `app/lib/webhooks.server.ts:543` (no reconcile when the total is null).
   - `app/lib/answers.server.ts:579-590` (the 24h sweep sets `unverifiedFailed`).
@@ -536,7 +536,7 @@ Scope notes from the validator (informational):
   - `app/lib/order-backfill.server.ts:162-164` (`WHERE o.id IS NULL` never re-fetches a row with a null total).
 - **Effect:** the Responses page and the survey CSVs say "order not received" for an order that did arrive. The legacy channel CSV (`analytics-queries.server.ts:391-392`) checks in the opposite order, so the two exports disagree.
 
-### L27. Migrated rows with `verified = NULL` are never written off [ORD] — PLAUSIBLE (Prisma's NULL semantics for `not`)
+### [x] L27. Migrated rows with `verified = NULL` are never written off [ORD] — PLAUSIBLE (Prisma's NULL semantics for `not`)
 - **Where:** `app/lib/answers.server.ts:584` (`verified: { not: true }`).
 - **What is wrong:** if Prisma compiles this to `<> true`, NULL rows are excluded. Backfilled history with `verified = NULL` and no total would then stay "awaiting order" forever, instead of ageing out like every other answer.
 
@@ -549,14 +549,14 @@ Scope notes from the validator (informational):
 - **Where:** `app/lib/order-backfill.server.ts:193`.
 - **What is wrong:** the backfill writes through `upsertOrderCache` but never calls `startSyncForOrder`, unlike `webhooks.server.ts:324`. Those rows wait for the 5-minute admin sweep or the backoff, and may give up.
 
-### L30. One permanent error parks a whole backfill batch for a week [ORD] — CONFIRMED in code; the 401 needs a stale token
+### [x] L30. One permanent error parks a whole backfill batch for a week [ORD] — CONFIRMED in code; the 401 needs a stale token
 - **Where:** `app/lib/order-backfill.server.ts:167`, `:177`, `:199-201`.
 - **What is wrong:**
   - Any non-throttle `ShopifyGraphQLError`, including a 401 or 403 from a stale token, sets a 7-day backoff for that order.
   - One bad-token run therefore parks all 10 due orders, and meanwhile their answers become "order not received".
   - The candidate query is capped at `LIMIT 100` before the backoff filter, so older eligible orders can starve.
 
-### L31. A silent hourly backfill retry for orders that can never be stored [ORD] — CONFIRMED
+### [x] L31. A silent hourly backfill retry for orders that can never be stored [ORD] — CONFIRMED
 - **Where:** `app/lib/order-backfill.server.ts:188-207`.
 - **What is wrong:** when `upsertOrderCache` returns null (for example `currentTotalPriceSet` is null, so the currency is `""`), the result is not counted. The order is retried hourly forever, with no warning log.
 
@@ -691,10 +691,10 @@ On a multi-choice question with `minSelections ≥ 2`, an exclusive "None of the
 ### [x] I7. The bot-filter 410 has no CORS header and is retried for 60s [SUBMIT]
 `app/lib/checkout-auth.server.ts:297`; `extensions/shared/src/survey-logic.ts:212`.
 
-### I11. Zero-decimal currency rounding, and silent overflow in currency sums [ORD]
+### [x] I11. Zero-decimal currency rounding, and silent overflow in currency sums [ORD]
 - `rollupByCurrency` silently skips a sum that is not a safe integer, with no log (`app/lib/revenue.ts:104`).
 
-### I12. Comment disagrees with the revenue decision, and a snapshot fallback skips test and cancelled checks [ORD, REP]
+### [x] I12. Comment disagrees with the revenue decision, and a snapshot fallback skips test and cancelled checks [ORD, REP]
 - `app/lib/survey-analytics.server.ts:183-188`: the comment says `verified === false` excludes revenue, but the code never reads `verified`.
 - The snapshot fallback (`:203-211`) hard-codes `isTest:false`. Its answer reads "counted" but is never summed, because `summariseSurvey` and `buildBreakdowns` (`:367`, `:501`) require `response.order`.
 

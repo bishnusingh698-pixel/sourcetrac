@@ -288,3 +288,15 @@ describe("formatMoney", () => {
     expect(formatMoney(null, "USD")).toBeTruthy();
   });
 });
+
+describe("rollupByCurrency overflow (I11)", () => {
+  it("leaves out a currency whose sum is no longer exact instead of a partial total", () => {
+    const result = rollupByCurrency([
+      { currency: "USD", minor: Number.MAX_SAFE_INTEGER },
+      { currency: "USD", minor: 10 },
+      { currency: "USD", minor: 5 },
+      { currency: "EUR", minor: 7 },
+    ]);
+    expect(result).toEqual([{ currency: "EUR", minor: 7 }]);
+  });
+});

@@ -181,10 +181,12 @@ function safeParseArray(raw: string | null): string[] {
  * order total is known; an unreconciled response is pending, never $0.00.
  *
  * Verification: a row marked `unverifiedFailed` (the order never arrived and the
- * reconcile sweep gave up) is excluded from revenue, and `verified === false`
- * (a known test/cancelled order, or an order confirmed absent) also excludes it.
- * `verified === null` predates the column and keeps the legacy behaviour — the
- * order total's presence alone decides — so historic revenue is unchanged.
+ * reconcile sweep gave up) is excluded from revenue. Otherwise the cached order
+ * decides (test, cancelled, voided, refunded). Only when the order row itself
+ * is gone does the total snapshotted on the response stand in, and then
+ * `verified` (the snapshot's own test/cancelled check) must not be false:
+ * the snapshot carries no test or cancelled flag of its own. `verified ===
+ * null` predates the column and keeps the legacy behaviour.
  */
 export function decideSurveyRevenue(row: SurveyResponseRow): RevenueDecision {
   if (row.unverifiedFailed) {
@@ -200,7 +202,7 @@ export function decideSurveyRevenue(row: SurveyResponseRow): RevenueDecision {
           isTest: row.order.isTest,
           isCancelled: row.order.isCancelled,
         }
-      : row.currency
+      : row.currency && row.verified !== false
         ? {
             currency: row.currency,
             totalPrice: row.orderTotal,
@@ -231,8 +233,10 @@ export function surveyRevenueStatus(row: SurveyResponseRow, decision = decideSur
       return "total unreadable";
     case "unreconciled":
       if (row.orderId === null) return "no order";
-      if (row.unverifiedFailed) return "order not received";
+      // An order we hold whose total could not be read did arrive: checked
+      // before the 24-hour write-off, which only means "no order yet".
       if (row.order && row.order.totalPrice === null) return "total unreadable";
+      if (row.unverifiedFailed) return "order not received";
       return "awaiting order";
   }
 }
@@ -364,7 +368,10 @@ export function buildBreakdowns(params: {
       if (!answer) continue;
 
       const decision = decideSurveyRevenue(response);
-      const revenue = decision.included && response.order ? { currency: response.order.currency, minor: decision.minor } : null;
+      // A counted answer is summed in the currency it was decided in: the
+      // cached order's, or the snapshot's when that row is gone.
+      const currency = response.order?.currency ?? response.currency;
+      const revenue = decision.included && currency ? { currency, minor: decision.minor } : null;
 
       for (const optionId of choiceIds(question.type, answer)) {
         optionCounts.set(optionId, (optionCounts.get(optionId) ?? 0) + 1);
@@ -498,8 +505,9 @@ export function summariseSurvey(responses: ReadonlyArray<SurveyResponseRow>): Su
     else if (response.isFirstOrder === false) returning += 1;
     else unknown += 1;
     const decision = decideSurveyRevenue(response);
-    if (decision.included && response.order) {
-      const entry = { currency: response.order.currency, minor: decision.minor };
+    const currency = response.order?.currency ?? response.currency;
+    if (decision.included && currency) {
+      const entry = { currency, minor: decision.minor };
       revenue.push(entry);
       if (response.isFirstOrder === true) firstRevenue.push(entry);
       else if (response.isFirstOrder === false) returningRevenue.push(entry);
