@@ -199,4 +199,42 @@ describe("submit flow (2026-10-20 audit)", () => {
     expect(res.status).toBe(410);
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
   });
+
+  it("does not remember 'not found' for an order Shopify creates a moment later (review)", async () => {
+    const { isRealOrder } = await import("~/lib/order-verify.server");
+    await prisma.session.create({
+      data: {
+        id: `offline_${DOMAIN}`, shop: DOMAIN, state: "s", isOnline: false, scope: "read_orders", accessToken: "x",
+        expires: new Date(Date.now() + 3600_000),
+      },
+    });
+    let created = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: { body: string }) => {
+        const { variables } = JSON.parse(init.body) as { variables: { id: string } };
+        return new Response(JSON.stringify({ data: { order: created ? { id: variables.id } : null } }), { status: 200 });
+      }),
+    );
+    try {
+      const orderId = nextOrder();
+      expect(await isRealOrder(DOMAIN, orderId)).toBe(false);
+      created = true;
+      expect(await isRealOrder(DOMAIN, orderId)).toBe(true);
+    } finally {
+      await prisma.session.deleteMany({ where: { shop: DOMAIN } });
+    }
+  });
+
+  it("never treats a client's version 0 as older than the survey's first version (review)", async () => {
+    const q = await questionIds();
+    // The NPS question is required from version 1 (it existed when the survey was published).
+    await prisma.question.update({ where: { id: q.nps }, data: { required: true, requiredSinceVersion: 1 } });
+    try {
+      const res = await submit({ surveyId, surveyVersion: 0, orderId: nextOrder(), placement: "thank_you", answers: [{ questionId: q.where, optionIds: [q.google] }] });
+      expect(res.status).toBe(400);
+    } finally {
+      await prisma.question.update({ where: { id: q.nps }, data: { required: false } });
+    }
+  });
 });

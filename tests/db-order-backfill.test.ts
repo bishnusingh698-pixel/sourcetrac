@@ -162,4 +162,12 @@ describe("order backfill (2026-10-20 audit)", () => {
     const order = await prisma.orderCache.findUniqueOrThrow({ where: { shopId_orderId: { shopId, orderId: "920001" } } });
     expect(order.triggeredAt?.toISOString()).toBe(triggeredAt.toISOString());
   });
+
+  it("parks an order whose total Shopify still reports unreadably (review)", async () => {
+    stubShopify(orderNode({ currentTotalPriceSet: { shopMoney: { amount: "not-a-number", currencyCode: "USD" } } }));
+    await backfillMissingOrders({ shopId, shopDomain: DOMAIN, accessToken: "t", now: NOW });
+    const calls = stubShopify(orderNode());
+    await backfillMissingOrders({ shopId, shopDomain: DOMAIN, accessToken: "t", now: new Date(NOW.getTime() + 61 * 60_000) });
+    expect(calls).toHaveLength(0);
+  });
 });

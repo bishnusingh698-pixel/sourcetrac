@@ -220,7 +220,9 @@ describe("sync", () => {
     expect(calls).toHaveLength(0);
     const row = await prisma.pendingSync.findFirstOrThrow({ where: { shopId } });
     expect(row.completedAt).toBeNull();
-    expect(row.attempts).toBe(1);
+    // Waiting on the bill is not a failed attempt: it would give up after hours.
+    expect(row.attempts).toBe(0);
+    expect(row.nextAttemptAt.getTime()).toBeGreaterThan(Date.now());
   });
 
   it("does not resend Flow after a 5xx that may have run it (M7)", async () => {

@@ -272,15 +272,18 @@ export default function SurveyEditorPage() {
   // window's revision, and resetting then threw the merchant's unsaved edits
   // away (and switched the unsaved-changes guard off). They stay on screen
   // until the merchant chooses to load the latest version.
+  // With nothing unsaved, a refused Publish or Discard simply picks up the
+  // latest version, so the next click is not refused again.
   const conflicted = actionData?.ok === false && actionData.conflict;
+  const keepUnsavedEdits = conflicted && JSON.stringify(draft) !== initial.current;
   const dataKey = `${survey.revision}:${survey.hasDraft}:${survey.status}`;
   const lastKey = useRef(dataKey);
   useEffect(() => {
-    if (lastKey.current === dataKey || conflicted) return;
+    if (lastKey.current === dataKey || keepUnsavedEdits) return;
     lastKey.current = dataKey;
     setDraft(survey);
     initial.current = JSON.stringify(survey);
-  }, [dataKey, survey, conflicted]);
+  }, [dataKey, survey, keepUnsavedEdits]);
   const loadLatest = () => {
     lastKey.current = dataKey;
     setDraft(survey);

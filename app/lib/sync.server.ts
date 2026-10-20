@@ -78,6 +78,8 @@ const MAX_SYNC_AGE_MS = 7 * 24 * 60 * 60 * 1000;
  * sleeps (about 130s per call), so the lease must outlast both.
  */
 const SYNC_LEASE_MS = 10 * 60 * 1000;
+/** How long deferred work waits before it is looked at again. */
+const SYNC_DEFER_MS = 60 * 60 * 1000;
 
 function retryDb<T>(operation: () => Promise<T>): Promise<T> {
   return withRetry(operation, { attempts: 3, baseDelayMs: 250, shouldRetry: isRetryableDbError });
@@ -260,7 +262,9 @@ type LoadedSync =
   /** The response or shop is gone (redacted, expired): the work can never run. */
   | { status: "gone" }
   /** The shop is on a plan without Shopify actions: settled, nothing to write. */
-  | { status: "not_on_plan" };
+  | { status: "not_on_plan" }
+  /** Not now, through no fault of the work: wait without spending an attempt. */
+  | { status: "defer"; reason: string };
 
 async function loadSyncContext(shopId: string, responseId: string, accessToken: string): Promise<LoadedSync> {
   const response = await retryDb(() =>
@@ -345,7 +349,7 @@ async function loadSyncContext(shopId: string, responseId: string, accessToken: 
   // defer (the caller throws, so the row backs off) rather than settle it.
   if (effectivePlan(shopRow) !== PLAN_SCALE) {
     if (shopRow.plan === PLAN_SCALE && shopRow.planStatus === "frozen") {
-      throw new Error("Scale plan is frozen; waiting for it to be active again.");
+      return { status: "defer", reason: "Scale plan is frozen; waiting for it to be active again." };
     }
     return { status: "not_on_plan" };
   }
@@ -724,6 +728,13 @@ export async function processPendingSync(
         // The response is gone (redacted or expired). The work can never
         // succeed, so drop it rather than retrying forever.
         await retryDb(() => db.pendingSync.deleteMany({ where: { id: row.id, leaseUntil: lease } }));
+        continue;
+      }
+      if (loaded.status === "defer") {
+        // An unpaid bill can last days: backing off as a failure gave the work
+        // up after a few hours. It waits instead, until the 7-day limit.
+        logger.info("sync_deferred", { shop_id: shopId, response_id: row.responseId, kind: row.kind, reason: loaded.reason });
+        await settle({ nextAttemptAt: new Date(Date.now() + SYNC_DEFER_MS), lastError: loaded.reason });
         continue;
       }
       if (loaded.status === "ready") {

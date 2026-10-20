@@ -241,7 +241,12 @@ export async function cancelSubscription(params: {
     if (payload.userErrors.length > 0 || payload.appSubscription?.status?.toUpperCase() !== "CANCELLED") {
       // A retried cancel (after a 5xx Shopify had processed) is refused as
       // "already cancelled": what counts is whether the charge is still live.
-      const current = await fetchSubscription(params).catch(() => undefined);
+      const current = await fetchSubscription(params).catch((error: unknown) => {
+        logger.warn("billing_cancel_recheck_failed", {
+          error_message: error instanceof Error ? error.message : String(error),
+        });
+        return undefined;
+      });
       if (current !== undefined && (current === null || current.status.toUpperCase() !== "ACTIVE")) return { ok: true };
       return { ok: false, error: payload.userErrors.length > 0 ? mapUserErrors(payload.userErrors) : "The subscription is still active." };
     }

@@ -132,15 +132,18 @@ describe("buyer submit", () => {
   });
 
   it("accepts an answer from an older published version that lacks a new required question (M6)", async () => {
+    // Version 2 is published: q2 became required in it, as a save records.
+    const question = await prisma.question.findUniqueOrThrow({ where: { id: q2 }, select: { surveyId: true } });
+    await prisma.survey.update({ where: { id: question.surveyId }, data: { version: 2 } });
+    await prisma.question.update({ where: { id: q2 }, data: { required: true, requiredSinceVersion: 2 } });
     const res = await submit({
       ...base("9710000000003", [{ questionId: q1, optionIds: [instagram] }, { questionId: "gone-question", textValue: "x" }]),
-      surveyVersion: 0,
+      surveyVersion: 1,
     });
-    await prisma.question.update({ where: { id: q2 }, data: { required: true } });
     expect(res.status).toBe(200);
-    const stale = await submit({ ...base("9710000000004", [{ questionId: q1, optionIds: [instagram] }]), surveyVersion: 0 });
+    const stale = await submit({ ...base("9710000000004", [{ questionId: q1, optionIds: [instagram] }]), surveyVersion: 1 });
     expect(stale.status).toBe(200);
-    const current = await submit({ ...base("9710000000005", [{ questionId: q1, optionIds: [instagram] }]), surveyVersion: 1 });
+    const current = await submit({ ...base("9710000000005", [{ questionId: q1, optionIds: [instagram] }]), surveyVersion: 2 });
     expect(current.status).toBe(400);
   });
 

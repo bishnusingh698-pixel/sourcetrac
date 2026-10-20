@@ -174,7 +174,9 @@ export const action = async ({ request }: { request: Request }) => {
       questions: editor.questions,
     };
 
-    const surveyVersion = Math.min(parsed.data.surveyVersion ?? row.version, row.version);
+    // A version the survey really had: versions start at 1, so a client's 0
+    // cannot claim to predate every question and be excused from all of them.
+    const surveyVersion = Math.max(1, Math.min(parsed.data.surveyVersion ?? row.version, row.version));
     const result = await submitAnswers({
       shopId: shop.id,
       surveyId: row.id,

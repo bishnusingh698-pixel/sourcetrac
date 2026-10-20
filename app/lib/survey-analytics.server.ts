@@ -373,7 +373,15 @@ export function buildBreakdowns(params: {
         ? [{ id: YES_NO_IDS.yes }, { id: YES_NO_IDS.no }]
         : question.type === "satisfaction_5"
           ? SATISFACTION_OPTIONS.map((option) => ({ id: option.id }))
-          : withBuiltInOther(question);
+          : withBuiltInOther({
+              ...question,
+              // Past answers keep their bar after free text is switched off.
+              allowOther:
+                question.allowOther ||
+                relevant.some((response) =>
+                  response.answers.some((a) => a.questionId === question.id && a.optionIds.includes(OTHER_CHANNEL_VALUE)),
+                ),
+            });
     const optionCounts = new Map<string, number>();
     const revenueByOption = new Map<string, Array<{ currency: string; minor: number }>>();
     let otherCount = 0;

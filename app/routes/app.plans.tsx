@@ -208,7 +208,13 @@ async function scheduledChange(
     shopDomain: shop.shopDomain,
     accessToken,
     subscriptionGid: shop.pendingSubscriptionGid,
-  }).catch(() => undefined);
+  }).catch((error: unknown) => {
+    logger.warn("plans_pending_lookup_failed", {
+      shop_domain: shop.shopDomain,
+      error_message: error instanceof Error ? error.message : String(error),
+    });
+    return undefined;
+  });
   if (pending === undefined) return null;
   const status = pending?.status.toUpperCase() ?? "";
   if (!pending || ["DECLINED", "EXPIRED", "CANCELLED"].includes(status)) {
@@ -240,7 +246,16 @@ function lookupFailed(error: unknown): Result {
  * be missing or stale. Also what "Switch to Free" does: the Free plan is the
  * absence of a paid charge, not a $0 charge.
  */
-async function cancelActiveSubscription(params: { shopDomain: string; accessToken: string }): Promise<Result> {
+async function cancelActiveSubscription(params: {
+  shopDomain: string;
+  accessToken: string;
+  shop: { id: string; pendingSubscriptionGid: string | null };
+}): Promise<Result> {
+  // A change approved to start at the end of the period would otherwise still
+  // start, and bill, after the merchant chose Free.
+  const pendingCancelled = await cancelPendingSubscription(params);
+  if (pendingCancelled) return pendingCancelled;
+
   let subscriptions: Awaited<ReturnType<typeof fetchActiveSubscriptions>>;
   try {
     subscriptions = await fetchActiveSubscriptions(params);
@@ -253,7 +268,11 @@ async function cancelActiveSubscription(params: { shopDomain: string; accessToke
   const active = activeSourceTracSubscription(subscriptions, { allowTest });
   if (!active) return result(true, "plans.msg_already_free");
 
-  const cancelled = await cancelSubscription({ ...params, subscriptionGid: active.id });
+  const cancelled = await cancelSubscription({
+    shopDomain: params.shopDomain,
+    accessToken: params.accessToken,
+    subscriptionGid: active.id,
+  });
   if (!cancelled.ok) {
     if (isBillingNotEnabled(cancelled.error)) return result(false, "plans.msg_billing_not_enabled");
     return result(false, "plans.msg_cancel_failed", { error: cancelled.error ?? "—" });
@@ -262,6 +281,34 @@ async function cancelActiveSubscription(params: { shopDomain: string; accessToke
   // Collection continues on the free cap rather than stopping; the webhook
   // moves the stored plan.
   return result(true, "plans.msg_cancelled", { cap: FREE_RESPONSE_CAP });
+}
+
+/**
+ * Cancel the charge the merchant asked for that has not started yet, if any.
+ * Returns a failure to show, or null when there was nothing to cancel or it
+ * was cancelled.
+ */
+async function cancelPendingSubscription(params: {
+  shopDomain: string;
+  accessToken: string;
+  shop: { id: string; pendingSubscriptionGid: string | null };
+}): Promise<Result | null> {
+  const gid = params.shop.pendingSubscriptionGid;
+  if (!gid) return null;
+  let pending: Awaited<ReturnType<typeof fetchSubscription>>;
+  try {
+    pending = await fetchSubscription({ shopDomain: params.shopDomain, accessToken: params.accessToken, subscriptionGid: gid });
+  } catch (error) {
+    return lookupFailed(error);
+  }
+  const status = pending?.status.toUpperCase() ?? "";
+  // A live charge is the active one, cancelled below; anything else has ended.
+  if (pending && (status === "ACCEPTED" || status === "PENDING")) {
+    const cancelled = await cancelSubscription({ shopDomain: params.shopDomain, accessToken: params.accessToken, subscriptionGid: gid });
+    if (!cancelled.ok) return result(false, "plans.msg_cancel_failed", { error: cancelled.error ?? "—" });
+  }
+  if (status !== "ACTIVE") await clearPendingSubscription(params.shop.id, gid);
+  return null;
 }
 
 export const action = guarded(async ({ request }: ActionFunctionArgs) => {
@@ -286,7 +333,7 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
     if (!isPlanKey(plan)) return result(false, "plans.msg_plan_unavailable");
 
     if (plan === "free") {
-      return cancelActiveSubscription({ shopDomain: shop.shopDomain, accessToken });
+      return cancelActiveSubscription({ shopDomain: shop.shopDomain, accessToken, shop });
     }
 
     const rawCycle = String(form.get("cycle") ?? "monthly");
@@ -347,7 +394,7 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
   }
 
   if (intent === "cancel") {
-    return cancelActiveSubscription({ shopDomain: shop.shopDomain, accessToken });
+    return cancelActiveSubscription({ shopDomain: shop.shopDomain, accessToken, shop });
   }
 
   return result(false, "errors.generic");

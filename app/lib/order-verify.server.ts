@@ -14,7 +14,10 @@ import { shopifyGraphql } from "~/lib/shopify-graphql.server";
  * buyers were refused for the whole retry budget and their answers lost. Once
  * the bucket is empty an id the cache does not know is looked up in Shopify:
  * a real order exists there (the buyer is looking at its confirmation), a
- * made-up id does not. Lookups are bounded per shop and remembered briefly.
+ * made-up id does not. Lookups are bounded per shop; a found order is
+ * remembered. "Not found" is not: on the Thank-you page Shopify may create the
+ * order a few seconds after the first submit, and a remembered "no" refused
+ * every retry inside the extension's budget.
  */
 const ORDER_EXISTS = `#graphql
   query SourceTracOrderExists($id: ID!) {
@@ -23,15 +26,14 @@ const ORDER_EXISTS = `#graphql
 `;
 
 const REAL_TTL_MS = 10 * 60 * 1000;
-const UNKNOWN_TTL_MS = 60 * 1000;
-const remembered = new Map<string, { real: boolean; until: number }>();
+const remembered = new Map<string, number>();
 
 export async function isRealOrder(shopDomain: string, orderId: string, now = Date.now()): Promise<boolean> {
   if (await isKnownOrder(shopDomain, orderId)) return true;
 
   const key = `${shopDomain}:${orderId}`;
-  const cached = remembered.get(key);
-  if (cached && cached.until > now) return cached.real;
+  const until = remembered.get(key);
+  if (until !== undefined && until > now) return true;
 
   try {
     consumeToken(`order-verify:${shopDomain}`, BUCKETS.orderVerifyShop);
@@ -59,8 +61,10 @@ export async function isRealOrder(shopDomain: string, orderId: string, now = Dat
     });
     return false;
   }
-  if (remembered.size > 10_000) remembered.clear();
-  remembered.set(key, { real, until: now + (real ? REAL_TTL_MS : UNKNOWN_TTL_MS) });
+  if (real) {
+    if (remembered.size > 10_000) remembered.clear();
+    remembered.set(key, now + REAL_TTL_MS);
+  }
   return real;
 }
 

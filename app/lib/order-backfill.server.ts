@@ -3,6 +3,7 @@ import { logger } from "~/lib/logger";
 import { withRetry } from "~/lib/retry.server";
 import { getAccessToken } from "~/lib/shop.server";
 import { isThrottle, shopifyGraphql, ShopifyGraphQLError } from "~/lib/shopify-graphql.server";
+import { parseMoneyToMinor } from "~/lib/money";
 import { startSyncForOrder } from "~/lib/sync.server";
 import { upsertOrderCache, type ShopifyOrder } from "~/lib/webhooks.server";
 
@@ -199,7 +200,14 @@ async function runBackfill(params: {
           logger.info("order_backfill_not_found", { shop_id: params.shopId, order_id: orderId });
           continue;
         }
-        const outcome = await upsertOrderCache(params.shopId, orderNodeToPayload(result.data.order), false);
+        const payload = orderNodeToPayload(result.data.order);
+        const outcome = await upsertOrderCache(params.shopId, payload, false);
+        // Stored, but still with a total that cannot be read: reading it again
+        // every hour would get the same answer (and fill the candidate list).
+        if (outcome && !parseMoneyToMinor(payload.current_total_price, payload.currency).ok) {
+          nextAttempt.set(key, now.getTime() + NOT_FOUND_RETRY_MS);
+          logger.warn("order_backfill_total_unreadable", { shop_id: params.shopId, order_id: orderId });
+        }
         if (!outcome) {
           // Shopify's answer cannot be stored (no total or currency): asking
           // again every hour would get the same answer.

@@ -607,31 +607,27 @@ export async function markUnverifiedFailedResponses(olderThanHours = 24, now = n
 
   // Only answers that HAVE an order can wait for one: an on-site or link answer
   // has no order to arrive and is never "unverified failed". `verified` is
-  // matched as false OR NULL explicitly: Prisma's `not: true` is SQL `<> true`,
-  // which skips NULL, so migrated rows without a total waited forever.
+  // matched as false OR NULL explicitly: Prisma's `not: true` (used before) is
+  // SQL `<> true`, which skips NULL, so migrated rows without a total waited
+  // forever.
   //
   // An order that did arrive, with a total we could not read, is not "never
   // received": it is left as "total unreadable" (and the backfill re-reads it).
-  const arrived = await retryDb(() =>
-    db.$queryRaw<Array<{ id: string }>>`
-      SELECT r.id FROM "Response" r
-      JOIN "OrderCache" o ON o."shopId" = r."shopId" AND o."orderId" = r."orderId"
-      WHERE r."orderTotal" IS NULL AND r."unverifiedFailed" = false AND r."createdAt" < ${cutoff}
+  const marked = await retryDb(
+    () => db.$executeRaw`
+      UPDATE "Response" r
+      SET "unverifiedFailed" = true
+      WHERE r."orderId" IS NOT NULL
+        AND r."orderTotal" IS NULL
+        AND (r.verified = false OR r.verified IS NULL)
+        AND r."unverifiedFailed" = false
+        AND r."createdAt" < ${cutoff}
+        AND NOT EXISTS (
+          SELECT 1 FROM "OrderCache" o WHERE o."shopId" = r."shopId" AND o."orderId" = r."orderId"
+        )
     `,
   );
-  const result = await retryDb(() =>
-    db.response.updateMany({
-      where: {
-        orderId: { not: null },
-        orderTotal: null,
-        OR: [{ verified: false }, { verified: null }],
-        unverifiedFailed: false,
-        createdAt: { lt: cutoff },
-        ...(arrived.length > 0 ? { id: { notIn: arrived.map((row) => row.id) } } : {}),
-      },
-      data: { unverifiedFailed: true },
-    }),
-  );
+  const result = { count: marked };
   if (result.count > 0) {
     logger.info("responses_marked_unverified_failed", { count: result.count, older_than_hours: olderThanHours });
   }

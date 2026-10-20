@@ -235,4 +235,13 @@ describe("the built-in Other in Results (M16)", () => {
     expect(other?.revenueByCurrency).toEqual([{ currency: "USD", minor: 3000, orders: 1 }]);
     expect(breakdown.options.reduce((sum, o) => sum + o.count, 0)).toBe(breakdown.total);
   });
+
+  it("keeps the Other bar for past answers after free text is switched off (review)", () => {
+    const [breakdown] = buildBreakdowns({
+      responses: [row({ answers: [{ questionId: "q", optionIds: ["other"], numberValue: null, textValue: null, otherText: "Radio" }] })],
+      questions: [{ id: "q", type: "single_choice", allowOther: false, options: [{ id: "a", archived: false }] }],
+    });
+    if (breakdown?.kind !== "choice") throw new Error("expected a choice breakdown");
+    expect(breakdown.options.find((o) => o.optionId === "other")?.count).toBe(1);
+  });
 });
