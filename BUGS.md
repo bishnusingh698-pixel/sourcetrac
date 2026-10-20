@@ -1,798 +1,841 @@
-# SourceTrac bug audit (2026-10-15)
+# SourceTrac bug audit (2026-10-20)
 
-Read-only audit. Fixed items are ticked `[x]`; ambiguous fixes are recorded in
-`DECISIONS.md`. Findings that turned out not to be real bugs on closer
-inspection were removed (S1-3, I1, I3, I4, I10, I12, I13, I23, I26, I27; and I16,
-which the installed `@shopify/ui-extensions` 2026.7 types settle: the
-thank-you `order.id` "becomes the Order object ID in the GraphQL Admin API"; L25,
-whose re-stored row holds a token Shopify already revoked and is removed by
-`shop/redact`; L29, where an order-less answer has no link to any customer for a
-redact to follow and ages out with retention; and I7, ledger rows that hold no
-personal data and are purged after 30 days).
+Read-only audit. No application code was changed. The previous audit (2026-10-15,
+most items since fixed) is in git history: `git show HEAD:BUGS.md`.
 
-Original note: no application code was changed by the audit. Every finding names a file and
-line, and gives a concrete scenario that triggers it.
+Every finding names a file and line (line numbers as of this commit) and a
+concrete scenario that triggers it. Confidence:
 
 - **CONFIRMED**: the path was traced through the code.
 - **PLAUSIBLE**: the finding depends on Shopify or runtime behaviour that could
-  not be checked offline. shopify.dev is blocked from this container.
+  not be checked from this container (shopify.dev is blocked).
+- **Re-verified** marks findings the coordinating reviewer re-checked by hand
+  after the flow trace (code read or reproduced in node).
 
-The findings come from eight end-to-end flow traces:
+Findings come from eight end-to-end flow traces. Findings reported by more than
+one trace are merged into one entry, and the entry lists every source.
 
 | Tag | Flow |
 | --- | --- |
-| AUTH | install / auth |
-| SUBMIT | survey display and submit |
-| ORD | order webhooks |
-| GDPR | uninstall, GDPR and retention |
-| BILL | billing |
-| SYNC | Shopify sync and admin blocks |
-| EDIT | survey editor |
+| AUTH | install / OAuth / sessions / token lifecycle |
+| SUBMIT | survey display and submission (checkout extensions + `/api/survey*`) |
+| ORD | order webhooks, reconciliation, backfill |
+| GDPR | app/uninstalled, GDPR webhooks, retention |
+| BILL | billing and plan enforcement |
+| SYNC | Shopify write-back (tags, metafields, Flow) and admin blocks |
+| EDIT | survey creation and editing |
 | REP | reporting and export |
 
-Findings that several traces reported separately are merged into one entry.
+**Totals:** 2 Critical, 4 High, 17 Medium, 49 Low, 27 Info.
 
 ---
 
 ## Step 1: API version, packages, GraphQL validation
 
-### Versions in use
+### API version
 
-| Item | Value | Notes |
+| Where | Value |
+| --- | --- |
+| `shopify.app.toml:34` (webhooks `api_version`) | `2026-07` |
+| All five `extensions/*/shopify.extension.toml` | `2026-07` |
+| `app/lib/env.ts:36-38` (`SHOPIFY_API_VERSION`, pinned to the literal `API_VERSION`) | `2026-07` |
+| `app/shopify.server.ts:24` (`shopifyApp({ apiVersion })`) | from env, `2026-07` |
+
+**2026-10 is now the latest stable Admin API version**, and 2027-01 is the
+release candidate. This comes from the toolkit's `supported-versions-schema.json`,
+which supersedes the AGENTS.md note that "2026-10 is RC only". 2026-07 is still
+supported, so this is not a bug today, but the app is one version behind. The
+installed `@shopify/shopify-api` 15.0.0 already exports `ApiVersion.October26`.
+
+### Packages (installed versus latest on npm, 2026-10-20)
+
+| Package | Installed | Latest | Note |
+| --- | --- | --- | --- |
+| `@shopify/shopify-app-react-router` | 3.0.1 | 3.0.2 | Patch available. 3.0.1 also prints an unconditional `console.log('config.future.expiringOfflineAccessTokens', …)` on every token exchange (`dist/esm/server/authenticate/admin/strategies/token-exchange.mjs:16`). |
+| `@shopify/shopify-api` (transitive) | 15.0.0 | 15.0.1 | Patch available. |
+| `@shopify/shopify-app-session-storage-prisma` | 11.0.0 | 11.0.1 | Patch available. |
+| `@shopify/shopify-app-session-storage` (transitive) | 7.0.0 | 7.0.1 | Patch available. |
+| `@shopify/cli` (dev) | 4.8.3 | 4.9.4 | Minor available. It pulls in `global-agent` → `boolean@3.2.0`, which npm flags as deprecated. |
+| `@shopify/ui-extensions` | 2026.7.4 | 2026.10.0 | Correctly matches `api_version = "2026-07"`. Move only together with the TOMLs. |
+| `@shopify/polaris-types` | 1.1.0 | 1.1.0 | Current. |
+| `react-router` / `@react-router/*` | 7.18.2 | 8.5.0 | Major behind; the exact pin is deliberate. |
+| `prisma` / `@prisma/client` | 6.19.3 | 7.10.1 | Major behind. |
+| `vite-tsconfig-paths` (dev) | 6.1.1 | — | Pulls in `tsconfck@3.1.6`, which npm flags as "unmaintained". |
+
+None of the Shopify packages is deprecated. `@shopify/app-bridge-react` and
+Polaris React are not used, which is correct.
+
+### REST usage
+
+There are **no REST Admin API calls**. Despite its name,
+`app/lib/shopify-rest.server.ts` only runs GraphQL (`SourceTracPlan`). The two
+non-GraphQL Shopify URLs are:
+
+- `app/lib/shopify-graphql.server.ts:101`: the GraphQL endpoint, called with a
+  hand-rolled `fetch`, not REST.
+- `app/lib/token-migration.server.ts:32`: the OAuth token endpoint
+  (`/admin/oauth/access_token`), not the REST Admin API.
+
+The app does not configure `restResources`.
+
+### GraphQL validation (Shopify AI Toolkit)
+
+Tool: Shopify's `shopify-ai-toolkit`, cloned from GitHub. Its
+`scripts/validate.mjs --api admin` validates against the Admin schema bundled
+with the toolkit, offline, with telemetry turned off (`OPT_OUT_INSTRUMENTATION=true`).
+The toolkit checks validity but does not report deprecations, so each
+operation was also walked with `graphql-js` `TypeInfo` against the same bundled
+schemas. That check was confirmed to flag a known deprecated field
+(`ShopPlan.displayName`) before it was trusted.
+
+All 16 operations are **VALID** on 2026-07, and also on 2026-10 and 2027-01,
+with **no deprecated fields, arguments or enum values**:
+
+| # | Operation | File |
 | --- | --- | --- |
-| Admin API version | `2026-07` | Set in `shopify.app.toml` (`[webhooks] api_version`, `scopes_api_version`), all 5 `extensions/*/shopify.extension.toml`, `.env.example` `SHOPIFY_API_VERSION`. Shopify's Dev MCP 1.16.1 (published 2026-10-14) marks 2026-07 as `latestVersion` and 2026-10 as `releaseCandidate`, so 2026-07 is current. |
-| `@shopify/shopify-app-react-router` | 3.0.1 (locked) | 3.0.2 available |
-| `@shopify/shopify-api` (transitive) | 15.0.0 | 15.0.1 available |
-| `@shopify/shopify-app-session-storage-prisma` | 11.0.0 | 11.0.1 available |
-| `@shopify/admin-api-client` (transitive) | 2.0.0 | 2.0.1 available |
-| `@shopify/ui-extensions` | 2026.7.4 | Matches the `2026-07` dist-tag. A `2026-10` tag (2026.10.0) exists. |
-| `@shopify/cli` (dev) | 4.8.3 | 4.9.4 available |
-| `@shopify/polaris-types` | 1.1.0 | Current |
-| `@prisma/client` / `prisma` | 6.19.3 | 7.x is a major upgrade, not required |
-| `react-router` / `@react-router/*` | 7.18.2 | 8.x is a major upgrade, not required |
+| 1 | `mutation SourceTracCreateSubscription` (`appSubscriptionCreate`) | `app/lib/billing.server.ts:28` |
+| 2 | `mutation SourceTracCancelSubscription` (`appSubscriptionCancel`) | `app/lib/billing.server.ts:51` |
+| 3 | `query SourceTracPlans` (`appInstallation.activeSubscriptions`) | `app/lib/shopify-graphql.server.ts:173` |
+| 4 | `query SourceTracShopStatus` | `app/lib/shopify-graphql.server.ts:201` |
+| 5 | `query SourceTracShopTimezone` | `app/lib/shopify-graphql.server.ts:211` |
+| 6 | `query SourceTracShopDisplay` | `app/lib/shopify-graphql.server.ts:222` |
+| 7 | `query SourceTracProductTitles` (`nodes`) | `app/lib/shopify-graphql.server.ts:306` |
+| 8 | `query SourceTracShopTimezoneOnly` | `app/lib/shopify-graphql.server.ts:374` |
+| 9 | `query SourceTracPlan` (`shop.plan.publicDisplayName`) | `app/lib/shopify-rest.server.ts:115` |
+| 10 | `query SourceTracPlan` (second copy) | `app/lib/shopify-rest.server.ts:148` |
+| 11 | `mutation SourceTracTagsAdd` | `app/lib/sync.server.ts:168` |
+| 12 | `mutation SourceTracMetafieldsSet` | `app/lib/sync.server.ts:177` |
+| 13 | `mutation SourceTracFlowReceive` (`flowTriggerReceive`) | `app/lib/sync.server.ts:186` |
+| 14 | `query SourceTracOrderCustomer` | `app/lib/sync.server.ts:194` |
+| 15 | `query SourceTracCustomerOrders` (`orders(query:)`) | `app/lib/admin-survey-context.server.ts:92` |
+| 16 | `query SourceTracOrder` | `app/lib/order-backfill.server.ts:25` |
 
-None of the installed versions is marked deprecated on npm. The Shopify packages
-are only behind by patch releases. The lockfile pins the older patches even
-though `package.json` uses caret ranges.
+The input types used in variables (`AppSubscriptionLineItemInput`,
+`AppPlanInput`, `AppRecurringPricingInput`, `MetafieldsSetInput`) have no
+deprecated fields in any of the three versions.
 
-### GraphQL validation
+**Webhook topics** in `shopify.app.toml` (`ORDERS_CREATE`, `ORDERS_UPDATED`,
+`ORDERS_CANCELLED`, `APP_UNINSTALLED`, `APP_SCOPES_UPDATE`,
+`APP_SUBSCRIPTIONS_UPDATE`) all exist in `WebhookSubscriptionTopic` on 2026-07
+and 2026-10, and none is deprecated.
 
-**Method.** The Shopify AI Toolkit plugin is not enabled in this session, and
-shopify.dev is blocked by the network policy. So I used the toolkit's own
-validation engine instead: Shopify's official Dev MCP package
-(`@shopify/dev-mcp` 1.16.1). It ships the Admin GraphQL introspection schemas.
-Every `#graphql` operation in the repo was parsed and validated with graphql-js
-against Admin `2026-07` and `2026-10`, using the standard rules plus
-`NoDeprecatedCustomRule`. No other GraphQL strings exist. The admin and checkout
-extensions call only the app's own backend.
+**Extension components** were also validated with the toolkit:
+`polaris-checkout-extensions` for `purchase.thank-you.block.render`,
+`polaris-customer-account-extensions` for `customer-account.order-status.block.render`,
+and `polaris-admin-extensions` for the order and customer details blocks. All
+`s-*` components and props used are valid for 2026-07.
 
-| Operation | File:line | 2026-07 | 2026-10 | Deprecated |
-| --- | --- | --- | --- | --- |
-| `SourceTracCreateSubscription` (appSubscriptionCreate) | app/lib/billing.server.ts:18 | valid | valid | none |
-| `SourceTracCancelSubscription` (appSubscriptionCancel) | app/lib/billing.server.ts:41 | valid | valid | none |
-| `SourceTracPlans` | app/lib/shopify-graphql.server.ts:135 | valid | valid | none |
-| `SourceTracShopStatus` | app/lib/shopify-graphql.server.ts:149 | valid | valid | none |
-| `SourceTracShopTimezone` | app/lib/shopify-graphql.server.ts:159 | valid | valid | none |
-| `SourceTracShopDisplay` | app/lib/shopify-graphql.server.ts:170 | valid | valid | **`Product.featuredImage`** (use `featuredMedia`) |
-| `SourceTracProductTitles` | app/lib/shopify-graphql.server.ts:248 | valid | valid | none |
-| `SourceTracShopTimezoneOnly` | app/lib/shopify-graphql.server.ts:316 | valid | valid | none |
-| `SourceTracPlan` | app/lib/shopify-rest.server.ts:115 | valid | valid | none |
-| `SourceTracTagsAdd` (tagsAdd) | app/lib/sync.server.ts:157 | valid | valid | none |
-| `SourceTracMetafieldsSet` (metafieldsSet) | app/lib/sync.server.ts:166 | valid | valid | none |
-| `SourceTracFlowReceive` (flowTriggerReceive) | app/lib/sync.server.ts:175 | valid | valid | none |
-| `SourceTracOrderCustomer` | app/lib/sync.server.ts:183 | valid | valid | none |
-| `SourceTracCustomerOrders` | app/lib/admin-survey-context.server.ts:86 | valid | valid | none |
-| `SourceTracOrder` | app/lib/order-backfill.server.ts:25 | valid | valid | none |
+Scope notes from the validator (informational):
 
-`userErrors` handling for every mutation:
+- Operation 14 reads `order.customer`, which needs `read_customers`. That is
+  covered by the requested `write_customers`.
+- Operation 15 is limited to roughly the last 60 days of orders without
+  `read_all_orders`. See L40.
 
-- `appSubscriptionCreate` / `appSubscriptionCancel`: checked at
-  `billing.server.ts:120` and `:156`.
-- `tagsAdd`, `metafieldsSet`, `flowTriggerReceive`: checked by
-  `assertNoUserErrors` at `sync.server.ts:411,432,499,528`.
-
-### REST
-
-No REST Admin endpoints are called. Every Admin call goes to
-`/admin/api/<version>/graphql.json`. The order and app webhooks deliver
-REST-shaped JSON payloads, which is expected.
-
-`app/lib/shopify-rest.server.ts` uses only GraphQL despite its name. The header
-comment of `app/lib/shopify-graphql.server.ts:8-10` ("Uses the Admin REST API for
-the shop endpoint") is stale.
-
-### Step 1 findings
-
-- [x] **S1-1 Low (CONFIRMED): a deprecated field is still queried.**
-  - Where: `app/lib/shopify-graphql.server.ts:182` (consumed at `:210-216`).
-  - Defect: `Product.featuredImage` is deprecated.
-  - Scenario: when Shopify removes the field in a future version, the whole
-    `SourceTracShopDisplay` query errors. That query also returns the shop name
-    and currency, so all three go blank in the Studio mock. The query is caught
-    and returns nulls, so the failure is safe.
-- [x] **S1-2 Low (CONFIRMED): the API version is not pinned in code.**
-  - Where: `app/lib/env.ts:25` and `app/shopify.server.ts:18`.
-  - Defect: `SHOPIFY_API_VERSION` is validated only by the regex
-    `^\d{4}-\d{2}$` and then cast with `as ApiVersion`. Nothing checks it
-    against `shopify.app.toml` or the extensions' `api_version`.
-  - Scenario: a deploy sets `SHOPIFY_API_VERSION=2025-07`, or a typo like
-    `2026-08`. The admin calls then run against a different schema than the
-    webhooks and extensions, or 404 on every Admin call.
-- [x] **S1-4 Info (PLAUSIBLE): an unrecognised config key.**
-  - Where: `shopify.app.toml:23`.
-  - Defect: `scopes_api_version` is not a known app-configuration key. It is
-    either ignored or rejected by the CLI.
-  - Related: the `SCOPES` env var is never compared with `[access_scopes]`;
-    `assertStartupInvariants` only allowlists scope names.
-- [x] **S1-5 Info (CONFIRMED): the declared scopes contradict the stated posture.**
-  - Where: `shopify.app.toml:19`.
-  - Defect: the app requests `write_orders`, `write_customers` and
-    `read_products`, but the toml comment and project notes say `read_orders`
-    is the only scope (protected-customer-data Level 1).
-  - Scenario: `write_customers` plus customer metafield writes put the app into
-    protected customer data review. The listing and privacy docs must match.
+`userErrors` handling is covered by the flow traces below. The raw client
+(`shopify-graphql.server.ts:128-147`) throws on HTTP 4xx/5xx and on top-level
+`errors`. All three mutations that return `userErrors` check them.
 
 ---
 
 ## Critical
 
-### [x] C1. The backfill migration fails as soon as two shops share an option value (GDPR/SYNC) — CONFIRMED
-
-- **Where:** `prisma/migrations/20261012095226_multi_question_survey/migration.sql:292-293` (table at `:68-78`).
-- **Defect:** the backfill inserts each legacy option with `"Option"."id" = option_value`. `Option.id` is a primary key that is global across all shops.
+### C1. No buyer answer ever queues Shopify sync work: tags, metafields and Flow never run [SYNC] — CONFIRMED, re-verified
+- **Where:** `app/lib/answers.server.ts:368`, `app/lib/sync.server.ts:80-81`, `app/routes/api.survey-responses.tsx:186`; `prisma/schema.prisma:320`.
+- **What is wrong:**
+  - `Survey.syncOptions` is a `String` column holding JSON. The route passes `row.syncOptions` (the raw string) to `submitAnswers`.
+  - `afterAnswerStored` calls `parseSyncOptions(input.syncOptions)` without `JSON.parse`. `parseSyncOptions` casts its input to an object and reads `.orderTags`, `.metafields`, `.flowTrigger` and `.presets`, which are all `undefined` on a string.
+  - So `hasSyncWork` is false and `enqueueSync` is never called.
+  - `loadSyncContext` parses correctly (`safeJson`, `sync.server.ts:267`), which is why the sweep looks fine in isolation.
 - **Scenario:**
-  1. The production database holds two or more shops. Every shop was seeded with the same default survey (`google`, `instagram`, …).
-  2. The second shop's `INSERT INTO "Option"` raises `duplicate key value violates unique constraint "Option_pkey"`, and the whole `DO $backfill$` block aborts.
-  3. `npm run start` runs `scripts/migrate.mjs` first, so the deploy fails to boot.
-- **Why the test missed it:** `tests/db-migration-backfill.test.ts:83` seeds a single shop.
-- **Related:** even if this were worked around, `sync.server.ts:259` and `admin-survey-context.server.ts:44` look up labels by option id alone, with no shop scope.
+  1. A Scale shop configures order tags `source:{channel}` and the Flow trigger.
+  2. A buyer answers.
+  3. No `PendingSync` row is created, so no tag, metafield or Flow run happens, and nothing is logged.
+- **Why the tests pass:** they call `enqueueSync` / `parseSyncOptions` with objects.
+- **Note:** fixing this makes H2, H3, M6 and M7 live.
 
-### [x] C2. A required question that was removed still blocks every submission (SUBMIT) — CONFIRMED
-
-- **Where:** `shared/survey-rules.ts:663-685`, with `app/lib/surveys.server.ts:481-486`, `:140-145` and `:262-270`.
-- **Defect:** on a survey with answers, removing a question archives it but keeps `required: true`. `getSurveyRow` loads archived questions, `rowToEditor` passes them into the submit definition (`api.survey-responses.tsx:127-136`), and `validateResponse` checks every question, archived ones included. Buyers never see the archived question, because `compileSurvey` hides it.
-- **Scenario:**
-  1. A merchant deletes a required question from a live survey that already has answers.
-  2. Every later submission returns 400 `required`.
-  3. The extension treats a 400 as permanent and drops the answer.
-- **Result:** 100% of answers for that survey are lost silently.
-
-### [x] C3. Buyer answers are validated against the merchant's unpublished draft (SUBMIT) — CONFIRMED
-
-- **Where:** `app/routes/api.survey-responses.tsx:127` and `app/lib/surveys.server.ts:197-215`.
-- **Defect:** `rowToEditor` returns the draft whenever `row.draft` is set. Saving a live or paused survey always creates a draft (`surveys.server.ts:640-645`), while buyers keep being served the published version.
-- **Scenario:**
-  1. The merchant saves, without publishing, a draft that does any of these:
-     - adds a required question;
-     - removes a question;
-     - removes an option.
-  2. Every buyer submission fails with `required`, `unknown_question` or `unknown_option` (a 400) until publish.
-- **Result:** the answers are lost.
-
-### [x] C4. Dashboard, Export and the main CSV never show answers collected by the current checkout blocks (REP) — CONFIRMED
-
-- **Where:** `app/lib/analytics-queries.server.ts:85` (`FROM "SurveyResponse"`), `app/routes/app.export.tsx:35` and `app/routes/app.export_.csv.tsx`.
-- **Defect:** these read only the legacy v1 `SurveyResponse` table. Both checkout blocks use `useMultiSurvey` (`ThankYouBlock.tsx:73`, `OrderStatusBlock.tsx:65`) and post to `/api/survey-responses`, which writes only v2 `Response`.
-- **Scenario:** any shop installed after the multi-question release:
-  - the Dashboard shows the empty state while Home says "live";
-  - Export reports no answers;
-  - `/app/export/csv` contains only migrated history.
-
-  The core "channel → revenue" report is empty.
-
-### [x] C5. Template surveys lose their stable question and option ids, which breaks follow-ups, smart actions and insights (EDIT/SYNC) — CONFIRMED
-
-- **Where:** `app/lib/surveys.server.ts:409-413` and `:437-463`, with `shared/templates/resolve.ts:108` and `:177`, `shared/templates/smart-actions.ts:288-295` and `app/lib/insights.server.ts:151`.
-- **Defect:** `persistQuestions` keeps a posted id only if it already exists in that survey, so a new survey gets fresh cuids. Template `showIf` conditions are stored verbatim, still referencing `stableQuestionId(...)` ids that no longer exist.
-- **Scenario:** a merchant creates any template with a follow-up (`did-you-compare`, `first-time-vs-returning`, the legacy "q2 if q1 = Instagram"):
-  - `isQuestionVisible` never finds the parent answer, so the follow-up never shows;
-  - the next Studio save fails with `show_if_unknown`;
-  - smart-action presets (T13) look answers up by stable id, never match, and the PendingSync row is deleted as "done";
-  - cross-question insights (T14) never appear.
-- **Note:** persisting the stable ids as-is would collide on the global `Question.id` primary key the second time a template is used.
+### C2. A failed offline-token refresh makes `/webhooks` answer 500 before any handler runs, so uninstall, GDPR redaction and order webhooks can fail on every retry [GDPR, AUTH, ORD] — library path CONFIRMED and re-verified; Shopify's refusal is PLAUSIBLE
+- **Where:**
+  - `app/routes/webhooks.tsx:39`: `await authenticate.webhook(request)` is outside every try.
+  - `app/shopify.server.ts:36`: `future.expiringOfflineAccessTokens: true`.
+  - Library: `node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/webhooks/authenticate.mjs` → `helpers/ensure-valid-offline-session.mjs` → `helpers/ensure-offline-token-is-not-expired.mjs` → `helpers/refresh-token.mjs`.
+- **What is wrong:**
+  - With the expiring-token flag on, `authenticate.webhook` loads the offline session on every delivery.
+  - If the access token is expired or within 5 minutes of expiry and a refresh token exists, it calls Shopify's refresh endpoint before returning.
+  - Any failure throws: `InvalidJwtError`, `HttpResponseError` for `invalid_subject_token`, or `new Response(500)`.
+  - Expiring tokens last about an hour, so any shop with no admin visit or webhook in the last hour is in this state.
+- **Scenario A (uninstall):**
+  1. A merchant uninstalls about 1 hour after the last refresh.
+  2. Shopify has revoked the credentials, so the refresh is refused and `app/uninstalled` gets 500 on every retry.
+  3. Sessions (which hold the refresh token) are never deleted, `installState` stays `installed` and the plan is never reset.
+  4. The retention backstop (`app/lib/retention.server.ts:172-182`) only targets `installState: "uninstalled"`, so it never fires either.
+  5. 48 hours later `shop/redact` loads the same session, fails the same way, and the shop's data is never deleted. That is a GDPR compliance failure.
+  6. `customers/redact` and `customers/data_request` for that shop also fail.
+- **Scenario B (orders):** the refresh token is revoked or expired and a transient error hits Shopify's token endpoint. `orders/create` returns 500 on every retry, the order is never cached, and the answer stays Pending. It becomes "order not received" after 24 hours unless the admin backfill rescues it.
+- **Aggravating factor:** order webhooks do not need a token at all (see L22).
 
 ---
 
 ## High
 
-### Survey submission (buyer side)
+### H1. A quick reinstall keeps the old `installedAt`, so a late `app/uninstalled` or `shop/redact` treats the live install as uninstalled [AUTH, GDPR] — CONFIRMED in code; the timing is PLAUSIBLE
+- **Where:**
+  - `app/lib/shop.server.ts:74-77`: `startsInstallation` comes from a separate read before the upsert, and is only true when the stored state is not `installed`.
+  - `app/lib/webhooks.server.ts:341-345`: the stale-uninstall guard (`triggeredAt < installedAt`).
+  - `app/lib/compliance.server.ts:490`, `:513-518`: `isLaterInstallation`.
+- **What is wrong:** if `app/uninstalled` is delayed, failing (see C2) or still retrying when the merchant reinstalls, `upsertShop` keeps the original `installedAt`. Both reinstall guards then compare against that stale timestamp.
+- **Scenario A:**
+  1. The merchant uninstalls at T0, and the first delivery fails (Neon waking, or C2).
+  2. They reinstall at T0+2min.
+  3. Shopify retries `app/uninstalled` with triggeredAt=T0, which is later than the old `installedAt`.
+  4. The retry deletes the new sessions, sets `uninstalled`, resets the plan to free/cancelled and nulls `subscriptionGid`.
+  5. Until the merchant reopens the admin:
+     - `orders/*` are acknowledged and ignored (`resolveInstalledShop`, `webhooks.server.ts:51`), so revenue is lost unless the backfill finds it;
+     - the new subscription's `app_subscriptions/update` is ignored (`webhooks.server.ts:386`).
+- **Scenario B:**
+  1. The merchant uninstalls, `app/uninstalled` is never applied, and they reinstall within 48 hours.
+  2. `shop/redact` finds the shop `installed` with the old `installedAt`, so `isLaterInstallation` is false.
+  3. The handler deletes the live shop: surveys, answers and sessions.
+- **Also:**
+  - With no `X-Shopify-Triggered-At` header, or a null `installedAt` on pre-migration rows, both guards are skipped entirely (`compliance.server.ts:515-517`, `webhooks.server.ts:343`).
+  - A concurrent uninstall landing between the read and the upsert also corrupts `installedAt`.
 
-- [x] **H1 (CONFIRMED): single-question surveys submit on the first keystroke or tick.**
-  - Where: `extensions/shared/src/use-multi-survey.ts:253-264` (inputs at `MultiSurveyView.tsx:276,284,292`).
-  - Defect: with layout `all`, every `onAnswer` on a single-question survey submits immediately, and text inputs call `onAnswer` on every keystroke.
-  - Scenarios:
-    - A buyer selects "Other" and types "a". `otherText: "a"` is submitted, and the rest of the typing is ignored (`:248`).
-    - A single text question submits its first character.
-    - A single multi-choice question submits on the first tick. With `minSelections ≥ 2` it returns 400 and the answer is lost.
+### H2. A retried or repeated submission re-queues all sync work, so Flow fires again and tags are re-added [SYNC, SUBMIT] — CONFIRMED (live once C1 is fixed)
+- **Where:**
+  - `app/lib/answers.server.ts:313-315`: a duplicate still calls `afterAnswerStored` (`:375-377`).
+  - `app/lib/sync.server.ts:141-162`: `enqueueSync` only skips kinds that are still pending.
+  - `app/lib/sync.server.ts:678`: completed rows are deleted.
+  - `app/routes/api.survey-responses.tsx:224`: the per-token slot is released for duplicates.
+- **What is wrong:** nothing records completed sync work, so a duplicate re-inserts every kind and drains it at once.
+- **Scenario:**
+  1. The first POST commits and its Flow row runs and is deleted.
+  2. The HTTP response is lost (30s timeout or dropped connection).
+  3. The extension retries, the result is `duplicate`, and `flowTriggerReceive` fires again.
+- **Other triggers:** the same answer from the Thank-you and Order status tabs, or a buyer replaying their own POST. Replays are limited only by the per-order bucket (10 burst, one every 6s).
+- **Impact:** the merchant's workflow (discount email, Slack alert) runs once per resubmit.
 
-### Order webhooks and revenue
+### H3. `startSyncForOrder` breaks a live lease, so two drainers run the same sync row [SYNC] — CONFIRMED in code; the timing is PLAUSIBLE but likely
+- **Where:** `app/lib/sync.server.ts:765-770`, with the lease at `:654-660`.
+- **What is wrong:**
+  - The reset sets `nextAttemptAt = now` for every row with `nextAttemptAt > now`.
+  - A leased row is exactly such a row, because the lease is `nextAttemptAt = now + 2min`.
+  - The compare-and-set in `processPendingSync` then lets a second drainer claim it.
+- **Scenario:**
+  1. The inline drain processes `tags`, then `customer`, then `flow`.
+  2. The app's own `tagsAdd` makes Shopify send `orders/updated` about a second later.
+  3. That webhook calls `startSyncForOrder`, which resets the leased `flow` row and runs it.
+  4. Flow fires twice.
+- **Other trigger:** `orders/create` and `orders/updated` arriving together.
 
-- [x] **H2 (CONFIRMED): an answer can stay Pending forever when the order lands mid-submit.**
-  - Where: `app/lib/answers.server.ts:197-206`; the only v2 reconcile is `webhooks.server.ts:472`.
-  - Defect: the v2 submit reads `OrderCache`, then inserts, and never reconciles after the insert. There is no v2 orphan sweep, unlike legacy `responses.server.ts:130,290`.
-  - Scenario:
-    1. The buyer submits and finds no order.
-    2. `orders/create` writes `OrderCache`, and its `updateMany` finds no Response yet.
-    3. The submit then inserts with `orderTotal = NULL`.
-  - Result: the answer stays Pending. After 24h `markUnverifiedFailedResponses` sets `unverifiedFailed`, and that revenue is permanently excluded.
-- [x] **H3 (CONFIRMED): a failed v2 reconcile is swallowed and the webhook returns 200.**
-  - Where: `app/lib/webhooks.server.ts:479-485`.
-  - Defect: a DB error in `reconcileOrderForResponses` is logged as a warning, and the route still answers 200.
-  - Scenario: a transient DB error after the order row is written. Shopify stops retrying, and with H2 the answer becomes `unverifiedFailed`. The legacy reconcile at `:459` is not wrapped and correctly returns 500.
-- [x] **H4 (CONFIRMED): orders missed by webhooks are never backfilled for v2 answers.**
-  - Where: `app/lib/order-backfill.server.ts:106` (`FROM "SurveyResponse" r`).
-  - Defect: `backfillMissingOrders` only looks for missing orders behind legacy rows. Its v2 callers (`app.results.tsx:32`, `app.responses.tsx:33`, `app.results_.csv.tsx:42`) expect it to cover them.
-  - Scenario: an order placed before install or during an uninstall gap (webhooks dropped at `webhooks.server.ts:267-271`). The v2 answer never gets an `OrderCache` row and becomes `unverifiedFailed`.
-
-### Reporting
-
-- [x] **H5 (CONFIRMED that it cannot serialise; the exact symptom is PLAUSIBLE): the Results loader returns a function.**
-  - Where: `app/routes/app.results.tsx:39`, `:43` and `:99` (called at `:187`).
-  - Defect: the loader returns `amount`, a function. A function cannot reach the client.
-  - Scenario: open Results for a survey with any counted revenue. `data.amount(...)` is not a function in the browser, so either turbo-stream fails to encode or a TypeError hits the error boundary.
-  - Same pattern: `app/routes/app.surveys.library.$id.tsx:70/76` returns `questionTypeLabel` (Info, PLAUSIBLE).
-- [x] **H6 (CONFIRMED): Dashboard range buttons go to Home.**
-  - Where: `app/routes/app.dashboard.tsx:385`.
-  - Defect: the buttons link to `/app?range=N` (Home), not `/app/dashboard?range=N`.
-  - Scenario: clicking "Last 7 days" or "Last 90 days" leaves the Dashboard, so it is stuck on 30 days.
-- [x] **H7 (CONFIRMED): satisfaction stats are always empty.**
-  - Where: `shared/templates/stats.ts:45` and `:98`.
-  - Defect: `satisfaction_5` is aggregated from `numberValue`, but the extension stores it as `optionIds: [id], numberValue: null` (`MultiSurveyView.tsx:241`, `answers.server.ts:229`).
-  - Scenario: a satisfaction main question gives an always-null `average`.
-    - Home shows "—" yet still says "reliable" / "ideas ready".
-    - Idea rules that depend on the average never fire.
-- [x] **H8 (CONFIRMED): Results show no bars for yes/no and satisfaction questions.**
-  - Where: `app/lib/survey-analytics.server.ts:280`.
-  - Defect: breakdowns list only merchant `Option` rows. `yes_no` and `satisfaction_5` use fixed ids and have no Option rows.
-  - Scenario: Results for any yes/no or satisfaction question shows "N answered" with no bars.
-
-### Survey editor
-
-- [x] **H9 (CONFIRMED): "Go live" always fails with a 500.**
-  - Where: `app/routes/app.surveys.$id.tsx:159-162` versus `:177` (button `:515`, `submitIntent` `:321-326`).
-  - Defect: `submitIntent("go-live")` posts only `intent` and `revision`. The action throws "The survey was not submitted" before it reaches the `go-live` branch, and `guarded()` turns that into a 500.
-  - Scenario: any merchant clicks the primary "Go live" button. The survey is never activated.
-- [x] **H10 (CONFIRMED): two new options collide on an empty id.**
-  - Where: `app/components/survey-editor.tsx:247-254`, `:269-270`, `:489` → `app/lib/surveys.server.ts:315-320` → `shared/survey-rules.ts:568`.
-  - Defect: new options get `id: ""`. `option.id ?? placeholder` does not replace `""`, so two new options share an id and validation fails with `duplicate_option`.
-  - Scenario: "Add question" (which creates two default options), "Duplicate question", or adding two options, then Save. The save is refused, so merchants cannot add a choice question from the Studio.
-- [x] **H11 (CONFIRMED): deleted questions and options come back on the next save.**
-  - Where: `app/lib/surveys.server.ts:262-270`, `:429` and `:451` (also `:810-813`).
-  - Defect: archived questions and options are sent to the editor and posted back, and `persistQuestions` writes `archived: false` on every posted row.
-  - Scenario: on a survey with answers, delete option "TikTok" and save. Reload, edit anything, and save again: "TikTok" is live for buyers again.
-  - Also:
-    - archived rows count toward `MAX_QUESTIONS`;
-    - `duplicateSurvey` copies archived rows as live ones.
-- [x] **H12 (CONFIRMED race): the optimistic-concurrency check is not atomic.**
-  - Where: `app/lib/surveys.server.ts:630-645` and `:654-683`; publish at `:705-740`.
-  - Defect: `assertRevision` compares a value read earlier, and the UPDATE is `where: { id }` with no revision condition.
-  - Scenarios:
-    - Two tabs at revision N both save: the second silently overwrites the first.
-    - A draft save races a publish: publish commits the older draft and sets `draft: null`, destroying the newer one.
-- [x] **H13 (CONFIRMED): unsaved Studio edits are discarded whenever a shopper answers.**
-  - Where: `app/routes/app.surveys.$id.tsx:248-255`.
-  - Defect: the editor resets local state when `dataKey` (`updatedAt:hasDraft:status`) changes. `Survey.updatedAt` moves on every shopper answer (`responseCount` increment).
-  - Scenario: the merchant is editing a live survey, a shopper answers, and the merchant switches tab or language (which revalidates). All unsaved edits are discarded without warning.
-- [x] **H14 (CONFIRMED): duplicating a survey with a show-if fails with a 500.**
-  - Where: `app/lib/surveys.server.ts:794-815`.
-  - Defect: `duplicateSurvey` strips ids but copies `showIf` pointing at the source survey's ids.
-  - Scenario: Duplicate any survey with a show-if and get `show_if_unknown`, which becomes a 500.
-  - Also:
-    - it copies the draft view;
-    - it drops `templateId`, `templateVersion`, `design`, `rotation` and `learnAndStop`, so the copy's presets are dead.
-
-### Shopify sync and admin blocks
-
-- [x] **H15 (CONFIRMED): the admin blocks can never load data.**
-  - Where: `app/routes/api.admin-survey-context.tsx:33-43`.
-  - Defect: the OPTIONS response sets only `Access-Control-Allow-Origin`, with no `Access-Control-Allow-Headers: Authorization, Content-Type`. The block's POST (`extensions/shared/src/admin-response-block.tsx:67-71`) sends both non-safelisted headers.
-  - Scenario: the browser rejects the preflight, so the order and customer admin blocks always show "No survey answer recorded".
-- [x] **H16 (CONFIRMED): concurrent drains can fire Flow twice.**
-  - Where: `app/lib/sync.server.ts:541-547` and `:563-574`.
-  - Defect: `processPendingSync` reads rows with a plain `findMany`, with no claim, lease or `SKIP LOCKED`.
-  - Scenario: two buyers submit together. `answers.server.ts:287` drains inline on both requests, so both process the same `flow` rows and the merchant's workflow runs twice (duplicate emails or discounts). The loser's `delete` hits P2025 and abandons the rest of the batch.
-- [x] **H17 (CONFIRMED): `app/scopes_update` never updates the stored scope.**
-  - Where: `app/lib/webhooks.server.ts:319-323`.
-  - Defect: the handler only logs and never updates `Session.scope`, and nothing else writes that column. An active offline session is never re-exchanged.
-  - Readers of the stale value: `sync.server.ts:555-558`, `app.settings.tsx:53`, `app.surveys.$id.tsx:111`, `app.surveys.library.$id.setup.tsx:113`.
-  - Scenario: a merchant installed with `read_orders`, then approves the write scopes. `canSync` stays false forever, sync is skipped, and Settings keeps saying the scopes are missing. If scopes are reduced instead, writes are attempted and fail until `MAX_SYNC_ATTEMPTS`.
-
-### Billing
-
-- [x] **H18 (CONFIRMED race): a paying merchant can drop to Free after an upgrade.**
-  - Where: `app/lib/webhooks.server.ts:537-545`; also `app/routes/app.plans.tsx:91`.
-  - Defect: the "superseded subscription" guard is a read followed by an unconditional `setPlan`.
-  - Scenario: the merchant upgrades Growth (A) → Scale (B), and the A CANCELLED and B ACTIVE notices are processed concurrently.
-    1. A CANCELLED reads `gid = A`.
-    2. B ACTIVE writes Scale.
-    3. A CANCELLED then writes (growth, cancelled).
-  - Result: the merchant pays for Scale but `effectivePlan` is Free, and answers get locked.
-
-### Uninstall, GDPR and retention
-
-- [x] **H19 (CONFIRMED): a deferred `customers/redact` can miss Shopify's 30-day deadline.**
-  - Where: `app/lib/compliance.server.ts:267-273`; callers only `app/routes/app._index.tsx:52` and `app.dashboard.tsx:60`.
-  - Defect: deferred redact batches drain only when that merchant opens Home or Dashboard. The 5-minute throttle is one module-level timestamp shared by all shops.
-  - Scenario: a redact names 450 orders, so 250 are deferred. If the merchant does not open the app for 30+ days, those Responses, Answers (including free text), legacy rows and `OrderCache` outlive the deadline. A visit by any other shop in the previous 5 minutes also makes this shop's drain skip.
-- [x] **H20 (PLAUSIBLE): a late `shop/redact` can wipe a reinstalled shop.**
-  - Where: `app/lib/compliance.server.ts:303-314`.
-  - Defect: `handleShopRedact` deletes Sessions and the Shop row (cascading everything) without checking `installState` or `uninstalledAt`.
-  - Scenario: the merchant uninstalls, reinstalls within 48h, and a `shop/redact` for the old install still arrives (or a late retry). All new surveys, responses and orders are deleted, along with the live session.
+### H4. Forged requests can drain the shop-wide rate-limit backstops, so buyers whose order has not been cached yet lose their answer and the survey hides [SUBMIT] — CONFIRMED and re-verified; the webhook lag is PLAUSIBLE
+- **Where:**
+  - `app/routes/api.survey-responses.tsx:126-134`: the shop backstop is consumed before `getSurveyRow` (`:143-146`).
+  - `app/routes/api.survey-responses.tsx:224`: the token slot is released when nothing is stored.
+  - `app/routes/api.survey.tsx:97-102`.
+  - `app/lib/rate-limit.server.ts:151-152`, `:230-241`.
+- **What is wrong:**
+  - A request with a valid checkout token, a made-up `orderId` and a non-existent `surveyId` costs one `answer-shop:<shop>` token (100 burst, refill one every 20s), then fails with 400.
+  - The failure releases the per-token submission slot, so the 2-per-token cap never stops the attacker.
+  - Only orders already in `OrderCache` are exempt. Thank-you answers usually arrive before `orders/create`.
+  - `/api/survey` has the same weakness (`survey-shop`, refill 2/s).
+- **Scenario:**
+  1. One lifted token sends a request roughly every 20s, each with a fresh order id.
+  2. Real buyers whose order is not cached yet get 429 for the whole 60s retry budget.
+  3. The block hides and the answer is lost (`survey_submit_lost`).
+- **Without an attacker:** any burst above about 180 answers per hour on not-yet-cached orders hits the same wall.
 
 ---
 
 ## Medium
 
-### Survey submission
+### M1. Open redirect in `/auth/*` through dot segments [AUTH] — bypass CONFIRMED and reproduced in node; reaching it through App Bridge is PLAUSIBLE
+- **Where:** `app/routes/auth.$.tsx:25`, `:30`; `app/lib/http.server.ts:97-101`.
+- **What is wrong:**
+  - `safeInternalPath` checks the raw string for a leading `//`, then the route does `new URL(value, origin)`, which resolves dot segments.
+  - `/..//evil.com`, `/.//evil.com` and `/%2e%2e//evil.com` all become pathname `//evil.com` (reproduced).
+  - `redirect("//evil.com…")` emits a protocol-relative `Location`.
+- **Scenario:** a merchant opens `<app>/auth/x?shop=…&host=…&embedded=1&redirect=/..//evil.com`. After authenticating, the admin iframe is redirected to the attacker's page, which is a phishing surface inside the Shopify admin.
 
-- [x] **M1 (CONFIRMED): stale answers on hidden questions get the submission rejected.**
-  - Where: `extensions/shared/src/use-multi-survey.ts:41-59` and `:213`, versus `shared/survey-rules.ts:666`.
-  - Defect: the extension's visibility check reads answers left on questions that are now hidden.
-  - Scenario: Q2 shows if Q1=a, and Q3 shows if Q2=x. The buyer answers Q1=a, Q2=x and Q3, then changes Q1 to b. The extension still sends Q3, the server returns `hidden_answered` (400), and the answer is lost.
-- [x] **M2 (CONFIRMED): the client completeness check misses rules the server enforces.**
-  - Where: `extensions/shared/src/use-multi-survey.ts:269-285`.
-  - Defect: `complete` never checks multi-choice "Other" text, `minSelections` or `maxSelections`.
-  - Scenario: Submit is enabled, the server rejects with `other_required`, `min_selections` or `max_selections` (400), and the answer is lost.
-- [x] **M3 (CONFIRMED; token reuse across retries is PLAUSIBLE): failed attempts burn the per-token submit cap.**
-  - Where: `app/routes/api.survey-responses.tsx:106`; `app/lib/rate-limit.server.ts:183-201`.
-  - Defect: the per-token cap of 2 is consumed before any other check, and failed attempts count against it.
-  - Scenarios:
-    - Two 5xx responses while Neon wakes, then every retry gets 429 until the 5-minute token expires, which outlasts the 60s budget, so the answer is lost.
-    - The backstop refuses attempts 1–2 before the order lands. Attempt 3 still gets the token-cap 429, so the "known orders always pass" exemption never helps.
-- [x] **M4 (CONFIRMED): one order can be answered twice across the two surfaces.**
-  - Where: `prisma/schema.prisma:426`, `app/routes/api.survey.tsx:84`, `shared/survey-config.ts:195` and `:295`.
-  - Defect: the unique key is (shop, survey, order), but thank-you and order-status can resolve to different surveys (payment and first-order targeting apply only on thank-you), and `alreadyAnswered` is a check-then-act read.
-  - Scenario: thank-you and order-status are open together. Two Responses are written for one order, and usage and `responseCount` are double-incremented.
-- [x] **M5 (CONFIRMED): duplicate and off-type answer fields are stored unvalidated.**
-  - Where: `app/lib/answers.server.ts:225` versus `shared/survey-rules.ts:652`.
-  - Defect: validation keeps only the last answer per `questionId`, but every element is stored. Fields foreign to the question type are also stored.
-  - Scenario: a forged body `[{questionId:Q1, optionIds:["junk"]}, {questionId:Q1, optionIds:[valid]}]` passes validation and stores the junk row. This skews learn-and-stop.
-- [x] **M6 (CONFIRMED): an edit or publish loses answers already in flight.**
-  - Where: `app/routes/api.survey-responses.tsx:122-139` (config cache at `surveys.server.ts:901-926`).
-  - Defect: buyers answer against a config cached for up to 60s, but the submit is validated against the current definition.
-  - Scenario: the merchant removes an option or adds a required question. In-flight answers fail with `unknown_option` or `required` (400) and are lost.
-- [x] **M7 (CONFIRMED): omitting `orderId` skips the backstop and the duplicate guard.**
-  - Where: `app/routes/api.survey-responses.tsx:59` and `:111`.
-  - Defect: `orderId` is optional, and NULL order ids are distinct in the unique index.
-  - Scenario: a buyer token posts without `orderId` and writes unlimited rows, limited only by a shared bucket of about 10/min. This poisons reports and burns the Free cap.
+### M2. Concurrent token refreshes reuse one refresh token with no coordination [AUTH, ORD] — PLAUSIBLE (depends on Shopify rotating refresh tokens)
+- **Where:**
+  - `app/lib/shop.server.ts:186-190` (`freshOfflineToken` → `unauthenticated.admin`).
+  - `app/routes/webhooks.tsx:39`, through the library's `ensureOfflineTokenIsNotExpired`.
+  - Only the legacy migration is de-duplicated (`app/session-storage.server.ts:73`, `:132`).
+- **Scenario:**
+  1. `orders/create` and `orders/updated`, or a webhook plus a sync drain, arrive just after the token expired.
+  2. Both refresh with the same refresh token.
+  3. If Shopify rotates refresh tokens, the loser throws: a 500 for a webhook, or a silent `null` token in `getAccessToken` callers.
+  4. In the worst case the last `storeSession` persists an invalidated refresh token, and every later refresh fails (see C2) until the merchant reopens the admin.
 
-### Order webhooks
+### M3. The `shop/redact` reinstall check only looks 49 hours back [GDPR] — PLAUSIBLE
+- **Where:** `app/lib/compliance.server.ts:490`, `:513-518`.
+- **What is wrong:** `isLaterInstallation` treats an install as "later" only if `installedAt > triggeredAt - 49h`. That assumes Shopify always sends `shop/redact` exactly 48 hours after the uninstall.
+- **Scenario:**
+  1. The merchant uninstalls and reinstalls soon after.
+  2. Shopify sends `shop/redact` later than 49 hours after the uninstall.
+  3. The reinstall falls outside the window, so `db.shop.delete` wipes the live shop.
+- **Fix direction:** compare against the actual uninstall time instead of a fixed window.
 
-- [x] **M8 (CONFIRMED): a near-simultaneous newer update can be dropped as stale.**
-  - Where: `app/lib/webhooks.server.ts:447-449` and `:453`.
-  - Defect: when the guarded `updateMany` matches nothing and `create` hits P2002, the code assumes a newer row exists and returns `order_stale_ignored` with 200, without re-running the guarded update.
-  - Scenario: `orders/create` (T1) and `orders/cancelled` (T2 > T1) arrive within milliseconds. The cancellation is lost, and the cancelled order counts as revenue. The same race exists between backfill and a webhook.
-- [x] **M9 (CONFIRMED): v2 shows a total frozen at first reconcile.**
-  - Where: `app/lib/answers.server.ts:464`, `app/routes/app.results_.csv.tsx:98-101` and `app/routes/app.responses.tsx:88-91`.
-  - Defect: `Response.orderTotal` is only filled when null and is never updated. The revenue decision reads the live `OrderCache` instead.
-  - Scenario: a $100 order is refunded down to $60. The CSV and Responses page show 100.00 "counted", while Results counts 60.
+### M4. `customers/redact` leaves the buyer's answers in a stored `DataRequest` export [GDPR] — CONFIRMED
+- **Where:** `app/lib/compliance.server.ts:111-125` (the export is written) and `:297-347` (`deleteOrdersForShop` never touches `DataRequest`).
+- **Scenario:**
+  1. `customers/data_request` arrives for orders A and B, then `customers/redact` for the same orders.
+  2. The buyer's verbatim `textValue` and `otherText` stay in `DataRequest.payload`, shown on the Settings page, for up to 30 days after the redact.
 
-### Uninstall, GDPR and retention
+### M5. Shopify's 5-second webhook budget is at risk on a cold start [ORD] — PLAUSIBLE
+- **Where:**
+  - `app/routes/webhooks.tsx:39`, `:61`, `:115`, `:117`, `:120`.
+  - `app/lib/webhooks.server.ts:294`, `:456`, `:520-537`, `:545-562`.
+- **What is wrong:** before answering, one order delivery does:
+  - the session load, plus possibly a token refresh (network);
+  - the claim insert;
+  - a token lookup it does not need (L22);
+  - shop and redacted-order lookups;
+  - two to three cache writes;
+  - two reconcile passes;
+  - the processed mark.
 
-- [x] **M10 (PLAUSIBLE): a late `app/uninstalled` wipes a reinstalled, paying shop.**
-  - Where: `app/lib/webhooks.server.ts:306-316` and `app/lib/shop.server.ts:177-195`; `triggeredAt` is dropped at `app/routes/webhooks.tsx:35`.
-  - Defect: the uninstall is applied with no ordering check.
-  - Scenario: the first uninstall delivery times out on a cold start. The merchant reinstalls and subscribes, then the retry lands. It:
-    - deletes the new sessions;
-    - nulls the token;
-    - sets `plan: free` and clears `subscriptionGid`.
-  - Result: until the next admin visit, all `orders/*` webhooks and billing notices are ignored, and the merchant stays capped at Free while paying.
-- [x] **M11 (CONFIRMED): retention silently drops unfinished redacts.**
-  - Where: `app/lib/retention.server.ts:126-128`.
-  - Defect: retention deletes `PendingDeletion` rows after 24 months instead of executing them.
-  - Scenario: an unfinished redact (see H19) is discarded, never run, and nothing alerts.
-- [x] **M12 (CONFIRMED that `orderIds` is unused; the payload shape is PLAUSIBLE): the customer data request reports nothing.**
-  - Where: `app/routes/webhooks.tsx:136-142` and `app/lib/compliance.server.ts:51` and `:63-68`.
-  - Defect: `customers/data_request` ignores the payload's `orders_requested`, and `handleDataRequest`'s `orderIds` is never used. The stored summary (`:94-102`) says no records are attributable to the individual.
-  - Scenario: Response and Answer rows for those orders (free text included) exist but are not reported, so the merchant gets an incorrect data-request answer.
+  That is about 10 sequential round-trips, each wrapped in `retryDb` (3 tries).
+- **Scenario:** Neon is suspended and the token has expired. The delivery takes more than 5s, so Shopify records a failure and retries. The retry gets 503 while the first is still in flight, so nothing is lost, but the subscription accrues failures.
 
-### Billing
+### M6. A transient token-refresh failure deletes queued sync work for good [SYNC] — CONFIRMED
+- **Where:** `app/lib/sync.server.ts:307-308` with `:671-675`; `app/lib/shop.server.ts:186-202`.
+- **What is wrong:** `getAccessToken` swallows every error (network fault, Shopify 5xx, refresh race) and returns `null`. `loadSyncContext` returns `null` for that. The sweep reads `null` as "the response is gone" and runs `deleteMany`.
+- **Scenario:** one refresh fails while a row is being processed. The row is deleted without counting as a failed attempt, and it never appears in the Settings "failed sync" count.
+- **Related:** a short plan blip (`planStatus` frozen or stale, `:320`) also deletes rows instead of deferring them.
 
-- [x] **M13 (PLAUSIBLE): stale ACTIVE or out-of-order notices are applied.**
-  - Where: `app/lib/webhooks.server.ts:536-545`.
-  - Defect: ACTIVE notices are never compared with the stored gid or with `updated_at`.
-  - Scenarios:
-    - A Growth (A) ACTIVE retry lands after the move to Scale (B) and sets Growth. A's later CANCELLED then matches and moves the merchant to Free.
-    - A PENDING or FROZEN notice for the same gid arriving after ACTIVE caps a paying merchant.
-- [x] **M14 (PLAUSIBLE): the webhook's test-charge guard probably never fires.**
-  - Where: `app/lib/webhooks.server.ts:560` (type at `:494`).
-  - Defect: `isIgnoredTestCharge` reads `payload.test`, which `app_subscriptions/update` likely does not carry.
-  - Scenario: a staging build sharing the client id approves a test charge on a live store. Production grants Growth for free until the Plans page is opened.
-- [x] **M15 (PLAUSIBLE): review and development stores may never reach a paid plan.**
-  - Where: `app/lib/billing.server.ts:104` and `:228`.
-  - Defect: `test` derives only from `NODE_ENV`, with no development-store detection.
-  - Scenario: App Store review installs on a dev store and cannot complete a paid plan. Either Shopify rejects a real charge on the dev store, or the test charge is rejected by `paidPlanFromSubscriptions`.
+### M7. Flow is marked "not idempotent", but the sweep re-sends it after a timeout or 5xx [SYNC] — PLAUSIBLE
+- **Where:** `app/lib/sync.server.ts:598-600`, `:680-704`.
+- **What is wrong:**
+  - `{ idempotent: false }` only stops retries inside `shopifyGraphql`.
+  - A 5xx after Shopify accepted the trigger, or the 20s `AbortSignal.timeout` (which `isRejectedBeforeRunning` does not treat as "rejected"), throws into `processPendingSync`.
+  - The sweep then retries the trigger up to `MAX_SYNC_ATTEMPTS` (5) times.
+- **Impact:** Flow is delivered at least once, possibly up to 5 times. There is no idempotency key and no ledger of completed sends.
 
-### Shopify sync and admin blocks
+### M8. Unanswered optional questions are stored as empty Answer rows, which skews results and fires Learn & stop early [SUBMIT] — CONFIRMED
+- **Where:**
+  - `extensions/shared/src/use-multi-survey.ts:345-349`: sends `{questionId}` for every visible question, answered or not.
+  - `shared/survey-rules.ts:906-913`: `normalize` keeps every entry.
+  - `app/lib/answers.server.ts:266-274`: stores them.
+- **Effects:**
+  - `buildBreakdowns` uses `total: relevant.length` (`app/lib/survey-analytics.server.ts:389`), so option shares on optional questions are understated.
+  - `maybeLearnAndStop` counts `answers.length` (`answers.server.ts:430-437`), so a numeric main question reaches `LEARN_STOP_MIN_NUMERIC` early.
+- **Scenario:** a 3-question survey with an optional NPS question first. Buyers who skip it still add rows, and the survey auto-pauses before enough real scores exist.
 
-- [x] **M16 (CONFIRMED in code; `iss` absence on checkout tokens is PLAUSIBLE): checkout session tokens pass admin ID-token verification.**
-  - Where: `app/lib/id-token.server.ts:158-170`.
-  - Defect: only alg, HMAC, `exp`/`nbf` and `aud` are checked. `iss` (`https://<shop>/admin`) is not checked, nor is `iss` matched against `dest`.
-  - Scenario: a buyer takes their own checkout or customer-account session token, POSTs `{orderId: N}` to `/api/admin-survey-context` for a range of N, and reads other buyers' answers, including free text. There is no rate limit.
-- [x] **M17 (CONFIRMED): customer writes are dropped on transient errors.**
-  - Where: `app/lib/sync.server.ts:318-323` (callers `:417-418`, `:469-470`).
-  - Defect: `fetchOrderCustomerId` swallows all errors and returns null, and a null is treated as "no customer → success".
-  - Scenario: an inline thank-you sync runs before the order exists, or hits a timeout or 5xx. The customer tags and metafields are lost permanently.
-- [x] **M18 (CONFIRMED): process-wide sweep throttles starve other shops.**
-  - Where: `app/lib/sync.server.ts:604-610` and `app/lib/compliance.server.ts:267-273`.
-  - Defect: one module-level timestamp throttles every shop's sweep.
-  - Scenario: shop A's visit consumes the 5-minute slot, so shops B…N's pending sync and deferred redacts are skipped on their visits.
-- [x] **M19 (CONFIRMED): the buyer's submit waits on Shopify writes.**
-  - Where: `app/lib/answers.server.ts:287`.
-  - Defect: `await processPendingSync(shopId, 5)` runs inline in the buyer's submit request, including other responses' rows.
-  - Scenario: a throttled shop or revoked token. Each submit waits up to 5 × (20s timeout or 4 retries), which exceeds the extension's 60s budget and triggers duplicate-submit retries.
-- [x] **M20 (PLAUSIBLE): non-idempotent mutations are retried.**
-  - Where: `app/lib/shopify-graphql.server.ts:46`, `:93-94` and `:117-122`.
-  - Defect: 5xx and `INTERNAL_SERVER_ERROR` are retried up to 4 times for every operation, including `flowTriggerReceive` and `appSubscriptionCreate`.
-  - Scenario: Shopify processes the trigger but returns 502. Flow runs up to 4 times, or duplicate pending charges are created.
+### M9. The 30s attempt timeout does not cover `getSessionToken()`, so a hung token request leaves the block stuck on "Loading…" [SUBMIT] — code CONFIRMED; that the host hangs is PLAUSIBLE
+- **Where:** `extensions/shared/src/survey-logic.ts:320-339`.
+- **What is wrong:** the timer only calls `controller.abort()`. `await binding.getSessionToken()` is not raced against it.
+- **Scenario:** if `shopify.sessionToken.get()` never settles, `withRetries` never returns. The block shows "Loading…" or a disabled "sending" button indefinitely. It never hides and never logs, which breaks the "never block the page" rule.
 
-### Survey editor
+### M10. Anyone with a checkout token can claim future order ids and block real buyers' answers [SUBMIT] — code CONFIRMED; how predictable order ids are is PLAUSIBLE
+- **Where:** `app/routes/api.survey-responses.tsx:113-134`; `app/lib/answers.server.ts:229-245`; `app/routes/api.survey.tsx:130-134` with `app/lib/order-facts.server.ts:227-233`.
+- **What is wrong:** `orderId` is chosen by the client and never tied to the token, and only one answer per order is allowed across all surveys.
+- **Scenario:**
+  1. A forged answer is stored on an order id that does not exist yet.
+  2. The real buyer later gets `alreadyAnswered` and is never asked.
+  3. When `orders/create` lands, the forged answer is reconciled with the real revenue.
+  4. The forged `OrderFact` (first write wins) also poisons first-time-buyer targeting.
+- **Limit:** 2 stored answers per token, plus the backstop.
 
-- [x] **M21 (CONFIRMED): a show-if can point at an unsaved option and never match.**
-  - Where: `app/components/survey-editor.tsx:566-571` → `app/lib/surveys.server.ts:427`.
-  - Defect: a show-if can reference a new option with id `""`, and `optionIds: [""]` is persisted literally.
-  - Scenario: add option "TikTok" and, in the same edit, make Q2 show if Q1 = TikTok. Q2 never shows.
-- [x] **M22 (CONFIRMED): discard ignores the posted revision.**
-  - Where: `app/routes/app.surveys.$id.tsx:145-146` and `app/lib/surveys.server.ts:751-755`.
-  - Scenario: Discard from a stale tab wipes a newer draft.
-- [x] **M23 (CONFIRMED): one active survey can starve another.**
-  - Where: `app/lib/surveys.server.ts:375` and `:573` (selection `api.survey.tsx`).
-  - Defect: all surveys are created with `priority: 0`, and ties are broken by `updatedAt desc`, which moves on each answer.
-  - Scenario: two active Thank-you surveys. The one with the latest answer wins forever.
-- [x] **M24 (CONFIRMED): the active-survey limit is never enforced.**
-  - Where: `app/lib/surveys.server.ts:758-780`, with `app/routes/app.surveys.$id.tsx:306` and `app.surveys.library.$id.setup.tsx:259`.
-  - Defect: `MAX_ACTIVE_SURVEYS` is never checked, and `overActiveLimit: false` is hard-coded.
-  - Scenario: activating up to 50 surveys can exceed `MAX_COMPILED_CONFIG_BYTES`, which is only logged.
-- [x] **M25 (CONFIRMED): survey fields are saved with no server-side validation.**
-  - Where: `app/lib/surveys.server.ts:660`, `:667-669`, `:675`, `:721` and `:728-734`.
-  - Defect: placements, targeting, design, translations, `syncOptions` and `rotationWeight` are mass-assigned from the posted JSON. The limits are client-only.
-  - Scenarios:
-    - unknown or flag-disabled placements are stored;
-    - 10 KB labels are shipped to checkout;
-    - `samplePercent ≤ 0` hides the survey forever;
-    - a non-integer `rotationWeight` causes a Prisma error and a 500.
-- [x] **M26 (CONFIRMED): publish and save skip the activation guards.**
-  - Where: `app/lib/surveys.server.ts:716-742` and `:658`.
-  - Defect: publish does not re-run `no_placements`, and a draft save can set `status` straight from the input.
-  - Scenario: untick every placement on a live survey and publish. It stays "active" but shows nowhere.
-- [x] **M27 (CONFIRMED): expected validation and not-found errors become generic 500s.**
-  - Where: `app/routes/app.surveys.$id.tsx:155-156`, `app.surveys._index.tsx:58,114,131` and `app.surveys.library.$id.setup.tsx:152-157`.
-  - Defect: `ValidationError` and `NotFoundError` are thrown out of actions.
-  - Scenario: activating with no placements, hitting the survey limit, an unknown template, or a survey deleted in another tab all show the 500 page.
-- [x] **M28 (PLAUSIBLE): editing an answered question reinterprets its history.**
-  - Where: `app/lib/surveys.server.ts:438-463`.
-  - Defect: a question can change `type`, and an option can be relabelled, while keeping its id.
-  - Scenario: change Q1 from `single_choice` to `nps`, or rename "Instagram" to "TikTok". Historical answers are reinterpreted.
-- [x] **M29 (CONFIRMED): Overview and Results read the draft structure.**
-  - Where: `app/routes/app.surveys.$id.tsx:95`.
-  - Defect: insights are built from the draft view, not the published one.
-  - Scenario: a draft that deletes a question hides that question's results until publish.
+### M11. Removing a question or option from a live survey with 0 answers hard-deletes it [EDIT, SUBMIT] — CONFIRMED
+- **Where:** `app/lib/surveys.server.ts:1146` (`hasResponses` from `existing.responseCount`, read outside the transaction), `:604-615`; `shared/survey-rules.ts:760-764`; `Answer.question onDelete: Cascade`.
+- **Scenario 1:**
+  1. The merchant removes option X from a live survey with no answers yet.
+  2. A buyer who loaded the earlier version picks X and submits.
+  3. The server answers `unknown_option` (a 400 the extension treats as permanent), the block hides and the answer is lost.
+  4. Archived options would have been accepted.
+- **Scenario 2:** if the first answer commits at the same moment as the publish, `question.deleteMany` cascade-deletes that buyer's Answer rows.
 
-### Reporting
+### M12. A save conflict silently throws away the merchant's unsaved edits [EDIT] — CONFIRMED
+- **Where:** `app/routes/app.surveys.$id.tsx:113-119`, `:250-257`; `app/lib/surveys.server.ts:441-444`, `:819-830`.
+- **What is wrong:** a conflict returns 200 data, so React Router re-runs the loader. The new `revision` changes `dataKey`, the effect calls `setDraft(survey)`, `dirty` turns false, and the unsaved-changes guard switches off.
+- **Scenario:**
+  1. Tab A has unsaved edits.
+  2. The merchant pauses or activates the survey from the list in tab B, which bumps `revision`.
+  3. Tab A presses Save.
+  4. Tab A shows "Reload to see the latest version", but its edits are already gone.
 
-- [x] **M30 (CONFIRMED that it is unbounded; OOM is PLAUSIBLE): Results load every response into memory.**
-  - Where: `app/routes/app.results.tsx:47`, `app/routes/app.results_.csv.tsx:74` and `app/lib/survey-analytics.server.ts:88`.
-  - Defect: all responses and answers are loaded with no limit, and the order lookup uses an unbounded `IN (...)`.
-  - Scenario: about 48k responses on a 512 MB instance makes the loader slow or OOM.
-- [x] **M31 (CONFIRMED): admin pages block on inline Shopify calls.**
-  - Where: `app/lib/order-backfill.server.ts:132-137` and `app/lib/shopify-graphql.server.ts:82`.
-  - Defect: backfill runs inline in five loaders: up to 10 sequential calls with a 20s timeout and 4 retries on 429/5xx.
-  - Scenario: when Shopify is slow, admin pages block for minutes.
-- [x] **M32 (CONFIRMED): rows that will never resolve show as "Pending" forever.**
-  - Where: `app/lib/survey-analytics.server.ts:323`.
-  - Defect: "Pending" is `orderTotal === null`, which includes order-less (on-site/link) and `unverifiedFailed` rows.
-  - Scenario: those rows show "Pending" forever.
-- [x] **M33 (PLAUSIBLE): the response rate can exceed 100%.**
-  - Where: `app/lib/analytics-queries.server.ts:327` versus `:156`.
-  - Defect: the numerator counts by `submittedAt`, the denominator by order `createdAtShop`.
-  - Scenario: order-status answers given days later push the rate over 100% on 7-day windows.
-- [x] **M34 (CONFIRMED): multi-choice revenue is credited in full to every option.**
-  - Where: `app/lib/survey-analytics.server.ts:267-275`.
-  - Scenario: Instagram + TikTok on a $100 order credits each with $100. Per-option totals exceed the survey total with no disclosure.
+### M13. A config read already in progress can put a stale survey back in the cache after a save [EDIT] — CONFIRMED (small window)
+- **Where:** `app/lib/surveys.server.ts:1358-1386`.
+- **What is wrong:** `invalidateConfig` only deletes the cache entry. A `getCompiledConfig` that started before the merchant's write finishes afterwards and stores the old rows with a fresh timestamp.
+- **Scenario:** the merchant pauses a survey, or removes an option, while a buyer's `/api/survey` request is reading. The paused survey, or the removed option, is served for up to 60s.
+- **Related:** the downgrade paths in L35 never invalidate at all.
+
+### M14. Downgrades and yearly-to-monthly switches are probably deferred by Shopify, and repeat clicks create more charges [BILL] — PLAUSIBLE (depends on Shopify's default `replacementBehavior`)
+- **Where:** `app/lib/billing.server.ts:28-49` (no `replacementBehavior`); `app/routes/app.plans.tsx:249-255` (the "already on this plan" check); `app/lib/i18n/locales/en.json:235` (`yearly_note`).
+- **What is wrong:** by default Shopify defers a downgrade, or an annual-to-30-day switch, to the end of the cycle. The new charge sits ACCEPTED while the old one stays ACTIVE.
+- **Scenario:**
+  1. A merchant on Scale monthly approves Growth monthly.
+  2. Plans still shows "Scale, Current".
+  3. Clicking Growth again passes the check and creates yet another charge to approve.
+  4. The copy "replaces your current charge once you approve it" is wrong in this case.
+
+### M15. Cancelling a yearly subscription forfeits the rest of the year with no warning [BILL] — CONFIRMED (no `prorate`; the refund outcome is Shopify's documented default)
+- **Where:** `app/lib/billing.server.ts:51-64`, `:183`; `app/routes/app.plans.tsx:194-216`, `:114-118`; `en.json:191` (`cancel_body`).
+- **Scenario:**
+  1. A yearly Growth subscriber taps Cancel in month 1.
+  2. No prorated credit is issued, and they drop to Free on the next page load.
+  3. The confirm dialog only says "You lose unlimited responses".
+
+### M16. Results drops every answer to the built-in "Other" option [REP] — CONFIRMED
+- **Where:** `app/lib/survey-analytics.server.ts:352-357`, `:380-384`; `shared/survey-rules.ts:294-295`; `app/routes/app.results.tsx:195`.
+- **What is wrong:**
+  - With "Allow a free-text answer" on, the rules add an option with id `other` that has no Option row.
+  - `buildBreakdowns` builds bars from DB options only, so Other answers count in `total` but get no bar and no revenue.
+  - `otherCount` is returned to the page but never rendered.
+  - `buildQuestionStats` also walks only `question.options`, so Other can never be the dashboard's top answer.
+- **Scenario:** 40% of buyers pick Other. The Results bars add up to 60%, Other's revenue is missing, and the dashboard names the wrong top answer.
+
+### M17. The channel report splits one real channel into several rows [REP] — CONFIRMED
+- **Where:** `app/lib/analytics-queries.server.ts:131-137`; `fetchChannelLabels` `:203-207`.
+- **What is wrong:** a v2 channel key is the option id, which is unique to each survey. Only `bf-option-` ids are mapped back to legacy slugs.
+- **Scenario:**
+  1. The shop has two surveys feeding the channel report, for example the migrated backfill survey and a new Channel Compass.
+  2. Each produces its own "Instagram" row.
+  3. Answers and revenue are split across the two rows.
+  4. `pickTopChannel` and the dashboard's top 5 can name the wrong top channel.
 
 ---
 
 ## Low
 
-### Install, auth and session
+### L1. The free-cap month boundary can flag one answer wrongly [BILL, SUBMIT] — CONFIRMED
+- **Where:** `app/lib/answers.server.ts:212-214`, `:264`.
+- **What is wrong:** `shouldLock` comes from a usage read taken before the transaction.
+- **Scenario:** the UTC month rolls over between that read and the claim, so the first answer of the new month is flagged `isLocked`.
 
-- [x] **L1 (CONFIRMED): a webhook can resurrect an uninstalled shop.**
-  - Where: `app/lib/webhooks.server.ts:49-55` with `app/lib/shop.server.ts:85-86`; the same pattern is in `app/lib/provision.server.ts:69-71`.
-  - Defect: `resolveInstalledShop` checks `installState`, then `upsertShop` unconditionally sets `installed` and writes the token.
-  - Scenario: an `orders/updated` delivery runs concurrently with `app/uninstalled`. The shop is flipped back to installed with the revoked token stored, and after `shop/redact` the Shop row is recreated.
-- [x] **L2 (CONFIRMED): a failed plan lookup erases known checkout support.**
-  - Where: `app/lib/provision.server.ts:44-46` with `app/lib/shopify-rest.server.ts:464-470`.
-  - Defect: `fetchShopPlanName` swallows errors and returns null, so `setCheckoutSupport(null)` overwrites a known true/false and stamps `checkoutCheckedAt`.
-  - Scenario: a 5xx during reinstall makes a Starter shop lose its "plan blocked" banner.
-- [x] **L3 (CONFIRMED): legacy Session tokens stay plaintext.**
-  - Where: `app/session-storage.server.ts:19-20` and `:30-31`.
-  - Defect: legacy plaintext tokens are claimed to be re-encrypted "on the next store", but non-expiring offline sessions are never re-stored.
-- [x] **L4 (CONFIRMED): token decryption failures are silent, and key rotation is all-or-nothing.**
-  - Where: `app/lib/sync.server.ts:551-553` and `app/session-storage.server.ts:37`.
-  - Defect: an undecryptable or missing token returns `{done:0, failed:0}` with no log, and the decrypt-failure log has no context. `enc:v1:` has no key id.
-  - Scenario: rotating `TOKEN_ENCRYPTION_KEY` invalidates every token at once, and background work stalls silently.
-- [x] **L5 (CONFIRMED): the post-auth redirect drops the embedded parameters.**
-  - Where: `app/routes/auth.$.tsx:23-24`.
-  - Defect: the redirect to `/app` drops `shop`, `host` and `embedded`, which causes an extra App Bridge bounce. There is no `/auth/login` route, so `/auth/login` returns the library's 500.
-- [x] **L6 (CONFIRMED): the first page load after install waits on two Admin API calls.**
-  - Where: `app/shopify.server.ts:27-29` and `app/lib/provision.server.ts:28-46`.
-  - Defect: `afterAuth` makes two sequential Admin calls, each with a 20s timeout and retries, and an exception becomes a bare 500.
-  - Scenario: the first load after install blocks for 40s+ when Shopify is slow.
-- [x] **L7 (CONFIRMED): a placeholder shop id is never corrected.**
-  - Where: `app/lib/provision.server.ts:27-37` and `app/lib/shop.server.ts:74`.
-  - Defect: if the identity query fails on first provision, `Shop.shopId` (unique) is set to the domain instead of the GID, and it is never corrected while the token stays valid. The impact is latent.
-- [x] **L8 (PLAUSIBLE): a slow database at boot can disable session storage.**
-  - Where: `app/session-storage.server.ts:79`.
-  - Defect: `PrismaSessionStorage` polls for the table twice at module load. If the DB is unreachable then, the stored rejected `ready` promise either crashes the process or makes every session call throw until restart.
-- [x] **L9 (PLAUSIBLE): parallel first loads can hit P2002.**
-  - Where: `app/lib/shop.server.ts:54` and `app/db.server.ts:57`.
-  - Defect: parallel first-load `ensureShop` → `provisionShop` can hit P2002 if Prisma does not use a native upsert, and P2002 is not retryable. Each parallel loader also duplicates the GraphQL calls.
+### L2. The checkout retry loop does not match the 8-attempt / ~60s spec [SUBMIT] — CONFIRMED
+- **Where:** `extensions/shared/src/survey-logic.ts:389-438`, `:200`, `:206`.
+- **What is wrong:** there is no attempt cap; the only limit is the 60s budget.
+  - Fast failures run about 12-15 attempts.
+  - A slow attempt can start at the deadline and run its full 30s, so the worst case is about 90s.
 
-### Survey submission
+### L3. Options are shuffled with different seeds on the two pages [SUBMIT] — CONFIRMED
+- **Where:** `extensions/shared/src/use-multi-survey.ts:292`.
+- **What is wrong:** the shuffle is seeded with the raw GID: `gid://shopify/OrderIdentity/N` on Thank-you and `gid://shopify/Order/N` on Order status.
+- **Scenario:** the same order sees a different option order on each page, although the comment says the order is identical on both.
 
-- [x] **L10 (CONFIRMED): the shop backstop locks out real buyers whose order is not cached yet.**
-  - Where: `app/lib/rate-limit.server.ts:50` and `:129`.
-  - Defect: under abuse, the backstop refuses real buyers whose order is not cached yet, which is the normal thank-you timing.
-  - Scenario: they get 429 for 60s, and the answer is lost.
-- [x] **L11 (CONFIRMED): retries and swallowed errors bypass usage counting and sync.**
-  - Where: `app/lib/answers.server.ts:248`.
-  - Defect: a failure in `claimUsageSlot` is only logged, so the answer is neither counted nor flagged, bypassing the cap.
-  - Scenario: a retry after a committed-but-dropped insert takes the duplicate path, which skips usage, `responseCount` and sync.
-- [x] **L12 (CONFIRMED): a failed counter bump leaves the answer half-processed.**
-  - Where: `app/lib/answers.server.ts:256`.
-  - Defect: if `bumpSurveyResponseCount` throws after commit, the buyer gets a 500 and the retry returns "duplicate".
-  - Scenario: that answer's learn-and-stop check and sync enqueue never run.
-- [x] **L13 (CONFIRMED): the learn-and-stop pause is served stale.**
-  - Where: `app/lib/answers.server.ts:385`.
-  - Defect: the pause does not call `invalidateConfig`, so the paused survey is still served for 60s, and `maxResponses` uses the cached count.
-- [x] **L14 (CONFIRMED): response-body errors are mishandled.**
-  - Where: `extensions/shared/src/survey-logic.ts:277`.
-  - Defect: `response.json()` runs after the attempt timer is cleared and its errors are not transient.
-  - Scenarios:
-    - a stalled body leaves the block stuck on "sending";
-    - a 200 with a non-JSON body is logged as `survey_submit_lost` although it was committed.
-- [x] **L15 (PLAUSIBLE): a throwing host getter crashes the block.**
-  - Where: `extensions/shared/src/survey-logic.ts:356`.
-  - Defect: `getPaymentTypes` is not wrapped in `safeRead`.
-  - Scenario: the host getter throws, and the block crashes in the effect.
-- [x] **L16 (CONFIRMED): text fields do not show their stored value.**
-  - Where: `extensions/shared/src/MultiSurveyView.tsx:270-296` (with `use-multi-survey.ts:196-197`).
-  - Scenarios:
-    - Back/Next in one-by-one mode shows an empty field while the old text is still submitted;
-    - abandoned "Other" text is still stored on the chosen option (`answers.server.ts:231`).
-- [x] **L17 (CONFIRMED): first-order targeting never matches on order-status.**
-  - Where: `shared/survey-config.ts:195-196`.
-  - Defect: order-status never sends `isFirstOrder`.
-  - Scenario: first-order and returning-customer targeting never matches there, despite the comment at `survey-logic.ts:219-225`.
-- [x] **L18 (CONFIRMED): any order id from the store can be answered.**
-  - Where: `app/routes/api.survey-responses.tsx:122`.
-  - Defect: no survey status, placement or targeting check is made, and `orderId` is not bound to the token.
-  - Scenario: a buyer answers another order id first, which hides the survey from the real buyer (`alreadyAnswered`). Paused surveys can also be answered. Data never crosses shops.
+### L4. The server accepts a submission where no question has any content [SUBMIT] — CONFIRMED
+- **Where:** `app/routes/api.survey-responses.tsx:73` (`min(1)` counts entries, not content); `shared/survey-rules.ts:707-880`.
+- **Scenario:** `[{questionId:"q1"}]` on an all-optional survey stores an empty Response. It uses a cap slot, bumps `responseCount` and locks the order out of answering again. The client normally prevents this.
 
-### Order webhooks
+### L5. A stale `surveyVersion` waives every "required" rule [SUBMIT] — CONFIRMED
+- **Where:** `app/lib/answers.server.ts:194-199`.
+- **What is wrong:** when `surveyVersion < currentVersion`, all required issues are dropped, not just those for questions added after the buyer loaded the survey.
+- **Scenario:** a client that sends `surveyVersion: 0` can skip any required question.
 
-- [x] **L19 (CONFIRMED): the ledger re-claim does not refresh `error` or `createdAt`.**
-  - Where: `app/lib/webhooks.server.ts:175-188`.
-  - Scenario: two concurrent retries of a failed delivery both re-claim, and after 5 minutes every duplicate counts as abandoned.
-- [x] **L20 (CONFIRMED): ledger claim errors escape the route's handling.**
-  - Where: `app/lib/webhooks.server.ts:146` and `app/routes/webhooks.tsx:48`.
-  - Defect: `claimWebhook`'s insert has no `retryDb` and sits outside the route's try.
-  - Scenario: a Neon wake produces an unlogged framework 500.
-- [x] **L21 (PLAUSIBLE): two updates within the same second can apply out of order.**
-  - Where: `app/lib/webhooks.server.ts:432`.
-  - Defect: the guard is `updatedAtShop lte updatedAt`, and Shopify's `updated_at` has one-second precision.
-  - Scenario: two updates in the same second arrive reversed, and the older one wins.
-- [x] **L22 (CONFIRMED): unsupported-plan shops trigger a plan query on every order webhook.**
-  - Where: `app/lib/webhooks.server.ts:60`.
-  - Defect: `refreshCheckoutSupport` fires a GraphQL plan query on every order webhook for shops whose support is false or unknown.
-- [x] **L23 (PLAUSIBLE): money parsing rejects rather than rounds.**
-  - Where: `app/lib/money.ts:79` (table at `:23-26`).
-  - Defect: a fractional amount for a currency listed as zero-decimal (e.g. ISK "1990.50") is rejected.
-  - Scenario: `totalPrice` is NULL and every answer for that shop stays Pending.
-- [x] **L24 (CONFIRMED): the backfill selects by answer date, not order date.**
-  - Where: `app/lib/order-backfill.server.ts:113`.
-  - Defect: the age window uses the answer date.
-  - Scenario: an order outside `read_orders`' 60-day window is retried every hour and fails each time.
+### L6. The legacy single-question path has several gaps [SUBMIT, BILL, SYNC] — CONFIRMED; reachable only by stale clients or crafted requests
+- **Where:** `app/routes/api.responses.tsx:93-96`; `app/lib/responses.server.ts:85-92`, `:104`, `:117-138`.
+- **What is wrong:**
+  - The per-token cap is never released, so two 5xx or duplicate attempts burn it and later retries get 429 until the token expires.
+  - The "a v2 answer already exists" check runs without the `answer:<shop>:<order>` advisory lock, so a concurrent v2 and legacy submission can write two answers for one order.
+  - The answer is inserted before the usage increment. If the increment fails it is only logged, so on Free that answer is stored unflagged and never counted toward the cap.
+  - Answers stored here (in `SurveyResponse`) are never synced and never shown in the admin blocks.
 
-### Uninstall, GDPR and retention
+### L7. Product and collection targeting is saved and plan-gated but never applied [EDIT, SUBMIT] — CONFIRMED
+- **Where:** `app/lib/surveys.server.ts:668-677`; `shared/plan-features.ts:103-104`; `shared/survey-config.ts:223-272`, `:281-295`.
+- **What is wrong:** `productIds`, `collectionIds` and `resolvedProductIds` are accepted, but `explainTargeting` never reads them.
+- **Effects:**
+  - A product-targeted survey shows on every order.
+  - The rule still counts as "advanced targeting" for the plan gate.
+  - `hasAudienceRules` does not count it.
+- **Reachability:** no editor UI sets these today, so only a crafted save or older data carries them.
 
-- [x] **L26 (CONFIRMED): webhook retries duplicate `PendingDeletion` and `DataRequest` rows.**
-  - Where: `app/lib/compliance.server.ts:166-176` and `:107-115`.
-  - Defect: the `PendingDeletion` row is created before the inline batch, and the `DataRequest` row is created on every delivery.
-  - Scenario: a retry duplicates both. The deletes are idempotent.
-- [x] **L27 (PLAUSIBLE): a submit during a redact orphans a PendingSync row.**
-  - Where: `app/lib/compliance.server.ts:200-206`.
-  - Defect: a submit landing between the `findMany` and `deleteMany` orphans its PendingSync row, and there is no FK to cascade it.
-- [x] **L28 (PLAUSIBLE): a redacted order can be written again.**
-  - Where: `app/lib/webhooks.server.ts:266-274`.
-  - Defect: nothing blocks re-creation. A later `orders/updated` recreates its `OrderCache`, and the buyer can answer it again.
-- [x] **L30 (PLAUSIBLE): redaction never adjusts daily stats.**
-  - Where: `app/lib/compliance.server.ts:193-208`.
-  - Defect: `SurveyDailyStats` backfilled rows can map to one order's channel and total.
-  - Related: the retention comment at `retention.server.ts:89-91` wrongly claims these rows cascade.
-- [x] **L31 (CONFIRMED): retention ages `OrderCache` by cache date, not order date.**
-  - Where: `app/lib/retention.server.ts:133`.
-  - Scenario: a 3-year-old backfilled order is kept 24 more months.
-- [x] **L32 (CONFIRMED): there is no backstop when `shop/redact` never arrives.**
-  - Where: `app/lib/retention.server.ts:58-166`.
-  - Scenario: a shop uninstalled more than 48h ago whose `shop/redact` never arrived keeps its data for 24 months, and its Shop row forever.
+### L8. Start and end dates on a day whose midnight is skipped by daylight saving land 1 hour early [EDIT, SUBMIT] — CONFIRMED (reproduced by the EDIT trace)
+- **Where:** `shared/zoned-date.ts:62-75`.
+- **What is wrong:** `startOfDayIso("2026-09-06","America/Santiago")` returns `2026-09-06T03:00Z`, which is 23:00 the previous day. `storedToDateField` then shows Sept 5.
+- **Scenario:** a Chilean merchant picks a start of Sept 6. The survey starts an hour early, and the date field displays Sept 5.
 
-### Billing
+### L9. In the one-question-at-a-time layout, "Next" skips required questions without feedback [SUBMIT] — CONFIRMED
+- **Where:** `extensions/shared/src/MultiSurveyView.tsx:110-118`; `use-multi-survey.ts:434-436`.
+- **What is wrong:** on the last step Submit is simply disabled, with nothing showing which earlier question is missing.
+- **Effect:** buyers may give up. Nothing is lost on the server.
 
-- [x] **L33 (CONFIRMED): the Plans page can show a plan that is not enforced.**
-  - Where: `app/routes/app.plans.tsx:77` versus `:91-98`.
-  - Defect: the displayed plan is assigned before `setPlan`, and a failed write is only logged.
-  - Scenario: the page shows Growth while Free is enforced.
-- [x] **L34 (PLAUSIBLE): an empty answer downgrades a paying merchant.**
-  - Where: `app/lib/billing.server.ts:196`.
-  - Defect: a null `appInstallation` is treated as "no subscriptions".
-  - Scenario: the loader writes Free/expired for a paying merchant.
-- [x] **L35 (PLAUSIBLE): a missing confirmation URL is reported as success.**
-  - Where: `app/routes/app.plans.tsx:191-193`.
-  - Defect: `confirmationUrl: null` returns a success banner although nothing can be approved.
-- [x] **L36 (CONFIRMED): cancel and display filter subscriptions differently.**
-  - Where: `app/lib/billing.server.ts:205-216` versus `:226-239`.
-  - Defect: `activeSourceTracSubscription` does not skip test charges, while `paidPlanFromSubscriptions` does.
-  - Scenario: a leftover test subscription id is stored or cancelled instead of the billed one.
-- [x] **L37 (CONFIRMED): two usage counters use different rules.**
-  - Where: `app/lib/answers.server.ts:125` and `:139` versus `app/lib/responses.server.ts:47-49`.
-  - Defect: the v2 counter stops at the cap, while the legacy counter is unlimited, and both write one `BillingUsage` row.
-  - Scenario: the displayed usage is frozen at 50/50 or jumps past it.
-- [x] **L38 (PLAUSIBLE): the legacy counter can lose increments.**
-  - Where: `app/lib/responses.server.ts:41-45`.
-  - Defect: the upsert can race on P2002, which is not retryable, and the failure is only logged.
-  - Scenario: a lost increment lets one extra answer through unlocked.
-- [x] **L39 (PLAUSIBLE): a retried write can double-count usage.**
-  - Where: `app/lib/answers.server.ts:105-127`.
-  - Defect: `claimUsageSlot` runs inside `retryDb`, so a committed-but-dropped UPDATE (P1017) is incremented twice.
-  - Scenario: a Free shop hits the cap early.
+### L10. Redacted orders get new `CheckoutLoad` and `OrderFact` rows [GDPR] — CONFIRMED
+- **Where:** `app/lib/order-facts.server.ts:12-18`; `app/lib/serve-log.server.ts:59-72`; called from `app/routes/api.survey.tsx:133`, `:230`.
+- **What is wrong:** neither write checks `isRedactedOrder`.
+- **Scenario:** after `customers/redact`, the buyer reopens the Thank-you page. A new `OrderFact` (kept 90 days) and a `CheckoutLoad` with order id and country (kept 30 days) are written.
 
-### Shopify sync and admin blocks
+### L11. A redacted order can be re-cached by a concurrent order webhook [ORD] — CONFIRMED (needs concurrency)
+- **Where:** `app/lib/webhooks.server.ts:456` (the redacted check), then `:520-537` (the write). Not atomic with the redact.
+- **Scenario:**
+  1. `orders/updated` passes the redacted check.
+  2. `customers/redact` deletes the `OrderCache` row and inserts `RedactedOrder`.
+  3. The webhook's update matches 0 rows, falls back to `create`, and recreates the redacted order's row.
 
-- [x] **L40 (CONFIRMED): poison rows are never cleared or shown.**
-  - Where: `app/lib/sync.server.ts:543` and `:579`.
-  - Defect: rows at `MAX_SYNC_ATTEMPTS` are never cleared or surfaced, and backoff caps at about 32s.
-  - Scenario: any permanent userError leaves a stuck row the merchant never sees.
-- [x] **L41 (PLAUSIBLE): a newline in a buyer's answer breaks the whole metafield write.**
-  - Where: `app/lib/sync.server.ts:447` and `:476`.
-  - Defect: free text with a newline goes into a `single_line_text_field`.
-  - Scenario: the whole atomic `metafieldsSet` fails, order metafield included, and the row is poisoned.
-- [x] **L42 (CONFIRMED): metafield types and fields are not validated.**
-  - Where: `app/lib/sync.server.ts:487` and `:81-83`.
-  - Defect: numeric preset values are written as `single_line_text_field`, and merchant namespace, key and type are not validated.
-  - Scenario: a merchant-defined `number_integer` definition makes every write fail.
-- [x] **L43 (CONFIRMED): an empty tag is written when the channel is unanswered.**
-  - Where: `app/lib/sync.server.ts:399` and `:420`.
-  - Defect: an empty channel produces the tag `sourcetrac:`, and only the first `{channel}` is replaced.
-- [x] **L44 (CONFIRMED): the buyer controls part of a tag.**
-  - Where: `app/lib/sync.server.ts:256` and `:399`.
-  - Defect: the buyer's free-text "Other" answer becomes the tag suffix, and colons survive sanitising.
-  - Scenario: `sourcetrac:wholesale:approved` drives a merchant Flow.
-- [x] **L45 (CONFIRMED): the Flow `Channel` field carries an internal id.**
-  - Where: `app/lib/sync.server.ts:255` and `:509`.
-  - Defect: `Channel` is a raw option cuid.
-  - Scenario: a merchant condition `Channel == instagram` never matches for new surveys.
-- [x] **L46 (CONFIRMED): tokens without `exp` never expire.**
-  - Where: `app/lib/id-token.server.ts:161-163`.
-  - Defect: `exp` and `nbf` are optional, so a token without `exp` never expires (compounds M16).
-- [x] **L47 (CONFIRMED): the customer block misses older orders and hides its failures.**
-  - Where: `app/lib/admin-survey-context.server.ts:88` and `:123-125`.
-  - Defect: only the 20 latest orders within the 60-day `read_orders` window are read, and the catch swallows the error with no log.
-- [x] **L48 (CONFIRMED): the admin block can spin forever.**
-  - Where: `extensions/shared/src/admin-response-block.tsx:61`.
-  - Defect: `await getToken()` is outside the try/finally.
-  - Scenario: the block spins forever if `idToken()` rejects. The admin blocks also have no `locales/` folder.
-- [x] **L49 (PLAUSIBLE): old pending writes fire after a reinstall.**
-  - Where: `app/lib/sync.server.ts:551-553`.
-  - Defect: pending rows survive uninstall.
-  - Scenario: Flow triggers and tags fire for answers that are months old.
-- [x] **L50 (CONFIRMED): nothing in the database prevents duplicate sync rows.**
-  - Where: `prisma/schema.prisma:478-491` and `app/lib/sync.server.ts:137-149`.
-  - Defect: `PendingSync` has no `@@unique([responseId, kind])`, and enqueue is check-then-insert.
-  - Scenario: duplicate rows, and so duplicate Flow runs.
+### L12. The deferred-redact drain does not save its progress [GDPR] — CONFIRMED
+- **Where:** `app/lib/compliance.server.ts:376-392`, `:405-421`.
+- **What is wrong:**
+  - `startPendingDeletions` runs with `maxBatches = Infinity`, so the payload is only rewritten once the whole row is drained. A restart mid-drain starts over.
+  - The dashboard and webhook drainers are not mutually excluded.
+- **Impact:** repeated work only; the deletes are idempotent.
 
-### Survey editor
+### L13. An unparseable `PendingDeletion` payload silently drops the deletion obligation [GDPR] — CONFIRMED (unlikely, since the payload is self-written)
+- **Where:** `app/lib/compliance.server.ts:365-373`, `:384-385`.
+- **What is wrong:** a parse failure, or a non-array `orderIds`, sets `orderIds = []`. The row is then deleted with no log line.
 
-- [x] **L51 (CONFIRMED): saving reverts a reorder.**
-  - Where: `app/lib/surveys.server.ts:818-823` and `:659`.
-  - Defect: reorder does not bump `revision`, and a save writes back the stale `priority`.
-  - Scenario: reorder in the list, save in the Studio, and the reorder is reverted.
-- [x] **L52 (CONFIRMED): saving without `design` double-encodes it.**
-  - Where: `app/lib/surveys.server.ts:675`.
-  - Defect: `JSON.stringify(input.design ?? existing.designJson)` double-encodes when `design` is absent. The editor always sends it.
-- [x] **L53 (CONFIRMED): a corrupt draft makes publish throw.**
-  - Where: `app/lib/surveys.server.ts:710-712`.
-  - Defect: a corrupt or `"null"` draft throws a TypeError on publish, giving a 500.
-- [x] **L54 (CONFIRMED, crafted payload only): an option can be moved under another question.**
-  - Where: `app/lib/surveys.server.ts:442-456`.
-  - Defect: an option id from another question is updated in place but keeps its original `questionId`.
-- [x] **L55 (CONFIRMED): the Free-plan exclusive-option check is too loose.**
-  - Where: `app/lib/surveys.server.ts:544-545`.
-  - Defect: the grandfather check passes if any option anywhere in the survey is exclusive.
-- [x] **L56 (PLAUSIBLE): a Free shop can unlock a paid template feature.**
-  - Where: `app/lib/surveys.server.ts:670`.
-  - Defect: `templateId` is mass-assignable, which bypasses the `byProduct` plan gate.
-- [x] **L57 (CONFIRMED): parallel creates can exceed the survey limit.**
-  - Where: `app/lib/surveys.server.ts:555-567`.
-  - Defect: the survey-count limit is checked outside the transaction.
-- [x] **L58 (CONFIRMED): an unknown intent saves the survey.**
-  - Where: `app/routes/app.surveys.$id.tsx:124`.
-- [x] **L59 (CONFIRMED): Pause and Activate silently drop unsaved edits.**
-  - Where: `app/routes/app.surveys.$id.tsx:150-158` and `:321-326`.
-  - Defect: both are enabled while the form is dirty and post no survey data.
-- [x] **L60 (CONFIRMED): the setup wizard can crash or half-create a survey.**
-  - Where: `app/routes/app.surveys.library.$id.setup.tsx:133` and `:180-183`.
-  - Defect: `JSON.parse` is unguarded, and create plus activate are not atomic.
-  - Scenario: a retry after a failed activation creates a duplicate survey.
-- [x] **L61 (CONFIRMED, crafted POST only): the `use-template` action creates an orphan and fails.**
-  - Where: `app/routes/app.surveys.library._index.tsx:126-130`.
-  - Defect: it redirects with a survey id to a route that expects a template id, leaving an orphan draft and a 500.
-- [x] **L62 (CONFIRMED): a never-published draft can be paused.**
-  - Where: `app/routes/app.surveys._index.tsx:109-115`.
-- [x] **L63 (CONFIRMED): any loader error reads as "not found".**
-  - Where: `app/routes/app.surveys.$id.tsx:70`.
-  - Defect: `.catch(() => null)` turns a DB outage into "survey does not exist".
-- [x] **L64 (CONFIRMED): the Studio title cache never evicts.**
-  - Where: `app/lib/studio.server.ts:31-57`.
-  - Defect: `titleCache` is never evicted, and a transient failure is cached for 10 minutes.
+### L14. The deferred-redact sweep depends on traffic [GDPR] — PLAUSIBLE (deployment-dependent)
+- **Where:** `app/routes/webhooks.tsx:125-126`; `app/lib/compliance.server.ts:430-445`.
+- **What is wrong:** the remainder is drained only by other webhooks, dashboard visits or the external retention job. The in-process drain started by the redact is lost on a restart.
+- **Scenario:** a quiet, uninstalled shop with no cron configured can miss Shopify's 30-day deadline.
 
-### Reporting
+### L15. Large `customers/redact` requests do work proportional to their size inline [GDPR] — PLAUSIBLE
+- **Where:** `app/lib/compliance.server.ts:239-246`, `:252`.
+- **What is wrong:** `RedactedOrder.createMany` and `orderFact.deleteMany` run for every 1,000-order chunk, plus a `LIKE` scan of `PendingDeletion.payload`, all before the 200-order inline batch.
+- **Scenario:** a large redact on a cold Neon can exceed 5s. The retry gets 503, so nothing is lost.
 
-- [x] **L65 (CONFIRMED): a crafted page number causes a 500.**
-  - Where: `app/routes/app.responses.tsx:39`.
-  - Defect: `page` is not floored or capped.
-  - Scenario: `?page=1.01` or a huge value raises a Prisma error, giving a 500.
-- [x] **L66 (CONFIRMED): Responses times render in the server's zone.**
-  - Where: `app/routes/app.responses.tsx:84`.
-  - Defect: dates use the server zone with no label, while the CSV uses the shop zone.
-- [x] **L67 (CONFIRMED): Pending rows are labelled "Not counted".**
-  - Where: `app/routes/app.responses.tsx:163`.
-  - Defect: the computed reason is never shown.
-- [x] **L68 (CONFIRMED): abandoned rows are exported as "awaiting order".**
-  - Where: `app/routes/app.results_.csv.tsx:35`.
-  - Defect: `unverifiedFailed` rows are exported as "awaiting order".
-- [x] **L69 (CONFIRMED): truncated exports look complete.**
-  - Where: `app/routes/app.export.tsx:77-88` and `app/routes/app.export_.csv.tsx:191` and `:202`.
-  - Defects:
-    - the truncation header is ignored by the client;
-    - the newest-first limit drops the oldest rows;
-    - exactly 50,000 rows is flagged as truncated.
-- [x] **L70 (CONFIRMED): a failed results CSV download is swallowed silently.**
-  - Where: `app/routes/app.results.tsx:121`.
-- [x] **L71 (CONFIRMED): unreconcilable rows wait forever.**
-  - Where: `app/lib/analytics.ts:130`.
-  - Defect: Dashboard "pending" includes `unreconcilable` rows, which then show "waiting for order" forever.
-- [x] **L72 (CONFIRMED): Home makes uncached blocking calls.**
-  - Where: `app/routes/app._index.tsx:71` and `app/lib/home.server.ts:50-57`.
-  - Defect: every Home load makes an uncached blocking Shopify call and loads up to 3×5,000 responses sequentially.
-- [x] **L73 (CONFIRMED): Home numbers are formatted and counted inconsistently.**
-  - Where: `app/lib/home.server.ts:68` and `:79`.
-  - Defects:
-    - the average is not locale-formatted;
-    - the badge count and the confidence `n` disagree;
-    - NPS shows the 0–10 mean, not an NPS score.
-- [x] **L74 (CONFIRMED): an older shop with no recent answers looks brand-new.**
-  - Where: `app/routes/app.dashboard.tsx:95`.
-  - Defect: `hasAnyResponse` is window-scoped.
-  - Scenario: no answers in the last 30 days shows the "no answers yet" empty state.
+### L16. The retention backstop can delete a just-reinstalled shop's sessions [GDPR] — CONFIRMED (narrow race)
+- **Where:** `app/lib/retention.server.ts:173-182`.
+- **What is wrong:** sessions are deleted by domain unconditionally, before the conditional `shop.deleteMany({ installState: "uninstalled" })`.
+- **Scenario:** a reinstall that lands in between loses its new session and has to re-authenticate.
+- **Also:** `uninstalledShopsDeleted` counts candidates, not actual deletions.
+
+### L17. `app/scopes_update` overwrites the stored scope with no ordering guard [GDPR, AUTH] — PLAUSIBLE
+- **Where:** `app/lib/webhooks.server.ts:361-373`.
+- **What is wrong:** there is no `triggeredAt` / `installedAt` comparison.
+- **Scenario:** an out-of-order or pre-reinstall delivery writes an older scope set onto the new session. `canSync` then skips writes the merchant granted, and Settings shows the wrong grant state. It also writes for uninstalled shops.
+
+### L18. The `customers/data_request` export omits data held for the named orders [GDPR] — CONFIRMED
+- **Where:** `app/lib/compliance.server.ts:131-188`.
+- **What is wrong:** only answers are exported. `Response.country`, `locale`, `productIds` and `isFirstOrder`, the `OrderCache` totals, `OrderFact` and `CheckoutLoad.country` are all left out.
+
+### L19. Legacy-session migration races can leave a revoked token stored [AUTH] — CONFIRMED in code; the timing is unlikely
+- **Where:** `app/session-storage.server.ts:104-115`, `:129-152`.
+- **What is wrong:**
+  - A load whose DB read finishes after the migration's `finally` re-migrates with the already-revoked legacy token.
+  - A plain-text re-seal `storeSession` that lands after the migrated session overwrites it with the revoked legacy token.
+  - After that, every later load reports no session, and webhooks and background work get no token until the merchant opens the admin.
+  - The de-duplication only works within one process.
+
+### L20. Legacy migration runs a network call of up to 20s inside webhook authentication [AUTH] — CONFIRMED
+- **Where:** `app/lib/token-migration.server.ts:218`, reached through `loadSession` from `authenticate.webhook`.
+- **What is wrong:** the first webhook for a legacy session waits on a token exchange of up to 20s, while Shopify's timeout is 5s. A failed migration is retried on every load, because nothing records the failure.
+
+### L21. Key rotation never re-seals tokens proactively [AUTH] — CONFIRMED
+- **Where:** `app/lib/env.ts:42-46` (the comment promises re-sealing); `app/session-storage.server.ts:26`, `:104`.
+- **What is wrong:** `sealToken` skips values that already carry the `enc:v1:` prefix, and `loadSession` only re-seals plain-text rows.
+- **Scenario:**
+  1. A shop has no refresh or token exchange during the rotation window.
+  2. `TOKEN_ENCRYPTION_KEY_PREVIOUS` is removed.
+  3. The shop's tokens can no longer be decrypted (logged at warn only), and background Admin calls stop until the merchant reopens the app.
+
+### L22. Every order webhook resolves an access token it never uses [ORD] — CONFIRMED
+- **Where:** `app/routes/webhooks.tsx:115`, `:166-170`.
+- **What is wrong:** only `app_subscriptions/update` uses the token. When there is no session, `orders/*` still pays for a DB lookup plus `unauthenticated.admin`, and possibly a legacy exchange (network). That adds latency and failure points to M5 and C2.
+
+### L23. `/auth/*` calls `provisionShop` with no error handling [AUTH] — CONFIRMED
+- **Where:** `app/routes/auth.$.tsx:21`.
+- **What is wrong:** `afterAuth` swallows provisioning errors, but this second, redundant call does not.
+- **Scenario:** a DB blip or Neon wake turns a successful login into a 500 inside the iframe. It also makes a duplicate `fetchShopIdentity` Admin call.
+
+### L24. A changed myshopify domain makes provisioning fail permanently [AUTH] — PLAUSIBLE (depends on whether Shopify allows domain changes)
+- **Where:** `app/lib/shop.server.ts:54-61`, `:79-100`.
+- **What is wrong:** `Shop.shopId` (the GID) is `@unique`, but the upsert is keyed on `shopDomain`.
+- **Scenario:** after a domain change, the create branch hits P2002 and `retryUniqueRace` gives up. `ensureShop` then throws on every admin load, so the merchant is locked out.
+
+### L25. Backfill writes erase the same-second tie-break [ORD] — CONFIRMED; the window is narrow
+- **Where:** `app/lib/webhooks.server.ts:482`, `:500-511`; `app/lib/order-backfill.server.ts:193` (passes no `triggeredAt`).
+- **Scenario:**
+  1. The backfill reads an order.
+  2. Webhook A (`updated_at` U, triggered T2) writes the row.
+  3. The backfill writes the same U with `triggeredAt = NULL`.
+  4. A delayed webhook B (same U, older T1) passes the guard and overwrites A's newer same-second state, for example `financial_status` going from paid back to pending.
+
+### L26. An order with an unreadable total is reported as "order not received", and is never re-fetched [ORD, REP] — CONFIRMED
+- **Where:**
+  - `app/lib/webhooks.server.ts:543` (no reconcile when the total is null).
+  - `app/lib/answers.server.ts:579-590` (the 24h sweep sets `unverifiedFailed`).
+  - `app/lib/survey-analytics.server.ts:233-235` (checks `unverifiedFailed` before "total unreadable").
+  - `app/lib/order-backfill.server.ts:162-164` (`WHERE o.id IS NULL` never re-fetches a row with a null total).
+- **Effect:** the Responses page and the survey CSVs say "order not received" for an order that did arrive. The legacy channel CSV (`analytics-queries.server.ts:391-392`) checks in the opposite order, so the two exports disagree.
+
+### L27. Migrated rows with `verified = NULL` are never written off [ORD] — PLAUSIBLE (Prisma's NULL semantics for `not`)
+- **Where:** `app/lib/answers.server.ts:584` (`verified: { not: true }`).
+- **What is wrong:** if Prisma compiles this to `<> true`, NULL rows are excluded. Backfilled history with `verified = NULL` and no total would then stay "awaiting order" forever, instead of ageing out like every other answer.
+
+### L28. Every order update bypasses the sync retry backoff [ORD] — CONFIRMED
+- **Where:** `app/lib/webhooks.server.ts:324` → `app/lib/sync.server.ts:759-772`.
+- **What is wrong:** each applied `orders/updated` or `orders/cancelled` resets `nextAttemptAt` and drains immediately.
+- **Scenario:** a sync that fails permanently (missing scope, bad metafield) burns one of its 5 attempts on every fulfillment, tag or payment update. A cancelled order also triggers sync work.
+
+### L29. Backfilled orders never start the sync work waiting for them [ORD, SYNC] — CONFIRMED
+- **Where:** `app/lib/order-backfill.server.ts:193`.
+- **What is wrong:** the backfill writes through `upsertOrderCache` but never calls `startSyncForOrder`, unlike `webhooks.server.ts:324`. Those rows wait for the 5-minute admin sweep or the backoff, and may give up.
+
+### L30. One permanent error parks a whole backfill batch for a week [ORD] — CONFIRMED in code; the 401 needs a stale token
+- **Where:** `app/lib/order-backfill.server.ts:167`, `:177`, `:199-201`.
+- **What is wrong:**
+  - Any non-throttle `ShopifyGraphQLError`, including a 401 or 403 from a stale token, sets a 7-day backoff for that order.
+  - One bad-token run therefore parks all 10 due orders, and meanwhile their answers become "order not received".
+  - The candidate query is capped at `LIMIT 100` before the backoff filter, so older eligible orders can starve.
+
+### L31. A silent hourly backfill retry for orders that can never be stored [ORD] — CONFIRMED
+- **Where:** `app/lib/order-backfill.server.ts:188-207`.
+- **What is wrong:** when `upsertOrderCache` returns null (for example `currentTotalPriceSet` is null, so the currency is `""`), the result is not counted. The order is retried hourly forever, with no warning log.
+
+### L32. A failed development-store lookup downgrades or ignores a dev store's test plan [BILL] — CONFIRMED
+- **Where:** `app/lib/billing.server.ts:296-312` (returns false on any error; failures are not cached); `app/routes/app.plans.tsx:96-118`, `:245`, `:265`; `app/lib/webhooks.server.ts:621-623`.
+- **Scenario:** the `partnerDevelopment` query fails once on a dev store that has a Growth test charge.
+  - On the Plans page, `setPlan(free, "expired")` is written.
+  - The ACTIVE webhook is ignored and acknowledged with 200, so it is never retried.
+  - New charges are created as real charges, not test charges.
+- **Impact:** this hits App Store review stores.
+
+### L33. The dev-store answer is cached for an hour per process [BILL] — CONFIRMED
+- **Where:** `app/lib/billing.server.ts:289-311`.
+- **Scenario:** a dev store transferred to a real merchant keeps "test charges count" for up to 1 hour. In that hour its old test charge grants a paid plan, and new charges are created with `test: true`.
+
+### L34. Webhook notices with no access token are applied without checking Shopify [BILL] — path CONFIRMED; whether the payload carries a `test` flag is PLAUSIBLE
+- **Where:** `app/lib/webhooks.server.ts:612`, `:629-635`, `:640`.
+- **When `accessToken` is null:**
+  - A late ACTIVE retry for the old plan after an upgrade overwrites the new plan and its `subscriptionGid`.
+  - A late PENDING or ACCEPTED notice is applied as `frozen`, which drops the merchant to the Free cap.
+  - The test-charge fallback reads `payload.test`. If the payload has no `test` field, a test charge grants a paid plan in production.
+
+### L35. Webhook downgrades and uninstall never invalidate the compiled checkout config [BILL] — CONFIRMED
+- **Where:** `app/lib/webhooks.server.ts:647-655` (`db.shop.updateMany`, not `setPlan`); `app/lib/shop.server.ts:209-230`.
+- **Effect:** for up to 60s (`surveys.server.ts:1356`), buyers are served more live surveys than the downgraded plan allows.
+
+### L36. A paid plan is only re-synced from Shopify on the Plans page [BILL] — PLAUSIBLE
+- **Where:** `app/lib/webhooks.server.ts:612-620`; `app/routes/app.plans.tsx:90-131`.
+- **What is wrong:** an ACTIVE notice that arrives before `activeSubscriptions` lists the charge is logged as "stale active ignored" and acknowledged with 200, so Shopify never retries it.
+- **Scenario:** a merchant who closes the tab instead of returning through the approval URL pays for the plan but stays on the Free limits until they open Plans again.
+
+### L37. The Plans loader can overwrite a newer webhook write with an older Shopify read [BILL] — PLAUSIBLE (narrow race)
+- **Where:** `app/routes/app.plans.tsx:92-118`.
+- **What is wrong:** `setPlan` is an unconditional write based on a Shopify read made earlier in the same request.
+- **Scenario:** an ACTIVE webhook for a just-approved charge commits between that read and the write. The loader writes back the old plan and subscription id.
+
+### L38. Plans copy promises more than the code does [BILL] — CONFIRMED
+- **Where:** `app/lib/plans.ts:107`, `:121`, `:124`; `en.json:191`, `:213`, `:241`; `shared/survey-rules.ts:42`.
+- **What is wrong:**
+  - "Unlimited live surveys", but `MAX_SURVEYS_TOTAL` is 50.
+  - "Priority email support" has no matching implementation.
+  - The cancel copy leaves out that all but one live survey stop being served and that sync stops.
+  - After a mid-month downgrade the merchant is often already over 50 answers, because usage is counted per UTC month across plans. Every later answer is flagged, which contradicts "back on the Free plan with 50 responses a month".
+
+### L39. Cancelling can report failure for a charge that was cancelled [BILL] — PLAUSIBLE
+- **Where:** `app/lib/billing.server.ts:178-189`.
+- **What is wrong:** the cancel mutation is retried on 5xx (default `idempotent: true`). The retry's "already cancelled" userError is then shown as `msg_cancel_failed`. The returned `status` is never checked.
+
+### L40. The customer admin block misses older answers [SYNC] — 60-day limit PLAUSIBLE; 100-order limit CONFIRMED
+- **Where:** `app/lib/admin-survey-context.server.ts:92-98`.
+- **What is wrong:** `orders(query:"customer_id:…", first: 100)` without `read_all_orders` only sees about the last 60 days, and at most 100 orders.
+- **Scenario:** a customer who answered 3 months ago and has not ordered since shows "No survey answer recorded".
+
+### L41. The admin block can show an unrelated answer as "How they heard about us", or "no answer" when one exists [SYNC] — CONFIRMED
+- **Where:** `app/lib/admin-survey-context.server.ts:76-77`, `:85`, `:141-142`.
+- **What is wrong:**
+  - With `channelReportQuestionId` null, it falls back to `response.answers[0]`, loaded with no `orderBy`, so the row is unpredictable.
+  - That answer may come from a gift, price or NPS question, or be the buyer's free text.
+  - A yes/no answer shows the raw value "yes".
+  - Text, NPS and rating answers produce `found:false`.
+
+### L42. Admin block server errors show as "no answer recorded" [SYNC] — CONFIRMED
+- **Where:** `app/routes/api.admin-survey-context.tsx:102-110`; `extensions/shared/src/admin-response-block.tsx:70-74`.
+- **What is wrong:**
+  - A DB or Shopify failure returns 200 `{found:false}`.
+  - 401 and 429 responses also end as "No survey answer recorded", which tells the merchant something false.
+  - Responses are sent without `Content-Type: application/json`.
+
+### L43. Smart-action tags can carry internal row ids instead of option keys [SYNC] — CONFIRMED
+- **Where:** `app/lib/sync.server.ts:338-341`; `shared/templates/smart-actions.ts:306-309`.
+- **Scenario:** a merchant adds "TikTok" to a template survey. The new option has `templateKey = null`, so the buyer's order is tagged `found:cm2x9…` (a cuid).
+
+### L44. The inline Thank-you sync always runs before the order exists [SYNC] — PLAUSIBLE
+- **Where:** `app/lib/answers.server.ts:377`; `app/lib/sync.server.ts:450-602`.
+- **What is wrong:** every kind fails on the first try, because the order is not known yet. This wastes Admin API calls and uses up one of the 5 `MAX_SYNC_ATTEMPTS`.
+
+### L45. Queued sync work only drains while the merchant is in the admin, or when an order webhook arrives [SYNC] — CONFIRMED
+- **Where:** `app/lib/sync.server.ts:716-734`, called only from `app._index.tsx:65` and `app.dashboard.tsx:59`.
+- **What is wrong:** each sweep drains at most 10 rows, at most once every 5 minutes per process.
+- **Scenario:** after a store-wide outage leaves a backlog, rows older than 7 days are dropped silently (`sync_dropped_stale`).
+
+### L46. The 2-minute sync lease can run out during slow, throttled work [SYNC] — PLAUSIBLE
+- **Where:** `app/lib/sync.server.ts:73`, `:695-703`.
+- **What is wrong:**
+  - Up to 4 attempts × 20s, plus sleeps, is about 130s for one call, and the customer and metafield kinds make two calls.
+  - Another drainer then reclaims the row.
+  - The failure update does not check the lease, so a stale drainer can overwrite the new owner's schedule.
+
+### L47. The Flow "Channel label" can contain line breaks and the buyer's free text [SYNC] — PLAUSIBLE
+- **Where:** `app/lib/sync.server.ts:578-581`.
+- **What is wrong:** for an "Other" answer, raw buyer text (up to 500 characters, newlines kept) is sent into a `single_line_text_field`. `singleLine()` is not applied, and anything the buyer typed (an email or phone number) flows into the merchant's workflows.
+
+### L48. Metafield writes fail permanently on a type conflict or duplicate key [SYNC] — PLAUSIBLE
+- **Where:** `app/lib/sync.server.ts:486-555`; `shared/templates/smart-actions.ts:182-193`.
+- **What is wrong:**
+  - Every value is written as `single_line_text_field`, including the numeric `reorder_window_days`.
+  - A merchant definition with another type on that key, or a merchant metafield that duplicates a preset's namespace and key in the same atomic `metafieldsSet`, fails the whole batch, order metafields included.
+  - The batch is retried 5 times and then given up.
+  - The namespace `sourcetrac` is merchant-owned, not app-reserved (`$app:`).
+
+### L49. Several editor problems [EDIT] — CONFIRMED unless noted
+- **Live-survey limit blocks saving a paused survey.** `app/routes/app.surveys.$id.tsx:95`, `:292-298`, `:602`. At the limit, `fits_plan` disables "Save and publish" even for a paused survey, so a Free shop cannot fix a typo in it. The save bar's Save button ignores the block.
+- **Drafts undo an explicit null.** `app/lib/surveys.server.ts:269`, `:272`. `draft.intro ?? published.intro` and the same for `channelReportQuestionId` turn the merchant's "cleared" back into the published value, and the next save re-posts it.
+- **Order-value min above max is accepted.** `app/lib/surveys.server.ts:662-667`. The survey then shows to nobody.
+- **Order-value currency can be wrong** (PLAUSIBLE). `app/routes/app.surveys.$id.tsx:86`; `app/components/survey-settings-panels.tsx:101-102`. A failed shop-display lookup falls back to "USD", and the backstop at `:183-187` only fills a missing currency. On an EUR store the rule then never matches.
+- **After a downgrade, a grandfathered advanced rule can only be kept or removed** (`surveys.server.ts:886-888`). Narrowing it is refused. `shopify_actions` is compared by `JSON.stringify`, so a different key order is refused too (key order is PLAUSIBLE).
+- **Expected errors and crafted input reach the generic 500 screen.**
+  - An unknown survey id gives `NotFoundError` as a 500 (`app.surveys.$id.tsx:73`).
+  - Missing or bad `survey` JSON becomes a 500 (`:171`, `:178`); a body of `"null"` is a TypeError (`:183`).
+  - `layout` is never validated (`surveys.server.ts:625-750`, `:979`, `:1074`).
+  - A non-string `title` throws in `textTooLong` (`shared/survey-rules.ts:533`).
+  - A delete racing a delete is P2025 (`surveys.server.ts:1218`, `:1228`).
+- **Duplicate question ids are not rejected** (`shared/survey-rules.ts:578-681`; `surveys.server.ts:543-545`, `:585`). One question is silently lost, and a reused option id can remap a follow-up condition to the wrong option.
+- **The compiled-config size limit is enforced only in the browser** (`shared/templates/readiness.ts`; `surveys.server.ts:1380-1383`). The server's check compares the whole multi-survey config against a per-survey limit.
 
 ---
 
 ## Info
 
-- [x] **I2:** `markUnverifiedFailedResponses` (`app/lib/answers.server.ts:480-486`) has no `shopId` filter and no `orderId IS NOT NULL` filter. It runs only from `api.survey-config.tsx:84` (the legacy route), not on a dashboard visit as the project notes claim. It also flags order-less on-site/link answers. (CONFIRMED)
-- [x] **I5:** `app/routes/app.dashboard.tsx:79` vs `:87`: two `new Date()` calls can straddle UTC midnight and shift the trend by a day. (PLAUSIBLE)
-- [x] **I6:** `app/lib/compliance.server.ts:73-79`: the data-request channel breakdown reads only legacy `SurveyResponse`, while the total includes v2. (CONFIRMED)
-- [x] **I8:** `app/lib/crypto.server.ts:72`: `safeEqual` leaks the secret length. Also, `/readyz` (`app/routes/readyz.tsx:23`) shares `RETENTION_JOB_SECRET` with the data-deleting `/jobs/retention`. (CONFIRMED)
-- [x] **I9:** `app/routes/jobs.retention.ts:20-28`: an unset secret returns a distinctive `503 not_configured`, not the 404 its comment promises. (CONFIRMED)
-- [x] **I11:** `app/lib/order-backfill.server.ts:83`: the `lastAttempt` map is never pruned. (CONFIRMED)
-- [x] **I14:** `app/routes/api.survey-responses.tsx:139`: `surveyVersion` stores the current version, not the one the buyer answered. `productIds`, `country`, `isFirstOrder` and `customerId` are never sent or stored, so "results by product" is always empty. (CONFIRMED)
-- [x] **I15:** `extensions/shared/src/survey-logic.ts:365` and `:394`: retry logs say "thank-you" on order-status, and `randomizeOptions` is never applied by the extension. (CONFIRMED)
-- [x] **I17:** `app/routes/api.survey.tsx:84`: `alreadyAnswered` checks only v2. A stale v1 client can answer the same order on both paths and count usage twice. (CONFIRMED)
-- [x] **I18:** `shared/templates/smart-actions.ts:97-105`: the "first-order low rating" preset is not gated on first orders. (CONFIRMED)
-- [x] **I19:** `app/lib/sync.server.ts:507-528`: Flow can fire before the order exists, so `order_reference` may not resolve. (PLAUSIBLE)
-- [x] **I20:** Locked answers are never unlocked after an upgrade, and a duplicate submit on a now-paid shop still returns `counted: false` (`app/lib/answers.server.ts:326`, `responses.server.ts:164`). Uninstall records Free as `active` (`shop.server.ts:190-191`), while the Plans sync records it as `expired` (`app.plans.tsx:93`). `ACCEPTED` maps to `expired` (`webhooks.server.ts:591`). (CONFIRMED)
-- [x] **I21:** `app/routes/app.plans.tsx:175-191`: re-choosing the current plan is not blocked server-side and `replacementBehavior` is unset, so duplicate pending charges are possible. (CONFIRMED)
-- [x] **I22:** `app/routes/app.tsx:107`: the shell loader sends the whole shop record (including `subscriptionGid`) to the browser. (CONFIRMED)
-- [x] **I24:** `app/routes/app.language.tsx:22`: the action is not wrapped in `guarded`. (CONFIRMED)
-- [x] **I25:** `app/lib/surveys.server.ts:362`: an absent `revision` skips the concurrency check, so any client can bypass it. (CONFIRMED)
+### I1. The 2-per-token submission cap gives no protection against backstop draining [SUBMIT]
+Failed submits release the slot. See H4. `app/routes/api.survey-responses.tsx:224`.
+
+### I2. Buyers receive merchant settings [SUBMIT]
+`compileSurvey` (`app/lib/surveys.server.ts:1312-1337`) sends buyers the full `targeting` (countries, sample %, `maxResponses`, value bounds), `responseCount`, rotation weights and `channelReportQuestionId`.
+
+### I3. Any buyer token works in the preview route [SUBMIT]
+`/api/survey-preview` (`app/routes/api.survey-preview.tsx:57`, `:65`, `:86-99`) accepts buyer tokens, not only editor tokens, and returns draft or paused surveys by id. Its shop-wide key `survey-preview:<shop>` can be drained, which leaves the merchant's checkout-editor preview retrying.
+
+### I4. An empty `placement` passes validation [SUBMIT]
+`app/routes/api.survey.tsx:76`: `placement=` passes validation and is treated as "not_on_page" (`??` does not catch an empty string).
+
+### I5. Recent checkouts can be flooded with forged order ids [SUBMIT]
+`app/routes/api.survey.tsx:230`; `app/lib/serve-log.server.ts:153`, `:178-184`. Only 20 rows are kept per shop, so forged entries push out the merchant's real diagnostics.
+
+### I6. "None of these" can never be the only answer on some questions [SUBMIT]
+On a multi-choice question with `minSelections ≥ 2`, an exclusive "None of these" can never be the only answer. Client and server agree, so nothing is lost, but the buyer is blocked.
+
+### I7. The bot-filter 410 has no CORS header and is retried for 60s [SUBMIT]
+`app/lib/checkout-auth.server.ts:297`; `extensions/shared/src/survey-logic.ts:212`.
+
+### I8. Order-id assumption not verified [SUBMIT] (PLAUSIBLE)
+`orderIdSchema` (`app/lib/settings.ts:339-367`) assumes the number in `gid://shopify/OrderIdentity/<n>` equals the REST order id stored by `orders/create`. If it does not, Thank-you answers never reconcile.
+
+### I9. Webhook headers are not signed [ORD]
+Shopify's HMAC covers only the body. The shop-domain, webhook-id and triggered-at headers are unsigned, so a captured signed `orders/*` body could be replayed against another shop with a fresh webhook id. Bodies are not logged or stored, so the risk is low. `app/routes/webhooks.tsx:40`, `:55`.
+
+### I10. De-duplication keys on webhook id, not event id [ORD]
+One event delivered through two subscriptions is processed twice. The handlers are idempotent. `app/lib/webhooks.server.ts:144-213`.
+
+### I11. Zero-decimal currency rounding, and silent overflow in currency sums [ORD]
+- A zero-decimal currency with cents (ISK `"1990.50"`) is rounded half-up, so it can differ from Shopify's figure by up to one unit (`app/lib/money.ts:83-91`).
+- `rollupByCurrency` silently skips a sum that is not a safe integer, with no log (`app/lib/revenue.ts:104`).
+
+### I12. Comment disagrees with the revenue decision, and a snapshot fallback skips test and cancelled checks [ORD, REP]
+- `app/lib/survey-analytics.server.ts:183-188`: the comment says `verified === false` excludes revenue, but the code never reads `verified`.
+- The snapshot fallback (`:203-211`) hard-codes `isTest:false`. Its answer reads "counted" but is never summed, because `summariseSurvey` and `buildBreakdowns` (`:367`, `:501`) require `response.order`.
+
+### I13. Pending and authorized orders count as revenue [ORD]
+They count until a later update voids them (`app/lib/revenue.ts:49-73`). This is a policy choice, but merchants may read it as captured revenue.
+
+### I14. Ledger rows outlive `shop/redact` [GDPR]
+Compliance and shopless ledger rows are stored with `shopId` null, so the shop/redact cascade does not remove them. They hold no payload and age out in 30 days. `app/routes/webhooks.tsx:105`, `:120`.
+
+### I15. `customers/redact` deletes whole days of `SurveyDailyStats` [GDPR]
+It removes other buyers' counts too (`app/lib/compliance.server.ts:331-336`). Nothing reads the table today.
+
+### I16. 24-month retention is 730 days [GDPR]
+`app/lib/retention.server.ts:27`. `RedactedOrder` tombstones also expire then, after which a late `orders/updated` could re-cache that order.
+
+### I17. Plan status inconsistencies [BILL]
+- After a Plans-page reconcile the `plan` column can flip back to `growth`, `cancelled` (`app.plans.tsx:114-118` with `webhooks.server.ts:647-655`).
+- A late CANCELLED from a previous install matches `subscriptionGid: null` after a reinstall (`webhooks.server.ts:651`).
+- FROZEN is overwritten as `expired` (`app.plans.tsx:116`).
+- `planDisplayName` is never updated on a reconcile.
+
+### I18. The confirmation-URL check accepts any `*.myshopify.com` host [BILL]
+It does not check that the host is the merchant's own shop. The URL only ever comes from Shopify. `app/lib/billing-redirect.ts:23`.
+
+### I19. The shell plan badge goes stale [BILL]
+It does not update after a webhook plan change until a form submit or a full reload (`app/routes/app.tsx:156-161`, `shouldRevalidate`).
+
+### I20. `verifyIdToken` decodes leniently and throws the wrong error type [AUTH]
+- The signature is decoded with Node's permissive base64.
+- A JSON `null` header or payload throws `TypeError` instead of `IdTokenError`, so the route logs a server error rather than returning 401.
+
+`app/lib/id-token.server.ts:55`, `:91-99`.
+
+### I21. The library logs on every token exchange [AUTH]
+See the Step 1 package table (`shopify-app-react-router` 3.0.1).
+
+### I22. `requiresFirstOrder` presets trust the client [SYNC]
+They use the `isFirstOrder` value from the request body (`app/routes/api.survey-responses.tsx:70`, `:179`; `shared/templates/smart-actions.ts:378`).
+
+### I23. Editor smaller items [EDIT]
+- Pause and activate ignore the posted revision (`app.surveys.$id.tsx:154-160`, `:192`; `surveys.server.ts:1191-1221`).
+- The channel-report question's type is not checked on the server (`surveys.server.ts:1008-1018`, `:1107-1118`). On multi_choice only the first pick is counted (`analytics-queries.server.ts:134-149`), and on yes_no "yes" and "no" become channels.
+- Relabelling an option moves its whole history to the new label with no warning (`surveys.server.ts:570-572`).
+- `validateSurveySettings` and `readIndexedOptions` are dead code (`app/lib/settings.ts:189-275`, `:383-395`).
+- Deleting a survey cascades away all its revenue history behind a two-tap confirm (`surveys.server.ts:1223-1231`).
+- Rotation and Learn & stop keep running after a downgrade (`surveys.server.ts:1312-1334`; `api.survey.tsx:212-213`; `answers.server.ts:350`).
+- The save bar posts even when readiness blocks going live (`unsaved-changes.tsx:95`).
+
+### I24. Reporting precision, ordering and denominator issues [REP]
+- The dashboard's "Top channel" badge ranks by answers, while the channel report ranks by revenue (`app/components/dashboard.tsx:220`; `app/lib/analytics.ts:168`, `:279-300`).
+- `pickTopChannel` compares raw minor units across currencies (`analytics.ts:285-288`).
+- The Results CSV ignores the on-screen date range (`app.results.tsx:240`; `app.results_.csv.tsx:31-38`).
+- Responses pagination has no id tiebreaker (`survey-analytics.server.ts:100`).
+- The dashboard reads archived questions as live (`dashboard.server.ts:287-299`), and `scores.asks` counts archived questions and paused surveys.
+- The channel response rate is inflated for days before install (`analytics-queries.server.ts:265-303` with `order-backfill.server.ts:146-170`).
+- Exports print the raw id `other` instead of a label (`answer-text.ts:206`; `survey-export.server.ts:59-62`; `app.responses.tsx:62-67`).
+
+### I25. Export size and performance [REP]
+- The all-surveys export caps responses, not rows, at 50,000, so a file can hold about 250,000 rows while `X-SourceTrac-Row-Limit` says 50,000. The whole file is also built in memory (`survey-export.server.ts:66-77`, `:120-146`; `app.export_.csv.tsx:69-75`).
+- Survey shapes are loaded one survey at a time (`survey-export.server.ts:123-125`).
+- The Results loader runs one correlated-EXISTS count per survey on every load (`app.results.tsx:117`).
+- The hourly `maybeMarkUnreconcilable` runs an unbounded UPDATE across every shop (`answers.server.ts:562-574`).
+
+### I26. Smaller reporting inconsistencies [REP]
+- `formatDecimalForCurrency` formats through a float (`money.ts:293-305`).
+- Results sends minor-unit integers to the browser (`app.results.tsx:177`).
+- The Results buyer counts include order-less answers, while the Dashboard's `buyerMix` excludes them.
+- Out-of-range numeric answers get bars but are ignored by the scores.
+
+### I27. Queued redactions stay visible in exports for up to a day [REP]
+Deferred redactions stay visible in CSV, Results and Responses until a dashboard visit or the daily job drains them. That is within Shopify's 30-day deadline.
+
+---
+
+## Checked and found sound
+
+Reported by the traces as verified, not findings:
+
+- **Auth:**
+  - Shop identity always comes from the verified session token `dest`, the ID token or the webhook header, never from a body or query field.
+  - Every `app.*` loader and action calls `authenticate.admin`.
+  - The checkout auth wrapper adds CORS on every path.
+  - The ID token is verified with HS256, a constant-time compare, and checks on `exp`, `nbf`, `aud` and `iss`.
+  - AES-GCM uses a 12-byte random IV and checks the tag.
+- **Shop scoping:** every Prisma and raw SQL read in reporting and export filters by `shopId`, and survey ids from the URL are resolved against the shop's own surveys.
+- **Webhooks:**
+  - Insert-first idempotency re-claims only failed or abandoned rows, and an in-flight duplicate gets 503.
+  - The `updatedAtShop` ordering guard has a `triggeredAt` tie-break.
+  - A cancellation is never cleared.
+  - Out-of-order create, update and cancel are handled.
+  - An unparseable total never becomes $0.00.
+  - Topic names are normalised.
+- **Revenue:** never summed across currencies; AOV is per currency; null rates and scores are never shown as 0; periods are UTC and half-open.
+- **CSV:** formula injection (including after leading whitespace), RFC 4180 quoting, BOM and CRLF are all handled.
+- **Billing:**
+  - A paid plan needs an ACTIVE charge read live from Shopify.
+  - Test charges do not grant a plan on real stores.
+  - A failed read keeps the stored plan.
+  - Prices are integer minor units.
+  - Usage increments are atomic, and the cap only flags answers, never hides them.
+- **GDPR:**
+  - Every shop-scoped table cascades on `shop/redact`.
+  - Redaction is scoped by the verified shop's internal id.
+  - Compliance handler failures return 500.
+  - `/healthz` touches no database, and `/readyz` and `/jobs/retention` use `timingSafeEqual`.
+- **Sync:**
+  - `userErrors` are checked on `tagsAdd`, `metafieldsSet` and `flowTriggerReceive`.
+  - `hasScope` uses an exact match.
+  - The customer query only interpolates digits.
+  - The Flow payload keys match the TOML.
+- **Editor:**
+  - All survey lookups are scoped by `shopId`.
+  - Follow-up conditions can only point at earlier questions.
+  - `claimRevision` is atomic.
+  - Survey creation and activation limits run under an advisory lock.
