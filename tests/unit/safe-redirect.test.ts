@@ -16,6 +16,10 @@ describe("safeInternalPath", () => {
     "/\n/evil.com",
     "https://evil.com",
     "evil.com",
+    // Dot segments resolve to the protocol-relative `//evil.com` (M1).
+    "/..//evil.com",
+    "/.//evil.com",
+    "/%2e%2e//evil.com",
   ])("rejects %j", (value) => {
     // Browsers read a backslash as `/` and strip tabs and newlines, so each of these
     // can become a protocol-relative URL to another host.

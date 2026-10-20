@@ -188,7 +188,7 @@
     "status_frozen": "Frozen",
     "status_expired": "Expired",
     "cancel_title": "Cancel your plan?",
-    "cancel_body": "Your answers stay saved and your survey keeps working. You lose unlimited responses.",
+    "cancel_body": "Your answers stay saved. Shopify credits the unused part of your billing period. On Free only your top live survey keeps showing to buyers, Shopify tags, metafields and Flow stop, and answers past {{cap}} this month are kept but marked over the limit.",
     "cancel_confirm": "Cancel plan",
     "keep_plan": "Keep my plan",
     "not_available": "Billing is unavailable right now. Please try again shortly.",
@@ -202,7 +202,6 @@
     "feature_unlimited": "Unlimited answers, no monthly limit",
     "feature_everything_free": "Everything in Free, plus:",
     "feature_everything_growth": "Everything in Growth, plus:",
-    "feature_priority_support": "Priority email support",
     "billing_title": "How billing works",
     "billing_body": "Charges appear on your Shopify invoice alongside your other app subscriptions. SourceTrac never stores your card details — Shopify handles the payment and tells us when a subscription starts, changes or ends.",
     "msg_shopify_unreachable": "We could not reach Shopify to manage billing. Reopen the app from Shopify admin and try again.",
@@ -210,7 +209,7 @@
     "msg_opening_approval": "Opening Shopify so you can approve the charge…",
     "msg_already_free": "You are already on the Free plan.",
     "msg_cancel_failed": "Shopify could not cancel the subscription: {{error}}",
-    "msg_cancelled": "Subscription cancelled. You are back on the Free plan with {{cap}} responses a month.",
+    "msg_cancelled": "Subscription cancelled. You are back on the Free plan with {{cap}} responses a month; answers already collected this month count toward it.",
     "msg_subscribe_failed": "Shopify could not start the subscription: {{error}}",
     "msg_subscription_created": "Subscription created. If you were not sent to a confirmation page, check the billing page in your Shopify admin.",
     "msg_plan_unavailable": "That plan is not available.",
@@ -232,13 +231,13 @@
     "save_percent": "Save {{percent}}% with yearly",
     "switch_yearly": "Switch to yearly billing",
     "switch_monthly": "Switch to monthly billing",
-    "yearly_note": "Yearly billing costs {{percent}}% less than paying monthly and is charged once a year. Switching between monthly and yearly replaces your current charge once you approve it in Shopify.",
+    "yearly_note": "Yearly billing costs {{percent}}% less than paying monthly and is charged once a year. An upgrade, or a switch to yearly, replaces your current charge once you approve it in Shopify. A downgrade, or a switch from yearly to monthly, starts when your current billing period ends.",
     "feature_live_surveys_one": "{{count}} live survey at a time",
     "feature_live_surveys_other": "Up to {{count}} live surveys at a time",
     "feature_follow_ups": "Follow-up questions, and surveys for first-time or returning buyers",
     "feature_targeting": "Show a survey by order value, country, share of buyers or dates, and stop after a set number of answers",
     "feature_automation": "Stop a survey on its own once the answer is clear, and rotate several surveys",
-    "feature_unlimited_surveys": "Unlimited live surveys",
+    "feature_unlimited_surveys": "All your surveys live at once (up to {{count}})",
     "save_up_to": "Save up to {{amount}} a year",
     "yearly_nudge": "Or {{price}} a month with yearly billing, saving {{amount}} a year",
     "was_price": "Regular price",
@@ -250,7 +249,10 @@
     "msg_billing_not_enabled": "Shopify billing is not switched on for this app yet. In the Partner Dashboard, open Apps, then SourceTrac, then Distribution, and choose Public distribution. After that, paid plans can be approved here (as free test charges on a development store).",
     "choose_plan_yearly": "Choose {{plan}}, billed yearly",
     "choose_plan_yearly_instead": "Or pay yearly: {{price}} a year",
-    "choose_plan_monthly_instead": "Or pay monthly: {{price}} a month"
+    "choose_plan_monthly_instead": "Or pay monthly: {{price}} a month",
+    "msg_already_scheduled": "You already approved this change. It starts when your current billing period ends.",
+    "scheduled_change": "Your switch to {{plan}} is approved and starts on {{date}}, when your current billing period ends.",
+    "scheduled_change_no_date": "Your switch to {{plan}} is approved and starts when your current billing period ends."
   },
   "help": {
     "title": "Help",
@@ -572,7 +574,9 @@
     "check_block_buyer": "{{page}}: the SourceTrac block loaded for a buyer {{when}}.",
     "check_block_placed": "{{page}}: the SourceTrac block is added (seen {{when}}), but no buyer's page has loaded it yet. Place a test order to confirm.",
     "check_new_order": "Each order is asked only once. Test with a new order, then see “Recent checkouts” below for what happened.",
-    "check_block_never_order_status": "Order status page: the SourceTrac block hasn't loaded here yet. In the checkout editor, choose Order status from the page menu, add the “SourceTrac survey” block and press Save. The page is in the menu only if your store uses new customer accounts."
+    "check_block_never_order_status": "Order status page: the SourceTrac block hasn't loaded here yet. In the checkout editor, choose Order status from the page menu, add the “SourceTrac survey” block and press Save. The page is in the menu only if your store uses new customer accounts.",
+    "validation_currency_unavailable": "Your store's currency could not be read just now. Try saving again in a moment.",
+    "validation_order_value_range": "The maximum order value must be at least the minimum."
   },
   "templates": {
     "nps": {
@@ -747,7 +751,9 @@
     "publish": "Publish changes",
     "discard": "Discard draft",
     "conflict": "This survey changed in another window. Reload to see the latest version.",
-    "status_no_block": "Not in checkout yet"
+    "status_no_block": "Not in checkout yet",
+    "conflict_kept": "Your unsaved changes are still here and were not saved. Copy what you need, then load the latest version to edit it.",
+    "conflict_load_latest": "Load the latest version"
   },
   "confidence": {
     "too_early": "Too early",

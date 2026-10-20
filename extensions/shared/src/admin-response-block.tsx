@@ -41,6 +41,7 @@ export function AdminResponseBlock({
   context,
   heading,
   missing,
+  unavailable,
   loading: loadingLabel,
   foundPrefix,
 }: {
@@ -49,11 +50,14 @@ export function AdminResponseBlock({
   context: AdminContext;
   heading: string;
   missing: string;
+  /** Shown when the lookup failed (auth, rate limit, server): not "no answer". */
+  unavailable: string;
   loading: string;
   foundPrefix: string;
 }) {
   const [loading, setLoading] = useState(true);
   const [answer, setAnswer] = useState<AdminAnswer | null>(null);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,16 +66,17 @@ export function AdminResponseBlock({
         // Inside the try: a rejected `idToken()` used to leave the block
         // spinning forever.
         const token = await getToken();
-        if (!token) return;
+        if (!token) throw new Error("No ID token");
         const res = await fetch(`${apiUrl}/api/admin-survey-context`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify(context),
         });
-        const result = res.ok ? ((await res.json()) as AdminAnswer) : null;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const result = (await res.json()) as AdminAnswer;
         if (!cancelled) setAnswer(result);
       } catch {
-        if (!cancelled) setAnswer(null);
+        if (!cancelled) setFailed(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -85,6 +90,8 @@ export function AdminResponseBlock({
     <s-admin-block heading={heading}>
       {loading ? (
         <s-text>{loadingLabel}</s-text>
+      ) : failed ? (
+        <s-text>{unavailable}</s-text>
       ) : answer && answer.found && answer.channelLabel ? (
         <s-text>
           {foundPrefix} <s-text type="strong">{answer.channelLabel}</s-text>

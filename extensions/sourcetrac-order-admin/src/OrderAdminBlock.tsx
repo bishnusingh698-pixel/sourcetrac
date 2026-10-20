@@ -43,6 +43,7 @@ function OrderBlock() {
       heading={t("heading", "SourceTrac attribution")}
       loading={t("loading", "Checking for a survey answer…")}
       missing={t("missing_order", "No survey answer recorded for this order.")}
+      unavailable={t("unavailable", "Couldn't check for a survey answer right now. Reload the page to try again.")}
       foundPrefix={t("found_prefix", "How they heard about us:")}
     />
   );

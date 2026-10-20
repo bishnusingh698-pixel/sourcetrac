@@ -35,6 +35,7 @@ const bodySchema = z
 function corsHeaders(init: ResponseInit = {}): ResponseInit {
   const headers = new Headers(init.headers);
   headers.set("Access-Control-Allow-Origin", "*");
+  headers.set("Content-Type", "application/json");
   // The block sends `Authorization` and a JSON `Content-Type`, neither of which
   // is CORS-safelisted, so the preflight must allow them or the browser never
   // sends the POST.
@@ -84,7 +85,9 @@ export const action = async ({ request }: { request: Request }) => {
 
     const accessToken = await getAccessToken(shop.id);
     if (!accessToken) {
-      return new Response(JSON.stringify({ found: false }), corsHeaders());
+      // Without a token the customer's orders cannot be read: that is "could
+      // not check", not "no answer".
+      return new Response(JSON.stringify({ found: false, error: "unavailable" }), corsHeaders({ status: 503 }));
     }
     const result = await lookupByCustomer({
       shopId: shop.id,
@@ -105,8 +108,9 @@ export const action = async ({ request }: { request: Request }) => {
       request_id: requestId,
       error_message: error instanceof Error ? error.message : String(error),
     });
-    // Always a valid CORS body, even on failure: the block shows "no answer"
-    // rather than an opaque network error.
-    return new Response(JSON.stringify({ found: false }), corsHeaders({ status: 200 }));
+    // Always a valid CORS body, even on failure, and an error status: the block
+    // says it could not check, never "no answer recorded" for an answer that
+    // may well exist.
+    return new Response(JSON.stringify({ found: false, error: "server_error" }), corsHeaders({ status: 500 }));
   }
 };

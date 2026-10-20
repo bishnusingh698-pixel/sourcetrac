@@ -49,6 +49,23 @@ function isRejectedBeforeRunning(error: unknown): boolean {
   return error instanceof ShopifyThrottledError && error.message.startsWith("429");
 }
 
+/**
+ * Whether a failed call may still have run on Shopify's side: a 5xx, a timeout,
+ * or a connection that dropped after the request was sent. A 4xx, a throttle, a
+ * GraphQL error or userErrors mean Shopify did not do the work.
+ */
+export function mayHaveRun(error: unknown): boolean {
+  if (error instanceof ShopifyThrottledError) return error.message.startsWith("Upstream");
+  if (error instanceof ShopifyGraphQLError) return false;
+  if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) return true;
+  if (error instanceof TypeError) {
+    // fetch failed: only a refused or unresolved connection certainly never sent the request.
+    const code = (error.cause as { code?: unknown } | undefined)?.code;
+    return !(code === "ECONNREFUSED" || code === "ENOTFOUND" || code === "EAI_AGAIN");
+  }
+  return false;
+}
+
 export function isThrottle(error: unknown): boolean {
   if (error instanceof ShopifyThrottledError) return true;
   return error instanceof ShopifyGraphQLError && error.errors.some((e) => e.extensions?.code && THROTTLE_CODES.has(e.extensions.code));

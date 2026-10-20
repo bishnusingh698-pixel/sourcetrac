@@ -65,9 +65,18 @@ function midnightIn(ymd: string, zone: string): Date | null {
   const [y, m, d] = [Number(match[1]), Number(match[2]), Number(match[3])];
   const wall = Date.UTC(y, m - 1, d);
   if (Number.isNaN(wall) || new Date(wall).getUTCDate() !== d) return null;
-  let guess = wall - offsetMs(new Date(wall), zone);
-  guess = wall - offsetMs(new Date(guess), zone);
-  return new Date(guess);
+  const first = wall - offsetMs(new Date(wall), zone);
+  const second = wall - offsetMs(new Date(first), zone);
+  // Normally both passes agree. Where midnight is skipped they straddle the
+  // change, and one lands an hour early on the previous day: take the earliest
+  // candidate that is really on `ymd` in the zone.
+  const onDay = [first, second]
+    .filter((candidate) => {
+      const p = partsIn(new Date(candidate), zone);
+      return p.y === y && p.m === m && p.d === d;
+    })
+    .sort((a, b) => a - b);
+  return new Date(onDay[0] ?? second);
 }
 
 function addDays(ymd: string, days: number): string {

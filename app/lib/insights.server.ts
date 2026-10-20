@@ -28,16 +28,32 @@ import {
 } from "@shared/templates/stats";
 
 import type { SurveyResponseRow } from "~/lib/survey-analytics.server";
+import { OTHER_CHANNEL_VALUE } from "@shared/survey-rules";
 
 /** Map a stored question to the pure stats shape. Archived options stay in, so
  *  a removed option still appears in results with its past answers. */
 export function statsQuestions(
-  questions: ReadonlyArray<{ id: string; type: string; options: ReadonlyArray<{ id: string; label: string; archived: boolean }> }>,
+  questions: ReadonlyArray<{
+    id: string;
+    type: string;
+    allowOther?: boolean;
+    options: ReadonlyArray<{ id: string; label: string; archived: boolean; isOther?: boolean }>;
+  }>,
+  /** Questions whose answers include the built-in "Other". */
+  otherAnswered: ReadonlySet<string> = new Set(),
 ): StatsQuestion[] {
   return questions.map((q) => ({
     id: q.id,
     type: q.type,
-    options: q.options.map((o) => ({ id: o.id, label: o.label, archived: o.archived })),
+    options: [
+      ...q.options.map((o) => ({ id: o.id, label: o.label, archived: o.archived })),
+      // The built-in "Other" can be the top answer too, also from answers
+      // given before free text was switched off.
+      ...((q.allowOther || otherAnswered.has(q.id)) && !q.options.some((o) => o.isOther)
+        ? // No stored label: the page names it in the merchant's language.
+          [{ id: OTHER_CHANNEL_VALUE, label: "", archived: false }]
+        : []),
+    ],
   }));
 }
 
@@ -92,13 +108,19 @@ export function buildSurveyInsights(params: {
     type: string;
     text: string;
     templateKey?: string | null;
-    options: ReadonlyArray<{ id: string; label: string; archived: boolean }>;
+    allowOther?: boolean;
+    options: ReadonlyArray<{ id: string; label: string; archived: boolean; isOther?: boolean }>;
   }>;
   templateId: string | null;
   locale: string;
   productTitles?: Record<string, string>;
 }): SurveyInsights {
-  const questions = statsQuestions(params.questions);
+  const otherAnswered = new Set(
+    params.responses.flatMap((response) =>
+      response.answers.filter((a) => a.optionIds.includes(OTHER_CHANNEL_VALUE)).map((a) => a.questionId),
+    ),
+  );
+  const questions = statsQuestions(params.questions, otherAnswered);
   const labels = optionLabels(questions);
   const responses = params.responses.map(toStatsResponse);
   const template = params.templateId ? templateById(params.templateId) : undefined;

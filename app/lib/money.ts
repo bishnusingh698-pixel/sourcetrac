@@ -187,11 +187,16 @@ export function formatDecimalForCurrency(value: DecimalLike, currency: CurrencyC
   const raw = value.toString();
   if (raw === "") return null;
 
+  // Exactly, through integer minor units: a float loses digits on large totals
+  // (fifteen integer digits are allowed) and rounds some halves the wrong way.
+  const parsed = parseMoneyToMinor(raw, currency);
+  if (parsed.ok) return minorToDecimalString(parsed.minor, currency);
+
+  // A value with more precision than the currency has (never written by the
+  // app, but readable from older rows) is rounded for display, as before.
   const decimals = minorUnitDigits(currency);
   const numeric = Number(raw);
   if (!Number.isFinite(numeric)) return null;
-
-  // toFixed is safe up to 100 fractional digits; currencies never exceed 3.
   return numeric.toFixed(decimals);
 }
 

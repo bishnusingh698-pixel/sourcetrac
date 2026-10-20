@@ -796,7 +796,10 @@ export function validateResponse(
         }
         const min = question.minSelections ?? null;
         const max = question.maxSelections ?? null;
-        if (min !== null && unique.length < min) {
+        // An exclusive option ("None of these") is a complete answer on its
+        // own, whatever the minimum: it cannot be combined with anything.
+        const onlyExclusive = unique.length === 1 && exclusiveChosen.length === 1;
+        if (min !== null && unique.length < min && !onlyExclusive) {
           errors.push(issue(base, "min_selections", MESSAGES.min_selections(min)));
         }
         if (max !== null && unique.length > max) {
@@ -905,6 +908,9 @@ export function normalizeResponseAnswers(
     if (!isQuestionVisible(question, answersSoFar)) continue;
     if (!answer) continue;
     const projected = projectAnswer(question, answer);
+    // A skipped question sent as an empty entry is no answer at all: storing
+    // it added an empty row to the question's totals.
+    if (!hasContent(projected)) continue;
     kept.push(projected);
     answersSoFar.push(projected);
   }

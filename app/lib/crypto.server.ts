@@ -47,6 +47,17 @@ export function encryptSecret(plaintext: string): EncryptedValue {
  * crash-looping on a corrupt row.
  */
 export function decryptSecret(value: EncryptedValue | null | undefined): string | null {
+  return decryptSecretWithKey(value)?.plaintext ?? null;
+}
+
+/**
+ * `decryptSecret`, also saying whether the key being rotated out was needed,
+ * so the caller can re-seal the value with the current key before that key is
+ * removed.
+ */
+export function decryptSecretWithKey(
+  value: EncryptedValue | null | undefined,
+): { plaintext: string; usedPreviousKey: boolean } | null {
   if (!value?.ciphertext || !value.iv || !value.tag) return null;
 
   const iv = Buffer.from(value.iv, "base64");
@@ -54,15 +65,16 @@ export function decryptSecret(value: EncryptedValue | null | undefined): string 
   if (iv.length !== IV_LENGTH || tag.length !== TAG_LENGTH) return null;
 
   // GCM authenticates, so a wrong key fails cleanly and the next one is tried.
-  for (const candidate of decryptionKeys()) {
+  const keys = decryptionKeys();
+  for (let index = 0; index < keys.length; index += 1) {
     try {
-      const decipher = createDecipheriv(ALGORITHM, candidate, iv);
+      const decipher = createDecipheriv(ALGORITHM, keys[index]!, iv);
       decipher.setAuthTag(tag);
       const plaintext = Buffer.concat([
         decipher.update(Buffer.from(value.ciphertext, "base64")),
         decipher.final(),
       ]);
-      return plaintext.toString("utf8");
+      return { plaintext: plaintext.toString("utf8"), usedPreviousKey: index > 0 };
     } catch {
       // Try the next key.
     }

@@ -2,7 +2,7 @@ import { db, isRetryableDbError } from "~/db.server";
 import { logger } from "~/lib/logger";
 import { withRetry } from "~/lib/retry.server";
 import { channelCountsForShop } from "~/lib/analytics-queries.server";
-import { findShopByDomain } from "~/lib/shop.server";
+import { findShopByDomain, lastKnownInstalledAt } from "~/lib/shop.server";
 
 /**
  * GDPR / CCPA mandatory webhook handlers.
@@ -29,6 +29,19 @@ export type DataRequestRecord = {
   submittedAt: string;
   /** Question text -> the answer as the buyer gave it (option label or text). */
   answers: Array<{ question: string; answer: string }>;
+  /** What the checkout reported with the answer (country, language, products, first order). */
+  details?: Record<string, string>;
+};
+
+/** Everything else held for one named order, outside the answers. */
+export type DataRequestOrderData = {
+  orderId: string;
+  /** From the order webhook: total, currency, status, dates. */
+  order?: Record<string, string>;
+  /** The first-order flag the Thank-you page reported. */
+  isFirstOrder?: boolean;
+  /** Checkout page loads recorded for "Recent checkouts". */
+  checkoutLoads?: Array<{ at: string; page: string; country: string | null; outcome: string }>;
 };
 
 export type DataRequestResult = {
@@ -36,6 +49,7 @@ export type DataRequestResult = {
   /** Orders Shopify named that we hold survey answers for. */
   ordersFound: string[];
   records: DataRequestRecord[];
+  orderData: DataRequestOrderData[];
   note: string;
 };
 
@@ -59,11 +73,12 @@ export async function handleDataRequest(params: {
   const shop = await findShopByDomain(params.shopDomain);
 
   if (!shop) {
-    return { shopFound: false, ordersFound: [], records: [], note: "No SourceTrac installation for this shop." };
+    return { shopFound: false, ordersFound: [], records: [], orderData: [], note: "No SourceTrac installation for this shop." };
   }
 
   const requested = [...new Set(params.orderIds ?? [])];
   const records = requested.length > 0 ? await recordsForOrders(shop.id, requested) : [];
+  const orderData = requested.length > 0 ? await orderDataFor(shop.id, requested) : [];
 
   const [responseCount, v2ResponseCount, orderCount, channels] = await Promise.all([
     retryDb(() => db.surveyResponse.count({ where: { shopId: shop.id } })),
@@ -119,13 +134,81 @@ export async function handleDataRequest(params: {
             responseCount: responseCount + v2ResponseCount,
             orderCount,
             records,
+            orderData,
           }),
         },
       }),
     );
   }
 
-  return { shopFound: true, ordersFound, records, note };
+  return { shopFound: true, ordersFound, records, orderData, note };
+}
+
+/**
+ * The order-level data held for the named orders besides the answers: the
+ * cached order, the Thank-you page's first-order flag and the checkout loads
+ * listed under "Recent checkouts".
+ */
+async function orderDataFor(shopId: string, orderIds: string[]): Promise<DataRequestOrderData[]> {
+  const scope = { shopId, orderId: { in: orderIds } };
+  const [orders, facts, loads] = await Promise.all([
+    retryDb(() =>
+      db.orderCache.findMany({
+        where: scope,
+        select: {
+          orderId: true,
+          orderNumber: true,
+          totalPrice: true,
+          currency: true,
+          financialStatus: true,
+          isTest: true,
+          isCancelled: true,
+          sourceName: true,
+          createdAtShop: true,
+        },
+      }),
+    ),
+    retryDb(() => db.orderFact.findMany({ where: scope, select: { orderId: true, isFirstOrder: true } })),
+    retryDb(() =>
+      db.checkoutLoad.findMany({
+        where: scope,
+        orderBy: { at: "asc" },
+        select: { orderId: true, at: true, placement: true, country: true, reason: true },
+      }),
+    ),
+  ]);
+  const byOrder = new Map<string, DataRequestOrderData>();
+  const entry = (orderId: string) => {
+    const existing = byOrder.get(orderId);
+    if (existing) return existing;
+    const created: DataRequestOrderData = { orderId };
+    byOrder.set(orderId, created);
+    return created;
+  };
+  for (const order of orders) {
+    entry(order.orderId).order = {
+      order: order.orderNumber ?? order.orderId,
+      total: order.totalPrice?.toString() ?? "",
+      currency: order.currency,
+      financialStatus: order.financialStatus ?? "",
+      test: String(order.isTest),
+      cancelled: String(order.isCancelled),
+      source: order.sourceName ?? "",
+      placedAt: order.createdAtShop.toISOString(),
+    };
+  }
+  for (const fact of facts) entry(fact.orderId).isFirstOrder = fact.isFirstOrder;
+  for (const load of loads) {
+    if (!load.orderId) continue;
+    const data = entry(load.orderId);
+    (data.checkoutLoads ??= []).push({
+      at: load.at.toISOString(),
+      page: load.placement,
+      country: load.country,
+      outcome: load.reason,
+    });
+  }
+  return [...byOrder.values()].sort((a, b) => a.orderId.localeCompare(b.orderId));
 }
 
 /** Every answer stored for the given orders, legacy and v2, oldest first. */
@@ -144,6 +227,10 @@ async function recordsForOrders(shopId: string, orderIds: string[]): Promise<Dat
           id: true,
           orderId: true,
           createdAt: true,
+          country: true,
+          locale: true,
+          productIds: true,
+          isFirstOrder: true,
           answers: {
             select: {
               optionIds: true,
@@ -170,9 +257,16 @@ async function recordsForOrders(shopId: string, orderIds: string[]): Promise<Dat
     });
   }
   for (const row of v2) {
+    const details: Record<string, string> = {};
+    if (row.country) details.country = row.country;
+    if (row.locale) details.language = row.locale;
+    const products = safeIds(row.productIds ?? "[]");
+    if (products.length > 0) details.products = products.join(", ");
+    if (row.isFirstOrder !== null) details.firstOrder = String(row.isFirstOrder);
     records.push({
       orderId: row.orderId ?? "",
       submittedAt: row.createdAt.toISOString(),
+      ...(Object.keys(details).length > 0 ? { details } : {}),
       answers: row.answers.map((answer) => {
         const labelOf = new Map(answer.question.options.map((option) => [option.id, option.label]));
         const parts: string[] = [];
@@ -328,6 +422,10 @@ async function deleteOrdersForShop(
         AND NOT EXISTS (SELECT 1 FROM "Response" r WHERE r.id = p."responseId")
     `,
   );
+  // A data-request export stored before this redact holds these orders'
+  // answers verbatim (free text included); it must not outlive the redact.
+  await scrubDataRequests(shopId, orderIds);
+
   // SurveyDailyStats aggregates per day and channel, so a day's bucket can
   // describe a single order. Remove the buckets of the days the redacted
   // answers were given on; other days are untouched.
@@ -346,12 +444,59 @@ async function deleteOrdersForShop(
   return { deletedResponses, deletedOrders, deletedV2Responses };
 }
 
+/** Remove the named orders from every stored data-request export of the shop. */
+async function scrubDataRequests(shopId: string, orderIds: string[]): Promise<void> {
+  const redacted = new Set(orderIds);
+  const requests = await retryDb(() =>
+    db.dataRequest.findMany({ where: { shopId }, select: { id: true, payload: true } }),
+  );
+  for (const request of requests) {
+    let payload: { records?: DataRequestRecord[]; orderData?: DataRequestOrderData[]; note?: string } & Record<string, unknown>;
+    try {
+      payload = JSON.parse(request.payload) as typeof payload;
+    } catch {
+      continue;
+    }
+    const records = (payload.records ?? []).filter((record) => !redacted.has(record.orderId));
+    const orderData = (payload.orderData ?? []).filter((data) => !redacted.has(data.orderId));
+    if (records.length === (payload.records ?? []).length && orderData.length === (payload.orderData ?? []).length) continue;
+    const scrubbed = {
+      ...payload,
+      records,
+      orderData,
+      // The note names the orders it found; it is rewritten rather than kept.
+      note: "Some orders in this request were later redacted at the customer's request; their data was deleted.",
+    };
+    await retryDb(() => db.dataRequest.update({ where: { id: request.id }, data: { payload: JSON.stringify(scrubbed) } }));
+  }
+}
+
+/** One drain per shop at a time. */
+const deletionsInFlight = new Map<string, Promise<void>>();
+
 /**
  * Drain deferred redacts for one shop, a batch at a time. Each pass removes the
  * orders it deleted from the stored payload, so a crash mid-batch resumes rather
  * than restarting, and the row is dropped once nothing is left.
  */
-export async function processPendingDeletions(shopId: string, maxBatches = 5): Promise<{ processed: number; remaining: number }> {
+export function processPendingDeletions(shopId: string, maxBatches = 5): Promise<{ processed: number; remaining: number }> {
+  // One drainer per shop in this process: the dashboard, the webhook kick and
+  // the redact's own background drain used to work the same row at once.
+  const running = deletionsInFlight.get(shopId);
+  if (running) return running.then(() => ({ processed: 0, remaining: 0 }));
+  const run = drainPendingDeletions(shopId, maxBatches);
+  const settled = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  deletionsInFlight.set(shopId, settled);
+  void settled.finally(() => {
+    if (deletionsInFlight.get(shopId) === settled) deletionsInFlight.delete(shopId);
+  });
+  return run;
+}
+
+async function drainPendingDeletions(shopId: string, maxBatches: number): Promise<{ processed: number; remaining: number }> {
   let processed = 0;
   let remaining = 0;
 
@@ -360,17 +505,20 @@ export async function processPendingDeletions(shopId: string, maxBatches = 5): P
   );
 
   for (const row of pending) {
-    let orderIds: string[] = [];
-    let webhookId: unknown = null;
+    let parsed: { orderIds?: unknown; webhookId?: unknown };
     try {
-      const parsed = JSON.parse(row.payload) as { orderIds?: unknown; webhookId?: unknown };
-      orderIds = Array.isArray(parsed.orderIds)
-        ? parsed.orderIds.filter((id): id is string => typeof id === "string")
-        : [];
-      webhookId = parsed.webhookId ?? null;
+      parsed = JSON.parse(row.payload) as typeof parsed;
     } catch {
-      orderIds = [];
+      parsed = {};
     }
+    if (!Array.isArray(parsed.orderIds)) {
+      // The row is our own writing, so this should never happen; if it does,
+      // the deletion obligation is kept (and shouted about), never dropped.
+      logger.error("compliance_deferred_redact_unreadable", { shop_id: shopId, pending_deletion_id: row.id });
+      continue;
+    }
+    let orderIds = parsed.orderIds.filter((id): id is string => typeof id === "string");
+    const webhookId = parsed.webhookId ?? null;
 
     let batches = 0;
     while (orderIds.length > 0 && batches < maxBatches) {
@@ -379,15 +527,18 @@ export async function processPendingDeletions(shopId: string, maxBatches = 5): P
       orderIds = orderIds.slice(REDACT_BATCH_SIZE);
       processed += batch.length;
       batches += 1;
+      // Saved after every batch, so a restart resumes instead of starting over.
+      if (orderIds.length > 0) {
+        await retryDb(() =>
+          // Keep the delivery id: a retried webhook must still find this row.
+          db.pendingDeletion.updateMany({ where: { id: row.id }, data: { payload: JSON.stringify({ orderIds, webhookId }) } }),
+        );
+      }
     }
 
     if (orderIds.length === 0) {
       await retryDb(() => db.pendingDeletion.deleteMany({ where: { id: row.id } }));
     } else {
-      await retryDb(() =>
-        // Keep the delivery id: a retried webhook must still find this row.
-        db.pendingDeletion.updateMany({ where: { id: row.id }, data: { payload: JSON.stringify({ orderIds, webhookId }) } }),
-      );
       remaining += orderIds.length;
     }
   }
@@ -398,26 +549,16 @@ export async function processPendingDeletions(shopId: string, maxBatches = 5): P
 /** Per shop: one process-wide timestamp let one shop's visit skip every other shop's drain. */
 const lastDeletionSweep = new Map<string, number>();
 const DELETION_SWEEP_INTERVAL_MS = 5 * 60 * 1000;
-/** One drain per shop at a time. */
-const deletionsInFlight = new Map<string, Promise<void>>();
-
 /** Drain a shop's deferred redacts in the background, never throwing. */
 export function startPendingDeletions(shopId: string): void {
   if (deletionsInFlight.has(shopId)) return;
-  const run = (async () => {
-    try {
-      // Every queued batch, not a few: this runs off the request path.
-      await processPendingDeletions(shopId, Number.POSITIVE_INFINITY);
-    } catch (error) {
-      logger.warn("compliance_deferred_redact_failed", {
-        shop_id: shopId,
-        error_message: error instanceof Error ? error.message : String(error),
-      });
-    } finally {
-      deletionsInFlight.delete(shopId);
-    }
-  })();
-  deletionsInFlight.set(shopId, run);
+  // Every queued batch, not a few: this runs off the request path.
+  processPendingDeletions(shopId, Number.POSITIVE_INFINITY).catch((error: unknown) => {
+    logger.warn("compliance_deferred_redact_failed", {
+      shop_id: shopId,
+      error_message: error instanceof Error ? error.message : String(error),
+    });
+  });
 }
 
 /**
@@ -481,13 +622,13 @@ export async function handleShopRedact(params: {
 }): Promise<{ shopFound: boolean; deleted: boolean }> {
   const shop = await findShopByDomain(params.shopDomain);
 
-  // shop/redact is sent 48 hours after an uninstall. When the shop's current
-  // installation began AFTER that uninstall, the merchant has reinstalled and
+  // shop/redact is sent 48 hours after an uninstall. When the app was installed
+  // (or granted a token) AFTER that uninstall, the merchant has reinstalled and
   // the request belongs to the previous installation: deleting would wipe their
   // current surveys, answers and live session. A shop still marked installed
-  // because our own uninstall handling never ran is redacted as asked. See
-  // DECISIONS.md (H20).
-  if (shop && shop.installState === "installed" && isLaterInstallation(shop.installedAt, params.triggeredAt ?? null)) {
+  // whose last known install predates the uninstall is redacted as asked. See
+  // DECISIONS.md (H20, H1/M3 2026-10-20).
+  if (shop && shop.installState === "installed" && reinstalledSinceUninstall(shop, params.triggeredAt ?? null)) {
     logger.warn("compliance_shop_redact_skipped_reinstalled", { shop_id: shop.id, shop_domain: params.shopDomain });
     return { shopFound: true, deleted: false };
   }
@@ -509,12 +650,24 @@ export async function handleShopRedact(params: {
   return { shopFound: true, deleted: true };
 }
 
-/** shop/redact follows the uninstall by 48 hours; an hour of slack either way. */
+/**
+ * shop/redact follows the uninstall by 48 hours; an hour of slack. Only used
+ * when no app/uninstalled was ever recorded for the shop.
+ */
 const SHOP_REDACT_DELAY_MS = 49 * 60 * 60 * 1000;
 
-function isLaterInstallation(installedAt: Date | null, triggeredAt: Date | null): boolean {
-  if (!installedAt || !triggeredAt) return false;
-  return installedAt.getTime() > triggeredAt.getTime() - SHOP_REDACT_DELAY_MS;
+function reinstalledSinceUninstall(
+  shop: { installedAt: Date | null; authorizedAt: Date | null; uninstallTriggeredAt: Date | null },
+  triggeredAt: Date | null,
+): boolean {
+  const installedAt = lastKnownInstalledAt(shop);
+  if (!installedAt) return false;
+  // The recorded uninstall time when there is one: a fixed window assumed
+  // Shopify always sends shop/redact exactly 48 hours later.
+  const uninstalledAt =
+    shop.uninstallTriggeredAt ?? (triggeredAt ? new Date(triggeredAt.getTime() - SHOP_REDACT_DELAY_MS) : null);
+  if (!uninstalledAt) return false;
+  return installedAt.getTime() > uninstalledAt.getTime();
 }
 
 /** Whether customers/redact named this order (see `RedactedOrder`). */

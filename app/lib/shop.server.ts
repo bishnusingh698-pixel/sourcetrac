@@ -33,6 +33,13 @@ export type ShopRecord = {
   installState: "installed" | "uninstalled";
   /// When the current installation began (null on rows from before it was kept).
   installedAt: Date | null;
+  /// When Shopify last granted a token for the shop.
+  authorizedAt: Date | null;
+  /// When the latest app/uninstalled was triggered, kept across reinstalls.
+  uninstallTriggeredAt: Date | null;
+  /// The charge last created and not yet live.
+  pendingSubscriptionGid: string | null;
+  pendingSubscriptionName: string | null;
 };
 
 export function defaultOptionsJson(): string {
@@ -70,6 +77,21 @@ async function retryUniqueRace<T>(operation: () => Promise<T>): Promise<T> {
 export async function upsertShop(params: { shopDomain: string; shopId: string }): Promise<{ id: string }> {
   const { shopDomain, shopId } = params;
 
+  // The shop's GID is unique, its myshopify domain need not stay the same. A
+  // row stored under an earlier domain is moved to this one; otherwise the
+  // upsert below tried to create a second row with the same GID and failed on
+  // every admin load.
+  if (shopId.startsWith("gid://")) {
+    const [byGid, byDomain] = await Promise.all([
+      retryDb(() => db.shop.findUnique({ where: { shopId }, select: { id: true, shopDomain: true } })),
+      retryDb(() => db.shop.findUnique({ where: { shopDomain }, select: { id: true } })),
+    ]);
+    if (byGid && byGid.shopDomain !== shopDomain && !byDomain) {
+      await retryDb(() => db.shop.update({ where: { id: byGid.id }, data: { shopDomain } }));
+      logger.info("shop_domain_changed", { shop_id: byGid.id, from: byGid.shopDomain, to: shopDomain });
+    }
+  }
+
   // A new installation starts now; a re-auth of a live one keeps its start.
   const prior = await retryDb(() =>
     db.shop.findUnique({ where: { shopDomain }, select: { installState: true, installedAt: true } }),
@@ -86,6 +108,7 @@ export async function upsertShop(params: { shopDomain: string; shopId: string })
         installState: "installed",
         uninstalledAt: null,
         installedAt: new Date(),
+        authorizedAt: new Date(),
       },
       update: {
         // provisionShop falls back to the domain when Shopify's identity lookup
@@ -94,6 +117,11 @@ export async function upsertShop(params: { shopDomain: string; shopId: string })
         installState: "installed",
         uninstalledAt: null,
         ...(startsInstallation ? { installedAt: new Date() } : {}),
+        // Every caller holds a session Shopify just granted or accepted, so the
+        // app is installed now. A late uninstall triggered before this moment
+        // belongs to an earlier installation, even when that uninstall was
+        // never recorded and `installedAt` is still the old one.
+        authorizedAt: new Date(),
       },
       select: { id: true },
     }),
@@ -122,9 +150,23 @@ export async function findShopByDomain(shopDomain: string): Promise<ShopRecord |
         checkoutCheckedAt: true,
         installState: true,
         installedAt: true,
+        authorizedAt: true,
+        uninstallTriggeredAt: true,
+        pendingSubscriptionGid: true,
+        pendingSubscriptionName: true,
       },
     }),
   );
+}
+
+/**
+ * The latest moment the app is known to have been installed on this shop: the
+ * start of its current installation or Shopify's last token grant.
+ */
+export function lastKnownInstalledAt(shop: { installedAt: Date | null; authorizedAt: Date | null }): Date | null {
+  const times = [shop.installedAt, shop.authorizedAt].filter((t): t is Date => t !== null);
+  if (times.length === 0) return null;
+  return new Date(Math.max(...times.map((t) => t.getTime())));
 }
 
 /** Lookup for request paths where an unknown shop must 404. */
@@ -155,6 +197,10 @@ export async function findShopById(shopId: string): Promise<ShopRecord | null> {
         checkoutCheckedAt: true,
         installState: true,
         installedAt: true,
+        authorizedAt: true,
+        uninstallTriggeredAt: true,
+        pendingSubscriptionGid: true,
+        pendingSubscriptionName: true,
       },
     }),
   );
@@ -183,7 +229,20 @@ export async function getAccessToken(internalShopId: string): Promise<string | n
  * refreshed first. Imported lazily: `shopify.server` imports this module (via
  * provisioning), and a static import would make the two load each other.
  */
-async function freshOfflineToken(shopDomain: string): Promise<string | null> {
+const tokenLoads = new Map<string, Promise<string | null>>();
+
+function freshOfflineToken(shopDomain: string): Promise<string | null> {
+  // One load (and so at most one refresh) per shop at a time in this process:
+  // a webhook and a sync drain asking together used to spend the same refresh
+  // token twice.
+  const running = tokenLoads.get(shopDomain);
+  if (running) return running;
+  const load = loadFreshOfflineToken(shopDomain).finally(() => tokenLoads.delete(shopDomain));
+  tokenLoads.set(shopDomain, load);
+  return load;
+}
+
+async function loadFreshOfflineToken(shopDomain: string): Promise<string | null> {
   try {
     const { unauthenticated } = await import("~/shopify.server");
     const { session } = await unauthenticated.admin(shopDomain);
@@ -225,9 +284,14 @@ export async function clearAccessToken(internalShopId: string): Promise<void> {
         planStatus: "cancelled",
         subscriptionGid: null,
         planDisplayName: null,
+        pendingSubscriptionGid: null,
+        pendingSubscriptionName: null,
       },
     }),
   );
+  // The checkout serves the plan's share of live surveys from a cached config.
+  const { invalidateConfig } = await import("~/lib/surveys.server");
+  await invalidateConfig(internalShopId);
 }
 
 export async function updateSettings(
@@ -278,16 +342,62 @@ export async function setPlan(
     subscriptionGid: string | null;
     planDisplayName?: string | null;
   },
-): Promise<void> {
-  await retryDb(() =>
-    db.shop.update({ where: { id: internalShopId }, data }),
+  {
+    onlyIf,
+  }: {
+    /**
+     * Write only if the stored plan is still what the caller read. The Plans
+     * page decides from a Shopify read made earlier in its request; a billing
+     * webhook committing in between must not be overwritten with that older
+     * picture.
+     */
+    onlyIf?: { plan: string; planStatus: string; subscriptionGid: string | null };
+  } = {},
+): Promise<boolean> {
+  const written = await retryDb(() =>
+    db.shop.updateMany({
+      where: {
+        id: internalShopId,
+        ...(onlyIf
+          ? { plan: onlyIf.plan as "free" | "growth" | "scale", planStatus: onlyIf.planStatus as PlanStatus, subscriptionGid: onlyIf.subscriptionGid }
+          : {}),
+      },
+      data,
+    }),
   );
+  if (written.count === 0) return false;
+  if (data.subscriptionGid) {
+    await retryDb(() =>
+      db.shop.updateMany({
+        where: { id: internalShopId, pendingSubscriptionGid: data.subscriptionGid },
+        data: { pendingSubscriptionGid: null, pendingSubscriptionName: null },
+      }),
+    );
+  }
   if (data.plan !== "free" && data.planStatus === "active") await unlockAnswers(internalShopId);
   // The checkout serves the plan's share of live surveys from a cached
   // config; an upgrade must show the extra surveys now, not a minute later.
   // Imported on use: surveys.server imports this module.
   const { invalidateConfig } = await import("~/lib/surveys.server");
   await invalidateConfig(internalShopId);
+  return true;
+}
+
+/** Remember the charge just created, until Shopify makes it live (or drops it). */
+export async function recordPendingSubscription(internalShopId: string, gid: string, name: string): Promise<void> {
+  await retryDb(() =>
+    db.shop.update({ where: { id: internalShopId }, data: { pendingSubscriptionGid: gid, pendingSubscriptionName: name } }),
+  );
+}
+
+/** Forget a pending charge Shopify will never make live (declined, expired). */
+export async function clearPendingSubscription(internalShopId: string, gid: string): Promise<void> {
+  await retryDb(() =>
+    db.shop.updateMany({
+      where: { id: internalShopId, pendingSubscriptionGid: gid },
+      data: { pendingSubscriptionGid: null, pendingSubscriptionName: null },
+    }),
+  );
 }
 
 /**

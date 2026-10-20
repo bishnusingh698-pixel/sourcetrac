@@ -49,6 +49,12 @@ export const BUCKETS = {
    */
   responseShop: { capacity: 100, refillPerSecond: 1 / 20 } satisfies BucketConfig,
   surveyConfigShop: { capacity: 300, refillPerSecond: 2 } satisfies BucketConfig,
+  /**
+   * Per shop: Admin API lookups that check an order id once the backstop is
+   * empty (`isRealOrder`). Bounds what a flood of made-up ids can cost the
+   * merchant's Admin API allowance.
+   */
+  orderVerifyShop: { capacity: 30, refillPerSecond: 1 / 2 } satisfies BucketConfig,
 } as const;
 
 declare global {

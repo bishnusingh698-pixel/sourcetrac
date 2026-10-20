@@ -3,7 +3,8 @@
     "heading": "Atribución de SourceTrac",
     "loading": "Buscando una respuesta de la encuesta…",
     "missing_order": "No hay ninguna respuesta de la encuesta para este pedido.",
-    "missing_customer": "No hay ninguna respuesta de la encuesta para este cliente.",
-    "found_prefix": "Cómo nos conoció:"
+    "missing_customer": "No hay respuestas de encuesta en los pedidos recientes de este cliente (unos 60 días).",
+    "found_prefix": "Cómo nos conoció:",
+    "unavailable": "No se pudo comprobar la respuesta de la encuesta. Recarga la página para intentarlo de nuevo."
   }
 }

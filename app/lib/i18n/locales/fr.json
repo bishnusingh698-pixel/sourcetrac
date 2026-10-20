@@ -188,7 +188,7 @@
     "status_frozen": "Suspendu",
     "status_expired": "Expiré",
     "cancel_title": "Annuler votre forfait ?",
-    "cancel_body": "Vos réponses restent enregistrées et votre sondage continue de fonctionner. Vous perdez les réponses illimitées.",
+    "cancel_body": "Vos réponses restent enregistrées. Shopify vous crédite la partie non utilisée de la période de facturation. Avec le forfait Gratuit, seul votre sondage en ligne prioritaire reste affiché aux acheteurs, les balises, métachamps et Flow Shopify s'arrêtent, et les réponses au-delà de {{cap}} ce mois-ci sont conservées mais marquées hors limite.",
     "cancel_confirm": "Annuler le forfait",
     "keep_plan": "Conserver mon forfait",
     "not_available": "La facturation est indisponible pour le moment. Veuillez réessayer sous peu.",
@@ -202,7 +202,6 @@
     "feature_unlimited": "Réponses illimitées, sans limite mensuelle",
     "feature_everything_free": "Tout le forfait Gratuit, plus :",
     "feature_everything_growth": "Tout le forfait Croissance, plus :",
-    "feature_priority_support": "Support prioritaire par e-mail",
     "billing_title": "Fonctionnement de la facturation",
     "billing_body": "Les frais apparaissent sur votre facture Shopify avec vos autres abonnements d'applications. SourceTrac ne conserve jamais vos données de carte — Shopify gère le paiement et nous indique quand un abonnement commence, change ou se termine.",
     "msg_shopify_unreachable": "Impossible de joindre Shopify pour gérer la facturation. Rouvrez l'application depuis l'administration Shopify et réessayez.",
@@ -210,7 +209,7 @@
     "msg_opening_approval": "Ouverture de Shopify pour que vous approuviez le paiement…",
     "msg_already_free": "Vous êtes déjà sur le forfait Gratuit.",
     "msg_cancel_failed": "Shopify n'a pas pu annuler l'abonnement : {{error}}",
-    "msg_cancelled": "Abonnement annulé. Vous êtes de retour sur le forfait Gratuit avec {{cap}} réponses par mois.",
+    "msg_cancelled": "Abonnement annulé. Vous êtes de retour sur le forfait Gratuit avec {{cap}} réponses par mois ; les réponses déjà collectées ce mois-ci comptent.",
     "msg_subscribe_failed": "Shopify n'a pas pu démarrer l'abonnement : {{error}}",
     "msg_subscription_created": "Abonnement créé. Si vous n'avez pas été redirigé vers une page de confirmation, consultez la page de facturation de votre administration Shopify.",
     "msg_plan_unavailable": "Ce forfait n'est pas disponible.",
@@ -232,13 +231,13 @@
     "save_percent": "Économisez {{percent}} % en annuel",
     "switch_yearly": "Passer à la facturation annuelle",
     "switch_monthly": "Passer à la facturation mensuelle",
-    "yearly_note": "La facturation annuelle coûte {{percent}} % de moins que la mensuelle et est prélevée une fois par an. Passer de l'une à l'autre remplace votre facturation actuelle dès que vous l'approuvez dans Shopify.",
+    "yearly_note": "La facturation annuelle coûte {{percent}} % de moins que la mensuelle et est prélevée une fois par an. Une montée en gamme, ou le passage à l'annuel, remplace votre facturation actuelle dès que vous l'approuvez dans Shopify. Une baisse de gamme, ou le passage de l'annuel au mensuel, commence à la fin de votre période de facturation actuelle.",
     "feature_live_surveys_one": "{{count}} sondage en ligne à la fois",
     "feature_live_surveys_other": "Jusqu'à {{count}} sondages en ligne à la fois",
     "feature_follow_ups": "Questions de suivi, et sondages pour les nouveaux acheteurs ou les acheteurs récurrents",
     "feature_targeting": "Afficher un sondage selon la valeur de commande, le pays, la part d'acheteurs ou les dates, et l'arrêter après un nombre de réponses défini",
     "feature_automation": "Arrêter automatiquement un sondage dès que la réponse est claire, et faire tourner plusieurs sondages",
-    "feature_unlimited_surveys": "Sondages en ligne illimités",
+    "feature_unlimited_surveys": "Tous vos sondages en ligne en même temps (jusqu'à {{count}})",
     "save_up_to": "Économisez jusqu’à {{amount}} par an",
     "yearly_nudge": "Ou {{price}} par mois avec la facturation annuelle, soit {{amount}} d’économie par an",
     "was_price": "Prix normal",
@@ -250,7 +249,10 @@
     "msg_billing_not_enabled": "La facturation Shopify n'est pas encore activée pour cette app. Dans le Partner Dashboard, ouvrez Apps, puis SourceTrac, puis Distribution, et choisissez la distribution publique. Vous pourrez ensuite approuver les forfaits payants ici (sous forme de frais de test gratuits sur une boutique de développement).",
     "choose_plan_yearly": "Choisir {{plan}} en facturation annuelle",
     "choose_plan_yearly_instead": "Ou payez à l'année : {{price}} par an",
-    "choose_plan_monthly_instead": "Ou payez au mois : {{price}} par mois"
+    "choose_plan_monthly_instead": "Ou payez au mois : {{price}} par mois",
+    "msg_already_scheduled": "Vous avez déjà approuvé ce changement. Il commence à la fin de votre période de facturation actuelle.",
+    "scheduled_change": "Votre passage à {{plan}} est approuvé et commence le {{date}}, à la fin de votre période de facturation actuelle.",
+    "scheduled_change_no_date": "Votre passage à {{plan}} est approuvé et commence à la fin de votre période de facturation actuelle."
   },
   "help": {
     "title": "Aide",
@@ -579,7 +581,9 @@
     "check_block_buyer": "{{page}} : le bloc SourceTrac s'est chargé pour un acheteur le {{when}}.",
     "check_block_placed": "{{page}} : le bloc SourceTrac est ajouté (vu le {{when}}), mais ne s'est encore chargé pour aucun acheteur. Passez une commande test pour le confirmer.",
     "check_new_order": "Chaque commande n'est interrogée qu'une fois. Testez avec une nouvelle commande, puis consultez « Paiements récents » ci-dessous pour voir ce qui s'est passé.",
-    "check_block_never_order_status": "Page de statut de commande : le bloc SourceTrac ne s'y est pas encore chargé. Dans l'éditeur de checkout, choisissez Statut de la commande dans le menu des pages, ajoutez le bloc « SourceTrac survey » et cliquez sur Enregistrer. Elle n'apparaît dans le menu que si votre boutique utilise les nouveaux comptes clients."
+    "check_block_never_order_status": "Page de statut de commande : le bloc SourceTrac ne s'y est pas encore chargé. Dans l'éditeur de checkout, choisissez Statut de la commande dans le menu des pages, ajoutez le bloc « SourceTrac survey » et cliquez sur Enregistrer. Elle n'apparaît dans le menu que si votre boutique utilise les nouveaux comptes clients.",
+    "validation_currency_unavailable": "La devise de votre boutique n'a pas pu être lue pour le moment. Réessayez d'enregistrer dans un instant.",
+    "validation_order_value_range": "La valeur de commande maximale doit être au moins égale à la valeur minimale."
   },
   "templates": {
     "nps": {
@@ -747,7 +751,9 @@
     "publish": "Publier les modifications",
     "discard": "Supprimer le brouillon",
     "conflict": "Ce sondage a été modifié dans une autre fenêtre. Rechargez pour voir la dernière version.",
-    "status_no_block": "Pas encore dans le checkout"
+    "status_no_block": "Pas encore dans le checkout",
+    "conflict_kept": "Vos modifications non enregistrées sont toujours là et n'ont pas été enregistrées. Copiez ce dont vous avez besoin, puis chargez la dernière version pour la modifier.",
+    "conflict_load_latest": "Charger la dernière version"
   },
   "confidence": {
     "too_early": "Trop tôt",

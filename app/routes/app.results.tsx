@@ -128,7 +128,8 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     id: q.id,
     text: q.text,
     type: q.type,
-    options: q.options.map((o) => ({ id: o.id, label: o.label, archived: o.archived })),
+    allowOther: q.allowOther,
+    options: q.options.map((o) => ({ id: o.id, label: o.label, archived: o.archived, isOther: o.isOther })),
   }));
   const breakdowns = buildBreakdowns({ responses, questions });
 
@@ -174,7 +175,13 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     compare,
     compareCapped,
     selected: selectedId,
-    summary,
+    // Only the counts the page shows: money goes out formatted (below), never
+    // as raw minor units for the browser to misread.
+    summary: {
+      totalResponses: summary.totalResponses,
+      pendingResponses: summary.pendingResponses,
+      countedOrders: summary.revenueByCurrency.reduce((sum, entry) => sum + entry.orders, 0),
+    },
     answerRate: answerRatePercent(rates.get(selectedId)),
     capped,
     revenue: money(summary.revenueByCurrency),
@@ -237,7 +244,9 @@ export default function Results() {
     setDownloading(true);
     setDownloadFailed(false);
     try {
-      const response = await fetch(`/app/results/csv?survey=${data.selected}`);
+      const response = await fetch(
+        `/app/results/csv?survey=${encodeURIComponent(data.selected ?? "")}&range=${encodeURIComponent(data.range)}`,
+      );
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const url = URL.createObjectURL(await response.blob());
       const link = document.createElement("a");
@@ -386,7 +395,7 @@ export default function Results() {
           <MoneyList amounts={data.aov} size="large" />
         </Metric>
         <Metric label={t("results.counted_orders")}>
-          <BigNumber>{summary.revenueByCurrency.reduce((sum, entry) => sum + entry.orders, 0)}</BigNumber>
+          <BigNumber>{summary.countedOrders}</BigNumber>
         </Metric>
         <Metric label={t("results.pending")} help={t("results.pending_help")}>
           <BigNumber>{summary.pendingResponses}</BigNumber>

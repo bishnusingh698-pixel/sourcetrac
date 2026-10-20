@@ -49,8 +49,8 @@ const CREATE_MUTATION = `#graphql
 `;
 
 const CANCEL_MUTATION = `#graphql
-  mutation SourceTracCancelSubscription($id: ID!) {
-    appSubscriptionCancel(id: $id) {
+  mutation SourceTracCancelSubscription($id: ID!, $prorate: Boolean) {
+    appSubscriptionCancel(id: $id, prorate: $prorate) {
       appSubscription {
         id
         status
@@ -63,7 +63,56 @@ const CANCEL_MUTATION = `#graphql
   }
 `;
 
+const SUBSCRIPTION_QUERY = `#graphql
+  query SourceTracSubscription($id: ID!) {
+    node(id: $id) {
+      ... on AppSubscription {
+        id
+        name
+        status
+        test
+        currentPeriodEnd
+      }
+    }
+  }
+`;
+
 export type BillingError = { field: string[] | null; message: string };
+
+export type SubscriptionState = {
+  id: string;
+  name: string;
+  status: string;
+  test: boolean;
+  currentPeriodEnd: string | null;
+};
+
+/**
+ * One subscription's current state, read from Shopify by id; null when Shopify
+ * knows no such subscription. Throws when Shopify cannot be asked, so a caller
+ * deciding on it can retry instead of guessing.
+ */
+export async function fetchSubscription(params: {
+  shopDomain: string;
+  accessToken: string;
+  subscriptionGid: string;
+}): Promise<SubscriptionState | null> {
+  const response = await shopifyGraphql<{ node: Partial<SubscriptionState> | null }>(
+    params.shopDomain,
+    params.accessToken,
+    SUBSCRIPTION_QUERY,
+    { id: params.subscriptionGid },
+  );
+  const node = response.data.node;
+  if (!node?.id || typeof node.status !== "string") return null;
+  return {
+    id: node.id,
+    name: node.name ?? "",
+    status: node.status,
+    test: node.test === true,
+    currentPeriodEnd: node.currentPeriodEnd ?? null,
+  };
+}
 
 /**
  * Shopify's refusal for an app whose distribution is not Public: "Apps without
@@ -180,11 +229,26 @@ export async function cancelSubscription(params: {
         appSubscription: { id: string; status: string } | null;
         userErrors: BillingError[];
       };
-    }>(params.shopDomain, params.accessToken, CANCEL_MUTATION, { id: params.subscriptionGid });
+    }>(params.shopDomain, params.accessToken, CANCEL_MUTATION, {
+      id: params.subscriptionGid,
+      // The merchant is credited for the unused part of the billing period.
+      // Without it a yearly subscriber who cancelled in month one paid for the
+      // whole year and dropped to Free at once.
+      prorate: true,
+    });
 
     const payload = response.data.appSubscriptionCancel;
-    if (payload.userErrors.length > 0) {
-      return { ok: false, error: mapUserErrors(payload.userErrors) };
+    if (payload.userErrors.length > 0 || payload.appSubscription?.status?.toUpperCase() !== "CANCELLED") {
+      // A retried cancel (after a 5xx Shopify had processed) is refused as
+      // "already cancelled": what counts is whether the charge is still live.
+      const current = await fetchSubscription(params).catch((error: unknown) => {
+        logger.warn("billing_cancel_recheck_failed", {
+          error_message: error instanceof Error ? error.message : String(error),
+        });
+        return undefined;
+      });
+      if (current !== undefined && (current === null || current.status.toUpperCase() !== "ACTIVE")) return { ok: true };
+      return { ok: false, error: payload.userErrors.length > 0 ? mapUserErrors(payload.userErrors) : "The subscription is still active." };
     }
     return { ok: true };
   } catch (error) {
@@ -285,19 +349,27 @@ export function activeSourceTracSubscription(
   );
 }
 
-/** Development-store answers, cached per shop: one Admin call per hour at most. */
+/** Development-store answers, cached per shop. */
 const devStoreCache = new Map<string, { value: boolean; expiresAt: number }>();
+/**
+ * A "yes" is kept briefly: a development store transferred to a real merchant
+ * must stop having test charges honoured soon after. A "no" changes rarely.
+ */
+const DEV_STORE_TTL_MS = 5 * 60 * 1000;
+const REAL_STORE_TTL_MS = 60 * 60 * 1000;
 
 /**
  * Whether test charges count for this shop: always outside production, and on
- * a development store (which can approve nothing else). A failed lookup counts
- * as "not a development store", the stricter choice.
+ * a development store (which can approve nothing else). Null when Shopify could
+ * not be asked: the caller must not decide a plan on it (a dev store's test
+ * charge read as unpaid downgraded it, and the notice that would have fixed it
+ * was acknowledged and never retried).
  */
-export async function testChargesAllowed(shopDomain: string, accessToken: string): Promise<boolean> {
+export async function testChargesAllowed(shopDomain: string, accessToken: string): Promise<boolean | null> {
   if (process.env.NODE_ENV !== "production") return true;
   const cached = devStoreCache.get(shopDomain);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
-  let value = false;
+  let value: boolean;
   try {
     value = await fetchIsDevelopmentStore(shopDomain, accessToken);
   } catch (error) {
@@ -305,11 +377,16 @@ export async function testChargesAllowed(shopDomain: string, accessToken: string
       shop_domain: shopDomain,
       error_message: error instanceof Error ? error.message : String(error),
     });
-    return false;
+    return null;
   }
   if (devStoreCache.size > 10_000) devStoreCache.clear();
-  devStoreCache.set(shopDomain, { value, expiresAt: Date.now() + 60 * 60 * 1000 });
+  devStoreCache.set(shopDomain, { value, expiresAt: Date.now() + (value ? DEV_STORE_TTL_MS : REAL_STORE_TTL_MS) });
   return value;
+}
+
+/** Test helper: forget cached development-store answers. */
+export function clearDevStoreCache(): void {
+  devStoreCache.clear();
 }
 
 /**

@@ -2,9 +2,9 @@ import { db, isRetryableDbError } from "~/db.server";
 import { serialiseError } from "~/lib/errors";
 import { logger } from "~/lib/logger";
 import { minorToDecimalString, parseMoneyToMinor } from "~/lib/money";
-import { markUnverifiedFailedResponses } from "~/lib/answers.server";
+import { claimUsageSlotWith, markUnverifiedFailedResponses } from "~/lib/answers.server";
 import { isRedactedOrder } from "~/lib/compliance.server";
-import { currentUtcPeriod, evaluateCap, type PlanKey } from "~/lib/plans";
+import { currentUtcPeriod, planFor, type PlanKey } from "~/lib/plans";
 import { withRetry } from "~/lib/retry.server";
 
 /**
@@ -34,24 +34,6 @@ function retryDb<T>(operation: () => Promise<T>): Promise<T> {
   return withRetry(operation, { attempts: 3, baseDelayMs: 250, shouldRetry: isRetryableDbError });
 }
 
-async function incrementUsage(shopId: string): Promise<number> {
-  const { periodStart, periodEnd } = currentUtcPeriod();
-
-  return retryDb(async () => {
-    // One statement, so two first-of-period answers cannot race on the insert
-    // (Prisma's upsert is a read-then-write and lost one with a P2002).
-    const id = `usage_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-    const rows = await db.$queryRaw<Array<{ responsesCount: number }>>`
-      INSERT INTO "BillingUsage" ("id", "shopId", "periodStart", "periodEnd", "responsesCount", "updatedAt")
-      VALUES (${id}, ${shopId}, ${periodStart}, ${periodEnd}, 1, now())
-      ON CONFLICT ("shopId", "periodStart") DO UPDATE
-        SET "responsesCount" = "BillingUsage"."responsesCount" + 1, "updatedAt" = now()
-      RETURNING "responsesCount"
-    `;
-    return rows[0]?.responsesCount ?? 1;
-  });
-}
-
 export async function getUsageCount(shopId: string): Promise<number> {
   const { periodStart } = currentUtcPeriod();
   const row = await retryDb(() =>
@@ -74,120 +56,85 @@ export async function getUsageCount(shopId: string): Promise<number> {
 export async function submitResponse(input: SubmitInput): Promise<SubmitResult> {
   const otherText = input.otherText ? input.otherText.trim().slice(0, MAX_OTHER_LENGTH) : null;
 
-  // Check cap BEFORE insert so the counter reflects stored rows. Incrementing
-  // first would leak usage on every duplicate retry.
-  const usedBefore = await getUsageCount(input.shopId);
-  const capStatus = evaluateCap(input.plan, usedBefore);
-  // At cap we still store the answer — losing a buyer's answer to a billing
-  // state would be worse than free overage — but flag it for the merchant.
-  const shouldLock = capStatus.shouldFlag;
-
   // An order a customer asked to have redacted is never stored again.
   if (await isRedactedOrder(input.shopId, input.orderId)) {
     logger.info("response_redacted_order_ignored", { shop_id: input.shopId });
     return { outcome: "duplicate", id: "", isLocked: false };
   }
 
-  // The multi-question blocks answer into `Response`. An order already
-  // answered there must not be answered again (and counted twice) by a stale
-  // single-question client.
-  const v2 = await retryDb(() =>
-    db.response.findFirst({ where: { shopId: input.shopId, orderId: input.orderId }, select: { id: true, flagged: true } }),
-  );
-  if (v2) {
-    logger.info("response_duplicate_v2_ignored", { shop_id: input.shopId, response_id: v2.id });
-    return { outcome: "duplicate", id: v2.id, isLocked: v2.flagged };
-  }
-
-  try {
-    const created = await retryDb(() =>
-      db.surveyResponse.create({
+  // One transaction under the same per-order lock as the multi-question path:
+  // the "already answered there" check, the usage claim and the insert land
+  // together. Checked outside the lock, a concurrent v2 and legacy submission
+  // both wrote; with the count outside the transaction, a failed increment
+  // left the answer stored but never counted against the cap.
+  const written = await retryDb(() =>
+    db.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`answer:${input.shopId}:${input.orderId}`}))`;
+      // The multi-question blocks answer into `Response`. An order already
+      // answered there must not be answered again (and counted twice) by a
+      // stale single-question client.
+      const v2 = await tx.response.findFirst({
+        where: { shopId: input.shopId, orderId: input.orderId },
+        select: { id: true, flagged: true },
+      });
+      if (v2) return { kind: "duplicate_v2" as const, id: v2.id, isLocked: v2.flagged };
+      const existing = await tx.surveyResponse.findUnique({
+        where: { shopId_orderId: { shopId: input.shopId, orderId: input.orderId } },
+        select: { id: true, isLocked: true },
+      });
+      if (existing) return { kind: "duplicate" as const, ...existing };
+      // At cap we still store the answer (losing a buyer's answer to a billing
+      // state would be worse than free overage) but flag it for the merchant.
+      const claimed = await claimUsageSlotWith(tx, input.shopId, planFor(input.plan).responseCap);
+      const created = await tx.surveyResponse.create({
         data: {
           shopId: input.shopId,
           orderId: input.orderId,
           channel: input.channel,
           otherText,
           locale: input.locale,
-          isLocked: shouldLock,
+          isLocked: !claimed.withinCap,
         },
         select: { id: true, isLocked: true },
-      }),
-    );
-
-    // The answer is already stored. A failure of the usage counter must not
-    // fail the request: the extension would retry, hit the unique constraint and
-    // get "duplicate", and a unique violation raised by a concurrent
-    // first-of-month usage upsert would be misreported as a duplicate answer.
-    let isLocked = created.isLocked;
-    try {
-      const usedAfter = await incrementUsage(input.shopId);
-      // The cap was checked BEFORE the insert, without a lock, so two answers
-      // arriving together at cap-1 both passed as unlocked. The increment is an
-      // atomic UPDATE, so its result is this answer's true position: re-decide
-      // from it and flag the row if it landed past the cap.
-      if (!isLocked && evaluateCap(input.plan, usedAfter - 1).shouldFlag) {
-        await retryDb(() => db.surveyResponse.update({ where: { id: created.id }, data: { isLocked: true } }));
-        isLocked = true;
-      }
-    } catch (usageError) {
-      logger.warn("usage_increment_failed", {
-        shop_id: input.shopId,
-        response_id: created.id,
-        error_message: usageError instanceof Error ? usageError.message : String(usageError),
       });
-    }
+      return { kind: "created" as const, ...created };
+    }),
+  );
 
-    // The order webhook usually lands BEFORE the buyer answers, so there is no
-    // later orders/create to reconcile this row. Attach the cached order now;
-    // otherwise the answer would stay Pending and, after 24h, be marked
-    // unreconcilable even though its revenue is known.
-    try {
-      await reconcileFromOrderCache(input.shopId, input.orderId);
-    } catch (reconcileError) {
-      logger.warn("submit_reconcile_failed", {
-        shop_id: input.shopId,
-        response_id: created.id,
-        error_message: reconcileError instanceof Error ? reconcileError.message : String(reconcileError),
-      });
-    }
+  if (written.kind !== "created") {
+    logger.info(written.kind === "duplicate_v2" ? "response_duplicate_v2_ignored" : "response_duplicate_ignored", {
+      shop_id: input.shopId,
+      response_id: written.id,
+      channel: input.channel,
+    });
+    return { outcome: "duplicate", id: written.id, isLocked: written.isLocked };
+  }
 
-    logger.info("response_created", {
+  const created = written;
+  const isLocked = created.isLocked;
+
+  // The order webhook usually lands BEFORE the buyer answers, so there is no
+  // later orders/create to reconcile this row. Attach the cached order now;
+  // otherwise the answer would stay Pending and, after 24h, be marked
+  // unreconcilable even though its revenue is known.
+  try {
+    await reconcileFromOrderCache(input.shopId, input.orderId);
+  } catch (reconcileError) {
+    logger.warn("submit_reconcile_failed", {
       shop_id: input.shopId,
       response_id: created.id,
-      channel: input.channel,
-      is_locked: isLocked,
+      error_message: reconcileError instanceof Error ? reconcileError.message : String(reconcileError),
     });
-
-    return { outcome: "created", id: created.id, isLocked };
-  } catch (error) {
-    if (isUniqueViolation(error)) {
-      // Duplicate. Return the existing row so the buyer still gets a
-      // confirmation, and do NOT increment usage again.
-      const existing = await retryDb(() =>
-        db.surveyResponse.findUnique({
-          where: { shopId_orderId: { shopId: input.shopId, orderId: input.orderId } },
-          select: { id: true, isLocked: true },
-        }),
-      );
-
-      if (existing) {
-        logger.info("response_duplicate_ignored", {
-          shop_id: input.shopId,
-          response_id: existing.id,
-          channel: input.channel,
-        });
-        return { outcome: "duplicate", id: existing.id, isLocked: existing.isLocked };
-      }
-
-      // The row vanished between the failed insert and this read — a race with
-      // a purge or redact. Nothing to confirm, but the buyer still gets a
-      // friendly acknowledgement rather than an error.
-      logger.warn("response_duplicate_row_missing", { shop_id: input.shopId, order_id: input.orderId });
-      return { outcome: "duplicate", id: "", isLocked: shouldLock };
-    }
-
-    throw error;
   }
+
+  logger.info("response_created", {
+    shop_id: input.shopId,
+    response_id: created.id,
+    channel: input.channel,
+    is_locked: isLocked,
+  });
+
+  return { outcome: "created", id: created.id, isLocked };
 }
 
 /**

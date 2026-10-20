@@ -188,7 +188,7 @@
     "status_frozen": "Congelado",
     "status_expired": "Expirado",
     "cancel_title": "¿Cancelar tu plan?",
-    "cancel_body": "Tus respuestas siguen guardadas y la encuesta sigue funcionando. Pierdes las respuestas ilimitadas.",
+    "cancel_body": "Tus respuestas siguen guardadas. Shopify te abona la parte no usada del periodo de facturación. En Gratis solo tu encuesta activa principal se sigue mostrando a los compradores, se detienen las etiquetas, los metacampos y Flow de Shopify, y las respuestas por encima de {{cap}} este mes se guardan pero se marcan como fuera del límite.",
     "cancel_confirm": "Cancelar plan",
     "keep_plan": "Mantener mi plan",
     "not_available": "La facturación no está disponible en este momento. Vuelve a intentarlo en un rato.",
@@ -202,7 +202,6 @@
     "feature_unlimited": "Respuestas ilimitadas, sin límite mensual",
     "feature_everything_free": "Todo lo de Gratis, y además:",
     "feature_everything_growth": "Todo lo de Crecimiento, y además:",
-    "feature_priority_support": "Soporte prioritario por correo",
     "billing_title": "Cómo funciona la facturación",
     "billing_body": "Los cargos aparecen en tu factura de Shopify junto con tus otras suscripciones de apps. SourceTrac nunca guarda los datos de tu tarjeta — Shopify gestiona el pago y nos avisa cuando una suscripción empieza, cambia o termina.",
     "msg_shopify_unreachable": "No pudimos conectar con Shopify para gestionar la facturación. Vuelve a abrir la app desde el panel de Shopify e inténtalo de nuevo.",
@@ -210,7 +209,7 @@
     "msg_opening_approval": "Abriendo Shopify para que apruebes el cargo…",
     "msg_already_free": "Ya tienes el plan Gratis.",
     "msg_cancel_failed": "Shopify no pudo cancelar la suscripción: {{error}}",
-    "msg_cancelled": "Suscripción cancelada. Vuelves a tener el plan Gratis con {{cap}} respuestas al mes.",
+    "msg_cancelled": "Suscripción cancelada. Vuelves al plan Gratis con {{cap}} respuestas al mes; las respuestas ya recogidas este mes cuentan.",
     "msg_subscribe_failed": "Shopify no pudo iniciar la suscripción: {{error}}",
     "msg_subscription_created": "Suscripción creada. Si no se te redirigió a una página de confirmación, revisa la página de facturación de tu panel de Shopify.",
     "msg_plan_unavailable": "Ese plan no está disponible.",
@@ -232,13 +231,13 @@
     "save_percent": "Ahorra un {{percent}} % con el pago anual",
     "switch_yearly": "Cambiar a facturación anual",
     "switch_monthly": "Cambiar a facturación mensual",
-    "yearly_note": "La facturación anual cuesta un {{percent}} % menos que la mensual y se cobra una vez al año. Cambiar entre mensual y anual sustituye tu cargo actual cuando lo apruebas en Shopify.",
+    "yearly_note": "La facturación anual cuesta un {{percent}} % menos que la mensual y se cobra una vez al año. Una mejora, o el cambio a anual, sustituye tu cargo actual cuando la apruebas en Shopify. Una bajada, o el cambio de anual a mensual, empieza cuando termina tu periodo de facturación actual.",
     "feature_live_surveys_one": "{{count}} encuesta activa a la vez",
     "feature_live_surveys_other": "Hasta {{count}} encuestas activas a la vez",
     "feature_follow_ups": "Preguntas de seguimiento y encuestas para compradores nuevos o recurrentes",
     "feature_targeting": "Mostrar una encuesta según el valor del pedido, el país, el porcentaje de compradores o las fechas, y detenerla tras un número fijo de respuestas",
     "feature_automation": "Detener una encuesta automáticamente cuando la respuesta esté clara y rotar varias encuestas",
-    "feature_unlimited_surveys": "Encuestas activas ilimitadas",
+    "feature_unlimited_surveys": "Todas tus encuestas activas a la vez (hasta {{count}})",
     "save_up_to": "Ahorra hasta {{amount}} al año",
     "yearly_nudge": "O {{price}} al mes con facturación anual, y ahorras {{amount}} al año",
     "was_price": "Precio normal",
@@ -250,7 +249,10 @@
     "msg_billing_not_enabled": "La facturación de Shopify aún no está activada para esta app. En el Partner Dashboard, abre Apps, luego SourceTrac, luego Distribución, y elige Distribución pública. Después podrás aprobar los planes de pago aquí (como cargos de prueba gratuitos en una tienda de desarrollo).",
     "choose_plan_yearly": "Elegir {{plan}} con facturación anual",
     "choose_plan_yearly_instead": "O paga al año: {{price}} al año",
-    "choose_plan_monthly_instead": "O paga al mes: {{price}} al mes"
+    "choose_plan_monthly_instead": "O paga al mes: {{price}} al mes",
+    "msg_already_scheduled": "Ya aprobaste este cambio. Empieza cuando termine tu periodo de facturación actual.",
+    "scheduled_change": "Tu cambio a {{plan}} está aprobado y empieza el {{date}}, cuando termina tu periodo de facturación actual.",
+    "scheduled_change_no_date": "Tu cambio a {{plan}} está aprobado y empieza cuando termine tu periodo de facturación actual."
   },
   "help": {
     "title": "Ayuda",
@@ -579,7 +581,9 @@
     "check_block_buyer": "{{page}}: el bloque de SourceTrac se cargó para un comprador el {{when}}.",
     "check_block_placed": "{{page}}: el bloque de SourceTrac está añadido (visto el {{when}}), pero aún no se ha cargado para ningún comprador. Haz un pedido de prueba para confirmarlo.",
     "check_new_order": "Cada pedido se pregunta una sola vez. Prueba con un pedido nuevo y luego mira «Pagos recientes» más abajo para ver qué pasó.",
-    "check_block_never_order_status": "Página de estado del pedido: el bloque de SourceTrac aún no se ha cargado aquí. En el editor de checkout, elige Estado del pedido en el menú de páginas, añade el bloque «SourceTrac survey» y pulsa Guardar. Solo aparece en el menú si tu tienda usa las nuevas cuentas de cliente."
+    "check_block_never_order_status": "Página de estado del pedido: el bloque de SourceTrac aún no se ha cargado aquí. En el editor de checkout, elige Estado del pedido en el menú de páginas, añade el bloque «SourceTrac survey» y pulsa Guardar. Solo aparece en el menú si tu tienda usa las nuevas cuentas de cliente.",
+    "validation_currency_unavailable": "No se pudo leer la moneda de tu tienda en este momento. Vuelve a guardar en un momento.",
+    "validation_order_value_range": "El valor máximo del pedido debe ser al menos el mínimo."
   },
   "templates": {
     "nps": {
@@ -747,7 +751,9 @@
     "publish": "Publicar cambios",
     "discard": "Descartar borrador",
     "conflict": "Esta encuesta cambió en otra ventana. Recarga para ver la última versión.",
-    "status_no_block": "Aún no está en el checkout"
+    "status_no_block": "Aún no está en el checkout",
+    "conflict_kept": "Tus cambios sin guardar siguen aquí y no se han guardado. Copia lo que necesites y luego carga la versión más reciente para editarla.",
+    "conflict_load_latest": "Cargar la versión más reciente"
   },
   "confidence": {
     "too_early": "Demasiado pronto",

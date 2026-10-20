@@ -188,7 +188,7 @@
     "status_frozen": "停止中",
     "status_expired": "期限切れ",
     "cancel_title": "プランをキャンセルしますか？",
-    "cancel_body": "回答は保存されたままで、アンケートも引き続き使えます。 回答数無制限の特典は失われます。",
+    "cancel_body": "回答は保存されたままです。請求期間の未使用分は Shopify がクレジットとして返金します。無料プランでは購入者に表示されるのは優先度が最も高い公開中のアンケートのみになり、Shopify のタグ・メタフィールド・Flow は停止します。今月 {{cap}} 件を超えた回答は保存されますが、上限超過として扱われます。",
     "cancel_confirm": "プランをキャンセル",
     "keep_plan": "プランを維持",
     "not_available": "現在、請求システムを利用できません。 しばらくしてからお試しください。",
@@ -202,7 +202,6 @@
     "feature_unlimited": "回答数無制限、月間上限なし",
     "feature_everything_free": "無料プランのすべてに加えて：",
     "feature_everything_growth": "グロースのすべてに加えて：",
-    "feature_priority_support": "優先メールサポート",
     "billing_title": "請求のしくみ",
     "billing_body": "料金はほかのアプリのサブスクリプションと一緒に Shopify の請求書に記載されます。SourceTrac がカード情報を保存することはありません — 支払いは Shopify が処理し、サブスクリプションの開始・変更・終了を当社に通知します。",
     "msg_shopify_unreachable": "請求を管理するために Shopify に接続できませんでした。Shopify 管理画面からアプリを開き直して、もう一度お試しください。",
@@ -210,7 +209,7 @@
     "msg_opening_approval": "料金を承認するために Shopify を開いています…",
     "msg_already_free": "すでに無料プランです。",
     "msg_cancel_failed": "Shopify でサブスクリプションを解約できませんでした：{{error}}",
-    "msg_cancelled": "サブスクリプションを解約しました。1 か月あたり {{cap}} 件の回答が可能な無料プランに戻りました。",
+    "msg_cancelled": "サブスクリプションを解約しました。1 か月あたり {{cap}} 件の回答が可能な無料プランに戻りました。今月すでに集めた回答もこの件数に含まれます。",
     "msg_subscribe_failed": "Shopify でサブスクリプションを開始できませんでした：{{error}}",
     "msg_subscription_created": "サブスクリプションを作成しました。確認ページに移動しなかった場合は、Shopify 管理画面の請求ページをご確認ください。",
     "msg_plan_unavailable": "このプランは利用できません。",
@@ -232,13 +231,13 @@
     "save_percent": "年払いで {{percent}}% お得",
     "switch_yearly": "年払いに切り替える",
     "switch_monthly": "月払いに切り替える",
-    "yearly_note": "年払いは月払いより {{percent}}% 安く、年に 1 回請求されます。月払いと年払いを切り替えると、Shopify で承認した時点で現在の請求が置き換わります。",
+    "yearly_note": "年払いは月払いより {{percent}}% 安く、年に 1 回請求されます。アップグレードや年払いへの切り替えは、Shopify で承認した時点で現在の請求を置き換えます。ダウングレードや年払いから月払いへの切り替えは、現在の請求期間の終了時に始まります。",
     "feature_live_surveys_one": "同時に公開できるアンケート{{count}}件",
     "feature_live_surveys_other": "同時に公開できるアンケート最大{{count}}件",
     "feature_follow_ups": "フォローアップの質問と、初めての購入者やリピーター向けのアンケート",
     "feature_targeting": "注文金額、国、購入者の割合、日付でアンケートを表示し、決まった回答数に達したら停止",
     "feature_automation": "結果がはっきりしたらアンケートを自動で停止し、複数のアンケートをローテーション",
-    "feature_unlimited_surveys": "公開できるアンケート数は無制限",
+    "feature_unlimited_surveys": "すべてのアンケートを同時に公開（最大 {{count}} 件）",
     "save_up_to": "年間最大 {{amount}} お得",
     "yearly_nudge": "年払いなら月あたり {{price}}、年間 {{amount}} お得です",
     "was_price": "通常価格",
@@ -250,7 +249,10 @@
     "msg_billing_not_enabled": "このアプリではまだ Shopify の請求が有効になっていません。Partner Dashboard で「アプリ」、SourceTrac、「配布」の順に開き、「公開配布」を選択してください。その後、ここで有料プランを承認できます（開発ストアでは無料のテスト請求になります）。",
     "choose_plan_yearly": "{{plan}}（年払い）を選ぶ",
     "choose_plan_yearly_instead": "年払いにする：年額 {{price}}",
-    "choose_plan_monthly_instead": "月払いにする：月額 {{price}}"
+    "choose_plan_monthly_instead": "月払いにする：月額 {{price}}",
+    "msg_already_scheduled": "この変更はすでに承認済みです。現在の請求期間の終了時に始まります。",
+    "scheduled_change": "{{plan}} への変更は承認済みで、現在の請求期間が終わる {{date}} に始まります。",
+    "scheduled_change_no_date": "{{plan}} への変更は承認済みで、現在の請求期間の終了時に始まります。"
   },
   "help": {
     "title": "ヘルプ",
@@ -579,7 +581,9 @@
     "check_block_buyer": "{{page}}：SourceTracブロックは{{when}}に購入者のページで読み込まれました。",
     "check_block_placed": "{{page}}：SourceTracブロックは追加されています（{{when}}に確認）が、まだ購入者のページでは読み込まれていません。テスト注文で確認してください。",
     "check_new_order": "各注文への質問は1回だけです。新しい注文でテストし、結果は下の「最近のチェックアウト」で確認してください。",
-    "check_block_never_order_status": "注文ステータスページ：ここではまだSourceTracブロックが読み込まれていません。チェックアウトエディタのページメニューで「注文ステータス」を選び、「SourceTrac survey」ブロックを追加して保存してください。ストアが新しい顧客アカウントを使っている場合のみメニューに表示されます。"
+    "check_block_never_order_status": "注文ステータスページ：ここではまだSourceTracブロックが読み込まれていません。チェックアウトエディタのページメニューで「注文ステータス」を選び、「SourceTrac survey」ブロックを追加して保存してください。ストアが新しい顧客アカウントを使っている場合のみメニューに表示されます。",
+    "validation_currency_unavailable": "ストアの通貨を読み込めませんでした。少し待ってからもう一度保存してください。",
+    "validation_order_value_range": "最大注文金額は最小注文金額以上にしてください。"
   },
   "templates": {
     "nps": {
@@ -747,7 +751,9 @@
     "publish": "変更を公開",
     "discard": "下書きを破棄",
     "conflict": "このアンケートは別のウィンドウで変更されました。最新版を見るには再読み込みしてください。",
-    "status_no_block": "チェックアウト未設置"
+    "status_no_block": "チェックアウト未設置",
+    "conflict_kept": "保存されていない変更はまだここにあり、保存されていません。必要な内容をコピーしてから、最新バージョンを読み込んで編集してください。",
+    "conflict_load_latest": "最新バージョンを読み込む"
   },
   "confidence": {
     "too_early": "まだ早い",

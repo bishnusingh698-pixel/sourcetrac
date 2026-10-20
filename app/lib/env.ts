@@ -41,7 +41,8 @@ const schema = z.object({
   TOKEN_ENCRYPTION_KEY: HEX_32,
   /**
    * The previous key while rotating: tokens sealed with it still decrypt, and
-   * are re-sealed with the current key when next stored. Remove once rotated.
+   * are re-sealed with the current key when their session is next loaded.
+   * Remove once every shop has been loaded since the rotation.
    */
   TOKEN_ENCRYPTION_KEY_PREVIOUS: optional(HEX_32),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),

@@ -40,11 +40,14 @@ export function UnsavedChangesGuard({
   dirty,
   saving,
   saveLabel,
+  saveDisabled = false,
   onSave,
   onDiscard,
   t,
 }: {
   dirty: boolean;
+  /** The edits cannot be saved as they are (the page shows why): Save is off. */
+  saveDisabled?: boolean;
   /** A save is in flight; its redirect must not be stopped and nothing should ask. */
   saving: boolean;
   saveLabel: string;
@@ -92,7 +95,7 @@ export function UnsavedChangesGuard({
   return (
     <>
       <ui-save-bar id={SAVE_BAR_ID}>
-        <button {...PRIMARY} onClick={onSave}>
+        <button {...PRIMARY} disabled={saveDisabled} onClick={onSave}>
           {saveLabel}
         </button>
         <button onClick={onDiscard}>{t("editor.discard_changes")}</button>
@@ -105,6 +108,7 @@ export function UnsavedChangesGuard({
               <s-stack direction="inline" gap="small">
                 <s-button
                   variant="primary"
+                  disabled={saveDisabled || undefined}
                   onClick={() => {
                     blocker.reset?.();
                     onSave();

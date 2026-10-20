@@ -188,7 +188,7 @@
     "status_frozen": "已冻结",
     "status_expired": "已过期",
     "cancel_title": "要取消套餐吗？",
-    "cancel_body": "您的回答会继续保存，问卷也会继续运作，但您将失去回答数不限的权益。",
+    "cancel_body": "您的回答会保留。Shopify 会将账单周期中未使用的部分退为额度。免费方案下，只有优先级最高的进行中问卷会继续向买家显示，Shopify 标签、元字段和 Flow 会停止，本月超过 {{cap}} 条的回答会保留，但标记为超出限额。",
     "cancel_confirm": "取消套餐",
     "keep_plan": "保留我的套餐",
     "not_available": "账单服务暂时不可用，请稍后重试。",
@@ -202,7 +202,6 @@
     "feature_unlimited": "回答数不限，无月度上限",
     "feature_everything_free": "包含免费套餐的全部功能，另加：",
     "feature_everything_growth": "包含成长版的全部功能，另加：",
-    "feature_priority_support": "优先邮件支持",
     "billing_title": "计费方式",
     "billing_body": "费用会和您的其他应用订阅一起显示在 Shopify 账单上。SourceTrac 从不存储您的银行卡信息 — 付款由 Shopify 处理，并在订阅开始、变更或结束时通知我们。",
     "msg_shopify_unreachable": "无法连接 Shopify 来管理计费。请从 Shopify 后台重新打开应用后重试。",
@@ -210,7 +209,7 @@
     "msg_opening_approval": "正在打开 Shopify 以便您批准此费用…",
     "msg_already_free": "您已经在使用免费套餐。",
     "msg_cancel_failed": "Shopify 无法取消订阅：{{error}}",
-    "msg_cancelled": "订阅已取消。您已回到免费套餐，每月 {{cap}} 条回答。",
+    "msg_cancelled": "订阅已取消。您已回到每月 {{cap}} 条回答的免费方案；本月已收集的回答也计入其中。",
     "msg_subscribe_failed": "Shopify 无法开始订阅：{{error}}",
     "msg_subscription_created": "订阅已创建。如果您没有被带到确认页面，请查看 Shopify 后台的账单页面。",
     "msg_plan_unavailable": "该套餐不可用。",
@@ -232,13 +231,13 @@
     "save_percent": "按年支付节省 {{percent}}%",
     "switch_yearly": "切换为按年计费",
     "switch_monthly": "切换为按月计费",
-    "yearly_note": "按年计费比按月便宜 {{percent}}%，每年收费一次。在按月和按年之间切换后，一旦你在 Shopify 中批准，就会替换当前费用。",
+    "yearly_note": "按年计费比按月便宜 {{percent}}%，每年收费一次。升级或改为按年计费，会在您于 Shopify 中批准后替换当前费用。降级或从按年改为按月，会在当前账单周期结束时开始。",
     "feature_live_surveys_one": "同时上线 {{count}} 个问卷",
     "feature_live_surveys_other": "同时最多上线 {{count}} 个问卷",
     "feature_follow_ups": "追问，以及面向首次购买或回头客的问卷",
     "feature_targeting": "按订单金额、国家/地区、买家比例或日期显示问卷，并在收到设定数量的回答后停止",
     "feature_automation": "结果明确后自动停止问卷，并轮换多个问卷",
-    "feature_unlimited_surveys": "上线问卷数量不限",
+    "feature_unlimited_surveys": "所有问卷可同时上线（最多 {{count}} 个）",
     "save_up_to": "每年最多节省 {{amount}}",
     "yearly_nudge": "或按年计费，每月 {{price}}，每年节省 {{amount}}",
     "was_price": "原价",
@@ -250,7 +249,10 @@
     "msg_billing_not_enabled": "此应用尚未开启 Shopify 计费。请在 Partner Dashboard 中依次打开“应用”、SourceTrac、“分发”，然后选择“公开分发”。之后即可在此批准付费套餐（在开发商店中为免费的测试收费）。",
     "choose_plan_yearly": "选择 {{plan}}（按年付费）",
     "choose_plan_yearly_instead": "或按年付费：每年 {{price}}",
-    "choose_plan_monthly_instead": "或按月付费：每月 {{price}}"
+    "choose_plan_monthly_instead": "或按月付费：每月 {{price}}",
+    "msg_already_scheduled": "您已批准此变更。它将在当前账单周期结束时开始。",
+    "scheduled_change": "您改用 {{plan}} 的变更已获批准，将于 {{date}}（当前账单周期结束时）开始。",
+    "scheduled_change_no_date": "您改用 {{plan}} 的变更已获批准，将在当前账单周期结束时开始。"
   },
   "help": {
     "title": "帮助",
@@ -579,7 +581,9 @@
     "check_block_buyer": "{{page}}：SourceTrac 区块已于 {{when}} 为买家加载。",
     "check_block_placed": "{{page}}：SourceTrac 区块已添加（{{when}} 检测到），但尚未在任何买家的页面加载。请下一个测试订单确认。",
     "check_new_order": "每个订单只会被询问一次。请用新订单测试，然后在下方“最近的结账”中查看结果。",
-    "check_block_never_order_status": "订单状态页面：SourceTrac 区块尚未在此加载。请在结账编辑器的页面菜单中选择“订单状态”，添加“SourceTrac survey”区块并保存。只有店铺使用新版客户账户时菜单中才会出现该页面。"
+    "check_block_never_order_status": "订单状态页面：SourceTrac 区块尚未在此加载。请在结账编辑器的页面菜单中选择“订单状态”，添加“SourceTrac survey”区块并保存。只有店铺使用新版客户账户时菜单中才会出现该页面。",
+    "validation_currency_unavailable": "暂时无法读取商店的货币。请稍后再保存一次。",
+    "validation_order_value_range": "最高订单金额不能低于最低订单金额。"
   },
   "templates": {
     "nps": {
@@ -747,7 +751,9 @@
     "publish": "发布更改",
     "discard": "丢弃草稿",
     "conflict": "此问卷在其他窗口中已被修改。请重新加载以查看最新版本。",
-    "status_no_block": "尚未添加到结账"
+    "status_no_block": "尚未添加到结账",
+    "conflict_kept": "未保存的更改仍在此处，尚未保存。请复制所需内容，然后载入最新版本进行编辑。",
+    "conflict_load_latest": "载入最新版本"
   },
   "confidence": {
     "too_early": "尚早",

@@ -104,6 +104,7 @@ function OrderStatusBlock() {
       step={survey.step}
       total={survey.total}
       complete={survey.complete}
+      canAdvance={survey.canAdvance}
       onAnswer={survey.setAnswer}
       onNext={survey.next}
       onBack={survey.back}

@@ -213,7 +213,9 @@ describe("loadDashboard", () => {
     expect(dashboard.report.channels).toHaveLength(3);
     // What the buyer typed under "Other" reaches the channel report.
     expect(dashboard.report.otherAnswers.map((a) => a.text)).toEqual(["A podcast about tea"]);
-    expect(dashboard.report.otherAnswers[0]?.label).toBe("Other");
+    // Every "Other" is the one shared channel `other`, named by the page in
+    // the merchant's language (null here).
+    expect(dashboard.report.otherAnswers[0]?.label).toBeNull();
   });
 
   it("reads nothing from outside the chosen range", async () => {

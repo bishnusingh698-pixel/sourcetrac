@@ -12,6 +12,7 @@
  * refund from it, or a partial refund would be deducted twice.
  */
 
+import { logger } from "./logger";
 import { parseMoneyToMinor, type CurrencyCode } from "./money";
 
 export type OrderFacts = {
@@ -99,9 +100,20 @@ export function rollupByCurrency(
   entries: ReadonlyArray<{ currency: CurrencyCode; minor: number }>,
 ): Array<{ currency: CurrencyCode; minor: number }> {
   const totals = new Map<CurrencyCode, number>();
+  const overflowed = new Set<CurrencyCode>();
   for (const { currency, minor } of entries) {
+    if (overflowed.has(currency)) continue;
     const next = (totals.get(currency) ?? 0) + minor;
-    if (Number.isSafeInteger(next)) totals.set(currency, next);
+    if (Number.isSafeInteger(next)) {
+      totals.set(currency, next);
+    } else {
+      // Past 2^53 minor units a sum is no longer exact. The currency is left
+      // out whole rather than shown as a partial (wrong) total, and logged
+      // instead of disappearing silently.
+      overflowed.add(currency);
+      totals.delete(currency);
+      logger.error("revenue_sum_overflow", { currency, entries: entries.length });
+    }
   }
   return [...totals.entries()]
     .map(([currency, minor]) => ({ currency, minor }))

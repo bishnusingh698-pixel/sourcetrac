@@ -23,6 +23,7 @@ import {
   PLAN_ORDER,
   planFor,
   PLANS,
+  subscriptionName,
   YEARLY_DISCOUNT_PERCENT,
   yearlySavingMinor,
   type BillingCycle,
@@ -32,17 +33,20 @@ import { getUsageCount } from "~/lib/responses.server";
 import {
   activeSourceTracSubscription,
   fetchActiveSubscriptions,
+  fetchSubscription,
   needsPlanSync,
   paidPlanFromSubscriptions,
   testChargesAllowed,
 } from "~/lib/billing.server";
-import { getAccessToken, setPlan } from "~/lib/shop.server";
+import { clearPendingSubscription, getAccessToken, recordPendingSubscription, setPlan } from "~/lib/shop.server";
+import { matchPlanByDisplayName } from "~/lib/webhooks.server";
 import { ensureShop } from "~/lib/provision.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { intlLocaleFor } from "~/lib/i18n";
 import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import type { I18nText } from "~/lib/settings";
+import type { PlanStatus } from "@prisma/client";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -87,6 +91,8 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   // Null when Shopify could not be asked: guessing "monthly" told a yearly
   // subscriber they paid monthly and offered to switch them to yearly.
   let activeCycle: BillingCycle | null = null;
+  // An approved change that starts when the current billing period ends.
+  let scheduled: { plan: "free" | "growth" | "scale"; startsAt: string | null } | null = null;
   if (session.accessToken) {
     try {
       const subscriptions = await fetchActiveSubscriptions({
@@ -94,6 +100,9 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
         accessToken: session.accessToken,
       });
       const allowTest = await testChargesAllowed(shop.shopDomain, session.accessToken);
+      // Without knowing whether test charges count here, a development store's
+      // test plan would read as unpaid: keep the stored plan this time.
+      if (allowTest === null) throw new Error("Shopify did not say whether this is a development store.");
       const paid = paidPlanFromSubscriptions(subscriptions, { allowTest });
       const live = activeSourceTracSubscription(subscriptions, { allowTest });
       const reconciled: "free" | "growth" | "scale" = paid ?? "free";
@@ -111,13 +120,25 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
         // Collecting behaviour is unaffected either way: `api.responses`
         // resolves the effective plan as `planStatusIsCollecting(planStatus) ?
         // plan : "free"`, and `plan` is now free.
-        await setPlan(shop.id, {
-          plan: reconciled,
-          planStatus: reconciled === "free" ? "expired" : "active",
-          subscriptionGid: live?.id ?? shop.subscriptionGid,
-        });
-        synced = true;
+        //
+        // A status that already records why the charge is not live (frozen,
+        // cancelled, declined) is kept; only "active" becomes "expired".
+        //
+        // Conditional on the row being what this request read: a billing
+        // webhook that landed meanwhile is newer than this Shopify read.
+        synced = await setPlan(
+          shop.id,
+          {
+            plan: reconciled,
+            planStatus:
+              reconciled === "free" ? (shop.planStatus === "active" ? "expired" : (shop.planStatus as PlanStatus)) : "active",
+            subscriptionGid: live?.id ?? shop.subscriptionGid,
+            planDisplayName: live?.name ?? null,
+          },
+          { onlyIf: { plan: shop.plan, planStatus: shop.planStatus, subscriptionGid: shop.subscriptionGid } },
+        );
       }
+      scheduled = await scheduledChange(shop, live, session.accessToken);
       // Shown only once stored: if the write above failed, the page keeps
       // showing the plan that is actually enforced.
       activePlan = reconciled;
@@ -140,6 +161,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     used,
     cap: evaluateCap(activePlan, used),
     activeCycle,
+    scheduled,
     // The cycle the cards show: the URL's choice, else the merchant's own.
     cycle: isBillingCycle(requestedCycle) ? requestedCycle : (activeCycle ?? "monthly"),
     discountPercent: YEARLY_DISCOUNT_PERCENT,
@@ -172,6 +194,39 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
 });
 
 /**
+ * A charge the merchant asked for that Shopify will start later (a downgrade,
+ * or yearly to monthly, waits for the end of the billing period). Forgotten
+ * once Shopify says it will never start.
+ */
+async function scheduledChange(
+  shop: { id: string; shopDomain: string; pendingSubscriptionGid: string | null },
+  live: { id: string; currentPeriodEnd: string | null } | null,
+  accessToken: string,
+): Promise<{ plan: "free" | "growth" | "scale"; startsAt: string | null } | null> {
+  if (!shop.pendingSubscriptionGid || shop.pendingSubscriptionGid === live?.id) return null;
+  const pending = await fetchSubscription({
+    shopDomain: shop.shopDomain,
+    accessToken,
+    subscriptionGid: shop.pendingSubscriptionGid,
+  }).catch((error: unknown) => {
+    logger.warn("plans_pending_lookup_failed", {
+      shop_domain: shop.shopDomain,
+      error_message: error instanceof Error ? error.message : String(error),
+    });
+    return undefined;
+  });
+  if (pending === undefined) return null;
+  const status = pending?.status.toUpperCase() ?? "";
+  if (!pending || ["DECLINED", "EXPIRED", "CANCELLED"].includes(status)) {
+    await clearPendingSubscription(shop.id, shop.pendingSubscriptionGid);
+    return null;
+  }
+  if (status !== "ACCEPTED" && status !== "ACTIVE") return null;
+  const plan = matchPlanByDisplayName(pending.name)?.key;
+  return plan ? { plan, startsAt: live?.currentPeriodEnd ?? null } : null;
+}
+
+/**
  * Reading the subscriptions failed. Shopify refuses that read with the same
  * "public distribution" error as a new charge, so an app not yet set to Public
  * gets the message that says where to fix it. Anything else shows Shopify's
@@ -191,7 +246,16 @@ function lookupFailed(error: unknown): Result {
  * be missing or stale. Also what "Switch to Free" does: the Free plan is the
  * absence of a paid charge, not a $0 charge.
  */
-async function cancelActiveSubscription(params: { shopDomain: string; accessToken: string }): Promise<Result> {
+async function cancelActiveSubscription(params: {
+  shopDomain: string;
+  accessToken: string;
+  shop: { id: string; pendingSubscriptionGid: string | null };
+}): Promise<Result> {
+  // A change approved to start at the end of the period would otherwise still
+  // start, and bill, after the merchant chose Free.
+  const pendingCancelled = await cancelPendingSubscription(params);
+  if (pendingCancelled) return pendingCancelled;
+
   let subscriptions: Awaited<ReturnType<typeof fetchActiveSubscriptions>>;
   try {
     subscriptions = await fetchActiveSubscriptions(params);
@@ -199,12 +263,16 @@ async function cancelActiveSubscription(params: { shopDomain: string; accessToke
     return lookupFailed(error);
   }
 
-  const active = activeSourceTracSubscription(subscriptions, {
-    allowTest: await testChargesAllowed(params.shopDomain, params.accessToken),
-  });
+  const allowTest = await testChargesAllowed(params.shopDomain, params.accessToken);
+  if (allowTest === null) return lookupFailed(new Error("Shopify did not say whether this is a development store."));
+  const active = activeSourceTracSubscription(subscriptions, { allowTest });
   if (!active) return result(true, "plans.msg_already_free");
 
-  const cancelled = await cancelSubscription({ ...params, subscriptionGid: active.id });
+  const cancelled = await cancelSubscription({
+    shopDomain: params.shopDomain,
+    accessToken: params.accessToken,
+    subscriptionGid: active.id,
+  });
   if (!cancelled.ok) {
     if (isBillingNotEnabled(cancelled.error)) return result(false, "plans.msg_billing_not_enabled");
     return result(false, "plans.msg_cancel_failed", { error: cancelled.error ?? "—" });
@@ -213,6 +281,34 @@ async function cancelActiveSubscription(params: { shopDomain: string; accessToke
   // Collection continues on the free cap rather than stopping; the webhook
   // moves the stored plan.
   return result(true, "plans.msg_cancelled", { cap: FREE_RESPONSE_CAP });
+}
+
+/**
+ * Cancel the charge the merchant asked for that has not started yet, if any.
+ * Returns a failure to show, or null when there was nothing to cancel or it
+ * was cancelled.
+ */
+async function cancelPendingSubscription(params: {
+  shopDomain: string;
+  accessToken: string;
+  shop: { id: string; pendingSubscriptionGid: string | null };
+}): Promise<Result | null> {
+  const gid = params.shop.pendingSubscriptionGid;
+  if (!gid) return null;
+  let pending: Awaited<ReturnType<typeof fetchSubscription>>;
+  try {
+    pending = await fetchSubscription({ shopDomain: params.shopDomain, accessToken: params.accessToken, subscriptionGid: gid });
+  } catch (error) {
+    return lookupFailed(error);
+  }
+  const status = pending?.status.toUpperCase() ?? "";
+  // A live charge is the active one, cancelled below; anything else has ended.
+  if (pending && (status === "ACCEPTED" || status === "PENDING")) {
+    const cancelled = await cancelSubscription({ shopDomain: params.shopDomain, accessToken: params.accessToken, subscriptionGid: gid });
+    if (!cancelled.ok) return result(false, "plans.msg_cancel_failed", { error: cancelled.error ?? "—" });
+  }
+  if (status !== "ACTIVE") await clearPendingSubscription(params.shop.id, gid);
+  return null;
 }
 
 export const action = guarded(async ({ request }: ActionFunctionArgs) => {
@@ -237,21 +333,35 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
     if (!isPlanKey(plan)) return result(false, "plans.msg_plan_unavailable");
 
     if (plan === "free") {
-      return cancelActiveSubscription({ shopDomain: shop.shopDomain, accessToken });
+      return cancelActiveSubscription({ shopDomain: shop.shopDomain, accessToken, shop });
     }
 
     const rawCycle = String(form.get("cycle") ?? "monthly");
     const cycle: BillingCycle = isBillingCycle(rawCycle) ? rawCycle : "monthly";
     const allowTest = await testChargesAllowed(shop.shopDomain, accessToken);
+    // A failed lookup must not turn a development store's charge into a real one.
+    if (allowTest === null) return lookupFailed(new Error("Shopify did not say whether this is a development store."));
 
     // Choosing the plan and cycle already held would create a second,
-    // duplicate charge for the merchant to approve.
+    // duplicate charge for the merchant to approve; so would choosing again a
+    // change already approved that Shopify starts at the end of the period.
     try {
       const subscriptions = await fetchActiveSubscriptions({ shopDomain: shop.shopDomain, accessToken });
       const current = paidPlanFromSubscriptions(subscriptions, { allowTest });
       const live = activeSourceTracSubscription(subscriptions, { allowTest });
       if (current === plan && cycleOf(live) === cycle) {
         return result(true, "plans.msg_already_on_plan");
+      }
+      if (shop.pendingSubscriptionGid && shop.pendingSubscriptionName === subscriptionName(plan, cycle)) {
+        const pending = await fetchSubscription({
+          shopDomain: shop.shopDomain,
+          accessToken,
+          subscriptionGid: shop.pendingSubscriptionGid,
+        });
+        const status = pending?.status.toUpperCase();
+        if (pending && pending.id !== live?.id && (status === "ACCEPTED" || status === "ACTIVE")) {
+          return result(true, "plans.msg_already_scheduled");
+        }
       }
     } catch (error) {
       return lookupFailed(error);
@@ -269,6 +379,7 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
       if (isBillingNotEnabled(created.error)) return result(false, "plans.msg_billing_not_enabled");
       return result(false, "plans.msg_subscribe_failed", { error: created.error });
     }
+    await recordPendingSubscription(shop.id, created.subscriptionGid, subscriptionName(plan, cycle));
 
     // Shopify asks the merchant to approve the charge. We do not assume success
     // here — the app_subscriptions/update webhook confirms it. The page opens
@@ -283,7 +394,7 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
   }
 
   if (intent === "cancel") {
-    return cancelActiveSubscription({ shopDomain: shop.shopDomain, accessToken });
+    return cancelActiveSubscription({ shopDomain: shop.shopDomain, accessToken, shop });
   }
 
   return result(false, "errors.generic");
@@ -293,7 +404,7 @@ export default function Plans() {
   const data = useLoaderData<typeof loader>();
   const outcome = useActionData<typeof action>();
   const navigation = useNavigation();
-  const { t } = useAdminI18n();
+  const { t, language } = useAdminI18n();
   const { revalidate } = useRevalidator();
 
   // The charge's approval page cannot load inside the admin iframe.
@@ -372,6 +483,20 @@ export default function Plans() {
           </s-grid>
         </s-query-container>
       </s-section>
+
+      {data.scheduled ? (
+        <Banner
+          tone="info"
+          heading={
+            data.scheduled.startsAt
+              ? t("plans.scheduled_change", {
+                  plan: t(`plans.${data.scheduled.plan}`),
+                  date: new Date(data.scheduled.startsAt).toLocaleDateString(language),
+                })
+              : t("plans.scheduled_change_no_date", { plan: t(`plans.${data.scheduled.plan}`) })
+          }
+        />
+      ) : null}
 
       {/* Monthly / yearly switch. Every paid card also offers the other cycle
           as its own button, so buying yearly never depends on this switch. */}
@@ -654,7 +779,7 @@ function ConfirmCancel({
         {children}
         <s-stack gap="small">
           <s-text type="strong">{t("plans.cancel_title")}</s-text>
-          <s-text color="subdued">{t("plans.cancel_body")}</s-text>
+          <s-text color="subdued">{t("plans.cancel_body", { cap: FREE_RESPONSE_CAP })}</s-text>
           <s-stack direction="inline" gap="small">
             <s-button type="button" variant="primary" onClick={() => setAsking(false)}>
               {t("plans.keep_plan")}

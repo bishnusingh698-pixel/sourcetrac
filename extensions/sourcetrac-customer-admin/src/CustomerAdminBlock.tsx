@@ -41,7 +41,8 @@ function CustomerBlock() {
       context={{ orderId: null, customerId }}
       heading={t("heading", "SourceTrac attribution")}
       loading={t("loading", "Checking for a survey answer…")}
-      missing={t("missing_customer", "No survey answer recorded for this customer.")}
+      missing={t("missing_customer", "No survey answer on this customer's recent orders (about the last 60 days).")}
+      unavailable={t("unavailable", "Couldn't check for a survey answer right now. Reload the page to try again.")}
       foundPrefix={t("found_prefix", "How they heard about us:")}
     />
   );

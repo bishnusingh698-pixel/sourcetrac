@@ -282,14 +282,16 @@ export function useMultiSurvey(
 
       // Apply the buyer's language to the merchant-authored text, and remember
       // it so the answer is stored with the language the buyer actually read.
-      // Randomised options are shuffled once, seeded by the order id, so the
-      // order is stable for this buyer and identical on both pages.
+      // Randomised options are shuffled once, seeded by the order's numeric
+      // id, so the order is stable for this buyer and identical on both pages
+      // (their GIDs differ: OrderIdentity on Thank-you, Order on Order status).
       const localized = localizeSurvey(config.survey, locale);
+      const seed = orderId.match(/(\d+)$/)?.[1] ?? orderId;
       setSurvey({
         ...localized,
         questions: localized.questions.map((question) => ({
           ...question,
-          options: orderOptionsForBuyer(question.options, question.randomizeOptions === true, orderId),
+          options: orderOptionsForBuyer(question.options, question.randomizeOptions === true, seed),
         })),
       });
       setPhase("asking");
@@ -342,11 +344,13 @@ export function useMultiSurvey(
         return;
       }
 
+      // Only questions the buyer actually answered: a skipped optional
+      // question sent as an empty entry was stored as an empty answer and
+      // counted in that question's totals.
       const visible = visibleQuestionsFor(survey.questions, finalAnswers);
-      const payload: AnswerInput[] = visible.map((question) => ({
-        ...(finalAnswers[question.id] ?? {}),
-        questionId: question.id,
-      }));
+      const payload: AnswerInput[] = visible
+        .filter((question) => hasContent(finalAnswers[question.id]))
+        .map((question) => ({ ...(finalAnswers[question.id] ?? {}), questionId: question.id }));
 
       const result = await apiRef.current.submitAnswers({
         surveyId: survey.id,
@@ -407,29 +411,17 @@ export function useMultiSurvey(
     // picked (the tap used to fail and the buyer saw nothing happen).
     let answered = 0;
     for (const question of visibleQuestions) {
-      const answer = answers[question.id];
-      if (!hasContent(answer)) {
-        if (question.required) return false;
-        continue;
-      }
-      answered += 1;
-      if (question.type === "single_choice" || question.type === "dropdown" || question.type === "multi_choice") {
-        // The same rules the server enforces, so Submit is never enabled for a
-        // set the server would refuse (and the answer lost).
-        const chosen = answer?.optionIds ?? [];
-        const otherChosen = chosen.some(
-          (id) => id === OTHER_CHANNEL || question.options.find((o) => o.id === id)?.isOther,
-        );
-        if (otherChosen && (answer?.otherText?.trim().length ?? 0) === 0) return false;
-        if (question.type === "multi_choice") {
-          const count = new Set(chosen).size;
-          if (typeof question.minSelections === "number" && count < question.minSelections) return false;
-          if (typeof question.maxSelections === "number" && count > question.maxSelections) return false;
-        }
-      }
+      const state = questionState(question, answers[question.id]);
+      if (state === "invalid") return false;
+      if (state === "answered") answered += 1;
     }
     return answered > 0;
   }, [visibleQuestions, answers]);
+
+  // One question at a time: Next waits until the current question is answered
+  // (or is optional and left empty), so a required question is never skipped
+  // only to leave Submit disabled at the end with nothing saying why.
+  const canAdvance = current ? questionState(current, answers[current.id]) !== "invalid" : true;
 
   const next = useCallback(() => setStep((s) => Math.min(s + 1, Math.max(visibleQuestions.length - 1, 0))), [
     visibleQuestions.length,
@@ -447,6 +439,7 @@ export function useMultiSurvey(
     step,
     total: visibleQuestions.length,
     complete,
+    canAdvance,
     setAnswer: answer,
     next,
     back,
@@ -454,4 +447,29 @@ export function useMultiSurvey(
     busy: phase === "sending",
     t: api.t,
   };
+}
+
+/**
+ * Whether one visible question is answered, left empty (fine when optional) or
+ * in a state the server would refuse. The same rules the server enforces, so
+ * Submit is never enabled for a set the server would refuse (and the answer
+ * lost).
+ */
+function questionState(question: CompiledQuestion, answer: AnswerInput | undefined): "answered" | "empty" | "invalid" {
+  if (!hasContent(answer)) return question.required ? "invalid" : "empty";
+  if (question.type === "single_choice" || question.type === "dropdown" || question.type === "multi_choice") {
+    const chosen = answer?.optionIds ?? [];
+    const otherChosen = chosen.some((id) => id === OTHER_CHANNEL || question.options.find((o) => o.id === id)?.isOther);
+    if (otherChosen && (answer?.otherText?.trim().length ?? 0) === 0) return "invalid";
+    if (question.type === "multi_choice") {
+      const unique = [...new Set(chosen)];
+      // An exclusive option ("None of these") stands alone, whatever the minimum.
+      const onlyExclusive = unique.length === 1 && question.options.find((o) => o.id === unique[0])?.exclusive === true;
+      if (typeof question.minSelections === "number" && unique.length < question.minSelections && !onlyExclusive) {
+        return "invalid";
+      }
+      if (typeof question.maxSelections === "number" && unique.length > question.maxSelections) return "invalid";
+    }
+  }
+  return "answered";
 }

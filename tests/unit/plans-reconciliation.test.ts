@@ -67,8 +67,11 @@ describe("plans loader reconciliation", () => {
     // The old shape stamped the status unconditionally.
     expect(source).not.toMatch(/plan:\s*reconciled,\s*planStatus:\s*"active"/);
 
-    // The free branch must not claim "active".
-    expect(source).toMatch(/planStatus:\s*reconciled\s*===\s*"free"\s*\?\s*"expired"\s*:\s*"active"/);
+    // The free branch must not claim "active": an active status becomes
+    // "expired", and a status that already says why (frozen, cancelled) stays.
+    expect(source).toMatch(
+      /reconciled\s*===\s*"free"\s*\?\s*\(shop\.planStatus\s*===\s*"active"\s*\?\s*"expired"\s*:\s*\(shop\.planStatus as PlanStatus\)\)\s*:\s*"active"/,
+    );
   });
 
   it("still resolves to free after a downgrade, whatever status is recorded", () => {

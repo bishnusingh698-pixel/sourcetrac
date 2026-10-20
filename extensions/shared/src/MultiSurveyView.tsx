@@ -26,6 +26,8 @@ export interface MultiSurveyViewProps {
   step: number;
   total: number;
   complete: boolean;
+  /** One at a time: whether the current question allows Next. */
+  canAdvance?: boolean;
   onAnswer: (questionId: string, patch: Partial<import("./survey-logic").AnswerInput>) => void;
   onNext: () => void;
   onBack: () => void;
@@ -58,6 +60,7 @@ export function MultiSurveyView(props: MultiSurveyViewProps) {
     step,
     total,
     complete,
+    canAdvance = true,
     onAnswer,
     onNext,
     onBack,
@@ -108,7 +111,7 @@ export function MultiSurveyView(props: MultiSurveyViewProps) {
           </s-button>
         ) : null}
         {oneByOne && step < total - 1 ? (
-          <s-button variant="primary" onClick={onNext} disabled={busy}>
+          <s-button variant="primary" onClick={onNext} disabled={busy || !canAdvance}>
             {t("sourcetrac.next", "Next")}
           </s-button>
         ) : (

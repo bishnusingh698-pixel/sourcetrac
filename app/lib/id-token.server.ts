@@ -51,8 +51,11 @@ export function verifyIdToken(token: string): IdTokenClaims {
   const header = parsePart(headerB64);
   if (header.alg !== "HS256") throw new IdTokenError("Unexpected signing algorithm");
 
-  const expected = createHmac("sha256", hmacKey()).update(`${headerB64}.${payloadB64}`).digest();
-  const provided = Buffer.from(signatureB64.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+  // Compared as base64url text, not decoded bytes: Node's base64 decoder skips
+  // characters it does not know, so many different strings decoded to the
+  // same signature.
+  const expected = Buffer.from(createHmac("sha256", hmacKey()).update(`${headerB64}.${payloadB64}`).digest("base64url"));
+  const provided = Buffer.from(signatureB64.replace(/=+$/, ""));
   if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
     throw new IdTokenError("Signature does not match");
   }
@@ -89,12 +92,16 @@ export function verifyIdToken(token: string): IdTokenClaims {
 }
 
 function parsePart(part: string): Record<string, unknown> {
+  let value: unknown;
   try {
-    return JSON.parse(Buffer.from(part.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8")) as Record<
-      string,
-      unknown
-    >;
+    value = JSON.parse(Buffer.from(part.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8"));
   } catch {
     throw new IdTokenError("Token part is not valid JSON");
   }
+  // `null`, a number or an array is valid JSON but not a header or claims set;
+  // reading a field off it threw a TypeError (a 500) instead of a 401.
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new IdTokenError("Token part is not a JSON object");
+  }
+  return value as Record<string, unknown>;
 }

@@ -3,6 +3,8 @@ import { logger } from "~/lib/logger";
 import { withRetry } from "~/lib/retry.server";
 import { getAccessToken } from "~/lib/shop.server";
 import { isThrottle, shopifyGraphql, ShopifyGraphQLError } from "~/lib/shopify-graphql.server";
+import { parseMoneyToMinor } from "~/lib/money";
+import { startSyncForOrder } from "~/lib/sync.server";
 import { upsertOrderCache, type ShopifyOrder } from "~/lib/webhooks.server";
 
 /**
@@ -143,6 +145,12 @@ async function runBackfill(params: {
   try {
     const after = new Date(now.getTime() - MAX_AGE_MS);
     const before = new Date(now.getTime() - MIN_AGE_MS);
+    // Orders waiting out a retry are left out in the query itself: filtered
+    // after the LIMIT, a hundred parked orders starved every older one.
+    const prefix = `${params.shopId}:`;
+    const parked = [...nextAttempt.entries()]
+      .filter(([key, at]) => key.startsWith(prefix) && at > now.getTime())
+      .map(([key]) => key.slice(prefix.length));
     const candidates = await retryDb(() =>
       db.$queryRaw<Array<{ orderId: string }>>`
         SELECT c."orderId", MAX(c.at) AS at FROM (
@@ -161,7 +169,9 @@ async function runBackfill(params: {
         ) c
         LEFT JOIN "OrderCache" o
           ON o."shopId" = ${params.shopId} AND o."orderId" = c."orderId"
-        WHERE o.id IS NULL
+        -- Missing, or stored with a total that could not be read: read again.
+        WHERE (o.id IS NULL OR o."totalPrice" IS NULL)
+          AND NOT (c."orderId" = ANY(${parked}::text[]))
         GROUP BY c."orderId"
         ORDER BY at DESC
         LIMIT 100
@@ -190,12 +200,39 @@ async function runBackfill(params: {
           logger.info("order_backfill_not_found", { shop_id: params.shopId, order_id: orderId });
           continue;
         }
-        const outcome = await upsertOrderCache(params.shopId, orderNodeToPayload(result.data.order), false);
-        if (outcome?.applied) written += 1;
+        const payload = orderNodeToPayload(result.data.order);
+        const outcome = await upsertOrderCache(params.shopId, payload, false);
+        // Stored, but still with a total that cannot be read: reading it again
+        // every hour would get the same answer (and fill the candidate list).
+        if (outcome && !parseMoneyToMinor(payload.current_total_price, payload.currency).ok) {
+          nextAttempt.set(key, now.getTime() + NOT_FOUND_RETRY_MS);
+          logger.warn("order_backfill_total_unreadable", { shop_id: params.shopId, order_id: orderId });
+        }
+        if (!outcome) {
+          // Shopify's answer cannot be stored (no total or currency): asking
+          // again every hour would get the same answer.
+          nextAttempt.set(key, now.getTime() + NOT_FOUND_RETRY_MS);
+          logger.warn("order_backfill_unstorable", { shop_id: params.shopId, order_id: orderId });
+          continue;
+        }
+        if (outcome.applied) written += 1;
+        // Sync work waiting for this order can run now, as on orders/create.
+        if (outcome?.created) startSyncForOrder(params.shopId, orderId);
       } catch (error) {
         // One order failing must not stop the rest of the batch. A permanent
         // GraphQL error (an order past the 60-day window answers with an
         // access error) waits a week; a throttle or 5xx retries in an hour.
+        //
+        // A refused token (401/403) is about the shop, not this order: no order
+        // is parked for it, and the rest of the batch would fail the same way.
+        if (isAuthFailure(error)) {
+          nextAttempt.delete(key);
+          logger.warn("order_backfill_auth_failed", {
+            shop_id: params.shopId,
+            error_message: error instanceof Error ? error.message : String(error),
+          });
+          break;
+        }
         if (error instanceof ShopifyGraphQLError && !isThrottle(error)) {
           nextAttempt.set(key, now.getTime() + NOT_FOUND_RETRY_MS);
         }
@@ -222,4 +259,9 @@ async function runBackfill(params: {
 export function resetBackfillAttempts(): void {
   nextAttempt.clear();
   inFlight.clear();
+}
+
+/** Shopify refused the request itself (bad or revoked token), not the order. */
+function isAuthFailure(error: unknown): boolean {
+  return error instanceof ShopifyGraphQLError && /^Shopify returned (401|403)\b/.test(error.message);
 }

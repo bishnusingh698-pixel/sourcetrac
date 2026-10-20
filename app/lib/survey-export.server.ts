@@ -17,7 +17,7 @@ import {
   surveyRevenueStatus,
   type SurveyResponseRow,
 } from "~/lib/survey-analytics.server";
-import { getSurveyRow, listSurveys } from "~/lib/surveys.server";
+import { getSurveyRow, getSurveyRows } from "~/lib/surveys.server";
 import { db } from "~/db.server";
 
 /**
@@ -49,12 +49,18 @@ type ExportParams = {
   limit?: number;
   /** The file is oldest first; the preview shows the newest answers first. */
   order?: "oldest_first" | "newest_first";
+  /** Only answers given in [start, end), when set (the Results page's range). */
+  start?: Date;
+  end?: Date;
 };
 
 type QuestionInfo = { id: string; text: string; type: string };
 
 async function surveyShape(shopId: string, surveyId: string) {
-  const row = await getSurveyRow(shopId, surveyId);
+  return shapeOf(await getSurveyRow(shopId, surveyId));
+}
+
+function shapeOf(row: Awaited<ReturnType<typeof getSurveyRow>>) {
   const questions: QuestionInfo[] = (row?.questions ?? []).map((q) => ({ id: q.id, text: q.text, type: q.type }));
   const labels = new Map<string, string>();
   for (const question of row?.questions ?? []) {
@@ -68,6 +74,8 @@ async function loadResponses(params: ExportParams & { surveyId?: string }) {
   const fetched = await fetchSurveyResponses({
     shopId: params.shopId,
     ...(params.surveyId ? { surveyId: params.surveyId } : {}),
+    ...(params.start ? { start: params.start } : {}),
+    ...(params.end ? { end: params.end } : {}),
     limit: limit + 1,
   });
   const truncated = fetched.length > limit;
@@ -119,29 +127,45 @@ export async function buildSurveyExport(params: ExportParams & { surveyId: strin
 /** Every survey, one row per answer. */
 export async function buildAllSurveysExport(params: ExportParams): Promise<SurveyExport> {
   const timeZone = resolveExportTimeZone(params.timeZone);
-  const [surveys, { responses, truncated }] = await Promise.all([listSurveys(params.shopId), loadResponses(params)]);
-  const shapes = new Map(
-    await Promise.all(surveys.map(async (survey) => [survey.id, await surveyShape(params.shopId, survey.id)] as const)),
-  );
+  const [surveys, loaded] = await Promise.all([getSurveyRows(params.shopId), loadResponses(params)]);
+  // Every survey's questions in one query, not one query per survey.
+  const shapes = new Map(surveys.map((survey) => [survey.id, shapeOf(survey)] as const));
+  const { responses } = loaded;
+  let truncated = loaded.truncated;
+  // The cap is on rows, as the header says: one answer set is several rows.
+  const maxRows = params.limit ?? MAX_SURVEY_CSV_ROWS;
 
-  const rows: AllSurveysCsvRow[] = [];
-  for (const response of responses) {
+  // Filled newest first, so the rows the cap keeps are the newest, then put
+  // back in the file's order.
+  const newestFirst = params.order === "newest_first" ? responses : [...responses].reverse();
+  const groups: AllSurveysCsvRow[][] = [];
+  let count = 0;
+  for (const response of newestFirst) {
     const shape = shapes.get(response.surveyId);
     if (!shape) continue;
     const order = orderColumns(response, params.shopDomain, timeZone);
     const byQuestion = new Map(response.answers.map((answer) => [answer.questionId, answer]));
+    const group: AllSurveysCsvRow[] = [];
     // In the survey's question order, so a buyer's answers read top to bottom.
     for (const question of shape.questions) {
       const answer = byQuestion.get(question.id);
       if (!answer) continue;
-      rows.push({
+      group.push({
         ...order,
         surveyName: shape.name,
         question: question.text,
         answer: answerParts(answer, question.type, shape.labels, params.t).join("; "),
       });
     }
+    // A buyer's answers are kept together or not at all.
+    if (count + group.length > maxRows) {
+      truncated = true;
+      break;
+    }
+    count += group.length;
+    groups.push(group);
   }
+  const rows = (params.order === "newest_first" ? groups : groups.reverse()).flat();
 
   return { ...toAllSurveysTable(rows), truncated };
 }

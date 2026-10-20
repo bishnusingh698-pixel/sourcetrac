@@ -157,7 +157,7 @@ export function buildQuestionStats(
 export function optionLabels(questions: ReadonlyArray<StatsQuestion>): Record<string, string> {
   const labels: Record<string, string> = {};
   for (const question of questions) {
-    for (const option of question.options) labels[option.id] = option.label;
+    for (const option of question.options) if (option.label) labels[option.id] = option.label;
   }
   return labels;
 }

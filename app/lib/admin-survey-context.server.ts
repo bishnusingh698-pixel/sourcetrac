@@ -62,31 +62,43 @@ function safeArray(raw: string): string[] {
   }
 }
 
-export async function lookupByOrder(shopId: string, orderId: string): Promise<AdminSurveyContext> {
-  const response = await db.response.findFirst({
-    where: { shopId, orderId },
+/**
+ * The newest of these responses that answered its survey's channel question.
+ * The block says "How they heard about us", so only that question's answer may
+ * fill it: a gift, price or NPS answer (the old fallback to whichever answer
+ * came first) would tell the merchant something false.
+ */
+async function channelContext(
+  shopId: string,
+  where: { orderId: string } | { orderId: { in: string[] } },
+): Promise<AdminSurveyContext> {
+  const responses = await db.response.findMany({
+    where: { shopId, ...where, survey: { channelReportQuestionId: { not: null } } },
     orderBy: { createdAt: "desc" },
+    take: 20,
     include: {
       survey: { select: { name: true, channelReportQuestionId: true } },
       answers: true,
     },
   });
-  if (!response) return EMPTY;
+  for (const response of responses) {
+    const answer = response.answers.find((a) => a.questionId === response.survey.channelReportQuestionId);
+    if (!answer) continue;
+    const channelLabel = await resolveChannelLabel(shopId, answer);
+    if (!channelLabel) continue;
+    return {
+      found: true,
+      channel: safeArray(answer.optionIds)[0] ?? answer.otherText ?? null,
+      channelLabel,
+      surveyName: response.survey.name,
+      submittedAt: response.createdAt.toISOString(),
+    };
+  }
+  return EMPTY;
+}
 
-  const answer =
-    response.answers.find((a) => a.questionId === response.survey.channelReportQuestionId) ?? response.answers[0];
-  if (!answer) return EMPTY;
-
-  const channelLabel = await resolveChannelLabel(shopId, answer);
-  const channel = safeArray(answer.optionIds)[0] ?? answer.otherText ?? null;
-
-  return {
-    found: Boolean(channelLabel),
-    channel,
-    channelLabel,
-    surveyName: response.survey.name,
-    submittedAt: response.createdAt.toISOString(),
-  };
+export async function lookupByOrder(shopId: string, orderId: string): Promise<AdminSurveyContext> {
+  return channelContext(shopId, { orderId });
 }
 
 const CUSTOMER_ORDERS = `#graphql
@@ -103,8 +115,10 @@ const CUSTOMER_ORDERS = `#graphql
  *
  * Deliberately queries `orders(query: "customer_id:…")` rather than
  * `customer(id:)`: the app holds only `read_orders`, and the `customer` query
- * would need `read_customers`, which we neither request nor want. A failed
- * GraphQL read degrades to "no answer" rather than surfacing an error.
+ * would need `read_customers`, which we neither request nor want. Without
+ * `read_all_orders` Shopify returns only about the last 60 days of orders, so
+ * the block says it looked at recent orders. A failed GraphQL read throws, so
+ * the block says it could not check rather than "no answer".
  */
 export async function lookupByCustomer(params: {
   shopId: string;
@@ -131,30 +145,10 @@ export async function lookupByCustomer(params: {
       shop_id: params.shopId,
       error_message: error instanceof Error ? error.message : String(error),
     });
-    return EMPTY;
+    throw error;
   }
   if (orderIds.length === 0) return EMPTY;
 
-  const response = await db.response.findFirst({
-    where: { shopId: params.shopId, orderId: { in: orderIds } },
-    orderBy: { createdAt: "desc" },
-    include: { survey: { select: { name: true, channelReportQuestionId: true } }, answers: true },
-  });
-  if (!response) return EMPTY;
-
-  const answer =
-    response.answers.find((a) => a.questionId === response.survey.channelReportQuestionId) ?? response.answers[0];
-  if (!answer) return EMPTY;
-
-  const channelLabel = await resolveChannelLabel(params.shopId, answer);
-  const channel = safeArray(answer.optionIds)[0] ?? answer.otherText ?? null;
-
-  return {
-    found: Boolean(channelLabel),
-    channel,
-    channelLabel,
-    surveyName: response.survey.name,
-    submittedAt: response.createdAt.toISOString(),
-  };
+  return channelContext(params.shopId, { orderId: { in: orderIds } });
 }
 

@@ -55,7 +55,7 @@ export async function loadChannelReport(params: {
   const labelFor = (channel: string) =>
     channel === OTHER_CHANNEL_VALUE ? null : (labels.get(channel) ?? channel);
 
-  const top = pickTopChannel(channels, summary.revenueByCurrency);
+  const top = pickTopChannel(channels, summary.revenueByCurrency, summary.revenueOrdersByCurrency);
   const topStat = top ? channels.find((c) => c.channel === top.channel) : undefined;
 
   return {

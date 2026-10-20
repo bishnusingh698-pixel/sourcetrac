@@ -70,7 +70,9 @@ export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) =>
   const id = params.id ?? "";
   // Only "not found" reads as not found; a database outage must surface as one.
   const row = await getSurveyRow(shop.id, id);
-  if (!row) throw new NotFoundError("That survey does not exist.", { surveyId: id });
+  // A deleted survey or a stale link goes back to the list, not to the error
+  // screen; a database outage still surfaces as one.
+  if (!row) return redirect("/app/surveys");
   const survey = rowToEditor(row);
 
   const [display, localeInfo] = await Promise.all([
@@ -83,7 +85,7 @@ export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) =>
   return {
     survey,
     shopHandle: shop.shopDomain.replace(".myshopify.com", ""),
-    shopCurrency: display.currencyCode ?? "USD",
+    shopCurrency: display.currencyCode ?? null,
     // Start and end dates are the store's calendar days, in its own zone.
     shopTimeZone: isValidTimeZone(localeInfo.timeZone) ? localeInfo.timeZone : null,
     languages: LANGUAGES.map((l) => ({ code: l.code, name: l.nativeName })),
@@ -166,24 +168,42 @@ export const action = guarded(async ({ request, params }: ActionFunctionArgs) =>
     throw error;
   }
 
+  // A missing or unreadable body is answered like any refused save, not with
+  // the error screen.
+  const unreadable = {
+    ok: false as const,
+    conflict: false,
+    issues: [{ path: "", code: "unreadable", message: "The survey could not be read. Reload the page and save again." }],
+  };
   const raw = form.get("survey");
-  if (typeof raw !== "string" || raw.length === 0) {
-    throw new ValidationError("The survey was not submitted.", "Reload the page and save again.");
-  }
-
+  if (typeof raw !== "string" || raw.length === 0) return unreadable;
   let input: SurveyInput;
   try {
     input = JSON.parse(raw) as SurveyInput;
   } catch {
-    throw new ValidationError("The survey could not be read.", "Reload the page and save again.");
+    return unreadable;
   }
+  if (typeof input !== "object" || input === null || Array.isArray(input)) return unreadable;
 
-  // An order-value rule is in the store's currency. The editor sets it; an
-  // older client did not, which left the rule ignored on every order.
+  // An order-value rule is in the store's currency, read from Shopify here so
+  // a client's guess can never set it. Without one the rule matched no order.
   const targeting = input.targeting;
-  if (targeting && (targeting.minValue != null || targeting.maxValue != null) && !targeting.valueCurrency) {
+  if (targeting && (targeting.minValue != null || targeting.maxValue != null)) {
     const display = await getShopDisplay(shop.id, shop.shopDomain, session.accessToken);
     if (display.currencyCode) targeting.valueCurrency = display.currencyCode;
+    else if (!targeting.valueCurrency) {
+      return {
+        ok: false as const,
+        conflict: false,
+        issues: [
+          {
+            path: "targeting.minValue",
+            code: "currency_unavailable",
+            message: "Your store's currency could not be read just now. Try saving again in a moment.",
+          },
+        ],
+      };
+    }
   }
 
   try {
@@ -247,14 +267,28 @@ export default function SurveyEditorPage() {
   // After a save the loader hands back the stored survey. Reset the editor to
   // it, keyed on the merchant-only revision: `updatedAt` moves on every
   // shopper answer and would throw away unsaved edits.
+  //
+  // Not after a refused save, though: the loader re-runs with the other
+  // window's revision, and resetting then threw the merchant's unsaved edits
+  // away (and switched the unsaved-changes guard off). They stay on screen
+  // until the merchant chooses to load the latest version.
+  // With nothing unsaved, a refused Publish or Discard simply picks up the
+  // latest version, so the next click is not refused again.
+  const conflicted = actionData?.ok === false && actionData.conflict;
+  const keepUnsavedEdits = conflicted && JSON.stringify(draft) !== initial.current;
   const dataKey = `${survey.revision}:${survey.hasDraft}:${survey.status}`;
   const lastKey = useRef(dataKey);
   useEffect(() => {
-    if (lastKey.current === dataKey) return;
+    if (lastKey.current === dataKey || keepUnsavedEdits) return;
     lastKey.current = dataKey;
     setDraft(survey);
     initial.current = JSON.stringify(survey);
-  }, [dataKey, survey]);
+  }, [dataKey, survey, keepUnsavedEdits]);
+  const loadLatest = () => {
+    lastKey.current = dataKey;
+    setDraft(survey);
+    initial.current = JSON.stringify(survey);
+  };
 
   const errors = useMemo(() => {
     const map = new Map<string, string>();
@@ -278,7 +312,7 @@ export default function SurveyEditorPage() {
   // against, so the editor is clean again the moment this runs.
   const discardChanges = () => setDraft(JSON.parse(initial.current) as EditorSurvey);
 
-  const readiness = getReadiness({
+  const readinessInput = {
     definition: {
       id: draft.id,
       name: draft.name,
@@ -294,8 +328,14 @@ export default function SurveyEditorPage() {
     configBytes: new TextEncoder().encode(JSON.stringify(draft)).length,
     blockAdded: null,
     translationsComplete: null,
-  });
+  };
+  const readiness = getReadiness(readinessInput);
+  // Going live (or activating) must fit the plan's live-survey limit. Saving
+  // the changes of a survey that is not live does not make it live, so a
+  // paused survey at the limit can still be fixed and saved.
   const blocked = readinessBlocksGoLive(readiness);
+  const saveBlocked =
+    draft.status === "active" ? blocked : readinessBlocksGoLive(getReadiness({ ...readinessInput, overActiveLimit: false }));
   const problems = readiness.filter((item) => !item.ok && item.ok !== null);
 
   const post = (intent: string) => {
@@ -342,6 +382,7 @@ export default function SurveyEditorPage() {
       busy={busy}
       pendingIntent={typeof pendingIntent === "string" ? pendingIntent : null}
       blocked={blocked}
+      saveBlocked={saveBlocked}
       onPost={post}
       onDiscardChanges={discardChanges}
     />
@@ -356,6 +397,9 @@ export default function SurveyEditorPage() {
         dirty={dirty}
         saving={busy}
         saveLabel={draft.status === "draft" ? t("editor.save_draft") : t("editor.save_publish")}
+        // A draft can always be saved; any other save publishes, and the page
+        // says what stops it.
+        saveDisabled={draft.status !== "draft" && saveBlocked}
         onSave={() => post("save")}
         onDiscard={discardChanges}
         t={t}
@@ -373,7 +417,14 @@ export default function SurveyEditorPage() {
 
       {actionData && actionData.ok === false ? (
         actionData.conflict ? (
-          <Banner tone="warning" heading={t("studio.conflict")} />
+          <Banner tone="warning" heading={t("studio.conflict")}>
+            {dirty ? (
+              <s-stack gap="small-200">
+                <s-text>{t("studio.conflict_kept")}</s-text>
+                <s-button onClick={loadLatest}>{t("studio.conflict_load_latest")}</s-button>
+              </s-stack>
+            ) : null}
+          </Banner>
         ) : (
           <Banner tone="critical" heading={t("editor.save_failed")}>
             <s-stack gap="small-200">
@@ -574,6 +625,7 @@ function ActionButtons({
   busy,
   pendingIntent,
   blocked,
+  saveBlocked,
   onPost,
   onDiscardChanges,
 }: {
@@ -582,7 +634,10 @@ function ActionButtons({
   dirty: boolean;
   busy: boolean;
   pendingIntent: string | null;
+  /** Going live or activating is blocked. */
   blocked: boolean;
+  /** Saving and publishing changes is blocked. */
+  saveBlocked: boolean;
   onPost: (intent: string) => void;
   onDiscardChanges: () => void;
 }) {
@@ -599,7 +654,7 @@ function ActionButtons({
           </s-button>
         </>
       ) : (
-        <s-button variant="primary" disabled={!dirty || blocked || busy || undefined} loading={loading("save")} onClick={() => onPost("save")}>
+        <s-button variant="primary" disabled={!dirty || saveBlocked || busy || undefined} loading={loading("save")} onClick={() => onPost("save")}>
           {t("editor.save_publish")}
         </s-button>
       )}
@@ -615,7 +670,7 @@ function ActionButtons({
       ) : null}
       {draft.hasDraft && !dirty ? (
         <>
-          <s-button disabled={blocked || busy || undefined} onClick={() => onPost("publish")}>
+          <s-button disabled={saveBlocked || busy || undefined} onClick={() => onPost("publish")}>
             {t("studio.publish")}
           </s-button>
           <s-button tone="critical" variant="tertiary" disabled={busy || undefined} onClick={() => onPost("discard")}>

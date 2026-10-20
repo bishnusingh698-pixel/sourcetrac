@@ -3,7 +3,8 @@
     "heading": "Atribuição do SourceTrac",
     "loading": "Procurando uma resposta da pesquisa…",
     "missing_order": "Nenhuma resposta da pesquisa registrada para este pedido.",
-    "missing_customer": "Nenhuma resposta da pesquisa registrada para este cliente.",
-    "found_prefix": "Como nos conheceu:"
+    "missing_customer": "Nenhuma resposta de pesquisa nos pedidos recentes deste cliente (cerca dos últimos 60 dias).",
+    "found_prefix": "Como nos conheceu:",
+    "unavailable": "Não foi possível verificar a resposta da pesquisa agora. Recarregue a página para tentar de novo."
   }
 }

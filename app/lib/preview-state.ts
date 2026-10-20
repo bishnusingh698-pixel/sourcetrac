@@ -67,8 +67,11 @@ export function previewComplete(visible: readonly SurveyQuestionDef[], answers: 
     const chosen = answer?.optionIds ?? [];
     if (chosen.some((id) => isOtherOption(question, id)) && (answer?.otherText?.trim().length ?? 0) === 0) return false;
     if (question.type === "multi_choice") {
-      const count = new Set(chosen).size;
-      if (typeof question.minSelections === "number" && count < question.minSelections) return false;
+      const unique = [...new Set(chosen)];
+      const count = unique.length;
+      // An exclusive option ("None of these") stands alone, whatever the minimum.
+      const onlyExclusive = count === 1 && (question.options ?? []).some((o) => o.id === unique[0] && o.exclusive);
+      if (typeof question.minSelections === "number" && count < question.minSelections && !onlyExclusive) return false;
       if (typeof question.maxSelections === "number" && count > question.maxSelections) return false;
     }
   }

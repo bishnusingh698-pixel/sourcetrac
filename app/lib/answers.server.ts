@@ -15,7 +15,7 @@ import { Prisma } from "@prisma/client";
 import { db, isRetryableDbError } from "~/db.server";
 import { logger } from "~/lib/logger";
 import { minorToDecimalString, parseMoneyToMinor } from "~/lib/money";
-import { currentUtcPeriod, evaluateCap, planFor, type PlanKey } from "~/lib/plans";
+import { currentUtcPeriod, planFor, type PlanKey } from "~/lib/plans";
 import { withRetry } from "~/lib/retry.server";
 import { invalidateConfig } from "~/lib/surveys.server";
 import { isRedactedOrder } from "~/lib/compliance.server";
@@ -50,6 +50,11 @@ export type AnswerSubmitInput = {
   definition: SurveyDefinition;
   /** The survey's raw `syncOptions` JSON string, for the optional Phase 7 sync. */
   syncOptions?: string | null;
+  /**
+   * Questions that became required after `surveyVersion`: a buyer who loaded
+   * that older version is excused from these, and only these.
+   */
+  requiredSinceNewer?: string[];
   /** T10: pause once results are reliable. */
   learnAndStop?: boolean;
   /** T10: the main (first choice/score) question to measure, or null. */
@@ -112,7 +117,7 @@ export async function claimUsageSlot(shopId: string, cap: number | null): Promis
 }
 
 /** `claimUsageSlot` on a given client, so the submit transaction can include it. */
-async function claimUsageSlotWith(
+export async function claimUsageSlotWith(
   client: Prisma.TransactionClient | typeof db,
   shopId: string,
   cap: number | null,
@@ -195,8 +200,22 @@ export async function submitAnswers(input: AnswerSubmitInput): Promise<AnswerSub
   const normalized = normalizeResponseAnswers(input.definition, input.answers, { stale });
   let issues = [...normalized.issues, ...validateResponse(normalized.definition, normalized.answers)];
   // A question added (or made required) after the buyer loaded the survey could
-  // not have been answered; everything else is still enforced.
-  if (stale) issues = issues.filter((i) => i.code !== "required");
+  // not have been answered: only those are excused. Every other required
+  // question is still enforced, so an old version number waives nothing else.
+  if (stale) {
+    const excused = new Set(input.requiredSinceNewer ?? []);
+    issues = issues.filter((i) => {
+      if (i.code !== "required") return true;
+      const index = Number(/^questions\[(\d+)\]/.exec(i.path)?.[1] ?? -1);
+      const question = normalized.definition.questions[index];
+      return !(question && excused.has(question.id));
+    });
+  }
+  // Nothing answered at all: an empty set would still use a cap slot and lock
+  // the order out of answering again.
+  if (issues.length === 0 && normalized.answers.length === 0) {
+    issues.push({ path: "answers", code: "no_answers", message: "Answer at least one question." });
+  }
   if (issues.length > 0) {
     return { outcome: "invalid", issues: issues.map((i) => `${i.path}: ${i.code}`) };
   }
@@ -208,10 +227,6 @@ export async function submitAnswers(input: AnswerSubmitInput): Promise<AnswerSub
     logger.info("answer_redacted_order_ignored", { shop_id: input.shopId, survey_id: input.surveyId });
     return { outcome: "duplicate", id: "", isLocked: false, counted: true };
   }
-
-  const usedBefore = await getUsageCount(input.shopId);
-  const capStatus = evaluateCap(input.plan, usedBefore);
-  const shouldLock = capStatus.shouldFlag;
 
   const { channel } = channelAnswer(normalized.definition, answers);
   const orderTotal = await orderTotalFor(input.shopId, input.orderId);
@@ -261,7 +276,9 @@ export async function submitAnswers(input: AnswerSubmitInput): Promise<AnswerSub
             productIds: JSON.stringify((input.productIds ?? []).slice(0, 10)),
             isFirstOrder: input.isFirstOrder ?? null,
             country: input.country ?? null,
-            flagged: shouldLock || !claimed.withinCap,
+            // Decided by the atomic claim alone, in the same transaction: a
+            // usage read taken before it could belong to the previous month.
+            flagged: !claimed.withinCap,
             verified,
             answers: {
               create: answers.map((answer) => ({
@@ -374,13 +391,27 @@ async function afterAnswerStored(input: AnswerSubmitInput, responseId: string, t
     // Every Shopify write is a Scale feature, so nothing is queued below it.
     if (input.plan === "scale" && hasSyncWork(options)) {
       await enqueueSync(input.shopId, responseId, options);
-      void processPendingSync(input.shopId, 5, { responseId }).catch((syncError: unknown) => {
-        logger.warn("answer_sync_failed", {
-          shop_id: input.shopId,
-          response_id: responseId,
-          error_message: syncError instanceof Error ? syncError.message : String(syncError),
+      // Every kind needs the order to exist in Shopify, and on the Thank-you
+      // page it usually does not yet: draining now would only spend one of the
+      // row's attempts. Its arrival (`startSyncForOrder`) drains it instead.
+      // Checked after the enqueue, so an order landing in between is not missed.
+      const orderKnown =
+        input.orderId !== null &&
+        (await retryDb(() =>
+          db.orderCache.findUnique({
+            where: { shopId_orderId: { shopId: input.shopId, orderId: input.orderId! } },
+            select: { id: true },
+          }),
+        )) !== null;
+      if (orderKnown) {
+        void processPendingSync(input.shopId, 5, { responseId }).catch((syncError: unknown) => {
+          logger.warn("answer_sync_failed", {
+            shop_id: input.shopId,
+            response_id: responseId,
+            error_message: syncError instanceof Error ? syncError.message : String(syncError),
+          });
         });
-      });
+      }
     }
   } catch (syncError) {
     logger.warn("answer_sync_failed", {
@@ -575,19 +606,28 @@ export async function markUnverifiedFailedResponses(olderThanHours = 24, now = n
   if (recovered > 0) logger.info("responses_reconciled_late_v2", { count: recovered });
 
   // Only answers that HAVE an order can wait for one: an on-site or link answer
-  // has no order to arrive and is never "unverified failed".
-  const result = await retryDb(() =>
-    db.response.updateMany({
-      where: {
-        orderId: { not: null },
-        orderTotal: null,
-        verified: { not: true },
-        unverifiedFailed: false,
-        createdAt: { lt: cutoff },
-      },
-      data: { unverifiedFailed: true },
-    }),
+  // has no order to arrive and is never "unverified failed". `verified` is
+  // matched as false OR NULL explicitly: Prisma's `not: true` (used before) is
+  // SQL `<> true`, which skips NULL, so migrated rows without a total waited
+  // forever.
+  //
+  // An order that did arrive, with a total we could not read, is not "never
+  // received": it is left as "total unreadable" (and the backfill re-reads it).
+  const marked = await retryDb(
+    () => db.$executeRaw`
+      UPDATE "Response" r
+      SET "unverifiedFailed" = true
+      WHERE r."orderId" IS NOT NULL
+        AND r."orderTotal" IS NULL
+        AND (r.verified = false OR r.verified IS NULL)
+        AND r."unverifiedFailed" = false
+        AND r."createdAt" < ${cutoff}
+        AND NOT EXISTS (
+          SELECT 1 FROM "OrderCache" o WHERE o."shopId" = r."shopId" AND o."orderId" = r."orderId"
+        )
+    `,
   );
+  const result = { count: marked };
   if (result.count > 0) {
     logger.info("responses_marked_unverified_failed", { count: result.count, older_than_hours: olderThanHours });
   }

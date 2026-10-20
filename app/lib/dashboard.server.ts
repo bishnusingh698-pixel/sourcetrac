@@ -112,7 +112,9 @@ export function buildScoreSummary(params: {
   surveys: ReadonlyArray<{
     id: string;
     name: string;
-    questions: ReadonlyArray<{ id: string; type: string; text: string }>;
+    /** Only a live survey "asks" today; a paused or draft one does not. */
+    status?: string;
+    questions: ReadonlyArray<{ id: string; type: string; text: string; archived?: boolean }>;
   }>;
 }): ScoreSummary {
   const questions = new Map<string, { surveyId: string; surveyName: string; type: string; text: string; order: number }>();
@@ -179,7 +181,11 @@ export function buildScoreSummary(params: {
 
   const nps = npsResult(npsPool);
   const csat = csatResult(csatPool);
-  const types = [...questions.values()].map((q) => q.type);
+  // Whether a score question is asked now: on a live survey, not archived.
+  // Past answers to removed questions still score above.
+  const types = params.surveys
+    .filter((survey) => survey.status === undefined || survey.status === "active")
+    .flatMap((survey) => survey.questions.filter((q) => !q.archived).map((q) => q.type));
 
   return {
     nps: nps ? { result: nps, questions: npsQuestions, surveyId: onlyOne(npsSurveys) } : null,
@@ -294,7 +300,8 @@ export async function loadDashboard(params: {
         text: true,
         templateKey: true,
         archived: true,
-        options: { orderBy: { position: "asc" }, select: { id: true, label: true, archived: true } },
+        allowOther: true,
+        options: { orderBy: { position: "asc" }, select: { id: true, label: true, archived: true, isOther: true } },
       },
     }),
     db.survey.findMany({ where: { shopId: shop.id, draft: { not: null } }, select: { id: true } }),
@@ -321,6 +328,7 @@ export async function loadDashboard(params: {
     surveys: surveys.map((survey) => ({
       id: survey.id,
       name: survey.name,
+      status: survey.status,
       questions: questionsBySurvey.get(survey.id) ?? [],
     })),
   });
@@ -352,7 +360,8 @@ export async function loadDashboard(params: {
     const questions = questionsBySurvey.get(survey.id) ?? [];
     const insights = buildSurveyInsights({
       responses: rows,
-      questions: questions.map((q) => ({ ...q, options: q.options })),
+      // A removed question is not the survey's headline any more.
+      questions: questions.filter((q) => !q.archived).map((q) => ({ ...q, options: q.options })),
       templateId: null,
       locale,
     });

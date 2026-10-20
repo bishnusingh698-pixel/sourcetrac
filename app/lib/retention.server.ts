@@ -176,11 +176,21 @@ export async function runRetentionPurge(now: Date = new Date()): Promise<Retenti
       select: { id: true, shopDomain: true },
     }),
   );
+  let uninstalledShopsDeleted = 0;
   for (const shop of abandoned) {
-    await retryDb(() => db.session.deleteMany({ where: { shop: shop.shopDomain } }));
-    await retryDb(() => db.shop.deleteMany({ where: { id: shop.id, installState: "uninstalled" } }));
+    // The shop row first, and only if it is still uninstalled: a reinstall
+    // landing meanwhile keeps its row, and then its new session too.
+    const deleted = await retryDb(() =>
+      db.shop.deleteMany({
+        where: { id: shop.id, installState: "uninstalled", uninstalledAt: { lt: uninstalledCutoff } },
+      }),
+    );
+    if (deleted.count === 0) continue;
+    uninstalledShopsDeleted += 1;
+    // A reinstall creates a fresh shop row; leave the sessions to it.
+    const reinstalled = await retryDb(() => db.shop.findUnique({ where: { shopDomain: shop.shopDomain }, select: { id: true } }));
+    if (!reinstalled) await retryDb(() => db.session.deleteMany({ where: { shop: shop.shopDomain } }));
   }
-  const uninstalledShopsDeleted = abandoned.length;
 
   // Orders age by the ORDER's date (an order backfilled years after it was
   // placed is not young), and are kept while a retained answer references it.

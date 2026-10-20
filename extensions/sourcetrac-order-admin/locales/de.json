@@ -3,7 +3,8 @@
     "heading": "SourceTrac-Zuordnung",
     "loading": "Umfrageantwort wird gesucht…",
     "missing_order": "Für diese Bestellung wurde keine Umfrageantwort erfasst.",
-    "missing_customer": "Für diesen Kunden wurde keine Umfrageantwort erfasst.",
-    "found_prefix": "So wurde Ihr Shop gefunden:"
+    "missing_customer": "Zu den letzten Bestellungen dieses Kunden (etwa 60 Tage) wurde keine Umfrageantwort erfasst.",
+    "found_prefix": "So wurde Ihr Shop gefunden:",
+    "unavailable": "Die Umfrageantwort konnte gerade nicht abgerufen werden. Laden Sie die Seite neu, um es erneut zu versuchen."
   }
 }

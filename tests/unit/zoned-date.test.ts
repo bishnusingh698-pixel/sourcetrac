@@ -62,3 +62,11 @@ describe("survey dates are the shop's own calendar days", () => {
     expect(explainTargeting({ endsAt: "2026-03-31" }, facts("2026-03-31T12:00:00Z"))).toBeNull();
   });
 });
+
+describe("a start date whose midnight daylight saving skips (L8)", () => {
+  it("starts at the first moment of that day, not an hour early on the day before", () => {
+    // Chile moves 00:00 to 01:00 on 2026-09-06.
+    expect(startOfDayIso("2026-09-06", "America/Santiago")).toBe("2026-09-06T04:00:00.000Z");
+    expect(storedToDateField("2026-09-06T04:00:00.000Z", "start", "America/Santiago")).toBe("2026-09-06");
+  });
+});

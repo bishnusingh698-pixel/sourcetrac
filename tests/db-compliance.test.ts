@@ -11,6 +11,7 @@ import { describe, expect, it, beforeAll, beforeEach, afterAll } from "vitest";
 import { PrismaClient } from "@prisma/client";
 
 import { handleCustomerRedact, handleDataRequest, handleShopRedact, processPendingDeletions, REDACT_BATCH_SIZE } from "~/lib/compliance.server";
+import { recordOrderFact } from "~/lib/order-facts.server";
 
 const prisma = new PrismaClient();
 
@@ -278,5 +279,82 @@ describe("customers/data_request records a notice for the merchant", () => {
   it("records nothing for a shop we do not know", async () => {
     const result = await handleDataRequest({ shopDomain: "never-installed.myshopify.com" });
     expect(result.shopFound).toBe(false);
+  });
+});
+
+describe("2026-10-20 audit", () => {
+  it("removes a redacted order's answers from a stored data-request export (M4)", async () => {
+    const shop = await seedShop(SHOP_A, DOMAIN_A);
+    await prisma.surveyResponse.create({ data: { shopId: shop.id, orderId: "7101", channel: "other", otherText: "my secret" } });
+    await prisma.surveyResponse.create({ data: { shopId: shop.id, orderId: "7102", channel: "instagram" } });
+    await handleDataRequest({ shopDomain: DOMAIN_A, orderIds: ["7101", "7102"], webhookId: "dr-m4" });
+    await handleCustomerRedact({ shopDomain: DOMAIN_A, orderIds: ["7101"] });
+    const stored = await prisma.dataRequest.findFirstOrThrow({ where: { shopId: shop.id } });
+    expect(stored.payload).not.toContain("my secret");
+    expect(stored.payload).not.toContain("7101");
+    expect(stored.payload).toContain("7102");
+  });
+
+  it("exports the order data held for a named order, not only the answers (L18)", async () => {
+    const shop = await seedShop(SHOP_A, DOMAIN_A);
+    await prisma.orderCache.create({
+      data: {
+        shopId: shop.id, orderId: "7201", currency: "EUR", totalPrice: "12.000",
+        createdAtShop: new Date(), updatedAtShop: new Date(),
+      },
+    });
+    await prisma.orderFact.create({ data: { shopId: shop.id, orderId: "7201", isFirstOrder: true } });
+    await prisma.checkoutLoad.create({ data: { shopId: shop.id, orderId: "7201", reason: "shown", country: "DE" } });
+    const result = await handleDataRequest({ shopDomain: DOMAIN_A, orderIds: ["7201"] });
+    expect(result.orderData).toEqual([
+      expect.objectContaining({
+        orderId: "7201",
+        isFirstOrder: true,
+        order: expect.objectContaining({ total: "12", currency: "EUR" }),
+        checkoutLoads: [expect.objectContaining({ country: "DE" })],
+      }),
+    ]);
+  });
+
+  it("never records a first-order flag for a redacted order again (L10)", async () => {
+    const shop = await seedShop(SHOP_A, DOMAIN_A);
+    await handleCustomerRedact({ shopDomain: DOMAIN_A, orderIds: ["7301"] });
+    await recordOrderFact(shop.id, "7301", true);
+    expect(await prisma.orderFact.count({ where: { shopId: shop.id } })).toBe(0);
+  });
+
+  it("keeps a deferred redact it cannot read instead of dropping it (L13)", async () => {
+    const shop = await seedShop(SHOP_A, DOMAIN_A);
+    await prisma.pendingDeletion.create({ data: { shopId: shop.id, scope: "customer", payload: "{not json" } });
+    await processPendingDeletions(shop.id);
+    expect(await prisma.pendingDeletion.count({ where: { shopId: shop.id } })).toBe(1);
+  });
+
+  it("skips shop/redact after a reinstall even when Shopify sends it late (H1, M3)", async () => {
+    const now = Date.now();
+    const shop = await seedShop(SHOP_A, DOMAIN_A);
+    // Uninstalled 100 hours ago (recorded from app/uninstalled), reinstalled 90 hours ago.
+    await prisma.shop.update({
+      where: { id: shop.id },
+      data: {
+        installedAt: new Date(now - 200 * 3600_000),
+        uninstallTriggeredAt: new Date(now - 100 * 3600_000),
+        authorizedAt: new Date(now - 90 * 3600_000),
+      },
+    });
+    const result = await handleShopRedact({ shopDomain: DOMAIN_A, triggeredAt: new Date(now) });
+    expect(result.deleted).toBe(false);
+    expect(await prisma.shop.count({ where: { id: shop.id } })).toBe(1);
+  });
+
+  it("redacts a shop still marked installed whose last install predates the uninstall (H1)", async () => {
+    const now = Date.now();
+    const shop = await seedShop(SHOP_A, DOMAIN_A);
+    await prisma.shop.update({
+      where: { id: shop.id },
+      data: { installedAt: new Date(now - 200 * 3600_000), authorizedAt: new Date(now - 60 * 3600_000) },
+    });
+    const result = await handleShopRedact({ shopDomain: DOMAIN_A, triggeredAt: new Date(now) });
+    expect(result.deleted).toBe(true);
   });
 });

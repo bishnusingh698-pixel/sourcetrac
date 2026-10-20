@@ -1,4 +1,4 @@
-import { SATISFACTION_OPTIONS } from "@shared/survey-rules";
+import { OTHER_CHANNEL_VALUE, SATISFACTION_OPTIONS } from "@shared/survey-rules";
 
 /**
  * One stored answer as words, for the Responses table and the results CSV.
@@ -21,6 +21,8 @@ const FIXED_CHOICE_TYPES = new Set(["yes_no", "satisfaction_5"]);
 export function fixedOptionLabel(optionId: string, t: (key: string) => string): string | null {
   if (optionId === "yes" || optionId === "no") return t(`surveys.${optionId}`);
   if (SATISFACTION_OPTIONS.some((option) => option.id === optionId)) return t(`surveys.satisfaction_${optionId}`);
+  // The built-in "Other" has no Option row and so no stored label.
+  if (optionId === OTHER_CHANNEL_VALUE) return t("preview.other_label");
   return null;
 }
 

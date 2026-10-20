@@ -3,7 +3,8 @@
     "heading": "SourceTrac-attribuering",
     "loading": "Letar efter ett enkätsvar…",
     "missing_order": "Inget enkätsvar registrerat för den här ordern.",
-    "missing_customer": "Inget enkätsvar registrerat för den här kunden.",
-    "found_prefix": "Så hittade de oss:"
+    "missing_customer": "Inget enkätsvar på kundens senaste beställningar (ungefär de senaste 60 dagarna).",
+    "found_prefix": "Så hittade de oss:",
+    "unavailable": "Det gick inte att kontrollera enkätsvaret just nu. Ladda om sidan för att försöka igen."
   }
 }

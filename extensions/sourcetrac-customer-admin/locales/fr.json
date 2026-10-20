@@ -3,7 +3,8 @@
     "heading": "Attribution SourceTrac",
     "loading": "Recherche d’une réponse au sondage…",
     "missing_order": "Aucune réponse au sondage enregistrée pour cette commande.",
-    "missing_customer": "Aucune réponse au sondage enregistrée pour ce client.",
-    "found_prefix": "Comment il nous a connus :"
+    "missing_customer": "Aucune réponse au sondage sur les commandes récentes de ce client (environ 60 derniers jours).",
+    "found_prefix": "Comment il nous a connus :",
+    "unavailable": "Impossible de vérifier la réponse au sondage pour le moment. Rechargez la page pour réessayer."
   }
 }

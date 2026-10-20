@@ -14,12 +14,14 @@ import {
   reserveTokenSubmission,
 } from "~/lib/rate-limit.server";
 import { submitAnswers } from "~/lib/answers.server";
-import { findShopByDomain, isKnownOrder } from "~/lib/shop.server";
+import { findShopByDomain } from "~/lib/shop.server";
+import { isRealOrder } from "~/lib/order-verify.server";
 import { recordBlockSeen } from "~/lib/block-seen.server";
 import { readOrderFact } from "~/lib/order-facts.server";
 import { getSurveyRow, rowToEditor } from "~/lib/surveys.server";
 import { authenticateCheckout } from "~/lib/checkout-auth.server";
 import { PLACEMENTS, type Placement } from "@shared/survey-config";
+import { planHas, planTier } from "@shared/plan-features";
 import type { AnswerInput, SurveyDefinition } from "@shared/survey-rules";
 
 /**
@@ -86,9 +88,12 @@ export const action = async ({ request }: { request: Request }) => {
 
   const { sessionToken, cors, shopDomain } = await authenticateCheckout(request, "api_survey_responses");
 
-  // Set once a submission slot is reserved; released unless an answer is stored.
+  // Set once a submission slot is reserved; released unless an answer is stored
+  // or the request itself was refused (a made-up survey, invalid answers): a
+  // refused request must count, or one token could make unlimited attempts.
   let reservedToken: string | null = null;
   let stored = false;
+  let refused = false;
 
   try {
     const text = await readBodyText(request, MAX_BODY_BYTES);
@@ -128,9 +133,10 @@ export const action = async ({ request }: { request: Request }) => {
     reservedToken = tokenKey;
     consumeToken(`answer:${shopDomain}:${orderId ?? "none"}`, BUCKETS.response);
     // The shop-wide backstop applies to every submission. Only a real order
-    // Shopify told us about is exempt; an id-less one never is.
+    // is exempt (cached, or confirmed with Shopify once the bucket is empty, so
+    // made-up ids cannot lock real buyers out); an id-less one never is.
     await consumeShopBackstop(`answer-shop:${shopDomain}`, BUCKETS.responseShop, () =>
-      orderId ? isKnownOrder(shopDomain, orderId) : Promise.resolve(false),
+      orderId ? isRealOrder(shopDomain, orderId) : Promise.resolve(false),
     );
 
     const shop = await findShopByDomain(shopDomain);
@@ -168,11 +174,15 @@ export const action = async ({ request }: { request: Request }) => {
       questions: editor.questions,
     };
 
+    // A version the survey really had: versions start at 1, so a client's 0
+    // cannot claim to predate every question and be excused from all of them.
+    const surveyVersion = Math.max(1, Math.min(parsed.data.surveyVersion ?? row.version, row.version));
     const result = await submitAnswers({
       shopId: shop.id,
       surveyId: row.id,
       currentVersion: row.version,
-      surveyVersion: Math.min(parsed.data.surveyVersion ?? row.version, row.version),
+      surveyVersion,
+      requiredSinceNewer: row.questions.filter((q) => q.requiredSinceVersion > surveyVersion).map((q) => q.id),
       orderId,
       placement,
       locale: parsed.data.locale ?? null,
@@ -184,7 +194,9 @@ export const action = async ({ request }: { request: Request }) => {
       plan: effectivePlan(shop),
       definition,
       syncOptions: row.syncOptions,
-      learnAndStop: row.learnAndStop,
+      // Auto-stop is a Scale feature: a downgraded shop keeps the setting but
+      // its surveys are no longer paused by it.
+      learnAndStop: row.learnAndStop && planHas(planTier(effectivePlan(shop)), "auto_stop"),
       mainQuestionId: mainQuestionId(definition),
     });
 
@@ -214,6 +226,7 @@ export const action = async ({ request }: { request: Request }) => {
     // confirmation either way.
     return cors(toResponse(data({ ok: true, counted: result.counted })));
   } catch (error) {
+    refused = error instanceof ValidationError;
     const { status, body } = serialiseError(error, {
       request_id: requestId,
       shop_domain: shopDomain,
@@ -221,6 +234,6 @@ export const action = async ({ request }: { request: Request }) => {
     });
     return cors(toResponse(body, { status }));
   } finally {
-    if (reservedToken && !stored) releaseTokenSubmission(reservedToken);
+    if (reservedToken && !stored && !refused) releaseTokenSubmission(reservedToken);
   }
 };

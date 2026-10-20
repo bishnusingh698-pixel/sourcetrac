@@ -7,10 +7,17 @@ import { readBodyText, toResponse } from "~/lib/http.server";
 import { serialiseError, ValidationError } from "~/lib/errors";
 import { logger } from "~/lib/logger";
 import { effectivePlan } from "~/lib/plans";
-import { BUCKETS, consumeShopBackstop, consumeToken, consumeTokenSubmission } from "~/lib/rate-limit.server";
+import {
+  BUCKETS,
+  consumeShopBackstop,
+  consumeToken,
+  releaseTokenSubmission,
+  reserveTokenSubmission,
+} from "~/lib/rate-limit.server";
 import { submitResponse } from "~/lib/responses.server";
 import { DEFAULT_OPTIONS, OTHER_CHANNEL_VALUE, parseSurveySettings } from "~/lib/settings";
-import { findShopByDomain, isKnownOrder } from "~/lib/shop.server";
+import { findShopByDomain } from "~/lib/shop.server";
+import { isRealOrder } from "~/lib/order-verify.server";
 import { authenticateCheckout } from "~/lib/checkout-auth.server";
 
 /**
@@ -54,6 +61,10 @@ export const action = async ({ request }: { request: Request }) => {
   // propagating untouched: the library builds its own CORS headers for it.
   const { sessionToken, cors, shopDomain } = await authenticateCheckout(request, "api_responses");
 
+  let reservedToken: string | null = null;
+  let stored = false;
+  let refused = false;
+
   // Everything after this point returns a CORS-wrapped response, including
   // failures. A thrown error would be turned into a response by React Router,
   // which cannot set `Access-Control-Allow-Origin`, so the extension would read
@@ -90,16 +101,17 @@ export const action = async ({ request }: { request: Request }) => {
     // Per session token, before the per-order bucket: one lifted checkout token
     // cannot be reused to write many forged orders. This route mirrors
     // `/api/survey-responses`, which already carries this ceiling.
-    consumeTokenSubmission(
-      `token:${shopDomain}:${sessionToken.jti ?? sessionToken.sub ?? "anon"}`,
-      (sessionToken.exp ?? 0) * 1000,
-    );
+    // Reserved, and given back below unless an answer was stored or the
+    // request itself was refused, so a 5xx or a duplicate never burns it.
+    const tokenKey = `token:${shopDomain}:${sessionToken.jti ?? sessionToken.sub ?? "anon"}`;
+    reserveTokenSubmission(tokenKey, (sessionToken.exp ?? 0) * 1000);
+    reservedToken = tokenKey;
     consumeToken(
       `response:${shopDomain}:${parsed.data.orderId}`,
       usesOther ? BUCKETS.otherResponse : BUCKETS.response,
     );
     await consumeShopBackstop(`response-shop:${shopDomain}`, BUCKETS.responseShop, () =>
-      isKnownOrder(shopDomain, parsed.data.orderId),
+      isRealOrder(shopDomain, parsed.data.orderId),
     );
 
     // Looked up only after validation and rate limiting, so neither a malformed
@@ -158,6 +170,7 @@ export const action = async ({ request }: { request: Request }) => {
       plan,
     });
 
+    stored = result.outcome === "created";
     logger.info("response_accepted", {
       request_id: requestId,
       shop_domain: shopDomain,
@@ -177,6 +190,7 @@ export const action = async ({ request }: { request: Request }) => {
       })),
     );
   } catch (error) {
+    refused = error instanceof ValidationError;
     // serialiseError logs once and returns a body with no stack, SQL or upstream
     // detail. 400s tell the extension to stop retrying; 5xx tell it to try again.
     const { status, body } = serialiseError(error, {
@@ -185,5 +199,7 @@ export const action = async ({ request }: { request: Request }) => {
       route: "api_responses",
     });
     return cors(toResponse(body, { status }));
+  } finally {
+    if (reservedToken && !stored && !refused) releaseTokenSubmission(reservedToken);
   }
 };

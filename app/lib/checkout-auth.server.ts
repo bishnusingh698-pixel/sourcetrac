@@ -68,8 +68,16 @@ export async function authenticateCheckout(request: Request, route: string): Pro
     const auth = await authenticate.public.checkout(request);
     return { ...auth, shopDomain: shopDomainFromDest(String(auth.sessionToken.dest ?? "")) };
   } catch (thrown) {
-    if (!(thrown instanceof Response) || thrown.status < 400 || thrown.status === 410) throw thrown;
-    // 410 is the library's bot filter: no browser sends it, so it stays as is.
+    if (!(thrown instanceof Response) || thrown.status < 400) throw thrown;
+    if (thrown.status === 410) {
+      // The library's bot filter. A buyer whose browser it misreads as a bot
+      // must still get a readable answer: without CORS the block saw a network
+      // error and retried the same refusal for a minute.
+      const headers = new Headers(thrown.headers);
+      headers.set("Access-Control-Allow-Origin", "*");
+      headers.set("Content-Type", "application/json");
+      throw new Response(JSON.stringify({ error: { code: "bot_blocked" } }), { status: 410, headers });
+    }
     const { reason, dest } = classifyRejectedToken(request.headers.get("Authorization"), env().SHOPIFY_API_SECRET);
     logger.warn("checkout_auth_rejected", {
       route,

@@ -7,6 +7,7 @@
  */
 
 import { LIVE_SURVEY_LIMIT } from "@shared/plan-features";
+import { LIMITS } from "@shared/survey-rules";
 import { minorToDecimalString } from "./money";
 
 export const PLAN_FREE = "free" as const;
@@ -104,7 +105,6 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
       { key: "plans.feature_live_surveys", params: { count: LIVE_SURVEY_LIMIT.growth ?? 0 } },
       { key: "plans.feature_templates_full" },
       { key: "plans.feature_targeting" },
-      { key: "plans.feature_priority_support" },
     ],
   },
   scale: {
@@ -118,10 +118,10 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
     features: [
       { key: "plans.feature_unlimited" },
       { key: "plans.feature_everything_growth" },
-      { key: "plans.feature_unlimited_surveys" },
+      // Not "unlimited": a store holds at most MAX_SURVEYS_TOTAL surveys.
+      { key: "plans.feature_unlimited_surveys", params: { count: LIMITS.MAX_SURVEYS_TOTAL } },
       { key: "plans.feature_smart_actions" },
       { key: "plans.feature_automation" },
-      { key: "plans.feature_priority_support" },
     ],
   },
 };

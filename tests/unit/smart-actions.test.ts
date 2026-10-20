@@ -131,7 +131,7 @@ describe("resolveSmartActionWrites (T13)", () => {
       answers: [answer("taste-profile", "q_profile", "dry")],
     });
     expect(out.customerMetafields).toEqual([
-      { namespace: "sourcetrac", key: "profile", value: "dry" },
+      { namespace: "sourcetrac", key: "profile", value: "dry", type: "single_line_text_field" },
     ]);
   });
 
@@ -149,7 +149,8 @@ describe("resolveSmartActionWrites (T13)", () => {
       answers: [answer("reorder-clock", "q_lasts", "about_a_month"), yesNo("reorder-clock", "q_reorder_reminder", true)],
     });
     expect(month.customerMetafields).toEqual([
-      { namespace: "sourcetrac", key: "reorder_window_days", value: "30" },
+      // A number of days, written as a number (L48).
+      { namespace: "sourcetrac", key: "reorder_window_days", value: "30", type: "number_integer" },
     ]);
 
     // Without the reminder opt-in, neither write happens.

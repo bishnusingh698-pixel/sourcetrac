@@ -10,6 +10,8 @@
  * reading the old tables untouched.
  */
 
+import { Prisma } from "@prisma/client";
+
 import { db, isRetryableDbError } from "~/db.server";
 import { previousWindowBounds, windowBounds } from "~/lib/analytics";
 import type { RevenueStatus } from "~/lib/csv";
@@ -18,6 +20,7 @@ import { evaluateResponseRevenue, type RevenueDecision } from "~/lib/revenue";
 import { withRetry } from "~/lib/retry.server";
 import { couldSeeSurveySql } from "~/lib/order-sources";
 import {
+  OTHER_CHANNEL_VALUE,
   SATISFACTION_OPTIONS,
   YES_NO_IDS,
   csatResult,
@@ -97,7 +100,9 @@ export async function fetchSurveyResponses(params: {
           ? { createdAt: { ...(params.start ? { gte: params.start } : {}), ...(params.end ? { lt: params.end } : {}) } }
           : {}),
       },
-      orderBy: { createdAt: "desc" },
+      // The id breaks ties, so a page boundary between two answers given in
+      // the same millisecond never shows one twice or skips the other.
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       ...(params.offset ? { skip: params.offset } : {}),
       ...(params.limit ? { take: params.limit } : {}),
       include: { answers: true },
@@ -181,10 +186,12 @@ function safeParseArray(raw: string | null): string[] {
  * order total is known; an unreconciled response is pending, never $0.00.
  *
  * Verification: a row marked `unverifiedFailed` (the order never arrived and the
- * reconcile sweep gave up) is excluded from revenue, and `verified === false`
- * (a known test/cancelled order, or an order confirmed absent) also excludes it.
- * `verified === null` predates the column and keeps the legacy behaviour — the
- * order total's presence alone decides — so historic revenue is unchanged.
+ * reconcile sweep gave up) is excluded from revenue. Otherwise the cached order
+ * decides (test, cancelled, voided, refunded). Only when the order row itself
+ * is gone does the total snapshotted on the response stand in, and then
+ * `verified` (the snapshot's own test/cancelled check) must not be false:
+ * the snapshot carries no test or cancelled flag of its own. `verified ===
+ * null` predates the column and keeps the legacy behaviour.
  */
 export function decideSurveyRevenue(row: SurveyResponseRow): RevenueDecision {
   if (row.unverifiedFailed) {
@@ -200,7 +207,7 @@ export function decideSurveyRevenue(row: SurveyResponseRow): RevenueDecision {
           isTest: row.order.isTest,
           isCancelled: row.order.isCancelled,
         }
-      : row.currency
+      : row.currency && row.verified !== false
         ? {
             currency: row.currency,
             totalPrice: row.orderTotal,
@@ -231,8 +238,10 @@ export function surveyRevenueStatus(row: SurveyResponseRow, decision = decideSur
       return "total unreadable";
     case "unreconciled":
       if (row.orderId === null) return "no order";
-      if (row.unverifiedFailed) return "order not received";
+      // An order we hold whose total could not be read did arrive: checked
+      // before the 24-hour write-off, which only means "no order yet".
       if (row.order && row.order.totalPrice === null) return "total unreadable";
+      if (row.unverifiedFailed) return "order not received";
       return "awaiting order";
   }
 }
@@ -305,7 +314,12 @@ export type QuestionBreakdown =
  */
 export function buildBreakdowns(params: {
   responses: ReadonlyArray<SurveyResponseRow>;
-  questions: Array<{ id: string; type: string; options: Array<{ id: string; archived: boolean }> }>;
+  questions: Array<{
+    id: string;
+    type: string;
+    allowOther?: boolean;
+    options: Array<{ id: string; archived: boolean; isOther?: boolean }>;
+  }>;
   textLimit?: number;
 }): QuestionBreakdown[] {
   const { responses, questions } = params;
@@ -332,7 +346,12 @@ export function buildBreakdowns(params: {
       for (const response of responses) {
         const answer = response.answers.find((a) => a.questionId === question.id);
         const value = answer?.numberValue;
-        if (typeof value === "number") counts.set(value, (counts.get(value) ?? 0) + 1);
+        // Only values on the scale, as the scores read them: a bar the score
+        // ignores made the two disagree.
+        const [min, max] = question.type === "nps" ? [0, 10] : [1, 5];
+        if (typeof value === "number" && Number.isInteger(value) && value >= min && value <= max) {
+          counts.set(value, (counts.get(value) ?? 0) + 1);
+        }
       }
       const distribution = [...counts.entries()]
         .map(([value, count]) => ({ value, count }))
@@ -354,7 +373,15 @@ export function buildBreakdowns(params: {
         ? [{ id: YES_NO_IDS.yes }, { id: YES_NO_IDS.no }]
         : question.type === "satisfaction_5"
           ? SATISFACTION_OPTIONS.map((option) => ({ id: option.id }))
-          : question.options;
+          : withBuiltInOther({
+              ...question,
+              // Past answers keep their bar after free text is switched off.
+              allowOther:
+                question.allowOther ||
+                relevant.some((response) =>
+                  response.answers.some((a) => a.questionId === question.id && a.optionIds.includes(OTHER_CHANNEL_VALUE)),
+                ),
+            });
     const optionCounts = new Map<string, number>();
     const revenueByOption = new Map<string, Array<{ currency: string; minor: number }>>();
     let otherCount = 0;
@@ -364,7 +391,10 @@ export function buildBreakdowns(params: {
       if (!answer) continue;
 
       const decision = decideSurveyRevenue(response);
-      const revenue = decision.included && response.order ? { currency: response.order.currency, minor: decision.minor } : null;
+      // A counted answer is summed in the currency it was decided in: the
+      // cached order's, or the snapshot's when that row is gone.
+      const currency = response.order?.currency ?? response.currency;
+      const revenue = decision.included && currency ? { currency, minor: decision.minor } : null;
 
       for (const optionId of choiceIds(question.type, answer)) {
         optionCounts.set(optionId, (optionCounts.get(optionId) ?? 0) + 1);
@@ -402,6 +432,22 @@ export function buildBreakdowns(params: {
       multiple: question.type === "multi_choice",
     };
   });
+}
+
+/**
+ * A choice question's options plus the built-in "Other" (`other`), which has
+ * no Option row: with free text on, the buyer can pick it, and its answers
+ * were counted in the total but got no bar and no revenue.
+ */
+export function withBuiltInOther<O extends { id: string; archived: boolean; isOther?: boolean }>(question: {
+  allowOther?: boolean;
+  options: ReadonlyArray<O>;
+}): Array<O | { id: string; archived: false }> {
+  const options: Array<O | { id: string; archived: false }> = [...question.options];
+  if (question.allowOther && !question.options.some((option) => option.isOther)) {
+    options.push({ id: OTHER_CHANNEL_VALUE, archived: false });
+  }
+  return options;
 }
 
 /** NPS for an NPS question; CSAT for a 1–5 rating or satisfaction question. */
@@ -494,12 +540,17 @@ export function summariseSurvey(responses: ReadonlyArray<SurveyResponseRow>): Su
     if (response.flagged) flagged += 1;
     if (isPendingResponse(response)) pending += 1;
     byPlacement.set(response.placement, (byPlacement.get(response.placement) ?? 0) + 1);
-    if (response.isFirstOrder === true) first += 1;
-    else if (response.isFirstOrder === false) returning += 1;
-    else unknown += 1;
+    // Buyers are counted per order, like the Dashboard's buyer mix: an answer
+    // with no order has no buyer to classify.
+    if (response.orderId !== null) {
+      if (response.isFirstOrder === true) first += 1;
+      else if (response.isFirstOrder === false) returning += 1;
+      else unknown += 1;
+    }
     const decision = decideSurveyRevenue(response);
-    if (decision.included && response.order) {
-      const entry = { currency: response.order.currency, minor: decision.minor };
+    const currency = response.order?.currency ?? response.currency;
+    if (decision.included && currency) {
+      const entry = { currency, minor: decision.minor };
       revenue.push(entry);
       if (response.isFirstOrder === true) firstRevenue.push(entry);
       else if (response.isFirstOrder === false) returningRevenue.push(entry);
@@ -538,31 +589,42 @@ export async function surveyAnswerRates(params: {
   start: Date | null;
   end: Date;
 }): Promise<Map<string, { answered: number; orders: number }>> {
-  const results = await Promise.all(
-    params.surveys.map(async (survey) => {
+  if (params.surveys.length === 0) return new Map();
+  // One query for every survey (it ran once per survey on every Results load):
+  // each survey's window starts at its own creation, and an order counts as
+  // answered for a survey that has a Response on it.
+  const windows = Prisma.join(
+    params.surveys.map((survey) => {
       const from = params.start && params.start > survey.createdAt ? params.start : survey.createdAt;
-      const rows = await retryDb(() =>
-        db.$queryRaw<Array<{ orders: bigint; answered: bigint }>>`
-          SELECT
-            COUNT(*)::bigint AS orders,
-            COUNT(*) FILTER (
-              WHERE EXISTS (
-                SELECT 1 FROM "Response" r
-                WHERE r."shopId" = o."shopId" AND r."surveyId" = ${survey.id} AND r."orderId" = o."orderId"
-              )
-            )::bigint AS answered
-          FROM "OrderCache" o
-          WHERE o."shopId" = ${params.shopId}
-            AND o."createdAtShop" >= ${from} AND o."createdAtShop" < ${params.end}
-            AND o."isTest" = false AND o."isCancelled" = false
-            AND ${couldSeeSurveySql("o")}
-        `,
-      );
-      const row = rows[0];
+      return Prisma.sql`(${survey.id}, CAST(${from} AS timestamp(3)))`;
+    }),
+  );
+  const rows = await retryDb(() =>
+    db.$queryRaw<Array<{ surveyId: string; orders: bigint; answered: bigint }>>`
+      SELECT
+        s.id AS "surveyId",
+        COUNT(o.id)::bigint AS orders,
+        COUNT(o.id) FILTER (WHERE r."orderId" IS NOT NULL)::bigint AS answered
+      FROM (VALUES ${windows}) AS s(id, "from")
+      JOIN "OrderCache" o
+        ON o."shopId" = ${params.shopId}
+        AND o."createdAtShop" >= s."from" AND o."createdAtShop" < ${params.end}
+        AND o."isTest" = false AND o."isCancelled" = false
+        AND ${couldSeeSurveySql("o")}
+      LEFT JOIN (
+        SELECT DISTINCT "surveyId", "orderId" FROM "Response"
+        WHERE "shopId" = ${params.shopId} AND "orderId" IS NOT NULL
+      ) r ON r."surveyId" = s.id AND r."orderId" = o."orderId"
+      GROUP BY s.id
+    `,
+  );
+  const bySurvey = new Map(rows.map((row) => [row.surveyId, row]));
+  return new Map(
+    params.surveys.map((survey) => {
+      const row = bySurvey.get(survey.id);
       return [survey.id, { orders: Number(row?.orders ?? 0), answered: Number(row?.answered ?? 0) }] as const;
     }),
   );
-  return new Map(results);
 }
 
 /** Whole-percent answer rate, capped at 100; null with no orders to compare. */

@@ -430,6 +430,26 @@ describe("validateResponse", () => {
   });
 });
 
+describe("an exclusive option alone meets any minimum (I6)", () => {
+  it("accepts 'None of these' on its own when at least two are required", () => {
+    const s = survey([
+      {
+        id: "q1",
+        type: "multi_choice",
+        text: "Pick at least two",
+        minSelections: 2,
+        options: [
+          { id: "a", label: "A" },
+          { id: "b", label: "B" },
+          { id: "none", label: "None of these", exclusive: true },
+        ],
+      },
+    ]);
+    expect(validateResponse(s, [{ questionId: "q1", optionIds: ["none"] }])).toEqual([]);
+    expect(validateResponse(s, [{ questionId: "q1", optionIds: ["a"] }]).some((e) => e.code === "min_selections")).toBe(true);
+  });
+});
+
 describe("exclusive-option selection reconciler (T6)", () => {
   it("an exclusive tap clears the others", () => {
     // Host reports the whole new array: the exclusive option plus "a".
