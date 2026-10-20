@@ -26,7 +26,7 @@ one trace are merged into one entry, and the entry lists every source.
 | EDIT | survey creation and editing |
 | REP | reporting and export |
 
-**Totals:** 2 Critical, 4 High, 16 Medium, 48 Low, 14 Info (after the review below removed 15 findings and parts of two more).
+**Totals:** 2 Critical, 4 High, 16 Medium, 48 Low, 13 Info (after the review below removed 16 findings and parts of two more).
 
 Fixed items are ticked `[x]` in their heading. Ambiguous choices are recorded in `DECISIONS.md` under 2026-10-20.
 
@@ -250,7 +250,7 @@ Scope notes from the validator (informational):
 
 ## Medium
 
-### M1. Open redirect in `/auth/*` through dot segments [AUTH] — bypass CONFIRMED and reproduced in node; reaching it through App Bridge is PLAUSIBLE
+### [x] M1. Open redirect in `/auth/*` through dot segments [AUTH] — bypass CONFIRMED and reproduced in node; reaching it through App Bridge is PLAUSIBLE
 - **Where:** `app/routes/auth.$.tsx:25`, `:30`; `app/lib/http.server.ts:97-101`.
 - **What is wrong:**
   - `safeInternalPath` checks the raw string for a leading `//`, then the route does `new URL(value, origin)`, which resolves dot segments.
@@ -258,7 +258,7 @@ Scope notes from the validator (informational):
   - `redirect("//evil.com…")` emits a protocol-relative `Location`.
 - **Scenario:** a merchant opens `<app>/auth/x?shop=…&host=…&embedded=1&redirect=/..//evil.com`. After authenticating, the admin iframe is redirected to the attacker's page, which is a phishing surface inside the Shopify admin.
 
-### M2. Concurrent token refreshes reuse one refresh token with no coordination [AUTH, ORD] — PLAUSIBLE (depends on Shopify rotating refresh tokens)
+### [x] M2. Concurrent token refreshes reuse one refresh token with no coordination [AUTH, ORD] — PLAUSIBLE (depends on Shopify rotating refresh tokens)
 - **Where:**
   - `app/lib/shop.server.ts:186-190` (`freshOfflineToken` → `unauthenticated.admin`).
   - `app/routes/webhooks.tsx:39`, through the library's `ensureOfflineTokenIsNotExpired`.
@@ -486,7 +486,7 @@ Scope notes from the validator (informational):
 - **Where:** `app/lib/compliance.server.ts:131-188`.
 - **What is wrong:** only answers are exported. `Response.country`, `locale`, `productIds` and `isFirstOrder`, the `OrderCache` totals, `OrderFact` and `CheckoutLoad.country` are all left out.
 
-### L19. Legacy-session migration races can leave a revoked token stored [AUTH] — CONFIRMED in code; the timing is unlikely
+### [x] L19. Legacy-session migration races can leave a revoked token stored [AUTH] — CONFIRMED in code; the timing is unlikely
 - **Where:** `app/session-storage.server.ts:104-115`, `:129-152`.
 - **What is wrong:**
   - A load whose DB read finishes after the migration's `finally` re-migrates with the already-revoked legacy token.
@@ -494,11 +494,11 @@ Scope notes from the validator (informational):
   - After that, every later load reports no session, and webhooks and background work get no token until the merchant opens the admin.
   - The de-duplication only works within one process.
 
-### L20. Legacy migration runs a network call of up to 20s inside webhook authentication [AUTH] — CONFIRMED
+### [x] L20. Legacy migration runs a network call of up to 20s inside webhook authentication [AUTH] — CONFIRMED
 - **Where:** `app/lib/token-migration.server.ts:218`, reached through `loadSession` from `authenticate.webhook`.
 - **What is wrong:** the first webhook for a legacy session waits on a token exchange of up to 20s, while Shopify's timeout is 5s. A failed migration is retried on every load, because nothing records the failure.
 
-### L21. Key rotation never re-seals tokens proactively [AUTH] — CONFIRMED
+### [x] L21. Key rotation never re-seals tokens proactively [AUTH] — CONFIRMED
 - **Where:** `app/lib/env.ts:42-46` (the comment promises re-sealing); `app/session-storage.server.ts:26`, `:104`.
 - **What is wrong:** `sealToken` skips values that already carry the `enc:v1:` prefix, and `loadSession` only re-seals plain-text rows.
 - **Scenario:**
@@ -510,12 +510,12 @@ Scope notes from the validator (informational):
 - **Where:** `app/routes/webhooks.tsx:115`, `:166-170`.
 - **What is wrong:** only `app_subscriptions/update` uses the token. When there is no session, `orders/*` still pays for a DB lookup plus `unauthenticated.admin`, and possibly a legacy exchange (network). That adds latency and failure points to M5 and C2.
 
-### L23. `/auth/*` calls `provisionShop` with no error handling [AUTH] — CONFIRMED
+### [x] L23. `/auth/*` calls `provisionShop` with no error handling [AUTH] — CONFIRMED
 - **Where:** `app/routes/auth.$.tsx:21`.
 - **What is wrong:** `afterAuth` swallows provisioning errors, but this second, redundant call does not.
 - **Scenario:** a DB blip or Neon wake turns a successful login into a 500 inside the iframe. It also makes a duplicate `fetchShopIdentity` Admin call.
 
-### L24. A changed myshopify domain makes provisioning fail permanently [AUTH] — PLAUSIBLE (depends on whether Shopify allows domain changes)
+### [x] L24. A changed myshopify domain makes provisioning fail permanently [AUTH] — PLAUSIBLE (depends on whether Shopify allows domain changes)
 - **Where:** `app/lib/shop.server.ts:54-61`, `:79-100`.
 - **What is wrong:** `Shop.shopId` (the GID) is `@unique`, but the upsert is keyed on `shopDomain`.
 - **Scenario:** after a domain change, the create branch hits P2002 and `retryUniqueRace` gives up. `ensureShop` then throws on every admin load, so the merchant is locked out.
@@ -704,14 +704,11 @@ On a multi-choice question with `minSelections ≥ 2`, an exclusive "None of the
 - FROZEN is overwritten as `expired` (`app.plans.tsx:116`).
 - `planDisplayName` is never updated on a reconcile.
 
-### I20. `verifyIdToken` decodes leniently and throws the wrong error type [AUTH]
+### [x] I20. `verifyIdToken` decodes leniently and throws the wrong error type [AUTH]
 - The signature is decoded with Node's permissive base64.
 - A JSON `null` header or payload throws `TypeError` instead of `IdTokenError`, so the route logs a server error rather than returning 401.
 
 `app/lib/id-token.server.ts:55`, `:91-99`.
-
-### I21. The library logs on every token exchange [AUTH]
-See the Step 1 package table (`shopify-app-react-router` 3.0.1).
 
 ### I23. Editor smaller items [EDIT]
 - The channel-report question's type is not checked on the server (`surveys.server.ts:1008-1018`, `:1107-1118`). On multi_choice only the first pick is counted (`analytics-queries.server.ts:134-149`), and on yes_no "yes" and "no" become channels.
@@ -761,6 +758,7 @@ On closer inspection these are not bugs; each line says why.
 - **I22** (`requiresFirstOrder` presets trust the client): The buyer can only influence the tags on their own order; there is no other first-order source the checkout exposes.
 - **I27** (Queued redactions stay visible in exports for up to a day): The finding itself notes this is within Shopify's 30-day deadline.
 - **I23, part** (pause/activate ignore the revision; relabelling moves history; dead `validateSurveySettings`; delete cascades history): status changes are deliberately outside the Studio's revision (DECISIONS.md M26), relabelling is allowed on purpose so typos can be fixed (M28), dead code is not a defect, and deletion sits behind a confirm by design.
+- **I21** (The library logs on every token exchange): a third-party `console.log` of one boolean, still present in the latest release (3.0.2, checked on npm); it logs nothing sensitive and is not this app's defect.
 - **I11, part** (ISK rounding): a deliberate earlier decision (DECISIONS.md L23).
 
 ---

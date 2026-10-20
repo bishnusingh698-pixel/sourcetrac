@@ -97,5 +97,17 @@ export async function readBodyText(request: Request, maxBytes: number): Promise<
 export function safeInternalPath(value: string): string {
   if (!value.startsWith("/") || /[\\\u0000-\u001f]/.test(value)) return "/app";
   if (value.startsWith("//")) return "/app";
-  return value;
+  // Dot segments resolve away when the path is used: `/..//evil.com` (or
+  // `/%2e%2e//evil.com`) becomes the path `//evil.com`, protocol-relative
+  // again. Check the path as it will be resolved, and return that form.
+  let resolved: URL;
+  try {
+    resolved = new URL(value, INTERNAL_ORIGIN);
+  } catch {
+    return "/app";
+  }
+  if (resolved.origin !== INTERNAL_ORIGIN || resolved.pathname.startsWith("//")) return "/app";
+  return `${resolved.pathname}${resolved.search}${resolved.hash}`;
 }
+
+const INTERNAL_ORIGIN = "https://app.internal";

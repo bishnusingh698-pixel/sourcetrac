@@ -74,6 +74,21 @@ async function retryUniqueRace<T>(operation: () => Promise<T>): Promise<T> {
 export async function upsertShop(params: { shopDomain: string; shopId: string }): Promise<{ id: string }> {
   const { shopDomain, shopId } = params;
 
+  // The shop's GID is unique, its myshopify domain need not stay the same. A
+  // row stored under an earlier domain is moved to this one; otherwise the
+  // upsert below tried to create a second row with the same GID and failed on
+  // every admin load.
+  if (shopId.startsWith("gid://")) {
+    const [byGid, byDomain] = await Promise.all([
+      retryDb(() => db.shop.findUnique({ where: { shopId }, select: { id: true, shopDomain: true } })),
+      retryDb(() => db.shop.findUnique({ where: { shopDomain }, select: { id: true } })),
+    ]);
+    if (byGid && byGid.shopDomain !== shopDomain && !byDomain) {
+      await retryDb(() => db.shop.update({ where: { id: byGid.id }, data: { shopDomain } }));
+      logger.info("shop_domain_changed", { shop_id: byGid.id, from: byGid.shopDomain, to: shopDomain });
+    }
+  }
+
   // A new installation starts now; a re-auth of a live one keeps its start.
   const prior = await retryDb(() =>
     db.shop.findUnique({ where: { shopDomain }, select: { installState: true, installedAt: true } }),
@@ -207,7 +222,20 @@ export async function getAccessToken(internalShopId: string): Promise<string | n
  * refreshed first. Imported lazily: `shopify.server` imports this module (via
  * provisioning), and a static import would make the two load each other.
  */
-async function freshOfflineToken(shopDomain: string): Promise<string | null> {
+const tokenLoads = new Map<string, Promise<string | null>>();
+
+function freshOfflineToken(shopDomain: string): Promise<string | null> {
+  // One load (and so at most one refresh) per shop at a time in this process:
+  // a webhook and a sync drain asking together used to spend the same refresh
+  // token twice.
+  const running = tokenLoads.get(shopDomain);
+  if (running) return running;
+  const load = loadFreshOfflineToken(shopDomain).finally(() => tokenLoads.delete(shopDomain));
+  tokenLoads.set(shopDomain, load);
+  return load;
+}
+
+async function loadFreshOfflineToken(shopDomain: string): Promise<string | null> {
   try {
     const { unauthenticated } = await import("~/shopify.server");
     const { session } = await unauthenticated.admin(shopDomain);
