@@ -3,7 +3,8 @@
     "heading": "SourceTrac-attributie",
     "loading": "Zoeken naar een enquêteantwoord…",
     "missing_order": "Geen enquêteantwoord vastgelegd voor deze bestelling.",
-    "missing_customer": "Geen enquêteantwoord vastgelegd voor deze klant.",
-    "found_prefix": "Hoe ze ons vonden:"
+    "missing_customer": "Geen enquêteantwoord bij de recente bestellingen van deze klant (ongeveer de laatste 60 dagen).",
+    "found_prefix": "Hoe ze ons vonden:",
+    "unavailable": "Het enquêteantwoord kon nu niet worden opgehaald. Laad de pagina opnieuw om het nog eens te proberen."
   }
 }

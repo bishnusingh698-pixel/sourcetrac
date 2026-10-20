@@ -49,6 +49,8 @@ export type SmartActionPreset = {
    * Checked in order; the first matching band wins.
    */
   numericBands?: Array<{ min?: number; max?: number; value: string }>;
+  /** A metafield preset's Shopify type; text unless the value is a number. */
+  metafieldType?: "single_line_text_field" | "number_integer";
   /** The i18n key for the example line ("Adds the tag … to the order"). */
   exampleKey: string;
   /** The scope required, from `app/lib/scopes.server.ts`. */
@@ -185,6 +187,7 @@ export const SMART_ACTION_PRESETS: Record<string, SmartActionPreset> = {
     questionKey: "q_lasts",
     name: "sourcetrac.reorder_window_days",
     valueMap: { two_weeks: "14", about_a_month: "30", two_three_months: "75", longer: "120" },
+    metafieldType: "number_integer",
     // Written only when the buyer asked for a reorder reminder (plan, Q2 = Yes).
     gateQuestionKey: "q_reorder_reminder",
     gateOptionKeys: ["yes"],
@@ -293,7 +296,12 @@ export type SmartActionAnswer = {
 export type ResolvedSmartActions = {
   orderTags: string[];
   customerTags: string[];
-  customerMetafields: Array<{ namespace: string; key: string; value: string }>;
+  customerMetafields: Array<{
+    namespace: string;
+    key: string;
+    value: string;
+    type: "single_line_text_field" | "number_integer";
+  }>;
 };
 
 /**
@@ -415,7 +423,7 @@ export function resolveSmartActionWrites(params: {
     else {
       // A metafield's value is the answer itself; `name` is only the field key.
       const { namespace, key } = splitMetafieldName(preset.name);
-      out.customerMetafields.push({ namespace, key, value });
+      out.customerMetafields.push({ namespace, key, value, type: preset.metafieldType ?? "single_line_text_field" });
     }
   }
 

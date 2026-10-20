@@ -1,9 +1,11 @@
+import type { Prisma } from "@prisma/client";
+
 import { db, isRetryableDbError } from "~/db.server";
 import { logger } from "~/lib/logger";
 import { withRetry } from "~/lib/retry.server";
 import { canSync, hasScope, type SyncScope } from "~/lib/scopes.server";
 import { getAccessToken, findShopById } from "~/lib/shop.server";
-import { shopifyGraphql } from "~/lib/shopify-graphql.server";
+import { mayHaveRun, shopifyGraphql } from "~/lib/shopify-graphql.server";
 import { resolveSmartActionWrites, SMART_ACTION_PRESETS, type ResolvedSmartActions } from "@shared/templates/smart-actions";
 import { PLAN_SCALE, effectivePlan } from "~/lib/plans";
 import { slugifyChannel } from "~/lib/settings";
@@ -69,16 +71,26 @@ export { MAX_SYNC_TAGS, MAX_SYNC_TAG_LENGTH, sanitizeTag };
 export const MAX_SYNC_ATTEMPTS = 5;
 /** Work older than this is dropped, never fired: a reinstall must not replay months-old answers. */
 const MAX_SYNC_AGE_MS = 7 * 24 * 60 * 60 * 1000;
-/** How long a drainer holds a row it is working on. */
-const SYNC_LEASE_MS = 2 * 60 * 1000;
+/**
+ * How long a drainer holds a row it is working on. One kind can make two
+ * Shopify calls, each retried up to 4 times with a 20s timeout and backoff
+ * sleeps (about 130s per call), so the lease must outlast both.
+ */
+const SYNC_LEASE_MS = 10 * 60 * 1000;
 
 function retryDb<T>(operation: () => Promise<T>): Promise<T> {
   return withRetry(operation, { attempts: 3, baseDelayMs: 250, shouldRetry: isRetryableDbError });
 }
 
-/** Parse and clamp `Survey.syncOptions`. Unknown keys are ignored. */
+/**
+ * Parse and clamp `Survey.syncOptions`. Unknown keys are ignored. Accepts the
+ * stored JSON string as well as an object: the submit path passes the column
+ * as read, and reading `.orderTags` off a string found nothing, so no answer
+ * ever queued sync work.
+ */
 export function parseSyncOptions(raw: unknown): SurveySyncOptions {
-  const source = (raw ?? {}) as Record<string, unknown>;
+  const parsed = typeof raw === "string" ? safeJson<unknown>(raw, {}) : raw;
+  const source = (typeof parsed === "object" && parsed !== null ? parsed : {}) as Record<string, unknown>;
   // Only well-formed names and text types: the value written is always text,
   // and a malformed namespace/key or a numeric type failed every write.
   const metafields = Array.isArray(source.metafields)
@@ -242,10 +254,14 @@ type SyncContext = {
  * chose. The channel is resolved from the Answer row of the channel-report
  * question (the v2 model keeps the channel there, not on a column).
  */
-async function loadSyncContext(shopId: string, responseId: string): Promise<{
-  options: SurveySyncOptions;
-  context: SyncContext;
-} | null> {
+type LoadedSync =
+  | { status: "ready"; options: SurveySyncOptions; context: SyncContext }
+  /** The response or shop is gone (redacted, expired): the work can never run. */
+  | { status: "gone" }
+  /** The shop is on a plan without Shopify actions: settled, nothing to write. */
+  | { status: "not_on_plan" };
+
+async function loadSyncContext(shopId: string, responseId: string, accessToken: string): Promise<LoadedSync> {
   const response = await retryDb(() =>
     db.response.findFirst({
       where: { id: responseId, shopId },
@@ -254,18 +270,21 @@ async function loadSyncContext(shopId: string, responseId: string): Promise<{
         answers: {
           include: {
             question: {
-              select: { templateKey: true, type: true, position: true, options: { select: { id: true, templateKey: true } } },
+              select: {
+                templateKey: true,
+                type: true,
+                position: true,
+                options: { select: { id: true, templateKey: true, label: true } },
+              },
             },
           },
         },
       },
     }),
   );
-  if (!response) return null;
+  if (!response) return { status: "gone" };
 
-  const options = parseSyncOptions(
-    safeJson<Record<string, unknown>>(response.survey.syncOptions, {}),
-  );
+  const options = parseSyncOptions(response.survey.syncOptions);
   // The channel as a merchant can match on it: a readable key (the legacy
   // value, the template's option key, or a slug of the label) and the option's
   // own label. Never the internal row id, and never the buyer's free text: an
@@ -303,9 +322,7 @@ async function loadSyncContext(shopId: string, responseId: string): Promise<{
   }
 
   const shopRow = await findShopById(shopId);
-  if (!shopRow) return null;
-  const accessToken = await getAccessToken(shopId);
-  if (!accessToken) return null;
+  if (!shopRow) return { status: "gone" };
 
   // T13 is Pro-only. Gate on the *current* plan here, not only at enqueue time:
   // the lazy sweep re-reads `syncOptions` from the database, so a shop that
@@ -317,9 +334,17 @@ async function loadSyncContext(shopId: string, responseId: string): Promise<{
   // Every other Shopify write (order and customer tags, metafields, Flow) is a
   // Scale feature too. Same reasoning: a shop that downgraded keeps its stored
   // settings, so an upgrade restores them, but nothing more is written.
-  if (effectivePlan(shopRow) !== PLAN_SCALE) return null;
+  // A frozen paid plan (an unpaid bill) is not a downgrade:
+  // defer (the caller throws, so the row backs off) rather than settle it.
+  if (effectivePlan(shopRow) !== PLAN_SCALE) {
+    if (shopRow.plan === PLAN_SCALE && shopRow.planStatus === "frozen") {
+      throw new Error("Scale plan is frozen; waiting for it to be active again.");
+    }
+    return { status: "not_on_plan" };
+  }
 
   return {
+    status: "ready",
     options,
     context: {
       shopId,
@@ -335,7 +360,12 @@ async function loadSyncContext(shopId: string, responseId: string): Promise<{
       // Smart-action presets name the template's stable ids. Rows have their
       // own unique ids and remember the stable one as `templateKey`.
       answers: response.answers.map((a) => {
-        const optionKeys = new Map(a.question.options.map((o) => [o.id, o.templateKey ?? o.id]));
+        // An option the merchant added to a template survey has no template
+        // key; give it a readable one from its label, never the row id.
+        const prefix = a.question.templateKey ? `${a.question.templateKey}_` : "";
+        const optionKeys = new Map(
+          a.question.options.map((o) => [o.id, o.templateKey ?? `${prefix}${slugifyChannel(o.label, new Set())}`]),
+        );
         return {
           questionId: a.question.templateKey ?? a.questionId,
           optionIds: safeJson<string[]>(a.optionIds, []).map((id) => optionKeys.get(id) ?? id),
@@ -533,25 +563,40 @@ export async function runSyncKind(
             ownerId: customerId,
             namespace: m.namespace,
             key: m.key,
-            value: metafieldValue(m.value, "single_line_text_field"),
-            type: "single_line_text_field",
+            value: m.type === "number_integer" ? m.value : metafieldValue(m.value, "single_line_text_field"),
+            type: m.type,
           });
         }
       }
     }
-    if (writes.length === 0) return;
-    // An empty value is refused by Shopify and fails the whole atomic call.
-    const nonEmpty = writes.filter((write) => write.value.length > 0);
-    if (nonEmpty.length === 0) return;
-    writes.length = 0;
-    writes.push(...nonEmpty);
-    const result = await shopifyGraphql<{ metafieldsSet: { userErrors: UserErrors } }>(
-      ctx.shopDomain,
-      ctx.accessToken,
-      METAFIELDS_SET,
-      { metafields: writes },
-    );
-    assertNoUserErrors(result.data.metafieldsSet.userErrors, "metafieldsSet");
+    // An empty value is refused by Shopify, and two writes to one field in the
+    // same call fail the whole atomic call: keep the first (the merchant's own
+    // setting comes before a preset).
+    const seen = new Set<string>();
+    const unique = writes.filter((write) => {
+      const field = `${write.ownerId}|${write.namespace}|${write.key}`;
+      if (write.value.length === 0 || seen.has(field)) return false;
+      seen.add(field);
+      return true;
+    });
+    // One call per owner, so a conflict on a customer field (a merchant
+    // definition of another type) cannot also block the order's fields. Both
+    // writes are idempotent, so a retry after one succeeded is harmless.
+    const failures: string[] = [];
+    for (const ownerId of [...new Set(unique.map((write) => write.ownerId))]) {
+      const result = await shopifyGraphql<{ metafieldsSet: { userErrors: UserErrors } }>(
+        ctx.shopDomain,
+        ctx.accessToken,
+        METAFIELDS_SET,
+        { metafields: unique.filter((write) => write.ownerId === ownerId) },
+      );
+      try {
+        assertNoUserErrors(result.data.metafieldsSet.userErrors, "metafieldsSet");
+      } catch (error) {
+        failures.push(error instanceof Error ? error.message : String(error));
+      }
+    }
+    if (failures.length > 0) throw new Error(failures.join("; "));
     return;
   }
 
@@ -575,8 +620,9 @@ export async function runSyncKind(
     // A readable key a merchant can write a condition on (`instagram`, `other`),
     // never an internal row id.
     Channel: ctx.channel,
+    // A single-line field: a buyer's "Other" text can carry line breaks.
     "Channel label": truncateForPayload(
-      ctx.channel === OTHER_CHANNEL_VALUE && ctx.otherText ? ctx.otherText : ctx.channelLabel,
+      singleLine(ctx.channel === OTHER_CHANNEL_VALUE && ctx.otherText ? ctx.otherText : ctx.channelLabel),
       10_000,
     ),
   };
@@ -608,7 +654,8 @@ export async function runSyncKind(
 
 /**
  * Process pending sync rows for one shop, due now. Each row is independent: a
- * failure bumps `attempts` and schedules the next try, a success deletes it.
+ * failure bumps `attempts` and schedules the next try, a success marks it
+ * completed (kept, so a repeated submit never queues the same work again).
  * Bounded so a request that triggers the sweep stays cheap.
  */
 export async function processPendingSync(
@@ -622,8 +669,10 @@ export async function processPendingSync(
       where: {
         shopId,
         ...(filter.responseId ? { responseId: filter.responseId } : {}),
+        completedAt: null,
         attempts: { lt: MAX_SYNC_ATTEMPTS },
         nextAttemptAt: { lte: now },
+        OR: [{ leaseUntil: null }, { leaseUntil: { lte: now } }],
       },
       orderBy: { createdAt: "asc" },
       take: limit,
@@ -649,41 +698,67 @@ export async function processPendingSync(
 
   for (const row of rows) {
     // Claim the row with a lease: only the drainer whose conditional update
-    // matches works on it. Two submits draining at once used to process the
-    // same rows and run the merchant's Flow twice.
+    // matches works on it. The lease is its own column, so the backoff reset
+    // when an order arrives (`startSyncForOrder`) can never hand a row that is
+    // being worked on to a second drainer and run the merchant's Flow twice.
+    const lease = new Date(Date.now() + SYNC_LEASE_MS);
     const claimed = await retryDb(() =>
       db.pendingSync.updateMany({
-        where: { id: row.id, nextAttemptAt: row.nextAttemptAt, attempts: row.attempts },
-        data: { nextAttemptAt: new Date(Date.now() + SYNC_LEASE_MS) },
+        where: {
+          id: row.id,
+          completedAt: null,
+          attempts: row.attempts,
+          OR: [{ leaseUntil: null }, { leaseUntil: { lte: new Date() } }],
+        },
+        data: { leaseUntil: lease },
       }),
     );
     if (claimed.count === 0) continue;
+    // Every later write is conditional on still holding this lease, so a
+    // drainer whose lease ran out cannot overwrite the new owner's outcome.
+    const settle = (data: Prisma.PendingSyncUpdateManyMutationInput) =>
+      retryDb(() => db.pendingSync.updateMany({ where: { id: row.id, leaseUntil: lease }, data: { ...data, leaseUntil: null } }));
 
     if (now.getTime() - row.createdAt.getTime() > MAX_SYNC_AGE_MS) {
-      // Too old to write now (for example, queued before an uninstall).
+      // Too old to write now (for example, queued before an uninstall). Kept
+      // as failed, so the Settings page counts it rather than it vanishing.
       logger.warn("sync_dropped_stale", { shop_id: shopId, response_id: row.responseId, kind: row.kind });
-      await retryDb(() => db.pendingSync.deleteMany({ where: { id: row.id } }));
+      await settle({ attempts: MAX_SYNC_ATTEMPTS, lastError: "Not written: still pending after 7 days." });
       continue;
     }
 
     try {
-      const loaded = await loadSyncContext(shopId, row.responseId);
-      if (!loaded) {
+      const loaded = await loadSyncContext(shopId, row.responseId, accessToken);
+      if (loaded.status === "gone") {
         // The response is gone (redacted or expired). The work can never
         // succeed, so drop it rather than retrying forever.
-        await retryDb(() => db.pendingSync.deleteMany({ where: { id: row.id } }));
+        await retryDb(() => db.pendingSync.deleteMany({ where: { id: row.id, leaseUntil: lease } }));
         continue;
       }
-      await runSyncKind(row.kind, loaded.options, loaded.context, grantedScopes);
-      await retryDb(() => db.pendingSync.deleteMany({ where: { id: row.id } }));
+      if (loaded.status === "ready") {
+        await runSyncKind(row.kind, loaded.options, loaded.context, grantedScopes);
+      }
+      await settle({ completedAt: new Date(), lastError: null });
       done += 1;
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (row.kind === "flow" && mayHaveRun(error)) {
+        // Shopify may already have run the merchant's workflow (a 5xx or a
+        // timeout after the trigger was sent). Flow has no idempotency key, so
+        // sending it again could run the workflow twice: settle it instead.
+        logger.error("sync_flow_outcome_unknown", {
+          shop_id: shopId,
+          response_id: row.responseId,
+          error_message: message,
+        });
+        await settle({ completedAt: new Date(), lastError: `Outcome unknown, not resent: ${message}`.slice(0, 500) });
+        continue;
+      }
       failed += 1;
       const attempts = row.attempts + 1;
       // Exponential backoff from a minute up to six hours, so a throttled store
       // is not hammered and a slow order has time to arrive.
       const delayMs = Math.min(4 ** attempts * 15_000, 6 * 60 * 60 * 1000);
-      const message = error instanceof Error ? error.message : String(error);
       const gaveUp = attempts >= MAX_SYNC_ATTEMPTS;
       (gaveUp ? logger.error : logger.warn)(gaveUp ? "sync_gave_up" : "sync_failed", {
         shop_id: shopId,
@@ -692,20 +767,35 @@ export async function processPendingSync(
         attempts,
         error_message: message,
       });
-      await retryDb(() =>
-        db.pendingSync.updateMany({
-          where: { id: row.id },
-          data: {
-            attempts,
-            nextAttemptAt: new Date(Date.now() + delayMs),
-            lastError: message.slice(0, 500),
-          },
-        }),
-      );
+      await settle({ attempts, nextAttemptAt: new Date(Date.now() + delayMs), lastError: message.slice(0, 500) });
+      if (!gaveUp) scheduleRetry(shopId, delayMs);
     }
   }
 
   return { done, failed };
+}
+
+/**
+ * Wake this shop's sweep when a backed-off row is due, so queued work does not
+ * wait for an admin visit or an order webhook. In-process and best-effort: a
+ * restart loses the timer, and the admin and webhook sweeps still cover it.
+ * Only armed after a failure, so an idle app never touches the database.
+ */
+const retryTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function scheduleRetry(shopId: string, delayMs: number): void {
+  if (retryTimers.has(shopId) || retryTimers.size > 1_000) return;
+  const timer = setTimeout(() => {
+    retryTimers.delete(shopId);
+    void processPendingSync(shopId).catch((error: unknown) => {
+      logger.warn("sync_retry_failed", {
+        shop_id: shopId,
+        error_message: error instanceof Error ? error.message : String(error),
+      });
+    });
+  }, delayMs + 1_000);
+  timer.unref?.();
+  retryTimers.set(shopId, timer);
 }
 
 /**
@@ -762,13 +852,24 @@ export function startSyncForOrder(shopId: string, orderId: string): void {
       db.response.findMany({ where: { shopId, orderId }, select: { id: true } }),
     );
     for (const { id } of responses) {
+      const now = new Date();
+      // Only rows waiting out their backoff; a row a drainer holds keeps its lease.
       const due = await retryDb(() =>
         db.pendingSync.updateMany({
-          where: { shopId, responseId: id, attempts: { lt: MAX_SYNC_ATTEMPTS }, nextAttemptAt: { gt: new Date() } },
-          data: { nextAttemptAt: new Date() },
+          where: {
+            shopId,
+            responseId: id,
+            completedAt: null,
+            attempts: { lt: MAX_SYNC_ATTEMPTS },
+            nextAttemptAt: { gt: now },
+            OR: [{ leaseUntil: null }, { leaseUntil: { lte: now } }],
+          },
+          data: { nextAttemptAt: now },
         }),
       );
-      const pending = due.count > 0 || (await retryDb(() => db.pendingSync.count({ where: { shopId, responseId: id } }))) > 0;
+      const pending =
+        due.count > 0 ||
+        (await retryDb(() => db.pendingSync.count({ where: { shopId, responseId: id, completedAt: null } }))) > 0;
       if (pending) await processPendingSync(shopId, 10, { responseId: id });
     }
   })().catch((error: unknown) => {
@@ -783,10 +884,10 @@ export function startSyncForOrder(shopId: string, orderId: string): void {
 /** Sync work that gave up after every retry, for the Settings page. */
 export async function countFailedSync(shopId: string): Promise<{ count: number; lastError: string | null }> {
   const [count, latest] = await Promise.all([
-    retryDb(() => db.pendingSync.count({ where: { shopId, attempts: { gte: MAX_SYNC_ATTEMPTS } } })),
+    retryDb(() => db.pendingSync.count({ where: { shopId, completedAt: null, attempts: { gte: MAX_SYNC_ATTEMPTS } } })),
     retryDb(() =>
       db.pendingSync.findFirst({
-        where: { shopId, attempts: { gte: MAX_SYNC_ATTEMPTS } },
+        where: { shopId, completedAt: null, attempts: { gte: MAX_SYNC_ATTEMPTS } },
         orderBy: { createdAt: "desc" },
         select: { lastError: true },
       }),

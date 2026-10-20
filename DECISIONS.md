@@ -68,3 +68,14 @@ first; otherwise the option safest for merchants and their data.
 5. **After deploying, run `shopify app deploy`** so the checkout and admin extensions ship (the admin blocks gained `locales/`, the Thank-you block sends order facts). Shopify then re-runs the extensions' review-free update; nothing else is required.
 6. **Deploy note:** migration `20261015110000_install_time_and_redacted_orders` adds `Shop.installedAt` (seeded from `createdAt` for installed shops) and the `RedactedOrder` table. Additive; `npm run start` applies it.
 7. **Optional hardening:** set `READYZ_SECRET` in Render and switch the `/readyz` monitor (if any) to send `x-readyz-secret`, so it no longer holds the secret that authorises `/jobs/retention`.
+
+## 2026-10-20 audit
+
+- **M6** (sync work deleted on a blip): a frozen Scale plan defers queued work (it backs off and retries); a shop actually on a lower plan settles it with nothing written. Sync reuses the token the sweep already fetched instead of fetching it again.
+- **M7** (Flow re-sent after a 5xx/timeout): Flow is at most once. A failure after the trigger may have reached Shopify settles the row with an "outcome unknown" error log; only failures Shopify certainly refused are retried. A duplicate workflow run (discount email, alert) is worse for a merchant than one missed run, and Flow has no idempotency key.
+- **H2** (resubmits re-queue work): completed sync rows are kept (`PendingSync.completedAt`) instead of deleted, so `enqueueSync` sees them; they age out with the 24-month record clock.
+- **L28/L29** (order updates bypass backoff): sync waiting on an order is started only when the order is first stored (webhook or backfill), never by later updates.
+- **L40** (customer block misses older answers): `read_all_orders` is still not requested (scope minimisation); the block now says it looked at the customer's recent orders (about 60 days) instead of "no answer recorded".
+- **L41** (admin block shows the wrong answer): the block shows only the survey's channel-report question; a survey without one shows nothing rather than a gift/price/NPS answer labelled "How they heard about us".
+- **L45** (sync only drains on admin visits): a failed row arms an in-process timer for its retry time. Nothing is scheduled when nothing failed, so an idle app still never wakes the database.
+- **L48** (metafield conflicts): the reorder-window preset is written as `number_integer`; duplicate fields are dropped before the call and each owner gets its own call. The `sourcetrac` namespace stays merchant-owned (not `$app:`) because these metafields are meant for the merchant's own segments and Flow.

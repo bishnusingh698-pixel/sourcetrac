@@ -9,7 +9,7 @@
  */
 import crypto from "node:crypto";
 
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@prisma/client";
 
 import { createSurvey } from "~/lib/surveys.server";
@@ -182,6 +182,39 @@ describe("admin survey-context endpoint", () => {
     expect((await call(contextAction, request({ orderId: ORDER_ID }, {}, checkout))).status).toBe(401);
     const noExpiry = sign({ iss: `https://${DOMAIN}/admin`, dest: `https://${DOMAIN}`, aud: process.env.SHOPIFY_API_KEY });
     expect((await call(contextAction, request({ orderId: ORDER_ID }, {}, noExpiry))).status).toBe(401);
+  });
+
+  it("shows only the channel question's answer, never another question's (L41)", async () => {
+    const response = await prisma.response.findFirstOrThrow({ where: { orderId: ORDER_ID } });
+    const survey = await prisma.survey.findUniqueOrThrow({ where: { id: response.surveyId } });
+    await prisma.survey.update({ where: { id: survey.id }, data: { channelReportQuestionId: null } });
+    try {
+      const res = await call(contextAction, request({ orderId: ORDER_ID }));
+      expect(res.status).toBe(200);
+      expect((await res.json()) as { found: boolean }).toMatchObject({ found: false });
+    } finally {
+      await prisma.survey.update({ where: { id: survey.id }, data: { channelReportQuestionId: survey.channelReportQuestionId } });
+    }
+  });
+
+  it("reports a failed lookup as an error, not as 'no answer' (L42)", async () => {
+    await prisma.session.create({
+      data: {
+        id: `offline_${DOMAIN}`, shop: DOMAIN, state: "s", isOnline: false, scope: "read_orders", accessToken: "x",
+        expires: new Date(Date.now() + 3600_000),
+      },
+    });
+    // Shopify refuses the customer's orders read.
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ errors: "Forbidden" }), { status: 403 })));
+    try {
+      const res = await call(contextAction, request({ customerId: "gid://shopify/Customer/77" }));
+      expect(res.status).toBe(500);
+      expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+      expect(res.headers.get("Content-Type")).toBe("application/json");
+    } finally {
+      vi.unstubAllGlobals();
+      await prisma.session.deleteMany({ where: { shop: DOMAIN } });
+    }
   });
 
   it("scopes the lookup to the shop in the token, not a body field", async () => {

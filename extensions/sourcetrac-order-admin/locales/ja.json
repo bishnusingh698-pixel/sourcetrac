@@ -3,7 +3,8 @@
     "heading": "SourceTrac の流入元",
     "loading": "アンケートの回答を確認しています…",
     "missing_order": "この注文のアンケート回答はありません。",
-    "missing_customer": "この顧客のアンケート回答はありません。",
-    "found_prefix": "当店を知ったきっかけ:"
+    "missing_customer": "この顧客の最近の注文（約60日間）にアンケート回答はありません。",
+    "found_prefix": "当店を知ったきっかけ:",
+    "unavailable": "現在アンケートの回答を確認できません。ページを再読み込みしてもう一度お試しください。"
   }
 }

@@ -142,7 +142,7 @@ Scope notes from the validator (informational):
 
 ## Critical
 
-### C1. No buyer answer ever queues Shopify sync work: tags, metafields and Flow never run [SYNC] — CONFIRMED, re-verified
+### [x] C1. No buyer answer ever queues Shopify sync work: tags, metafields and Flow never run [SYNC] — CONFIRMED, re-verified
 - **Where:** `app/lib/answers.server.ts:368`, `app/lib/sync.server.ts:80-81`, `app/routes/api.survey-responses.tsx:186`; `prisma/schema.prisma:320`.
 - **What is wrong:**
   - `Survey.syncOptions` is a `String` column holding JSON. The route passes `row.syncOptions` (the raw string) to `submitAnswers`.
@@ -202,7 +202,7 @@ Scope notes from the validator (informational):
   - With no `X-Shopify-Triggered-At` header, or a null `installedAt` on pre-migration rows, both guards are skipped entirely (`compliance.server.ts:515-517`, `webhooks.server.ts:343`).
   - A concurrent uninstall landing between the read and the upsert also corrupts `installedAt`.
 
-### H2. A retried or repeated submission re-queues all sync work, so Flow fires again and tags are re-added [SYNC, SUBMIT] — CONFIRMED (live once C1 is fixed)
+### [x] H2. A retried or repeated submission re-queues all sync work, so Flow fires again and tags are re-added [SYNC, SUBMIT] — CONFIRMED (live once C1 is fixed)
 - **Where:**
   - `app/lib/answers.server.ts:313-315`: a duplicate still calls `afterAnswerStored` (`:375-377`).
   - `app/lib/sync.server.ts:141-162`: `enqueueSync` only skips kinds that are still pending.
@@ -216,7 +216,7 @@ Scope notes from the validator (informational):
 - **Other triggers:** the same answer from the Thank-you and Order status tabs, or a buyer replaying their own POST. Replays are limited only by the per-order bucket (10 burst, one every 6s).
 - **Impact:** the merchant's workflow (discount email, Slack alert) runs once per resubmit.
 
-### H3. `startSyncForOrder` breaks a live lease, so two drainers run the same sync row [SYNC] — CONFIRMED in code; the timing is PLAUSIBLE but likely
+### [x] H3. `startSyncForOrder` breaks a live lease, so two drainers run the same sync row [SYNC] — CONFIRMED in code; the timing is PLAUSIBLE but likely
 - **Where:** `app/lib/sync.server.ts:765-770`, with the lease at `:654-660`.
 - **What is wrong:**
   - The reset sets `nextAttemptAt = now` for every row with `nextAttemptAt > now`.
@@ -300,13 +300,13 @@ Scope notes from the validator (informational):
   That is about 10 sequential round-trips, each wrapped in `retryDb` (3 tries).
 - **Scenario:** Neon is suspended and the token has expired. The delivery takes more than 5s, so Shopify records a failure and retries. The retry gets 503 while the first is still in flight, so nothing is lost, but the subscription accrues failures.
 
-### M6. A transient token-refresh failure deletes queued sync work for good [SYNC] — CONFIRMED
+### [x] M6. A transient token-refresh failure deletes queued sync work for good [SYNC] — CONFIRMED
 - **Where:** `app/lib/sync.server.ts:307-308` with `:671-675`; `app/lib/shop.server.ts:186-202`.
 - **What is wrong:** `getAccessToken` swallows every error (network fault, Shopify 5xx, refresh race) and returns `null`. `loadSyncContext` returns `null` for that. The sweep reads `null` as "the response is gone" and runs `deleteMany`.
 - **Scenario:** one refresh fails while a row is being processed. The row is deleted without counting as a failed attempt, and it never appears in the Settings "failed sync" count.
 - **Related:** a short plan blip (`planStatus` frozen or stale, `:320`) also deletes rows instead of deferring them.
 
-### M7. Flow is marked "not idempotent", but the sweep re-sends it after a timeout or 5xx [SYNC] — PLAUSIBLE
+### [x] M7. Flow is marked "not idempotent", but the sweep re-sends it after a timeout or 5xx [SYNC] — PLAUSIBLE
 - **Where:** `app/lib/sync.server.ts:598-600`, `:680-704`.
 - **What is wrong:**
   - `{ idempotent: false }` only stops retries inside `shopifyGraphql`.
@@ -540,12 +540,12 @@ Scope notes from the validator (informational):
 - **Where:** `app/lib/answers.server.ts:584` (`verified: { not: true }`).
 - **What is wrong:** if Prisma compiles this to `<> true`, NULL rows are excluded. Backfilled history with `verified = NULL` and no total would then stay "awaiting order" forever, instead of ageing out like every other answer.
 
-### L28. Every order update bypasses the sync retry backoff [ORD] — CONFIRMED
+### [x] L28. Every order update bypasses the sync retry backoff [ORD] — CONFIRMED
 - **Where:** `app/lib/webhooks.server.ts:324` → `app/lib/sync.server.ts:759-772`.
 - **What is wrong:** each applied `orders/updated` or `orders/cancelled` resets `nextAttemptAt` and drains immediately.
 - **Scenario:** a sync that fails permanently (missing scope, bad metafield) burns one of its 5 attempts on every fulfillment, tag or payment update. A cancelled order also triggers sync work.
 
-### L29. Backfilled orders never start the sync work waiting for them [ORD, SYNC] — CONFIRMED
+### [x] L29. Backfilled orders never start the sync work waiting for them [ORD, SYNC] — CONFIRMED
 - **Where:** `app/lib/order-backfill.server.ts:193`.
 - **What is wrong:** the backfill writes through `upsertOrderCache` but never calls `startSyncForOrder`, unlike `webhooks.server.ts:324`. Those rows wait for the 5-minute admin sweep or the backoff, and may give up.
 
@@ -605,12 +605,12 @@ Scope notes from the validator (informational):
 - **Where:** `app/lib/billing.server.ts:178-189`.
 - **What is wrong:** the cancel mutation is retried on 5xx (default `idempotent: true`). The retry's "already cancelled" userError is then shown as `msg_cancel_failed`. The returned `status` is never checked.
 
-### L40. The customer admin block misses older answers [SYNC] — 60-day limit PLAUSIBLE; 100-order limit CONFIRMED
+### [x] L40. The customer admin block misses older answers [SYNC] — 60-day limit PLAUSIBLE; 100-order limit CONFIRMED
 - **Where:** `app/lib/admin-survey-context.server.ts:92-98`.
 - **What is wrong:** `orders(query:"customer_id:…", first: 100)` without `read_all_orders` only sees about the last 60 days, and at most 100 orders.
 - **Scenario:** a customer who answered 3 months ago and has not ordered since shows "No survey answer recorded".
 
-### L41. The admin block can show an unrelated answer as "How they heard about us", or "no answer" when one exists [SYNC] — CONFIRMED
+### [x] L41. The admin block can show an unrelated answer as "How they heard about us", or "no answer" when one exists [SYNC] — CONFIRMED
 - **Where:** `app/lib/admin-survey-context.server.ts:76-77`, `:85`, `:141-142`.
 - **What is wrong:**
   - With `channelReportQuestionId` null, it falls back to `response.answers[0]`, loaded with no `orderBy`, so the row is unpredictable.
@@ -618,38 +618,38 @@ Scope notes from the validator (informational):
   - A yes/no answer shows the raw value "yes".
   - Text, NPS and rating answers produce `found:false`.
 
-### L42. Admin block server errors show as "no answer recorded" [SYNC] — CONFIRMED
+### [x] L42. Admin block server errors show as "no answer recorded" [SYNC] — CONFIRMED
 - **Where:** `app/routes/api.admin-survey-context.tsx:102-110`; `extensions/shared/src/admin-response-block.tsx:70-74`.
 - **What is wrong:**
   - A DB or Shopify failure returns 200 `{found:false}`.
   - 401 and 429 responses also end as "No survey answer recorded", which tells the merchant something false.
   - Responses are sent without `Content-Type: application/json`.
 
-### L43. Smart-action tags can carry internal row ids instead of option keys [SYNC] — CONFIRMED
+### [x] L43. Smart-action tags can carry internal row ids instead of option keys [SYNC] — CONFIRMED
 - **Where:** `app/lib/sync.server.ts:338-341`; `shared/templates/smart-actions.ts:306-309`.
 - **Scenario:** a merchant adds "TikTok" to a template survey. The new option has `templateKey = null`, so the buyer's order is tagged `found:cm2x9…` (a cuid).
 
-### L44. The inline Thank-you sync always runs before the order exists [SYNC] — PLAUSIBLE
+### [x] L44. The inline Thank-you sync always runs before the order exists [SYNC] — PLAUSIBLE
 - **Where:** `app/lib/answers.server.ts:377`; `app/lib/sync.server.ts:450-602`.
 - **What is wrong:** every kind fails on the first try, because the order is not known yet. This wastes Admin API calls and uses up one of the 5 `MAX_SYNC_ATTEMPTS`.
 
-### L45. Queued sync work only drains while the merchant is in the admin, or when an order webhook arrives [SYNC] — CONFIRMED
+### [x] L45. Queued sync work only drains while the merchant is in the admin, or when an order webhook arrives [SYNC] — CONFIRMED
 - **Where:** `app/lib/sync.server.ts:716-734`, called only from `app._index.tsx:65` and `app.dashboard.tsx:59`.
 - **What is wrong:** each sweep drains at most 10 rows, at most once every 5 minutes per process.
 - **Scenario:** after a store-wide outage leaves a backlog, rows older than 7 days are dropped silently (`sync_dropped_stale`).
 
-### L46. The 2-minute sync lease can run out during slow, throttled work [SYNC] — PLAUSIBLE
+### [x] L46. The 2-minute sync lease can run out during slow, throttled work [SYNC] — PLAUSIBLE
 - **Where:** `app/lib/sync.server.ts:73`, `:695-703`.
 - **What is wrong:**
   - Up to 4 attempts × 20s, plus sleeps, is about 130s for one call, and the customer and metafield kinds make two calls.
   - Another drainer then reclaims the row.
   - The failure update does not check the lease, so a stale drainer can overwrite the new owner's schedule.
 
-### L47. The Flow "Channel label" can contain line breaks and the buyer's free text [SYNC] — PLAUSIBLE
+### [x] L47. The Flow "Channel label" can contain line breaks and the buyer's free text [SYNC] — PLAUSIBLE
 - **Where:** `app/lib/sync.server.ts:578-581`.
 - **What is wrong:** for an "Other" answer, raw buyer text (up to 500 characters, newlines kept) is sent into a `single_line_text_field`. `singleLine()` is not applied, and anything the buyer typed (an email or phone number) flows into the merchant's workflows.
 
-### L48. Metafield writes fail permanently on a type conflict or duplicate key [SYNC] — PLAUSIBLE
+### [x] L48. Metafield writes fail permanently on a type conflict or duplicate key [SYNC] — PLAUSIBLE
 - **Where:** `app/lib/sync.server.ts:486-555`; `shared/templates/smart-actions.ts:182-193`.
 - **What is wrong:**
   - Every value is written as `single_line_text_field`, including the numeric `reorder_window_days`.

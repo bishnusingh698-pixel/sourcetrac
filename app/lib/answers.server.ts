@@ -374,13 +374,27 @@ async function afterAnswerStored(input: AnswerSubmitInput, responseId: string, t
     // Every Shopify write is a Scale feature, so nothing is queued below it.
     if (input.plan === "scale" && hasSyncWork(options)) {
       await enqueueSync(input.shopId, responseId, options);
-      void processPendingSync(input.shopId, 5, { responseId }).catch((syncError: unknown) => {
-        logger.warn("answer_sync_failed", {
-          shop_id: input.shopId,
-          response_id: responseId,
-          error_message: syncError instanceof Error ? syncError.message : String(syncError),
+      // Every kind needs the order to exist in Shopify, and on the Thank-you
+      // page it usually does not yet: draining now would only spend one of the
+      // row's attempts. Its arrival (`startSyncForOrder`) drains it instead.
+      // Checked after the enqueue, so an order landing in between is not missed.
+      const orderKnown =
+        input.orderId !== null &&
+        (await retryDb(() =>
+          db.orderCache.findUnique({
+            where: { shopId_orderId: { shopId: input.shopId, orderId: input.orderId! } },
+            select: { id: true },
+          }),
+        )) !== null;
+      if (orderKnown) {
+        void processPendingSync(input.shopId, 5, { responseId }).catch((syncError: unknown) => {
+          logger.warn("answer_sync_failed", {
+            shop_id: input.shopId,
+            response_id: responseId,
+            error_message: syncError instanceof Error ? syncError.message : String(syncError),
+          });
         });
-      });
+      }
     }
   } catch (syncError) {
     logger.warn("answer_sync_failed", {

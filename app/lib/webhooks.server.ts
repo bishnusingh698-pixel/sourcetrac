@@ -321,7 +321,9 @@ export async function processWebhook(params: {
       }
 
       // Sync work (tags, Flow) that was waiting for this order can run now.
-      startSyncForOrder(shopInternalId, outcome.orderId);
+      // Only when the order first arrives: a later update (a fulfillment, a
+      // payment, our own tagsAdd) must not cut short a failing row's backoff.
+      if (outcome.created) startSyncForOrder(shopInternalId, outcome.orderId);
 
       if (topic === "orders/cancelled") {
         return { action: "order_cancelled", shopInternalId, orderId: outcome.orderId };
@@ -425,7 +427,8 @@ function readOrder(order: ShopifyOrder): ValidOrder | null {
   return { orderId: String(order.id), createdAt, updatedAt, cancelledAt };
 }
 
-type OrderOutcome = { orderId: string; applied: boolean; reconciled: number };
+/** `created`: this write stored the order for the first time. */
+type OrderOutcome = { orderId: string; applied: boolean; reconciled: number; created?: boolean };
 
 
 /**
@@ -518,6 +521,7 @@ export async function upsertOrderCache(
     );
 
   let applied = (await guardedUpdate()).count > 0;
+  let created = false;
 
   if (!applied) {
     try {
@@ -527,6 +531,7 @@ export async function upsertOrderCache(
         }),
       );
       applied = true;
+      created = true;
     } catch (error) {
       if (!isUniqueViolation(error)) throw error;
       // Another delivery created the row between our update and our create (an
@@ -540,7 +545,7 @@ export async function upsertOrderCache(
 
   // Reconcile only from a total we actually parsed. Idempotent: only rows still
   // unreconciled change.
-  if (totalDecimal === null) return { orderId, applied: true, reconciled: 0 };
+  if (totalDecimal === null) return { orderId, applied: true, reconciled: 0, created };
 
   const { reconciled } = await reconcileResponsesForOrder({
     shopId: shopInternalId,
@@ -561,7 +566,7 @@ export async function upsertOrderCache(
     totalPrice: totalDecimal,
   });
 
-  return { orderId, applied: true, reconciled: reconciled + v2.reconciled };
+  return { orderId, applied: true, reconciled: reconciled + v2.reconciled, created };
 }
 
 type SubscriptionPayload = {

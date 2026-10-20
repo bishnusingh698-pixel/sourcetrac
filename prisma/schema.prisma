@@ -504,7 +504,8 @@ model SurveyDailyStats {
 }
 
 /// A Shopify write that could not run at submit time (order not created yet, or
-/// the API was throttled). Retried lazily; deleted after success or 5 attempts.
+/// the API was throttled). Retried lazily; marked completed after success, kept
+/// as failed after 5 attempts.
 model PendingSync {
   id            String          @id @default(cuid())
   shopId        String
@@ -514,6 +515,12 @@ model PendingSync {
   nextAttemptAt DateTime        @default(now())
   lastError     String?
   createdAt     DateTime        @default(now())
+  /// Set when the work ran (or was settled without a write). The row is kept so
+  /// a repeated submit for the same response never queues the same work again.
+  completedAt   DateTime?
+  /// A drainer's claim on the row. Separate from `nextAttemptAt` so resetting
+  /// the backoff when the order arrives never hands a row to a second drainer.
+  leaseUntil    DateTime?
 
   shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
 

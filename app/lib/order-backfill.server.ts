@@ -3,6 +3,7 @@ import { logger } from "~/lib/logger";
 import { withRetry } from "~/lib/retry.server";
 import { getAccessToken } from "~/lib/shop.server";
 import { isThrottle, shopifyGraphql, ShopifyGraphQLError } from "~/lib/shopify-graphql.server";
+import { startSyncForOrder } from "~/lib/sync.server";
 import { upsertOrderCache, type ShopifyOrder } from "~/lib/webhooks.server";
 
 /**
@@ -192,6 +193,8 @@ async function runBackfill(params: {
         }
         const outcome = await upsertOrderCache(params.shopId, orderNodeToPayload(result.data.order), false);
         if (outcome?.applied) written += 1;
+        // Sync work waiting for this order can run now, as on orders/create.
+        if (outcome?.created) startSyncForOrder(params.shopId, orderId);
       } catch (error) {
         // One order failing must not stop the rest of the batch. A permanent
         // GraphQL error (an order past the 60-day window answers with an

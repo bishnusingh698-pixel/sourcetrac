@@ -5,9 +5,14 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@prisma/client";
 
+import { submitAnswers } from "~/lib/answers.server";
 import { upsertShop } from "~/lib/shop.server";
-import { createSurvey } from "~/lib/surveys.server";
+import { createSurvey, getSurveyRow, rowToEditor } from "~/lib/surveys.server";
 import { enqueueSync, processPendingSync } from "~/lib/sync.server";
+import { templateSurveyInput } from "~/lib/template-survey";
+import { templateById } from "@shared/templates";
+import { regionPackFor } from "@shared/templates/packs";
+import { stableQuestionId } from "@shared/templates/resolve";
 import { processWebhook } from "~/lib/webhooks.server";
 
 const prisma = new PrismaClient();
@@ -101,7 +106,7 @@ describe("sync", () => {
     const calls = stubShopify(() => ({ flowTriggerReceive: { userErrors: [] } }));
     await Promise.all([processPendingSync(shopId), processPendingSync(shopId)]);
     expect(calls.filter((c) => c.query.includes("flowTriggerReceive"))).toHaveLength(1);
-    expect(await prisma.pendingSync.count({ where: { shopId } })).toBe(0);
+    expect(await prisma.pendingSync.count({ where: { shopId, completedAt: null } })).toBe(0);
   });
 
   it("sends a readable channel key to Flow, not a row id (L45)", async () => {
@@ -149,6 +154,117 @@ describe("sync", () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
     }
     expect(calls.filter((c) => c.query.includes("flowTriggerReceive"))).toHaveLength(1);
+  });
+
+  it("queues sync work from a real submit, which passes syncOptions as stored JSON (C1)", async () => {
+    const survey = await createSurvey(shopId, {
+      name: "Submit sync",
+      status: "active",
+      placements: ["thank_you"],
+      layout: "all",
+      title: "Q",
+      intro: null,
+      buttonLabel: "Submit",
+      thankYouText: "Thanks!",
+      syncOptions: { orderTags: ["source:{channel}"], flowTrigger: true },
+      questions: [{ type: "single_choice", text: "Where?", options: [{ label: "Google" }, { label: "Friend" }] }],
+    });
+    const row = (await getSurveyRow(shopId, survey.id))!;
+    const editor = rowToEditor(row, { view: "published" });
+    const calls = stubShopify(() => ({ tagsAdd: { userErrors: [] }, flowTriggerReceive: { userErrors: [] } }));
+    const result = await submitAnswers({
+      shopId,
+      surveyId: survey.id,
+      surveyVersion: row.version,
+      currentVersion: row.version,
+      orderId: "940001",
+      placement: "thank_you",
+      locale: "en",
+      plan: "scale",
+      syncOptions: row.syncOptions,
+      answers: [{ questionId: editor.questions[0]!.id, optionIds: [editor.questions[0]!.options[0]!.id] }],
+      definition: { id: editor.id, name: editor.name, title: editor.title, layout: editor.layout, questions: editor.questions },
+    } as Parameters<typeof submitAnswers>[0]);
+    expect(result.outcome).toBe("created");
+    const kinds = (await prisma.pendingSync.findMany({ where: { shopId, responseId: result.id } })).map((r) => r.kind);
+    expect(kinds.sort()).toEqual(["flow", "tags"]);
+    // The order is known, so the inline drain runs and both writes go out.
+    for (let i = 0; i < 100 && calls.length < 2; i += 1) await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(calls.map((c) => (c.query.includes("tagsAdd") ? "tags" : "flow")).sort()).toEqual(["flow", "tags"]);
+  });
+
+  it("never re-queues work that already ran when the same answer is resubmitted (H2)", async () => {
+    await seed({ flowTrigger: true });
+    const calls = stubShopify(() => ({ flowTriggerReceive: { userErrors: [] } }));
+    await processPendingSync(shopId);
+    expect(calls).toHaveLength(1);
+    // A retried POST lands as a duplicate and runs the follow-ups again.
+    await enqueueSync(shopId, responseId, { flowTrigger: true });
+    await processPendingSync(shopId);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("leaves a row another drainer holds alone, even once it is due (H3)", async () => {
+    await seed({ flowTrigger: true });
+    await prisma.pendingSync.updateMany({ where: { shopId }, data: { leaseUntil: new Date(Date.now() + 60_000) } });
+    const calls = stubShopify(() => ({ flowTriggerReceive: { userErrors: [] } }));
+    await processPendingSync(shopId);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("keeps queued work while a Scale plan is frozen instead of deleting it (M6)", async () => {
+    await seed({ orderTags: ["vip"] });
+    await prisma.shop.update({ where: { id: shopId }, data: { planStatus: "frozen" } });
+    const calls = stubShopify(() => ({ tagsAdd: { userErrors: [] } }));
+    await processPendingSync(shopId);
+    expect(calls).toHaveLength(0);
+    const row = await prisma.pendingSync.findFirstOrThrow({ where: { shopId } });
+    expect(row.completedAt).toBeNull();
+    expect(row.attempts).toBe(1);
+  });
+
+  it("does not resend Flow after a 5xx that may have run it (M7)", async () => {
+    await seed({ flowTrigger: true });
+    let count = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        count += 1;
+        return new Response("upstream", { status: 502 });
+      }),
+    );
+    await processPendingSync(shopId);
+    await prisma.pendingSync.updateMany({ where: { shopId }, data: { nextAttemptAt: new Date(0) } });
+    await processPendingSync(shopId);
+    expect(count).toBe(1);
+    const row = await prisma.pendingSync.findFirstOrThrow({ where: { shopId } });
+    expect(row.completedAt).not.toBeNull();
+  });
+
+  it("tags an option the merchant added to a template survey by its label, not its row id (L43)", async () => {
+    await prisma.session.updateMany({ where: { shop: DOMAIN }, data: { scope: "read_orders,write_orders" } });
+    const built = templateSurveyInput({
+      template: templateById("channel-compass")!,
+      locale: "en",
+      region: regionPackFor("US"),
+      plan: "scale",
+    });
+    if (!built.ok) throw new Error("expected a usable template");
+    const survey = await createSurvey(shopId, { ...built.input, syncOptions: { presets: ["channel_order_tag"] } });
+    const question = await prisma.question.findFirstOrThrow({
+      where: { surveyId: survey.id, templateKey: stableQuestionId("channel-compass", "q_channel") },
+    });
+    const added = await prisma.option.create({ data: { questionId: question.id, position: 99, label: "Snapchat Ads" } });
+    const response = await prisma.response.create({
+      data: {
+        shopId, surveyId: survey.id, surveyVersion: 1, orderId: "940001", placement: "thank_you",
+        answers: { create: { shopId, questionId: question.id, optionIds: JSON.stringify([added.id]) } },
+      },
+    });
+    await enqueueSync(shopId, response.id, { presets: ["channel_order_tag"] });
+    const calls = stubShopify(() => ({ tagsAdd: { userErrors: [] } }));
+    await processPendingSync(shopId);
+    expect(calls[0]!.variables.tags).toEqual(["found:snapchat-ads"]);
   });
 
   it("stores the granted scopes from app/scopes_update (H17)", async () => {
