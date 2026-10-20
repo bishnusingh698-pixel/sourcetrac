@@ -37,6 +37,9 @@ export type ShopRecord = {
   authorizedAt: Date | null;
   /// When the latest app/uninstalled was triggered, kept across reinstalls.
   uninstallTriggeredAt: Date | null;
+  /// The charge last created and not yet live.
+  pendingSubscriptionGid: string | null;
+  pendingSubscriptionName: string | null;
 };
 
 export function defaultOptionsJson(): string {
@@ -149,6 +152,8 @@ export async function findShopByDomain(shopDomain: string): Promise<ShopRecord |
         installedAt: true,
         authorizedAt: true,
         uninstallTriggeredAt: true,
+        pendingSubscriptionGid: true,
+        pendingSubscriptionName: true,
       },
     }),
   );
@@ -194,6 +199,8 @@ export async function findShopById(shopId: string): Promise<ShopRecord | null> {
         installedAt: true,
         authorizedAt: true,
         uninstallTriggeredAt: true,
+        pendingSubscriptionGid: true,
+        pendingSubscriptionName: true,
       },
     }),
   );
@@ -277,9 +284,14 @@ export async function clearAccessToken(internalShopId: string): Promise<void> {
         planStatus: "cancelled",
         subscriptionGid: null,
         planDisplayName: null,
+        pendingSubscriptionGid: null,
+        pendingSubscriptionName: null,
       },
     }),
   );
+  // The checkout serves the plan's share of live surveys from a cached config.
+  const { invalidateConfig } = await import("~/lib/surveys.server");
+  await invalidateConfig(internalShopId);
 }
 
 export async function updateSettings(
@@ -330,16 +342,62 @@ export async function setPlan(
     subscriptionGid: string | null;
     planDisplayName?: string | null;
   },
-): Promise<void> {
-  await retryDb(() =>
-    db.shop.update({ where: { id: internalShopId }, data }),
+  {
+    onlyIf,
+  }: {
+    /**
+     * Write only if the stored plan is still what the caller read. The Plans
+     * page decides from a Shopify read made earlier in its request; a billing
+     * webhook committing in between must not be overwritten with that older
+     * picture.
+     */
+    onlyIf?: { plan: string; planStatus: string; subscriptionGid: string | null };
+  } = {},
+): Promise<boolean> {
+  const written = await retryDb(() =>
+    db.shop.updateMany({
+      where: {
+        id: internalShopId,
+        ...(onlyIf
+          ? { plan: onlyIf.plan as "free" | "growth" | "scale", planStatus: onlyIf.planStatus as PlanStatus, subscriptionGid: onlyIf.subscriptionGid }
+          : {}),
+      },
+      data,
+    }),
   );
+  if (written.count === 0) return false;
+  if (data.subscriptionGid) {
+    await retryDb(() =>
+      db.shop.updateMany({
+        where: { id: internalShopId, pendingSubscriptionGid: data.subscriptionGid },
+        data: { pendingSubscriptionGid: null, pendingSubscriptionName: null },
+      }),
+    );
+  }
   if (data.plan !== "free" && data.planStatus === "active") await unlockAnswers(internalShopId);
   // The checkout serves the plan's share of live surveys from a cached
   // config; an upgrade must show the extra surveys now, not a minute later.
   // Imported on use: surveys.server imports this module.
   const { invalidateConfig } = await import("~/lib/surveys.server");
   await invalidateConfig(internalShopId);
+  return true;
+}
+
+/** Remember the charge just created, until Shopify makes it live (or drops it). */
+export async function recordPendingSubscription(internalShopId: string, gid: string, name: string): Promise<void> {
+  await retryDb(() =>
+    db.shop.update({ where: { id: internalShopId }, data: { pendingSubscriptionGid: gid, pendingSubscriptionName: name } }),
+  );
+}
+
+/** Forget a pending charge Shopify will never make live (declined, expired). */
+export async function clearPendingSubscription(internalShopId: string, gid: string): Promise<void> {
+  await retryDb(() =>
+    db.shop.updateMany({
+      where: { id: internalShopId, pendingSubscriptionGid: gid },
+      data: { pendingSubscriptionGid: null, pendingSubscriptionName: null },
+    }),
+  );
 }
 
 /**

@@ -13,6 +13,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { PrismaClient } from "@prisma/client";
 
 import { action } from "~/routes/webhooks";
+import { stubShopifyBilling } from "./helpers/shopify-billing";
 
 const prisma = new PrismaClient();
 const DOMAIN = "webhook-route-test.myshopify.com";
@@ -150,6 +151,14 @@ describe("POST /webhooks", () => {
   });
 
   it("applies app_subscriptions/update, whose topic keeps its underscore", async () => {
+    // Every notice is confirmed with Shopify, with the shop's own offline token.
+    await prisma.session.create({
+      data: {
+        id: `offline_${DOMAIN}`, shop: DOMAIN, state: "s", isOnline: false, scope: "read_orders", accessToken: "x",
+        expires: new Date(Date.now() + 3600_000),
+      },
+    });
+    stubShopifyBilling([{ id: "gid://shopify/AppSubscription/77", name: "SourceTrac Growth", status: "ACTIVE" }]);
     await action({
       request: signed("app_subscriptions/update", {
         app_subscription: {

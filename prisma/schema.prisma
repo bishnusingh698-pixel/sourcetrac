@@ -98,6 +98,9 @@ model Shop {
   plan                   Plan         @default(free)
   planStatus             PlanStatus   @default(active)
   subscriptionGid        String?
+  /// The charge last created and not yet live (see migration 20261020110000).
+  pendingSubscriptionGid  String?
+  pendingSubscriptionName String?
   planDisplayName        String?
   checkoutSupported      Boolean?
   checkoutCheckedAt      DateTime?

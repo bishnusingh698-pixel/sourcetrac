@@ -353,7 +353,7 @@ Scope notes from the validator (informational):
 - **Scenario:** the merchant pauses a survey, or removes an option, while a buyer's `/api/survey` request is reading. The paused survey, or the removed option, is served for up to 60s.
 - **Related:** the downgrade paths in L35 never invalidate at all.
 
-### M14. Downgrades and yearly-to-monthly switches are probably deferred by Shopify, and repeat clicks create more charges [BILL] — PLAUSIBLE (depends on Shopify's default `replacementBehavior`)
+### [x] M14. Downgrades and yearly-to-monthly switches are probably deferred by Shopify, and repeat clicks create more charges [BILL] — PLAUSIBLE (depends on Shopify's default `replacementBehavior`)
 - **Where:** `app/lib/billing.server.ts:28-49` (no `replacementBehavior`); `app/routes/app.plans.tsx:249-255` (the "already on this plan" check); `app/lib/i18n/locales/en.json:235` (`yearly_note`).
 - **What is wrong:** by default Shopify defers a downgrade, or an annual-to-30-day switch, to the end of the cycle. The new charge sits ACCEPTED while the old one stays ACTIVE.
 - **Scenario:**
@@ -362,7 +362,7 @@ Scope notes from the validator (informational):
   3. Clicking Growth again passes the check and creates yet another charge to approve.
   4. The copy "replaces your current charge once you approve it" is wrong in this case.
 
-### M15. Cancelling a yearly subscription forfeits the rest of the year with no warning [BILL] — CONFIRMED (no `prorate`; the refund outcome is Shopify's documented default)
+### [x] M15. Cancelling a yearly subscription forfeits the rest of the year with no warning [BILL] — CONFIRMED (no `prorate`; the refund outcome is Shopify's documented default)
 - **Where:** `app/lib/billing.server.ts:51-64`, `:183`; `app/routes/app.plans.tsx:194-216`, `:114-118`; `en.json:191` (`cancel_body`).
 - **Scenario:**
   1. A yearly Growth subscriber taps Cancel in month 1.
@@ -560,7 +560,7 @@ Scope notes from the validator (informational):
 - **Where:** `app/lib/order-backfill.server.ts:188-207`.
 - **What is wrong:** when `upsertOrderCache` returns null (for example `currentTotalPriceSet` is null, so the currency is `""`), the result is not counted. The order is retried hourly forever, with no warning log.
 
-### L32. A failed development-store lookup downgrades or ignores a dev store's test plan [BILL] — CONFIRMED
+### [x] L32. A failed development-store lookup downgrades or ignores a dev store's test plan [BILL] — CONFIRMED
 - **Where:** `app/lib/billing.server.ts:296-312` (returns false on any error; failures are not cached); `app/routes/app.plans.tsx:96-118`, `:245`, `:265`; `app/lib/webhooks.server.ts:621-623`.
 - **Scenario:** the `partnerDevelopment` query fails once on a dev store that has a Growth test charge.
   - On the Plans page, `setPlan(free, "expired")` is written.
@@ -568,32 +568,32 @@ Scope notes from the validator (informational):
   - New charges are created as real charges, not test charges.
 - **Impact:** this hits App Store review stores.
 
-### L33. The dev-store answer is cached for an hour per process [BILL] — CONFIRMED
+### [x] L33. The dev-store answer is cached for an hour per process [BILL] — CONFIRMED
 - **Where:** `app/lib/billing.server.ts:289-311`.
 - **Scenario:** a dev store transferred to a real merchant keeps "test charges count" for up to 1 hour. In that hour its old test charge grants a paid plan, and new charges are created with `test: true`.
 
-### L34. Webhook notices with no access token are applied without checking Shopify [BILL] — path CONFIRMED; whether the payload carries a `test` flag is PLAUSIBLE
+### [x] L34. Webhook notices with no access token are applied without checking Shopify [BILL] — path CONFIRMED; whether the payload carries a `test` flag is PLAUSIBLE
 - **Where:** `app/lib/webhooks.server.ts:612`, `:629-635`, `:640`.
 - **When `accessToken` is null:**
   - A late ACTIVE retry for the old plan after an upgrade overwrites the new plan and its `subscriptionGid`.
   - A late PENDING or ACCEPTED notice is applied as `frozen`, which drops the merchant to the Free cap.
   - The test-charge fallback reads `payload.test`. If the payload has no `test` field, a test charge grants a paid plan in production.
 
-### L35. Webhook downgrades and uninstall never invalidate the compiled checkout config [BILL] — CONFIRMED
+### [x] L35. Webhook downgrades and uninstall never invalidate the compiled checkout config [BILL] — CONFIRMED
 - **Where:** `app/lib/webhooks.server.ts:647-655` (`db.shop.updateMany`, not `setPlan`); `app/lib/shop.server.ts:209-230`.
 - **Effect:** for up to 60s (`surveys.server.ts:1356`), buyers are served more live surveys than the downgraded plan allows.
 
-### L36. A paid plan is only re-synced from Shopify on the Plans page [BILL] — PLAUSIBLE
+### [x] L36. A paid plan is only re-synced from Shopify on the Plans page [BILL] — PLAUSIBLE
 - **Where:** `app/lib/webhooks.server.ts:612-620`; `app/routes/app.plans.tsx:90-131`.
 - **What is wrong:** an ACTIVE notice that arrives before `activeSubscriptions` lists the charge is logged as "stale active ignored" and acknowledged with 200, so Shopify never retries it.
 - **Scenario:** a merchant who closes the tab instead of returning through the approval URL pays for the plan but stays on the Free limits until they open Plans again.
 
-### L37. The Plans loader can overwrite a newer webhook write with an older Shopify read [BILL] — PLAUSIBLE (narrow race)
+### [x] L37. The Plans loader can overwrite a newer webhook write with an older Shopify read [BILL] — PLAUSIBLE (narrow race)
 - **Where:** `app/routes/app.plans.tsx:92-118`.
 - **What is wrong:** `setPlan` is an unconditional write based on a Shopify read made earlier in the same request.
 - **Scenario:** an ACTIVE webhook for a just-approved charge commits between that read and the write. The loader writes back the old plan and subscription id.
 
-### L38. Plans copy promises more than the code does [BILL] — CONFIRMED
+### [x] L38. Plans copy promises more than the code does [BILL] — CONFIRMED
 - **Where:** `app/lib/plans.ts:107`, `:121`, `:124`; `en.json:191`, `:213`, `:241`; `shared/survey-rules.ts:42`.
 - **What is wrong:**
   - "Unlimited live surveys", but `MAX_SURVEYS_TOTAL` is 50.
@@ -601,7 +601,7 @@ Scope notes from the validator (informational):
   - The cancel copy leaves out that all but one live survey stop being served and that sync stops.
   - After a mid-month downgrade the merchant is often already over 50 answers, because usage is counted per UTC month across plans. Every later answer is flagged, which contradicts "back on the Free plan with 50 responses a month".
 
-### L39. Cancelling can report failure for a charge that was cancelled [BILL] — PLAUSIBLE
+### [x] L39. Cancelling can report failure for a charge that was cancelled [BILL] — PLAUSIBLE
 - **Where:** `app/lib/billing.server.ts:178-189`.
 - **What is wrong:** the cancel mutation is retried on 5xx (default `idempotent: true`). The retry's "already cancelled" userError is then shown as `msg_cancel_failed`. The returned `status` is never checked.
 
@@ -698,7 +698,7 @@ On a multi-choice question with `minSelections ≥ 2`, an exclusive "None of the
 - `app/lib/survey-analytics.server.ts:183-188`: the comment says `verified === false` excludes revenue, but the code never reads `verified`.
 - The snapshot fallback (`:203-211`) hard-codes `isTest:false`. Its answer reads "counted" but is never summed, because `summariseSurvey` and `buildBreakdowns` (`:367`, `:501`) require `response.order`.
 
-### I17. Plan status inconsistencies [BILL]
+### [x] I17. Plan status inconsistencies [BILL]
 - After a Plans-page reconcile the `plan` column can flip back to `growth`, `cancelled` (`app.plans.tsx:114-118` with `webhooks.server.ts:647-655`).
 - A late CANCELLED from a previous install matches `subscriptionGid: null` after a reinstall (`webhooks.server.ts:651`).
 - FROZEN is overwritten as `expired` (`app.plans.tsx:116`).

@@ -14,11 +14,12 @@ import {
   findShopById,
   getAccessToken,
   setCheckoutSupport,
+  clearPendingSubscription,
   lastKnownInstalledAt,
   setPlan,
 } from "~/lib/shop.server";
 import { checkoutSurfacesSupported, fetchShopPlanName } from "~/lib/shopify-rest.server";
-import { fetchActiveSubscriptions, testChargesAllowed } from "~/lib/billing.server";
+import { fetchSubscription, testChargesAllowed } from "~/lib/billing.server";
 import { isPlanKey, type PlanKey } from "~/lib/plans";
 import { clearBlockSeen } from "~/lib/block-seen.server";
 
@@ -646,32 +647,34 @@ async function applySubscription(
 
   // Notices can arrive late, retried or out of order (an old plan's ACTIVE
   // retry after an upgrade, a PENDING after the ACTIVE). Shopify's current
-  // state of THIS subscription decides whether the notice still holds. The
-  // payload carries no `test` flag, so this is also where a test charge is
-  // recognised. A failed lookup throws: the webhook answers 500 and Shopify
-  // retries, rather than applying a notice we could not confirm.
-  if (accessToken && gid) {
-    const live = await fetchActiveSubscriptions({ shopDomain, accessToken });
-    const entry = live.find((subscription) => subscription.id === gid);
-    const liveActive = entry?.status.toUpperCase() === "ACTIVE";
-    if (planStatus === "active") {
-      if (!liveActive) {
-        logger.info("subscription_stale_active_ignored", { shop_id: shopInternalId });
-        return;
-      }
-      if (entry?.test && !(await testChargesAllowed(shopDomain, accessToken))) {
+  // state of THIS subscription decides whether the notice still holds, read
+  // by id: `activeSubscriptions` can lag a just-approved charge, and an ACTIVE
+  // notice acknowledged as stale was never sent again. The payload carries no
+  // `test` flag, so this is also where a test charge is recognised. Without a
+  // token, or when Shopify cannot be asked, the webhook answers 500 and Shopify
+  // retries, rather than applying a notice nobody confirmed.
+  if (!gid) {
+    logger.warn("subscription_without_id_ignored", { shop_id: shopInternalId, status });
+    return;
+  }
+  if (!accessToken) throw new Error("No offline token to confirm the billing notice with Shopify.");
+  const current = await fetchSubscription({ shopDomain, accessToken, subscriptionGid: gid });
+  const liveActive = current?.status.toUpperCase() === "ACTIVE";
+  if (planStatus === "active") {
+    if (!liveActive) {
+      logger.info("subscription_stale_active_ignored", { shop_id: shopInternalId });
+      return;
+    }
+    if (current?.test) {
+      const allowTest = await testChargesAllowed(shopDomain, accessToken);
+      if (allowTest === null) throw new Error("Could not tell whether test charges count for this store.");
+      if (!allowTest) {
         logger.info("subscription_test_charge_ignored", { shop_id: shopInternalId, name: displayName, status });
         return;
       }
-    } else if (liveActive) {
-      logger.info("subscription_stale_status_ignored", { shop_id: shopInternalId, status: planStatus });
-      return;
     }
-  } else if (isIgnoredTestCharge(payload)) {
-    // No way to ask Shopify: fall back to the payload's own test flag, if any.
-    // (With a token, the live lookup above decides, including for a
-    // development store, whose test charges count.)
-    logger.info("subscription_test_charge_ignored", { shop_id: shopInternalId, name: displayName, status });
+  } else if (liveActive) {
+    logger.info("subscription_stale_status_ignored", { shop_id: shopInternalId, status: planStatus });
     return;
   }
 
@@ -680,16 +683,23 @@ async function applySubscription(
   if (planStatus === "active") {
     await setPlan(shopInternalId, data);
   } else {
+    // A charge that will never go live is no longer pending.
+    if (planStatus === "declined" || planStatus === "expired" || planStatus === "cancelled") {
+      await clearPendingSubscription(shopInternalId, gid);
+    }
     // Changing plan creates a new subscription and Shopify cancels the old one,
     // so the old charge's CANCELLED notice can land after the new one went
     // ACTIVE. A non-active status only applies to the subscription we hold, and
     // the check is part of the write: a read-then-write let an ACTIVE notice
-    // for the new plan land in between, and the merchant dropped to Free.
+    // for the new plan land in between, and the merchant dropped to Free. A
+    // shop with no subscription on record matches only if it still holds this
+    // plan (an old row); after a reinstall it is on Free and a late notice for
+    // the previous installation's charge changes nothing.
     const applied = await retryDb(() =>
       db.shop.updateMany({
         where: {
           id: shopInternalId,
-          ...(gid ? { OR: [{ subscriptionGid: gid }, { subscriptionGid: null }] } : {}),
+          OR: [{ subscriptionGid: gid }, { subscriptionGid: null, plan: matched.key }],
         },
         data,
       }),
@@ -698,17 +708,13 @@ async function applySubscription(
       logger.info("subscription_superseded_ignored", { shop_id: shopInternalId, status: planStatus });
       return;
     }
+    // The checkout serves the plan's share of live surveys from a cached
+    // config: a downgrade must take effect now, not a minute later.
+    const { invalidateConfig } = await import("~/lib/surveys.server");
+    await invalidateConfig(shopInternalId);
   }
 
   logger.info("subscription_applied", { shop_id: shopInternalId, plan: matched.key, status: planStatus });
-}
-
-/** True for a test charge where test charges do not count (production). */
-export function isIgnoredTestCharge(
-  payload: { test?: boolean },
-  { allowTest = process.env.NODE_ENV !== "production" }: { allowTest?: boolean } = {},
-): boolean {
-  return payload.test === true && !allowTest;
 }
 
 export function matchPlanByDisplayName(name: string | null): { key: PlanKey } | null {

@@ -3,11 +3,12 @@
  * The old charge's CANCELLED notice can arrive after the new one is ACTIVE;
  * it must not drop the merchant who just paid back to the free cap.
  */
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@prisma/client";
 
 import { upsertShop } from "~/lib/shop.server";
 import { processWebhook } from "~/lib/webhooks.server";
+import { stubShopifyBilling, type StubSubscription } from "./helpers/shopify-billing";
 
 const prisma = new PrismaClient();
 const DOMAIN = "supersede-test.myshopify.com";
@@ -27,16 +28,26 @@ beforeAll(async () => {
   await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9200001" });
 });
 
+afterEach(() => vi.unstubAllGlobals());
+
 afterAll(async () => {
   await cleanup();
   await prisma.$disconnect();
 });
 
-const notice = (gid: string, name: string, status: string) =>
-  processWebhook({
+// Shopify's own state of each charge, which every notice is checked against.
+let shopify: StubSubscription[] = [];
+const notice = (gid: string, name: string, status: string) => {
+  const known = shopify.find((s) => s.id === gid);
+  if (known) known.status = status;
+  else shopify.push({ id: gid, name, status });
+  // A newer charge going live cancels the older one, as Shopify does.
+  if (status === "ACTIVE") for (const s of shopify) if (s.id !== gid && s.status === "ACTIVE") s.status = "CANCELLED";
+  stubShopifyBilling(shopify);
+  return processWebhook({
     topic: "app_subscriptions/update",
     shopDomain: DOMAIN,
-    accessToken: null,
+    accessToken: "t",
     // Shopify's real shape: the subscription is nested under `app_subscription`.
     payload: {
       app_subscription: {
@@ -50,9 +61,11 @@ const notice = (gid: string, name: string, status: string) =>
       },
     },
   });
+};
 
 describe("app_subscriptions/update ordering", () => {
   it("ignores a late cancellation of a superseded subscription", async () => {
+    shopify = [];
     await notice(OLD, "SourceTrac Growth", "ACTIVE");
     await notice(NEW, "SourceTrac Scale", "ACTIVE");
     await notice(OLD, "SourceTrac Growth", "CANCELLED");
@@ -81,10 +94,11 @@ describe("test charges in production", () => {
     const previous = process.env.NODE_ENV;
     process.env.NODE_ENV = "production";
     try {
+      stubShopifyBilling([{ id: "gid://shopify/AppSubscription/3", name: "SourceTrac Growth", status: "ACTIVE", test: true }]);
       await processWebhook({
         topic: "app_subscriptions/update",
         shopDomain: DOMAIN,
-        accessToken: null,
+        accessToken: "t",
         payload: { admin_graphql_api_id: "gid://shopify/AppSubscription/3", name: "SourceTrac Growth", status: "ACTIVE", test: true },
       });
     } finally {
@@ -97,6 +111,7 @@ describe("test charges in production", () => {
 
 describe("uninstall ends the paid plan", () => {
   it("a reinstall starts on Free instead of keeping a subscription Shopify cancelled", async () => {
+    shopify = [];
     await notice(NEW, "SourceTrac Scale", "ACTIVE");
     expect((await prisma.shop.findUniqueOrThrow({ where: { shopDomain: DOMAIN } })).plan).toBe("scale");
 
@@ -108,6 +123,8 @@ describe("uninstall ends the paid plan", () => {
   });
 
   it("ignores a late ACTIVE notice for the old charge once the app is uninstalled", async () => {
+    await upsertShop({ shopDomain: DOMAIN, shopId: "gid://shopify/Shop/9200001" });
+    shopify = [];
     await notice(NEW, "SourceTrac Scale", "ACTIVE");
     await processWebhook({ topic: "app/uninstalled", shopDomain: DOMAIN, accessToken: null, payload: {} });
     await notice(NEW, "SourceTrac Scale", "ACTIVE");
