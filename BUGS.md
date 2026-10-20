@@ -26,7 +26,9 @@ one trace are merged into one entry, and the entry lists every source.
 | EDIT | survey creation and editing |
 | REP | reporting and export |
 
-**Totals:** 2 Critical, 4 High, 17 Medium, 49 Low, 27 Info.
+**Totals:** 2 Critical, 4 High, 16 Medium, 48 Low, 14 Info (after the review below removed 15 findings and parts of two more).
+
+Fixed items are ticked `[x]` in their heading. Ambiguous choices are recorded in `DECISIONS.md` under 2026-10-20.
 
 ---
 
@@ -327,16 +329,6 @@ Scope notes from the validator (informational):
 - **What is wrong:** the timer only calls `controller.abort()`. `await binding.getSessionToken()` is not raced against it.
 - **Scenario:** if `shopify.sessionToken.get()` never settles, `withRetries` never returns. The block shows "Loading…" or a disabled "sending" button indefinitely. It never hides and never logs, which breaks the "never block the page" rule.
 
-### M10. Anyone with a checkout token can claim future order ids and block real buyers' answers [SUBMIT] — code CONFIRMED; how predictable order ids are is PLAUSIBLE
-- **Where:** `app/routes/api.survey-responses.tsx:113-134`; `app/lib/answers.server.ts:229-245`; `app/routes/api.survey.tsx:130-134` with `app/lib/order-facts.server.ts:227-233`.
-- **What is wrong:** `orderId` is chosen by the client and never tied to the token, and only one answer per order is allowed across all surveys.
-- **Scenario:**
-  1. A forged answer is stored on an order id that does not exist yet.
-  2. The real buyer later gets `alreadyAnswered` and is never asked.
-  3. When `orders/create` lands, the forged answer is reconciled with the real revenue.
-  4. The forged `OrderFact` (first write wins) also poisons first-time-buyer targeting.
-- **Limit:** 2 stored answers per token, plus the backstop.
-
 ### M11. Removing a question or option from a live survey with 0 answers hard-deletes it [EDIT, SUBMIT] — CONFIRMED
 - **Where:** `app/lib/surveys.server.ts:1146` (`hasResponses` from `existing.responseCount`, read outside the transaction), `:604-615`; `shared/survey-rules.ts:760-764`; `Answer.question onDelete: Cascade`.
 - **Scenario 1:**
@@ -478,11 +470,6 @@ Scope notes from the validator (informational):
 - **Where:** `app/routes/webhooks.tsx:125-126`; `app/lib/compliance.server.ts:430-445`.
 - **What is wrong:** the remainder is drained only by other webhooks, dashboard visits or the external retention job. The in-process drain started by the redact is lost on a restart.
 - **Scenario:** a quiet, uninstalled shop with no cron configured can miss Shopify's 30-day deadline.
-
-### L15. Large `customers/redact` requests do work proportional to their size inline [GDPR] — PLAUSIBLE
-- **Where:** `app/lib/compliance.server.ts:239-246`, `:252`.
-- **What is wrong:** `RedactedOrder.createMany` and `orderFact.deleteMany` run for every 1,000-order chunk, plus a `LIKE` scan of `PendingDeletion.payload`, all before the 200-order inline batch.
-- **Scenario:** a large redact on a cold Neon can exceed 5s. The retry gets 503, so nothing is lost.
 
 ### L16. The retention backstop can delete a just-reinstalled shop's sessions [GDPR] — CONFIRMED (narrow race)
 - **Where:** `app/lib/retention.server.ts:173-182`.
@@ -689,9 +676,6 @@ Scope notes from the validator (informational):
 
 ## Info
 
-### I1. The 2-per-token submission cap gives no protection against backstop draining [SUBMIT]
-Failed submits release the slot. See H4. `app/routes/api.survey-responses.tsx:224`.
-
 ### I2. Buyers receive merchant settings [SUBMIT]
 `compileSurvey` (`app/lib/surveys.server.ts:1312-1337`) sends buyers the full `targeting` (countries, sample %, `maxResponses`, value bounds), `responseCount`, rotation weights and `channelReportQuestionId`.
 
@@ -701,55 +685,24 @@ Failed submits release the slot. See H4. `app/routes/api.survey-responses.tsx:22
 ### I4. An empty `placement` passes validation [SUBMIT]
 `app/routes/api.survey.tsx:76`: `placement=` passes validation and is treated as "not_on_page" (`??` does not catch an empty string).
 
-### I5. Recent checkouts can be flooded with forged order ids [SUBMIT]
-`app/routes/api.survey.tsx:230`; `app/lib/serve-log.server.ts:153`, `:178-184`. Only 20 rows are kept per shop, so forged entries push out the merchant's real diagnostics.
-
 ### I6. "None of these" can never be the only answer on some questions [SUBMIT]
 On a multi-choice question with `minSelections ≥ 2`, an exclusive "None of these" can never be the only answer. Client and server agree, so nothing is lost, but the buyer is blocked.
 
 ### I7. The bot-filter 410 has no CORS header and is retried for 60s [SUBMIT]
 `app/lib/checkout-auth.server.ts:297`; `extensions/shared/src/survey-logic.ts:212`.
 
-### I8. Order-id assumption not verified [SUBMIT] (PLAUSIBLE)
-`orderIdSchema` (`app/lib/settings.ts:339-367`) assumes the number in `gid://shopify/OrderIdentity/<n>` equals the REST order id stored by `orders/create`. If it does not, Thank-you answers never reconcile.
-
-### I9. Webhook headers are not signed [ORD]
-Shopify's HMAC covers only the body. The shop-domain, webhook-id and triggered-at headers are unsigned, so a captured signed `orders/*` body could be replayed against another shop with a fresh webhook id. Bodies are not logged or stored, so the risk is low. `app/routes/webhooks.tsx:40`, `:55`.
-
-### I10. De-duplication keys on webhook id, not event id [ORD]
-One event delivered through two subscriptions is processed twice. The handlers are idempotent. `app/lib/webhooks.server.ts:144-213`.
-
 ### I11. Zero-decimal currency rounding, and silent overflow in currency sums [ORD]
-- A zero-decimal currency with cents (ISK `"1990.50"`) is rounded half-up, so it can differ from Shopify's figure by up to one unit (`app/lib/money.ts:83-91`).
 - `rollupByCurrency` silently skips a sum that is not a safe integer, with no log (`app/lib/revenue.ts:104`).
 
 ### I12. Comment disagrees with the revenue decision, and a snapshot fallback skips test and cancelled checks [ORD, REP]
 - `app/lib/survey-analytics.server.ts:183-188`: the comment says `verified === false` excludes revenue, but the code never reads `verified`.
 - The snapshot fallback (`:203-211`) hard-codes `isTest:false`. Its answer reads "counted" but is never summed, because `summariseSurvey` and `buildBreakdowns` (`:367`, `:501`) require `response.order`.
 
-### I13. Pending and authorized orders count as revenue [ORD]
-They count until a later update voids them (`app/lib/revenue.ts:49-73`). This is a policy choice, but merchants may read it as captured revenue.
-
-### I14. Ledger rows outlive `shop/redact` [GDPR]
-Compliance and shopless ledger rows are stored with `shopId` null, so the shop/redact cascade does not remove them. They hold no payload and age out in 30 days. `app/routes/webhooks.tsx:105`, `:120`.
-
-### I15. `customers/redact` deletes whole days of `SurveyDailyStats` [GDPR]
-It removes other buyers' counts too (`app/lib/compliance.server.ts:331-336`). Nothing reads the table today.
-
-### I16. 24-month retention is 730 days [GDPR]
-`app/lib/retention.server.ts:27`. `RedactedOrder` tombstones also expire then, after which a late `orders/updated` could re-cache that order.
-
 ### I17. Plan status inconsistencies [BILL]
 - After a Plans-page reconcile the `plan` column can flip back to `growth`, `cancelled` (`app.plans.tsx:114-118` with `webhooks.server.ts:647-655`).
 - A late CANCELLED from a previous install matches `subscriptionGid: null` after a reinstall (`webhooks.server.ts:651`).
 - FROZEN is overwritten as `expired` (`app.plans.tsx:116`).
 - `planDisplayName` is never updated on a reconcile.
-
-### I18. The confirmation-URL check accepts any `*.myshopify.com` host [BILL]
-It does not check that the host is the merchant's own shop. The URL only ever comes from Shopify. `app/lib/billing-redirect.ts:23`.
-
-### I19. The shell plan badge goes stale [BILL]
-It does not update after a webhook plan change until a form submit or a full reload (`app/routes/app.tsx:156-161`, `shouldRevalidate`).
 
 ### I20. `verifyIdToken` decodes leniently and throws the wrong error type [AUTH]
 - The signature is decoded with Node's permissive base64.
@@ -760,15 +713,8 @@ It does not update after a webhook plan change until a form submit or a full rel
 ### I21. The library logs on every token exchange [AUTH]
 See the Step 1 package table (`shopify-app-react-router` 3.0.1).
 
-### I22. `requiresFirstOrder` presets trust the client [SYNC]
-They use the `isFirstOrder` value from the request body (`app/routes/api.survey-responses.tsx:70`, `:179`; `shared/templates/smart-actions.ts:378`).
-
 ### I23. Editor smaller items [EDIT]
-- Pause and activate ignore the posted revision (`app.surveys.$id.tsx:154-160`, `:192`; `surveys.server.ts:1191-1221`).
 - The channel-report question's type is not checked on the server (`surveys.server.ts:1008-1018`, `:1107-1118`). On multi_choice only the first pick is counted (`analytics-queries.server.ts:134-149`), and on yes_no "yes" and "no" become channels.
-- Relabelling an option moves its whole history to the new label with no warning (`surveys.server.ts:570-572`).
-- `validateSurveySettings` and `readIndexedOptions` are dead code (`app/lib/settings.ts:189-275`, `:383-395`).
-- Deleting a survey cascades away all its revenue history behind a two-tap confirm (`surveys.server.ts:1223-1231`).
 - Rotation and Learn & stop keep running after a downgrade (`surveys.server.ts:1312-1334`; `api.survey.tsx:212-213`; `answers.server.ts:350`).
 - The save bar posts even when readiness blocks going live (`unsaved-changes.tsx:95`).
 
@@ -793,8 +739,29 @@ They use the `isFirstOrder` value from the request body (`app/routes/api.survey-
 - The Results buyer counts include order-less answers, while the Dashboard's `buyerMix` excludes them.
 - Out-of-range numeric answers get bars but are ignored by the scores.
 
-### I27. Queued redactions stay visible in exports for up to a day [REP]
-Deferred redactions stay visible in CSV, Results and Responses until a dashboard visit or the daily job drains them. That is within Shopify's 30-day deadline.
+---
+
+## Removed on review (2026-10-20)
+
+On closer inspection these are not bugs; each line says why.
+
+- **M10** (Anyone with a checkout token can claim future order ids and block real buyers' answers): Shopify order ids are assigned globally, not per shop, so a future id of one shop cannot be predicted; claiming one means spraying guesses at 2 stored answers per token, bounded by the backstop.
+- **L15** (Large `customers/redact` requests do work proportional to their size inline): The outcome is correct: a slow first delivery makes Shopify retry, the retry gets 503 while it runs and a 200 duplicate after, and nothing is lost.
+- **I1** (The 2-per-token submission cap gives no protection against backstop draining): Duplicate of H4 (same line, same cause); tracked there.
+- **I5** (Recent checkouts can be flooded with forged order ids): Needs a valid checkout token per forged load, only touches a 20-row diagnostic list, and is bounded by the per-token cap and shop backstop.
+- **I8** (Order-id assumption not verified): No defect was found; it records an assumption the checkout and webhook code already rely on and the extension tests pin.
+- **I9** (Webhook headers are not signed): Shopify's HMAC is defined over the body only; replay needs a captured signed body, which only Shopify and this server ever see over TLS, and bodies are never logged or stored.
+- **I10** (De-duplication keys on webhook id, not event id): The finding itself notes every handler is idempotent; a second delivery of one event changes nothing.
+- **I13** (Pending and authorized orders count as revenue): A documented revenue policy (pending/authorized count until voided), not a defect.
+- **I14** (Ledger rows outlive `shop/redact`): The rows hold no payload and age out in 30 days, as designed.
+- **I15** (`customers/redact` deletes whole days of `SurveyDailyStats`): A deliberate earlier decision (DECISIONS.md L30): nothing reads the table and a day bucket can describe one order.
+- **I16** (24-month retention is 730 days): 730 days is 24 months to within a day; a Shopify update for an order more than two years old is not a realistic path.
+- **I18** (The confirmation-URL check accepts any `*.myshopify.com` host): The confirmation URL only ever comes from Shopify's own mutation response; it is never user input.
+- **I19** (The shell plan badge goes stale): By design (AGENTS.md: the shell loader does not re-run on page switches, for speed); a reload or any form submit refreshes it.
+- **I22** (`requiresFirstOrder` presets trust the client): The buyer can only influence the tags on their own order; there is no other first-order source the checkout exposes.
+- **I27** (Queued redactions stay visible in exports for up to a day): The finding itself notes this is within Shopify's 30-day deadline.
+- **I23, part** (pause/activate ignore the revision; relabelling moves history; dead `validateSurveySettings`; delete cascades history): status changes are deliberately outside the Studio's revision (DECISIONS.md M26), relabelling is allowed on purpose so typos can be fixed (M28), dead code is not a defect, and deletion sits behind a confirm by design.
+- **I11, part** (ISK rounding): a deliberate earlier decision (DECISIONS.md L23).
 
 ---
 
