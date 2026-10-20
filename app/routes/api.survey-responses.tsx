@@ -14,7 +14,8 @@ import {
   reserveTokenSubmission,
 } from "~/lib/rate-limit.server";
 import { submitAnswers } from "~/lib/answers.server";
-import { findShopByDomain, isKnownOrder } from "~/lib/shop.server";
+import { findShopByDomain } from "~/lib/shop.server";
+import { isRealOrder } from "~/lib/order-verify.server";
 import { recordBlockSeen } from "~/lib/block-seen.server";
 import { readOrderFact } from "~/lib/order-facts.server";
 import { getSurveyRow, rowToEditor } from "~/lib/surveys.server";
@@ -86,9 +87,12 @@ export const action = async ({ request }: { request: Request }) => {
 
   const { sessionToken, cors, shopDomain } = await authenticateCheckout(request, "api_survey_responses");
 
-  // Set once a submission slot is reserved; released unless an answer is stored.
+  // Set once a submission slot is reserved; released unless an answer is stored
+  // or the request itself was refused (a made-up survey, invalid answers): a
+  // refused request must count, or one token could make unlimited attempts.
   let reservedToken: string | null = null;
   let stored = false;
+  let refused = false;
 
   try {
     const text = await readBodyText(request, MAX_BODY_BYTES);
@@ -128,9 +132,10 @@ export const action = async ({ request }: { request: Request }) => {
     reservedToken = tokenKey;
     consumeToken(`answer:${shopDomain}:${orderId ?? "none"}`, BUCKETS.response);
     // The shop-wide backstop applies to every submission. Only a real order
-    // Shopify told us about is exempt; an id-less one never is.
+    // is exempt (cached, or confirmed with Shopify once the bucket is empty, so
+    // made-up ids cannot lock real buyers out); an id-less one never is.
     await consumeShopBackstop(`answer-shop:${shopDomain}`, BUCKETS.responseShop, () =>
-      orderId ? isKnownOrder(shopDomain, orderId) : Promise.resolve(false),
+      orderId ? isRealOrder(shopDomain, orderId) : Promise.resolve(false),
     );
 
     const shop = await findShopByDomain(shopDomain);
@@ -168,11 +173,13 @@ export const action = async ({ request }: { request: Request }) => {
       questions: editor.questions,
     };
 
+    const surveyVersion = Math.min(parsed.data.surveyVersion ?? row.version, row.version);
     const result = await submitAnswers({
       shopId: shop.id,
       surveyId: row.id,
       currentVersion: row.version,
-      surveyVersion: Math.min(parsed.data.surveyVersion ?? row.version, row.version),
+      surveyVersion,
+      requiredSinceNewer: row.questions.filter((q) => q.requiredSinceVersion > surveyVersion).map((q) => q.id),
       orderId,
       placement,
       locale: parsed.data.locale ?? null,
@@ -214,6 +221,7 @@ export const action = async ({ request }: { request: Request }) => {
     // confirmation either way.
     return cors(toResponse(data({ ok: true, counted: result.counted })));
   } catch (error) {
+    refused = error instanceof ValidationError;
     const { status, body } = serialiseError(error, {
       request_id: requestId,
       shop_domain: shopDomain,
@@ -221,6 +229,6 @@ export const action = async ({ request }: { request: Request }) => {
     });
     return cors(toResponse(body, { status }));
   } finally {
-    if (reservedToken && !stored) releaseTokenSubmission(reservedToken);
+    if (reservedToken && !stored && !refused) releaseTokenSubmission(reservedToken);
   }
 };

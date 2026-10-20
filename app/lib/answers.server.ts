@@ -15,7 +15,7 @@ import { Prisma } from "@prisma/client";
 import { db, isRetryableDbError } from "~/db.server";
 import { logger } from "~/lib/logger";
 import { minorToDecimalString, parseMoneyToMinor } from "~/lib/money";
-import { currentUtcPeriod, evaluateCap, planFor, type PlanKey } from "~/lib/plans";
+import { currentUtcPeriod, planFor, type PlanKey } from "~/lib/plans";
 import { withRetry } from "~/lib/retry.server";
 import { invalidateConfig } from "~/lib/surveys.server";
 import { isRedactedOrder } from "~/lib/compliance.server";
@@ -50,6 +50,11 @@ export type AnswerSubmitInput = {
   definition: SurveyDefinition;
   /** The survey's raw `syncOptions` JSON string, for the optional Phase 7 sync. */
   syncOptions?: string | null;
+  /**
+   * Questions that became required after `surveyVersion`: a buyer who loaded
+   * that older version is excused from these, and only these.
+   */
+  requiredSinceNewer?: string[];
   /** T10: pause once results are reliable. */
   learnAndStop?: boolean;
   /** T10: the main (first choice/score) question to measure, or null. */
@@ -112,7 +117,7 @@ export async function claimUsageSlot(shopId: string, cap: number | null): Promis
 }
 
 /** `claimUsageSlot` on a given client, so the submit transaction can include it. */
-async function claimUsageSlotWith(
+export async function claimUsageSlotWith(
   client: Prisma.TransactionClient | typeof db,
   shopId: string,
   cap: number | null,
@@ -195,8 +200,22 @@ export async function submitAnswers(input: AnswerSubmitInput): Promise<AnswerSub
   const normalized = normalizeResponseAnswers(input.definition, input.answers, { stale });
   let issues = [...normalized.issues, ...validateResponse(normalized.definition, normalized.answers)];
   // A question added (or made required) after the buyer loaded the survey could
-  // not have been answered; everything else is still enforced.
-  if (stale) issues = issues.filter((i) => i.code !== "required");
+  // not have been answered: only those are excused. Every other required
+  // question is still enforced, so an old version number waives nothing else.
+  if (stale) {
+    const excused = new Set(input.requiredSinceNewer ?? []);
+    issues = issues.filter((i) => {
+      if (i.code !== "required") return true;
+      const index = Number(/^questions\[(\d+)\]/.exec(i.path)?.[1] ?? -1);
+      const question = normalized.definition.questions[index];
+      return !(question && excused.has(question.id));
+    });
+  }
+  // Nothing answered at all: an empty set would still use a cap slot and lock
+  // the order out of answering again.
+  if (issues.length === 0 && normalized.answers.length === 0) {
+    issues.push({ path: "answers", code: "no_answers", message: "Answer at least one question." });
+  }
   if (issues.length > 0) {
     return { outcome: "invalid", issues: issues.map((i) => `${i.path}: ${i.code}`) };
   }
@@ -208,10 +227,6 @@ export async function submitAnswers(input: AnswerSubmitInput): Promise<AnswerSub
     logger.info("answer_redacted_order_ignored", { shop_id: input.shopId, survey_id: input.surveyId });
     return { outcome: "duplicate", id: "", isLocked: false, counted: true };
   }
-
-  const usedBefore = await getUsageCount(input.shopId);
-  const capStatus = evaluateCap(input.plan, usedBefore);
-  const shouldLock = capStatus.shouldFlag;
 
   const { channel } = channelAnswer(normalized.definition, answers);
   const orderTotal = await orderTotalFor(input.shopId, input.orderId);
@@ -261,7 +276,9 @@ export async function submitAnswers(input: AnswerSubmitInput): Promise<AnswerSub
             productIds: JSON.stringify((input.productIds ?? []).slice(0, 10)),
             isFirstOrder: input.isFirstOrder ?? null,
             country: input.country ?? null,
-            flagged: shouldLock || !claimed.withinCap,
+            // Decided by the atomic claim alone, in the same transaction: a
+            // usage read taken before it could belong to the previous month.
+            flagged: !claimed.withinCap,
             verified,
             answers: {
               create: answers.map((answer) => ({

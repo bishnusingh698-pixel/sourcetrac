@@ -8,7 +8,8 @@ import { logger } from "~/lib/logger";
 import { minorUnitDigits, parseMoneyToMinor } from "~/lib/money";
 import { BUCKETS, consumeShopBackstop, consumeToken } from "~/lib/rate-limit.server";
 import { hasAnyAnswerForOrder } from "~/lib/answers.server";
-import { findShopByDomain, isKnownOrder } from "~/lib/shop.server";
+import { findShopByDomain } from "~/lib/shop.server";
+import { isRealOrder } from "~/lib/order-verify.server";
 import { recordBlockSeen } from "~/lib/block-seen.server";
 import { readOrderFact, recordOrderFact } from "~/lib/order-facts.server";
 import { recordServe, type ServeReason } from "~/lib/serve-log.server";
@@ -73,7 +74,6 @@ export const loader = async ({ request }: { request: Request }) => {
 
   try {
     const url = new URL(request.url);
-    const placement: Placement = (url.searchParams.get("placement") as Placement | null) ?? "thank_you";
     const read = (key: string) => url.searchParams.get(key) || undefined;
     const parsed = querySchema.safeParse({
       orderId: read("orderId"),
@@ -93,11 +93,14 @@ export const loader = async ({ request }: { request: Request }) => {
       });
     }
 
+    // From the validated value: an empty `placement=` used to pass the schema
+    // (read as absent) and then be used raw, as no page at all.
+    const placement: Placement = parsed.data.placement ?? "thank_you";
     const orderId = parsed.data.orderId ?? null;
     consumeToken(`survey:${shopDomain}:${orderId ?? "none"}:${placement}`, BUCKETS.surveyConfig);
     if (orderId) {
       await consumeShopBackstop(`survey-shop:${shopDomain}`, BUCKETS.surveyConfigShop, () =>
-        isKnownOrder(shopDomain, orderId),
+        isRealOrder(shopDomain, orderId),
       );
     }
 
@@ -247,7 +250,7 @@ export const loader = async ({ request }: { request: Request }) => {
           orderId,
           placement,
           alreadyAnswered,
-          survey: survey ?? null,
+          survey: survey ? buyerView(survey) : null,
         }),
       ),
     );
@@ -260,6 +263,26 @@ export const loader = async ({ request }: { request: Request }) => {
     return cors(toResponse(body, { status }));
   }
 };
+
+/**
+ * The survey as a buyer may see it. Targeting (countries, sample rate, value
+ * bounds, answer cap), the answer count, rotation weights and the channel
+ * question are the merchant's settings, decided here on the server; the block
+ * never reads them.
+ */
+function buyerView(survey: Candidate) {
+  const {
+    targeting: _targeting,
+    responseCount: _responseCount,
+    rotation: _rotation,
+    rotationWeight: _rotationWeight,
+    priority: _priority,
+    channelReportQuestionId: _channelReportQuestionId,
+    paymentManualOnly: _paymentManualOnly,
+    ...shown
+  } = survey;
+  return shown;
+}
 
 /** Answers the browser's OPTIONS preflight, and any other non-GET probe. */
 export const action = async ({ request }: { request: Request }) => {

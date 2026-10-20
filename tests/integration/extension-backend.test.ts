@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createSurveyApi, SUBMIT_BUDGET_MS, TransientError } from "../../extensions/shared/src/survey-logic";
+import { createSurveyApi, MAX_ATTEMPTS, SUBMIT_BUDGET_MS, TransientError } from "../../extensions/shared/src/survey-logic";
 
 /**
  * Extension -> backend contract.
@@ -148,6 +148,30 @@ describe("extension -> backend", () => {
     // It must not give up in the first few seconds; a 60-90s boot is the
     // scenario this budget exists for.
     expect(Date.now() - started).toBeGreaterThanOrEqual(SUBMIT_BUDGET_MS - 1000);
+  });
+
+  it("stops after the attempt cap, within the budget (L2)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(json({ error: "busy" }, 503));
+    vi.stubGlobal("fetch", fetchMock);
+    const started = Date.now();
+    const promise = api().fetchSurveyConfig("1", "thank-you");
+    await vi.runAllTimersAsync();
+    await expect(promise).resolves.toBeNull();
+    expect(fetchMock.mock.calls.length).toBe(MAX_ATTEMPTS);
+    expect(Date.now() - started).toBeLessThanOrEqual(SUBMIT_BUDGET_MS + 1_000);
+  });
+
+  it("gives up on a session token request that never settles (M9)", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const hung = createSurveyApi(API_URL, {
+      getSessionToken: () => new Promise<string>(() => undefined),
+      translate: (key: string) => key,
+    });
+    const promise = hung.fetchSurveyConfig("1", "thank-you");
+    await vi.runAllTimersAsync();
+    await expect(promise).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("aborts an attempt that hangs instead of blocking the page forever", async () => {

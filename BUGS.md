@@ -229,7 +229,7 @@ Scope notes from the validator (informational):
   4. Flow fires twice.
 - **Other trigger:** `orders/create` and `orders/updated` arriving together.
 
-### H4. Forged requests can drain the shop-wide rate-limit backstops, so buyers whose order has not been cached yet lose their answer and the survey hides [SUBMIT] — CONFIRMED and re-verified; the webhook lag is PLAUSIBLE
+### [x] H4. Forged requests can drain the shop-wide rate-limit backstops, so buyers whose order has not been cached yet lose their answer and the survey hides [SUBMIT] — CONFIRMED and re-verified; the webhook lag is PLAUSIBLE
 - **Where:**
   - `app/routes/api.survey-responses.tsx:126-134`: the shop backstop is consumed before `getSurveyRow` (`:143-146`).
   - `app/routes/api.survey-responses.tsx:224`: the token slot is released when nothing is stored.
@@ -314,7 +314,7 @@ Scope notes from the validator (informational):
   - The sweep then retries the trigger up to `MAX_SYNC_ATTEMPTS` (5) times.
 - **Impact:** Flow is delivered at least once, possibly up to 5 times. There is no idempotency key and no ledger of completed sends.
 
-### M8. Unanswered optional questions are stored as empty Answer rows, which skews results and fires Learn & stop early [SUBMIT] — CONFIRMED
+### [x] M8. Unanswered optional questions are stored as empty Answer rows, which skews results and fires Learn & stop early [SUBMIT] — CONFIRMED
 - **Where:**
   - `extensions/shared/src/use-multi-survey.ts:345-349`: sends `{questionId}` for every visible question, answered or not.
   - `shared/survey-rules.ts:906-913`: `normalize` keeps every entry.
@@ -324,7 +324,7 @@ Scope notes from the validator (informational):
   - `maybeLearnAndStop` counts `answers.length` (`answers.server.ts:430-437`), so a numeric main question reaches `LEARN_STOP_MIN_NUMERIC` early.
 - **Scenario:** a 3-question survey with an optional NPS question first. Buyers who skip it still add rows, and the survey auto-pauses before enough real scores exist.
 
-### M9. The 30s attempt timeout does not cover `getSessionToken()`, so a hung token request leaves the block stuck on "Loading…" [SUBMIT] — code CONFIRMED; that the host hangs is PLAUSIBLE
+### [x] M9. The 30s attempt timeout does not cover `getSessionToken()`, so a hung token request leaves the block stuck on "Loading…" [SUBMIT] — code CONFIRMED; that the host hangs is PLAUSIBLE
 - **Where:** `extensions/shared/src/survey-logic.ts:320-339`.
 - **What is wrong:** the timer only calls `controller.abort()`. `await binding.getSessionToken()` is not raced against it.
 - **Scenario:** if `shopify.sessionToken.get()` never settles, `withRetries` never returns. The block shows "Loading…" or a disabled "sending" button indefinitely. It never hides and never logs, which breaks the "never block the page" rule.
@@ -391,32 +391,32 @@ Scope notes from the validator (informational):
 
 ## Low
 
-### L1. The free-cap month boundary can flag one answer wrongly [BILL, SUBMIT] — CONFIRMED
+### [x] L1. The free-cap month boundary can flag one answer wrongly [BILL, SUBMIT] — CONFIRMED
 - **Where:** `app/lib/answers.server.ts:212-214`, `:264`.
 - **What is wrong:** `shouldLock` comes from a usage read taken before the transaction.
 - **Scenario:** the UTC month rolls over between that read and the claim, so the first answer of the new month is flagged `isLocked`.
 
-### L2. The checkout retry loop does not match the 8-attempt / ~60s spec [SUBMIT] — CONFIRMED
+### [x] L2. The checkout retry loop does not match the 8-attempt / ~60s spec [SUBMIT] — CONFIRMED
 - **Where:** `extensions/shared/src/survey-logic.ts:389-438`, `:200`, `:206`.
 - **What is wrong:** there is no attempt cap; the only limit is the 60s budget.
   - Fast failures run about 12-15 attempts.
   - A slow attempt can start at the deadline and run its full 30s, so the worst case is about 90s.
 
-### L3. Options are shuffled with different seeds on the two pages [SUBMIT] — CONFIRMED
+### [x] L3. Options are shuffled with different seeds on the two pages [SUBMIT] — CONFIRMED
 - **Where:** `extensions/shared/src/use-multi-survey.ts:292`.
 - **What is wrong:** the shuffle is seeded with the raw GID: `gid://shopify/OrderIdentity/N` on Thank-you and `gid://shopify/Order/N` on Order status.
 - **Scenario:** the same order sees a different option order on each page, although the comment says the order is identical on both.
 
-### L4. The server accepts a submission where no question has any content [SUBMIT] — CONFIRMED
+### [x] L4. The server accepts a submission where no question has any content [SUBMIT] — CONFIRMED
 - **Where:** `app/routes/api.survey-responses.tsx:73` (`min(1)` counts entries, not content); `shared/survey-rules.ts:707-880`.
 - **Scenario:** `[{questionId:"q1"}]` on an all-optional survey stores an empty Response. It uses a cap slot, bumps `responseCount` and locks the order out of answering again. The client normally prevents this.
 
-### L5. A stale `surveyVersion` waives every "required" rule [SUBMIT] — CONFIRMED
+### [x] L5. A stale `surveyVersion` waives every "required" rule [SUBMIT] — CONFIRMED
 - **Where:** `app/lib/answers.server.ts:194-199`.
 - **What is wrong:** when `surveyVersion < currentVersion`, all required issues are dropped, not just those for questions added after the buyer loaded the survey.
 - **Scenario:** a client that sends `surveyVersion: 0` can skip any required question.
 
-### L6. The legacy single-question path has several gaps [SUBMIT, BILL, SYNC] — CONFIRMED; reachable only by stale clients or crafted requests
+### [x] L6. The legacy single-question path has several gaps [SUBMIT, BILL, SYNC] — CONFIRMED; reachable only by stale clients or crafted requests
 - **Where:** `app/routes/api.responses.tsx:93-96`; `app/lib/responses.server.ts:85-92`, `:104`, `:117-138`.
 - **What is wrong:**
   - The per-token cap is never released, so two 5xx or duplicate attempts burn it and later retries get 429 until the token expires.
@@ -424,7 +424,7 @@ Scope notes from the validator (informational):
   - The answer is inserted before the usage increment. If the increment fails it is only logged, so on Free that answer is stored unflagged and never counted toward the cap.
   - Answers stored here (in `SurveyResponse`) are never synced and never shown in the admin blocks.
 
-### L7. Product and collection targeting is saved and plan-gated but never applied [EDIT, SUBMIT] — CONFIRMED
+### [x] L7. Product and collection targeting is saved and plan-gated but never applied [EDIT, SUBMIT] — CONFIRMED
 - **Where:** `app/lib/surveys.server.ts:668-677`; `shared/plan-features.ts:103-104`; `shared/survey-config.ts:223-272`, `:281-295`.
 - **What is wrong:** `productIds`, `collectionIds` and `resolvedProductIds` are accepted, but `explainTargeting` never reads them.
 - **Effects:**
@@ -433,12 +433,12 @@ Scope notes from the validator (informational):
   - `hasAudienceRules` does not count it.
 - **Reachability:** no editor UI sets these today, so only a crafted save or older data carries them.
 
-### L8. Start and end dates on a day whose midnight is skipped by daylight saving land 1 hour early [EDIT, SUBMIT] — CONFIRMED (reproduced by the EDIT trace)
+### [x] L8. Start and end dates on a day whose midnight is skipped by daylight saving land 1 hour early [EDIT, SUBMIT] — CONFIRMED (reproduced by the EDIT trace)
 - **Where:** `shared/zoned-date.ts:62-75`.
 - **What is wrong:** `startOfDayIso("2026-09-06","America/Santiago")` returns `2026-09-06T03:00Z`, which is 23:00 the previous day. `storedToDateField` then shows Sept 5.
 - **Scenario:** a Chilean merchant picks a start of Sept 6. The survey starts an hour early, and the date field displays Sept 5.
 
-### L9. In the one-question-at-a-time layout, "Next" skips required questions without feedback [SUBMIT] — CONFIRMED
+### [x] L9. In the one-question-at-a-time layout, "Next" skips required questions without feedback [SUBMIT] — CONFIRMED
 - **Where:** `extensions/shared/src/MultiSurveyView.tsx:110-118`; `use-multi-survey.ts:434-436`.
 - **What is wrong:** on the last step Submit is simply disabled, with nothing showing which earlier question is missing.
 - **Effect:** buyers may give up. Nothing is lost on the server.
@@ -676,19 +676,19 @@ Scope notes from the validator (informational):
 
 ## Info
 
-### I2. Buyers receive merchant settings [SUBMIT]
+### [x] I2. Buyers receive merchant settings [SUBMIT]
 `compileSurvey` (`app/lib/surveys.server.ts:1312-1337`) sends buyers the full `targeting` (countries, sample %, `maxResponses`, value bounds), `responseCount`, rotation weights and `channelReportQuestionId`.
 
-### I3. Any buyer token works in the preview route [SUBMIT]
+### [x] I3. Any buyer token works in the preview route [SUBMIT]
 `/api/survey-preview` (`app/routes/api.survey-preview.tsx:57`, `:65`, `:86-99`) accepts buyer tokens, not only editor tokens, and returns draft or paused surveys by id. Its shop-wide key `survey-preview:<shop>` can be drained, which leaves the merchant's checkout-editor preview retrying.
 
-### I4. An empty `placement` passes validation [SUBMIT]
+### [x] I4. An empty `placement` passes validation [SUBMIT]
 `app/routes/api.survey.tsx:76`: `placement=` passes validation and is treated as "not_on_page" (`??` does not catch an empty string).
 
-### I6. "None of these" can never be the only answer on some questions [SUBMIT]
+### [x] I6. "None of these" can never be the only answer on some questions [SUBMIT]
 On a multi-choice question with `minSelections ≥ 2`, an exclusive "None of these" can never be the only answer. Client and server agree, so nothing is lost, but the buyer is blocked.
 
-### I7. The bot-filter 410 has no CORS header and is retried for 60s [SUBMIT]
+### [x] I7. The bot-filter 410 has no CORS header and is retried for 60s [SUBMIT]
 `app/lib/checkout-auth.server.ts:297`; `extensions/shared/src/survey-logic.ts:212`.
 
 ### I11. Zero-decimal currency rounding, and silent overflow in currency sums [ORD]

@@ -55,15 +55,16 @@ export type CompiledQuestion = {
 export type CompiledSurvey = {
   id: string;
   version: number;
-  priority: number;
+  priority?: number;
   placements: Placement[];
   layout: "all" | "one_by_one";
   title: string;
   intro: string | null;
   buttonLabel: string;
   thankYouText: string;
-  channelReportQuestionId: string | null;
-  targeting: Record<string, unknown>;
+  /** Merchant settings: decided on the server and not sent to buyers. */
+  channelReportQuestionId?: string | null;
+  targeting?: Record<string, unknown>;
   questions: CompiledQuestion[];
   translations?: Record<string, unknown>;
 };
@@ -205,11 +206,21 @@ export const SUBMIT_BUDGET_MS = 60_000;
  */
 export const ATTEMPT_TIMEOUT_MS = 30_000;
 
-const INITIAL_BACKOFF_MS = 500;
-const MAX_BACKOFF_MS = 8_000;
+/**
+ * At most this many attempts per request. With the backoff below (1s doubling
+ * to 16s, jittered) eight attempts span roughly the 60s budget, so a cold
+ * start is still waited out, but a fast-failing request stops after eight.
+ */
+export const MAX_ATTEMPTS = 8;
 
-/** Statuses where the request itself is wrong, so retrying cannot help. */
-const PERMANENT_STATUSES = new Set([400, 401, 403, 404, 413, 422]);
+const INITIAL_BACKOFF_MS = 1_000;
+const MAX_BACKOFF_MS = 16_000;
+
+/**
+ * Statuses where the request itself is wrong, so retrying cannot help. 410 is
+ * the Shopify library's bot filter: the same request is refused every time.
+ */
+const PERMANENT_STATUSES = new Set([400, 401, 403, 404, 410, 413, 422]);
 
 export class TransientError extends Error {
   constructor(
@@ -316,9 +327,13 @@ export function orderOptionsForBuyer<T extends { isOther?: boolean }>(
  * extension's own hooks.
  */
 export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
-  async function attempt<T>(path: string, init: RequestInit, options: { tokenFailureIsFinal?: boolean } = {}): Promise<T> {
+  async function attempt<T>(
+    path: string,
+    init: RequestInit,
+    options: { tokenFailureIsFinal?: boolean; timeoutMs?: number } = {},
+  ): Promise<T> {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), ATTEMPT_TIMEOUT_MS);
+    const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? ATTEMPT_TIMEOUT_MS);
 
     let response: Response;
     try {
@@ -329,8 +344,22 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
       // its budget on a single stuck attempt.
       let token: string;
       try {
-        token = await binding.getSessionToken();
+        // Raced against the attempt's own timer: an await on a token request
+        // that never settles is not interrupted by aborting the fetch after it.
+        token = await new Promise<string>((resolve, reject) => {
+          const onAbort = () => {
+            const aborted = new Error("session token request timed out");
+            aborted.name = "AbortError";
+            reject(aborted);
+          };
+          if (controller.signal.aborted) return onAbort();
+          controller.signal.addEventListener("abort", onAbort, { once: true });
+          binding.getSessionToken().then(resolve, reject).finally(() => {
+            controller.signal.removeEventListener("abort", onAbort);
+          });
+        });
       } catch (tokenError) {
+        if (tokenError instanceof Error && tokenError.name === "AbortError") throw tokenError;
         // In the checkout editor a host that refuses a token will keep
         // refusing it, so the preview gives up at once instead of showing
         // "Loading…" for a minute. Buyers keep retrying, as before.
@@ -389,7 +418,7 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
   async function withRetries<T>(
     label: string,
     surface: SurveySurface,
-    run: () => Promise<T>,
+    run: (timeoutMs: number) => Promise<T>,
   ): Promise<T | null> {
     const deadline = Date.now() + SUBMIT_BUDGET_MS;
     let backoff = INITIAL_BACKOFF_MS;
@@ -399,12 +428,14 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
       attemptNumber += 1;
 
       try {
-        return await run();
+        // An attempt never runs past the budget: one started near the
+        // deadline gets only what is left (but at least a few seconds).
+        return await run(Math.min(ATTEMPT_TIMEOUT_MS, Math.max(deadline - Date.now(), 5_000)));
       } catch (error) {
         const retryable = error instanceof TransientError ? error.retryable : false;
         const remaining = deadline - Date.now();
 
-        if (!retryable || remaining <= 0) {
+        if (!retryable || remaining <= 0 || attemptNumber >= MAX_ATTEMPTS) {
           log(`${label}_gave_up`, {
             surface,
             attempts: attemptNumber,
@@ -422,14 +453,19 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
         // that. Requiring `remaining` to exceed ATTEMPT_TIMEOUT_MS would abandon
         // a booting service after 30s, the scenario the budget exists for.
         //
-        // The residual overrun when the host is hard-down is bounded: this
-        // deadline check runs on every iteration, so the worst case is the final
-        // attempt running to its own timeout past the budget, then giving up.
+        // The residual overrun when the host is hard-down is bounded: each
+        // attempt's timeout is capped at what is left of the budget (at least
+        // 5s), and the loop stops after MAX_ATTEMPTS.
         //
         // Jittered to 50-100% of the step: every buyer's block hitting the same
         // cold-starting instance otherwise retried in lockstep, a thundering
         // herd at each doubling.
-        const wait = Math.min(Math.round(backoff * (0.5 + Math.random() * 0.5)), remaining);
+        //
+        // The last of the MAX_ATTEMPTS is held back to the end of the budget,
+        // so a cold start that takes the whole minute is still caught.
+        const jittered = Math.round(backoff * (0.5 + Math.random() * 0.5));
+        const lastAttemptNext = attemptNumber === MAX_ATTEMPTS - 1;
+        const wait = Math.min(lastAttemptNext ? Math.max(jittered, remaining - 1_000) : jittered, remaining);
         log(`${label}_retrying`, { surface, attempt: attemptNumber, wait_ms: wait });
         await sleep(wait);
         backoff = Math.min(backoff * 2, MAX_BACKOFF_MS);
@@ -438,10 +474,12 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
   }
 
   function fetchSurveyConfig(orderId: string, surface: SurveySurface) {
-    return withRetries("survey_config", surface, () =>
-      attempt<SurveyConfig>(`/api/survey-config?orderId=${encodeURIComponent(orderId)}`, {
-        method: "GET",
-      }),
+    return withRetries("survey_config", surface, (timeoutMs) =>
+      attempt<SurveyConfig>(
+        `/api/survey-config?orderId=${encodeURIComponent(orderId)}`,
+        { method: "GET" },
+        { timeoutMs },
+      ),
     );
   }
 
@@ -472,8 +510,8 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
       query.set("total", String(total.amount));
       query.set("totalCurrency", total.currencyCode.toUpperCase());
     }
-    return withRetries("survey_fetch", surfaceOf(placement), () =>
-      attempt<SurveyConfigV2>(`/api/survey?${query.toString()}`, { method: "GET" }),
+    return withRetries("survey_fetch", surfaceOf(placement), (timeoutMs) =>
+      attempt<SurveyConfigV2>(`/api/survey?${query.toString()}`, { method: "GET" }, { timeoutMs }),
     );
   }
 
@@ -484,8 +522,12 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
   function fetchPreview(placement: Placement, surveyId: string | null) {
     const query = new URLSearchParams({ placement });
     if (surveyId) query.set("surveyId", surveyId);
-    return withRetries("survey_preview", surfaceOf(placement), () =>
-      attempt<SurveyPreview>(`/api/survey-preview?${query.toString()}`, { method: "GET" }, { tokenFailureIsFinal: true }),
+    return withRetries("survey_preview", surfaceOf(placement), (timeoutMs) =>
+      attempt<SurveyPreview>(
+        `/api/survey-preview?${query.toString()}`,
+        { method: "GET" },
+        { tokenFailureIsFinal: true, timeoutMs },
+      ),
     );
   }
 
@@ -495,14 +537,18 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
     otherText: string | null,
     surface: SurveySurface,
   ) {
-    return withRetries("survey_submit", surface, () =>
-      attempt<SubmitResult>("/api/responses", {
-        method: "POST",
-        // Field names must match app/routes/api.responses.tsx exactly. The route
-        // allowlists `channel` against the merchant's configured options, so
-        // renaming this silently breaks every submission with a 422.
-        body: JSON.stringify({ orderId, channel, otherText, locale: buyerLocale() }),
-      }),
+    return withRetries("survey_submit", surface, (timeoutMs) =>
+      attempt<SubmitResult>(
+        "/api/responses",
+        {
+          method: "POST",
+          // Field names must match app/routes/api.responses.tsx exactly. The route
+          // allowlists `channel` against the merchant's configured options, so
+          // renaming this silently breaks every submission with a 422.
+          body: JSON.stringify({ orderId, channel, otherText, locale: buyerLocale() }),
+        },
+        { timeoutMs },
+      ),
     );
   }
 
@@ -514,7 +560,7 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
     placement: Placement;
     answers: AnswerInput[];
   }) {
-    return withRetries("survey_answers", surfaceOf(params.placement), () =>
+    return withRetries("survey_answers", surfaceOf(params.placement), (timeoutMs) =>
       attempt<SubmitResult>("/api/survey-responses", {
         method: "POST",
         // Field names must match app/routes/api.survey-responses.tsx exactly.
@@ -529,7 +575,7 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
           // by product read them. Sent only when the host exposes them.
           ...submitFacts(),
         }),
-      }),
+      }, { timeoutMs }),
     );
   }
 

@@ -379,6 +379,8 @@ model Question {
   /// For `text`: multi-line when true.
   textMultiline    Boolean      @default(false)
   required         Boolean      @default(false)
+  /// The survey version from which the question is required (see submitAnswers).
+  requiredSinceVersion Int      @default(0)
   randomizeOptions Boolean      @default(false)
   allowOther       Boolean      @default(false)
   minSelections    Int?

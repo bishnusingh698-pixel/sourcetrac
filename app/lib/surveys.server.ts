@@ -490,14 +490,23 @@ async function persistQuestions(
   tx: Prisma.TransactionClient,
   surveyId: string,
   questions: SurveyInput["questions"],
-  { hasResponses, templateId }: { hasResponses: boolean; templateId?: string | null },
+  {
+    hasResponses,
+    templateId,
+    version,
+  }: {
+    hasResponses: boolean;
+    templateId?: string | null;
+    /** The survey version these questions are saved as (buyers record it). */
+    version: number;
+  },
 ): Promise<IdMap> {
   // Existing rows for this survey, so a posted id can be matched. Anything not
   // found here is new and gets a fresh id; an id from another question is never
   // updated in place (it would keep its old question).
   const existingQuestions = new Map(
     (
-      await tx.question.findMany({ where: { surveyId }, select: { id: true, type: true, archived: true } })
+      await tx.question.findMany({ where: { surveyId }, select: { id: true, type: true, archived: true, required: true } })
     ).map((q) => [q.id, q]),
   );
   const existingOptions = new Map(
@@ -539,13 +548,26 @@ async function persistQuestions(
       translations: JSON.stringify(question.translations ?? {}),
     };
 
+    // A buyer who loaded an earlier version is excused from a question only
+    // when it became required after that version (see `submitAnswers`).
+    const becameRequired = data.required && !(existing?.required ?? false);
+
     let savedQuestionId: string;
     if (existing) {
-      await tx.question.update({ where: { id: existing.id }, data });
+      await tx.question.update({
+        where: { id: existing.id },
+        data: { ...data, ...(becameRequired ? { requiredSinceVersion: version } : {}) },
+      });
       savedQuestionId = existing.id;
     } else {
       const created = await tx.question.create({
-        data: { ...data, surveyId, archived: false, templateKey: templateKeyOf(posted, question.templateKey) },
+        data: {
+          ...data,
+          surveyId,
+          archived: false,
+          templateKey: templateKeyOf(posted, question.templateKey),
+          requiredSinceVersion: version,
+        },
         select: { id: true },
       });
       savedQuestionId = created.id;
@@ -746,7 +768,18 @@ function sanitizeSurveyInput(input: SurveyInput): SurveyInput {
     fail("syncOptions", "invalid_sync_options", "The sync settings could not be read.");
   }
 
-  return { ...input, placements, ...(design ? { design } : {}) };
+  // Product and collection rules were accepted, plan-gated and stored, but the
+  // checkout never sends what they need and nothing evaluates them, so a
+  // "products only" survey showed on every order. No editor offers them; a
+  // crafted or old save is stored without them rather than pretending.
+  const {
+    productIds: _productIds,
+    collectionIds: _collectionIds,
+    resolvedProductIds: _resolvedProductIds,
+    ...appliedTargeting
+  } = targeting;
+
+  return { ...input, placements, targeting: appliedTargeting, ...(design ? { design } : {}) };
 }
 
 /**
@@ -997,6 +1030,7 @@ export async function createSurvey(shopId: string, rawInput: SurveyInput): Promi
     const idMap = await persistQuestions(tx, survey.id, input.questions, {
       hasResponses: false,
       templateId: input.templateId,
+      version: 1,
     });
 
     // Default the channel-report question to the first choice question.
@@ -1094,6 +1128,7 @@ export async function updateSurvey(
     const idMap = await persistQuestions(tx, surveyId, input.questions, {
       hasResponses,
       templateId: existing.templateId,
+      version: existing.version + (wasActive ? 1 : 0),
     });
     await applyChannelReportQuestion(tx, surveyId, input.channelReportQuestionId, idMap);
   });
@@ -1170,6 +1205,7 @@ export async function publishSurveyDraft(
     const idMap = await persistQuestions(tx, surveyId, draftInput.questions, {
       hasResponses,
       templateId: existing.templateId,
+      version: existing.version + 1,
     });
     await applyChannelReportQuestion(tx, surveyId, draftInput.channelReportQuestionId, idMap);
   });
