@@ -271,7 +271,9 @@ export function toUtcDateKey(date: Date): string {
  * The channel to headline: the one that brought in the most revenue.
  *
  * Revenue is never compared across currencies, so the comparison is made in
- * the shop's main currency, the one with the most revenue overall. A window
+ * the shop's main currency: the one with the most counted orders (amounts in
+ * different currencies, in their own minor units, cannot rank currencies:
+ * 5,000 yen is not more than 49.99 dollars). A window
  * with no counted revenue yet (every order pending, or a test store) falls back
  * to the channel with the most answers, flagged `byRevenue: false` so the copy
  * does not claim money it cannot show. Ties keep the busier channel first.
@@ -279,11 +281,18 @@ export function toUtcDateKey(date: Date): string {
 export function pickTopChannel(
   channels: ReadonlyArray<Pick<ChannelStat, "channel" | "responses" | "revenueByCurrency">>,
   revenueByCurrency: ReadonlyArray<{ currency: CurrencyCode; minor: number }>,
+  ordersByCurrency: ReadonlyArray<{ currency: CurrencyCode; count: number }> = [],
 ): { channel: string; byRevenue: boolean; currency: CurrencyCode | null; minor: number | null } | null {
   if (channels.length === 0) return null;
 
+  const ordersIn = (currency: CurrencyCode) => ordersByCurrency.find((e) => e.currency === currency)?.count ?? 0;
   const main = revenueByCurrency.reduce<{ currency: CurrencyCode; minor: number } | undefined>(
-    (best, entry) => (!best || entry.minor > best.minor ? entry : best),
+    (best, entry) =>
+      !best ||
+      ordersIn(entry.currency) > ordersIn(best.currency) ||
+      (ordersIn(entry.currency) === ordersIn(best.currency) && entry.currency < best.currency)
+        ? entry
+        : best,
     undefined,
   );
 

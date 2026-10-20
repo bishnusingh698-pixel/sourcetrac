@@ -369,7 +369,7 @@ Scope notes from the validator (informational):
   2. No prorated credit is issued, and they drop to Free on the next page load.
   3. The confirm dialog only says "You lose unlimited responses".
 
-### M16. Results drops every answer to the built-in "Other" option [REP] — CONFIRMED
+### [x] M16. Results drops every answer to the built-in "Other" option [REP] — CONFIRMED
 - **Where:** `app/lib/survey-analytics.server.ts:352-357`, `:380-384`; `shared/survey-rules.ts:294-295`; `app/routes/app.results.tsx:195`.
 - **What is wrong:**
   - With "Allow a free-text answer" on, the rules add an option with id `other` that has no Option row.
@@ -378,7 +378,7 @@ Scope notes from the validator (informational):
   - `buildQuestionStats` also walks only `question.options`, so Other can never be the dashboard's top answer.
 - **Scenario:** 40% of buyers pick Other. The Results bars add up to 60%, Other's revenue is missing, and the dashboard names the wrong top answer.
 
-### M17. The channel report splits one real channel into several rows [REP] — CONFIRMED
+### [x] M17. The channel report splits one real channel into several rows [REP] — CONFIRMED
 - **Where:** `app/lib/analytics-queries.server.ts:131-137`; `fetchChannelLabels` `:203-207`.
 - **What is wrong:** a v2 channel key is the option id, which is unique to each survey. Only `bf-option-` ids are mapped back to legacy slugs.
 - **Scenario:**
@@ -715,7 +715,7 @@ On a multi-choice question with `minSelections ≥ 2`, an exclusive "None of the
 - Rotation and Learn & stop keep running after a downgrade (`surveys.server.ts:1312-1334`; `api.survey.tsx:212-213`; `answers.server.ts:350`).
 - The save bar posts even when readiness blocks going live (`unsaved-changes.tsx:95`).
 
-### I24. Reporting precision, ordering and denominator issues [REP]
+### [x] I24. Reporting precision, ordering and denominator issues [REP]
 - The dashboard's "Top channel" badge ranks by answers, while the channel report ranks by revenue (`app/components/dashboard.tsx:220`; `app/lib/analytics.ts:168`, `:279-300`).
 - `pickTopChannel` compares raw minor units across currencies (`analytics.ts:285-288`).
 - The Results CSV ignores the on-screen date range (`app.results.tsx:240`; `app.results_.csv.tsx:31-38`).
@@ -724,13 +724,13 @@ On a multi-choice question with `minSelections ≥ 2`, an exclusive "None of the
 - The channel response rate is inflated for days before install (`analytics-queries.server.ts:265-303` with `order-backfill.server.ts:146-170`).
 - Exports print the raw id `other` instead of a label (`answer-text.ts:206`; `survey-export.server.ts:59-62`; `app.responses.tsx:62-67`).
 
-### I25. Export size and performance [REP]
+### [x] I25. Export size and performance [REP]
 - The all-surveys export caps responses, not rows, at 50,000, so a file can hold about 250,000 rows while `X-SourceTrac-Row-Limit` says 50,000. The whole file is also built in memory (`survey-export.server.ts:66-77`, `:120-146`; `app.export_.csv.tsx:69-75`).
 - Survey shapes are loaded one survey at a time (`survey-export.server.ts:123-125`).
 - The Results loader runs one correlated-EXISTS count per survey on every load (`app.results.tsx:117`).
 - The hourly `maybeMarkUnreconcilable` runs an unbounded UPDATE across every shop (`answers.server.ts:562-574`).
 
-### I26. Smaller reporting inconsistencies [REP]
+### [x] I26. Smaller reporting inconsistencies [REP]
 - `formatDecimalForCurrency` formats through a float (`money.ts:293-305`).
 - Results sends minor-unit integers to the browser (`app.results.tsx:177`).
 - The Results buyer counts include order-less answers, while the Dashboard's `buyerMix` excludes them.

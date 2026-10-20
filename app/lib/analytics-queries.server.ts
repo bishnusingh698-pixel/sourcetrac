@@ -6,6 +6,7 @@ import { formatTimestamp, orderAdminLink, resolveExportTimeZone, type CsvRow, ty
 import { minorToDecimalString, parseMoneyToMinor } from "~/lib/money";
 import { evaluateResponseRevenue, type RevenueDecision } from "~/lib/revenue";
 import { OTHER_CHANNEL_VALUE, parseSurveySettings } from "~/lib/settings";
+import { readableChannelKey } from "~/lib/channel-key";
 import { withRetry } from "~/lib/retry.server";
 import { couldSeeSurveySql, couldSeeSurveyWhere } from "~/lib/order-sources";
 
@@ -66,6 +67,12 @@ export async function fetchResponsesInWindow(params: {
   channel?: string;
   limit?: number;
 }): Promise<ResponseWithOrder[]> {
+  const keys = await channelKeysForShop(params.shopId);
+  // A channel is asked for by its shared key; the stored answers carry each
+  // survey's own option id for it.
+  const rawChannels = params.channel
+    ? [params.channel, ...[...keys.entries()].filter(([, key]) => key === params.channel).map(([raw]) => raw)]
+    : [];
   const rows = await retryDb(() =>
     db.$queryRaw<ResponseWithOrderRow[]>`
       SELECT
@@ -89,13 +96,39 @@ export async function fetchResponsesInWindow(params: {
       WHERE TRUE
         ${params.start ? Prisma.sql`AND r."submittedAt" >= ${params.start}` : Prisma.empty}
         ${params.end ? Prisma.sql`AND r."submittedAt" < ${params.end}` : Prisma.empty}
-        ${params.channel ? Prisma.sql`AND r.channel = ${params.channel}` : Prisma.empty}
+        ${params.channel ? Prisma.sql`AND r.channel IN (${Prisma.join(rawChannels)})` : Prisma.empty}
       ORDER BY r."submittedAt" DESC, r.id DESC
       ${params.limit ? Prisma.sql`LIMIT ${params.limit}` : Prisma.empty}
     `,
   );
 
-  return rows.map(toResponseWithOrder);
+  return rows.map((row) => toResponseWithOrder({ ...row, channel: keys.get(row.channel) ?? row.channel }));
+}
+
+/**
+ * Every v2 option id of the shop's surveys -> its shared channel key
+ * (`readableChannelKey`), so one channel is one row whichever survey asked.
+ */
+async function channelKeysForShop(shopId: string): Promise<Map<string, string>> {
+  const options = await retryDb(() =>
+    db.option.findMany({
+      where: { question: { survey: { shopId } } },
+      select: { id: true, label: true, isOther: true, templateKey: true, question: { select: { templateKey: true } } },
+    }),
+  );
+  return new Map(
+    options.map((option) => [
+      option.id,
+      readableChannelKey({
+        shopId,
+        optionId: option.id,
+        optionTemplateKey: option.templateKey,
+        questionTemplateKey: option.question.templateKey,
+        label: option.label,
+        isOther: option.isOther,
+      }),
+    ]),
+  );
 }
 
 /**
@@ -152,7 +185,7 @@ function channelAnswersSql(shopId: string): Prisma.Sql {
 
 /** Answers per channel for a shop, from both stores, with the merchant's labels. */
 export async function channelCountsForShop(shopId: string): Promise<Array<{ channel: string; label: string; count: number }>> {
-  const [rows, shop] = await Promise.all([
+  const [rows, shop, keys] = await Promise.all([
     retryDb(() =>
       db.$queryRaw<Array<{ channel: string; count: bigint }>>`
         SELECT r.channel, COUNT(*)::bigint AS count FROM (${channelAnswersSql(shopId)}) r
@@ -160,9 +193,17 @@ export async function channelCountsForShop(shopId: string): Promise<Array<{ chan
       `,
     ),
     retryDb(() => db.shop.findUnique({ where: { id: shopId }, select: { id: true, optionsJson: true, questionText: true } })),
+    channelKeysForShop(shopId),
   ]);
   const labels = shop ? await fetchChannelLabels(shop) : new Map<string, string>();
-  return rows.map((row) => ({ channel: row.channel, label: channelLabel(row.channel, labels), count: Number(row.count) }));
+  const merged = new Map<string, number>();
+  for (const row of rows) {
+    const channel = keys.get(row.channel) ?? row.channel;
+    merged.set(channel, (merged.get(channel) ?? 0) + Number(row.count));
+  }
+  return [...merged.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([channel, count]) => ({ channel, label: channelLabel(channel, labels), count }));
 }
 
 /** Whether the shop has any answer at all, in either store. Two indexed lookups. */
@@ -198,11 +239,20 @@ export async function fetchChannelLabels(shop: {
     ),
   );
   const options = await retryDb(() =>
-    db.option.findMany({ where: { question: { survey: { shopId: shop.id } } }, select: { id: true, label: true } }),
+    db.option.findMany({
+      where: { question: { survey: { shopId: shop.id } } },
+      select: { id: true, label: true, isOther: true, templateKey: true, question: { select: { templateKey: true } } },
+    }),
   );
-  const bfPrefix = `bf-option-${shop.id}-`;
   for (const option of options) {
-    const key = option.id.startsWith(bfPrefix) ? option.id.slice(bfPrefix.length) : option.id;
+    const key = readableChannelKey({
+      shopId: shop.id,
+      optionId: option.id,
+      optionTemplateKey: option.templateKey,
+      questionTemplateKey: option.question.templateKey,
+      label: option.label,
+      isOther: option.isOther,
+    });
     if (!labels.has(key)) labels.set(key, option.label);
   }
   return labels;
@@ -267,12 +317,13 @@ export async function countAnsweredEligibleOrdersInWindow(params: {
   start: Date;
   end: Date;
 }): Promise<number> {
+  const start = await askableFrom(params.shopId, params.start);
   const rows = await retryDb(() =>
     db.$queryRaw<Array<{ count: bigint }>>`
       SELECT COUNT(*)::bigint AS count
       FROM "OrderCache" o
       WHERE o."shopId" = ${params.shopId}
-        AND o."createdAtShop" >= ${params.start} AND o."createdAtShop" < ${params.end}
+        AND o."createdAtShop" >= ${start} AND o."createdAtShop" < ${params.end}
         AND o."isTest" = false AND o."isCancelled" = false
         AND ${couldSeeSurveySql("o")}
         -- A semi-join on the answers' order ids, evaluated once, not a
@@ -289,17 +340,29 @@ export async function countAnsweredEligibleOrdersInWindow(params: {
  * them could have been asked.
  */
 export async function countEligibleOrdersInWindow(params: { shopId: string; start: Date; end: Date }): Promise<number> {
+  const start = await askableFrom(params.shopId, params.start);
   return retryDb(() =>
     db.orderCache.count({
       where: {
         shopId: params.shopId,
-        createdAtShop: { gte: params.start, lt: params.end },
+        createdAtShop: { gte: start, lt: params.end },
         isTest: false,
         isCancelled: false,
         ...couldSeeSurveyWhere,
       },
     }),
   );
+}
+
+/**
+ * The start of the rate's window, never before the app was first installed.
+ * Orders from before then could not have been asked, and the only ones cached
+ * are those the backfill fetched because they have an answer, so counting them
+ * pushed the rate up for any window reaching back past the install.
+ */
+async function askableFrom(shopId: string, start: Date): Promise<Date> {
+  const shop = await retryDb(() => db.shop.findUnique({ where: { id: shopId }, select: { createdAt: true } }));
+  return shop && shop.createdAt > start ? shop.createdAt : start;
 }
 
 /** Channels the merchant actually has responses for, plus their labels. */

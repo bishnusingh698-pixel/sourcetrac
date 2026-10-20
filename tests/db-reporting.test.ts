@@ -7,7 +7,7 @@ import { PrismaClient } from "@prisma/client";
 
 import { submitAnswers } from "~/lib/answers.server";
 import { computeStats } from "~/lib/analytics";
-import { countChannelAnswers, fetchChannelLabels, fetchDashboardData } from "~/lib/analytics-queries.server";
+import { channelCountsForShop, countChannelAnswers, fetchChannelLabels, fetchDashboardData } from "~/lib/analytics-queries.server";
 import { upsertShop } from "~/lib/shop.server";
 import { createSurvey } from "~/lib/surveys.server";
 import {
@@ -104,10 +104,11 @@ describe("dashboard reads v2 answers (C4)", () => {
     });
 
     const data = await fetchDashboardData({ shopId, days: 30 });
-    expect(data.responses.map((r) => r.channel).sort()).toEqual(["google", instagram].sort());
-    expect(data.decidedAmounts).toEqual([expect.objectContaining({ channel: instagram, minor: 4200 })]);
+    // Channels are the shared readable key, not each survey's option id (M17).
+    expect(data.responses.map((r) => r.channel).sort()).toEqual(["google", "instagram"]);
+    expect(data.decidedAmounts).toEqual([expect.objectContaining({ channel: "instagram", minor: 4200 })]);
     expect(await countChannelAnswers(shopId)).toBe(2);
-    expect((await fetchChannelLabels({ id: shopId, optionsJson: "[]", questionText: "Q" })).get(instagram)).toBe("Instagram");
+    expect((await fetchChannelLabels({ id: shopId, optionsJson: "[]", questionText: "Q" })).get("instagram")).toBe("Instagram");
 
     // M33: the rate's numerator is answered orders placed in the window.
     expect(data.rateResponses).toBe(1);
@@ -179,5 +180,59 @@ describe("order totals and fixed-option results (M9, H7, H8)", () => {
     });
     expect(yesNo).toMatchObject({ kind: "choice", options: [{ optionId: "yes", count: 1 }, { optionId: "no", count: 0 }] });
     expect(satisfaction && satisfaction.kind === "choice" ? satisfaction.options.find((o) => o.optionId === "neutral")?.count : 0).toBe(1);
+  });
+});
+
+describe("reporting (2026-10-20 audit)", () => {
+  it("reports one channel once, whichever survey asked it (M17)", async () => {
+    const second = await createSurvey(shopId, {
+      name: "Second",
+      status: "draft",
+      placements: ["thank_you"],
+      layout: "all",
+      title: "Q",
+      intro: null,
+      buttonLabel: "Submit",
+      thankYouText: "Thanks!",
+      questions: [{ type: "single_choice", text: "Where?", options: [{ label: "Instagram" }, { label: "TikTok" }] }],
+    });
+    const otherInstagram = second.questions[0]!.options[0]!.id;
+    for (const [orderId, sid, qid, option] of [
+      ["9910000000101", surveyId, questionId, instagram],
+      ["9910000000102", second.id, second.questions[0]!.id, otherInstagram],
+    ] as const) {
+      await prisma.response.create({
+        data: {
+          shopId, surveyId: sid, surveyVersion: 1, orderId, placement: "thank_you",
+          answers: { create: { shopId, questionId: qid, optionIds: JSON.stringify([option]) } },
+        },
+      });
+    }
+    const counts = await channelCountsForShop(shopId);
+    expect(counts.filter((c) => c.label === "Instagram")).toEqual([{ channel: "instagram", label: "Instagram", count: 2 }]);
+  });
+});
+
+describe("the built-in Other in Results (M16)", () => {
+  const row = (over: Partial<SurveyResponseRow>): SurveyResponseRow => ({
+    id: "r", surveyId: "s", isFirstOrder: null, orderId: "1", orderNumber: null, orderTotal: null, currency: null, placement: "thank_you",
+    flagged: false, verified: true, unverifiedFailed: false, createdAt: new Date(), productIds: [], answers: [], order: null,
+    ...over,
+  });
+
+  it("gets its own bar and revenue instead of only counting in the total", () => {
+    const order = { currency: "USD", totalPrice: "30.000", financialStatus: "paid", isTest: false, isCancelled: false };
+    const [breakdown] = buildBreakdowns({
+      responses: [
+        row({ orderTotal: "30.000", currency: "USD", order, answers: [{ questionId: "q", optionIds: ["other"], numberValue: null, textValue: null, otherText: "A podcast" }] }),
+        row({ answers: [{ questionId: "q", optionIds: ["a"], numberValue: null, textValue: null, otherText: null }] }),
+      ],
+      questions: [{ id: "q", type: "single_choice", allowOther: true, options: [{ id: "a", archived: false }] }],
+    });
+    if (breakdown?.kind !== "choice") throw new Error("expected a choice breakdown");
+    const other = breakdown.options.find((o) => o.optionId === "other");
+    expect(other?.count).toBe(1);
+    expect(other?.revenueByCurrency).toEqual([{ currency: "USD", minor: 3000, orders: 1 }]);
+    expect(breakdown.options.reduce((sum, o) => sum + o.count, 0)).toBe(breakdown.total);
   });
 });

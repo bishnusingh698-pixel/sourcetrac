@@ -9,7 +9,11 @@ import { startOrderBackfill } from "~/lib/order-backfill.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { authenticate } from "~/shopify.server";
 import { createTranslator } from "~/lib/i18n";
+import { windowBounds } from "~/lib/analytics";
 import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
+
+/** The Results page's ranges in days; anything else is all time. */
+const RANGE_DAYS: Record<string, number> = { "7": 7, "30": 30, "90": 90 };
 
 /**
  * Results CSV download (`/app/results/csv?survey=<id>`): the selected survey's
@@ -27,6 +31,9 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const selectedId = surveys.find((s) => s.id === requestedId)?.id ?? surveys[0]?.id ?? null;
   const context = await loadExportContext(shop, session);
   const t = createTranslator(resolveAdminLanguage(request, shop.language, shop.adminLocale));
+  // The same date range as the Results page the merchant downloaded from.
+  const days = RANGE_DAYS[url.searchParams.get("range") ?? ""] ?? null;
+  const window = days === null ? null : windowBounds(days, new Date());
 
   const file = selectedId
     ? await buildSurveyExport({
@@ -35,6 +42,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
         timeZone: context.timeZone,
         t,
         surveyId: selectedId,
+        ...(window ? { start: window.start, end: window.end } : {}),
       })
     : { ...toSurveyTable([], []), truncated: false };
 

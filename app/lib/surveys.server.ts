@@ -431,6 +431,11 @@ export async function getSurveyRow(shopId: string, surveyId: string): Promise<Su
   return db.survey.findFirst({ where: { id: surveyId, shopId }, include: surveyInclude });
 }
 
+/** Every survey of a shop with its questions, in one query. */
+export async function getSurveyRows(shopId: string): Promise<SurveyWithQuestions[]> {
+  return db.survey.findMany({ where: { shopId }, include: surveyInclude });
+}
+
 /**
  * Guard an optimistic-concurrency write (section 6.6).
  *

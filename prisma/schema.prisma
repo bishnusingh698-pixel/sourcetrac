@@ -183,6 +183,8 @@ model SurveyResponse {
   @@index([shopId, isLocked])
   @@index([shopId, reconciled])
   @@index([shopId, orderId])
+  /// The hourly write-off sweep (all shops): unreconciled rows only.
+  @@index([reconciled, unreconcilable, submittedAt])
 }
 
 /// Cached order facts from webhooks. Never holds customer PII.
@@ -466,6 +468,8 @@ model Response {
   @@unique([shopId, surveyId, orderId])
   @@index([shopId, createdAt])
   @@index([shopId, surveyId, createdAt])
+  /// The hourly write-off sweep (all shops): answers still without a total.
+  @@index([orderTotal, unverifiedFailed, createdAt])
 }
 
 /// One answer to one question within a Response.

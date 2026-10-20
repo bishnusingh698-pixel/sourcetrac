@@ -9,6 +9,7 @@ import { mayHaveRun, shopifyGraphql } from "~/lib/shopify-graphql.server";
 import { resolveSmartActionWrites, SMART_ACTION_PRESETS, type ResolvedSmartActions } from "@shared/templates/smart-actions";
 import { PLAN_SCALE, effectivePlan } from "~/lib/plans";
 import { slugifyChannel } from "~/lib/settings";
+import { readableChannelKey } from "~/lib/channel-key";
 import { OTHER_CHANNEL_VALUE } from "@shared/survey-rules";
 import {
   MAX_SYNC_TAG_LENGTH,
@@ -316,7 +317,13 @@ async function loadSyncContext(shopId: string, responseId: string, accessToken: 
       channel = OTHER_CHANNEL_VALUE;
       channelLabel = option?.label ?? "Other";
     } else if (option) {
-      channel = channelKey(shopId, optionId, option.templateKey, reportAnswer.question.templateKey, option.label);
+      channel = readableChannelKey({
+        shopId,
+        optionId,
+        optionTemplateKey: option.templateKey,
+        questionTemplateKey: reportAnswer.question.templateKey,
+        label: option.label,
+      });
       channelLabel = option.label;
     }
   }
@@ -374,22 +381,6 @@ async function loadSyncContext(shopId: string, responseId: string, accessToken: 
       }),
     },
   };
-}
-
-/** A readable, stable channel key for an option (see `loadSyncContext`). */
-function channelKey(
-  shopId: string,
-  optionId: string,
-  optionTemplateKey: string | null,
-  questionTemplateKey: string | null,
-  label: string,
-): string {
-  const migrated = `bf-option-${shopId}-`;
-  if (optionId.startsWith(migrated)) return optionId.slice(migrated.length);
-  if (optionTemplateKey && questionTemplateKey && optionTemplateKey.startsWith(`${questionTemplateKey}_`)) {
-    return optionTemplateKey.slice(questionTemplateKey.length + 1);
-  }
-  return slugifyChannel(label, new Set());
 }
 
 function safeJson<T>(raw: string | null | undefined, fallback: T): T {

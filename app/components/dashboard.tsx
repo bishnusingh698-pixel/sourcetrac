@@ -217,7 +217,11 @@ export function TopChannels({
                 <s-grid gridTemplateColumns="minmax(0, 1fr) auto" gap="small" alignItems="center">
                   <s-stack direction="inline" gap="small-200" alignItems="center">
                     <s-text type="strong">{name}</s-text>
-                    {index === 0 ? <s-badge tone="success">{t("dashboard.top_channel")}</s-badge> : null}
+                    {/* The same top channel the report headlines (by revenue when
+                        there is any), not simply the first row by answers. */}
+                    {channel.channel === (report.topChannel?.channel ?? rows[0]?.channel) ? (
+                      <s-badge tone="success">{t("dashboard.top_channel")}</s-badge>
+                    ) : null}
                   </s-stack>
                   <s-text fontVariantNumeric="tabular-nums">
                     {t("results.option_count", { count: channel.responses, percent: percent.format(ofTotal) })}
