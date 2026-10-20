@@ -591,16 +591,12 @@ also re-claim an **in-flight** delivery and run the handler twice in parallel,
 which is the single case insert-first exists to prevent. All three cases are
 tested in `tests/db-invariants.test.ts`.
 
-## Plan reconciliation can un-cancel a subscription - unfixed on purpose
+## Plan reconciliation (fixed 2026-10-20)
 
-`app/routes/app.plans.tsx` maps `paidPlanFromSubscriptions(...) ?? "free"` into
-`setPlan(..., { planStatus: "active" })`. That function returns `null` for both
-"genuinely on free" and "a subscription we do not recognise" (it requires
-`name.startsWith("sourcetrac")` and `status === "ACTIVE"`), so a merchant whose
-status reads anything unexpected is downgraded, and a cancelled merchant gets
-`planStatus` forced back to `active`. Left unfixed: whether a transient Shopify
-read failure should downgrade a paying merchant is a billing-policy decision, not
-a bug fix. Tracked in `BUG_FIX_REPORT.md`.
+The Plans page no longer stamps `active` when Shopify shows no paid charge: it
+keeps a status that already says why (frozen, cancelled), writes only if the
+stored plan is unchanged since it read it, and skips the write when Shopify or
+the development-store lookup cannot be read. See `DECISIONS.md` (L32, L37, I17).
 
 ## Local env: `.env` points at the non-test DB
 
@@ -912,8 +908,8 @@ Each fix has a test that fails on the old code.
 
 ## Multi-question survey (Phase 2/3, 2026-10-12)
 
-The plan lives in `AUDIT_AND_PLAN.md` (the "survey-app-upgrade-plan.md" the user
-names). Phases 1–3 are done: shared rules, the new tables + lossless backfill,
+The original plan document was removed on 2026-10-20 (superseded; the code is
+the reference). Phases 1–3 are done: shared rules, the new tables + lossless backfill,
 and the survey list/editor. Phases 4+ are still pending, so nothing here should
 be treated as shipped.
 
@@ -1011,12 +1007,8 @@ not a merchant's flow, is what breaks.
 
 ## Audit pass (2026-10-12) — logic, security, completeness
 
-Four artifacts are the map of this pass: `LOGIC_MAP.md` (Mermaid flows),
-`COMPLIANCE_MATRIX.md` (every plan/billing requirement with evidence),
-`AUDIT_REPORT.md` (findings) and `CHANGES_SUMMARY.md` (audit section). Where the
-referenced `survey-app-upgrade-plan.md` and the code disagree, **the code wins**
-and the disagreement is recorded; `AUDIT_AND_PLAN.md` is the closest thing to
-that plan in this repo, and the brief's own template files were never committed.
+The report files of this pass were removed on 2026-10-20 as superseded; later
+findings and their resolutions are in `BUGS.md` and `DECISIONS.md`.
 
 ### Order verification (the response/revenue invariant)
 
@@ -1162,7 +1154,7 @@ note under the Studio preview caption, opening
 `/settings/checkout/editor?page=thank-you` with `target="_top"`. The metafield
 preview is deferred as a scope decision (it would add a parallel metafield
 read/write path for an admin-only preview), with concrete build steps in
-`FUTURE_TASKS.md`. See `TEMPLATES_NOTES.md` for the full reasoning.
+`FUTURE_TASKS.md`.
 
 **T6 exclusive options have a UI half and a server half, and both must agree.**
 `validateResponse` rejects an answer that combines an exclusive option with any

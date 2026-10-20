@@ -76,25 +76,3 @@ audit brief described Free as 100 responses/month, 1 active survey, 2 questions.
 The audit left the code as-is (code wins; the constant is interpolated into help
 and the plans page). If the product wants the brief's numbers, raise the constant
 and add per-plan survey/question gating in `createSurvey` / `updateSurvey`.
-
-## Advanced options disclosure (audit F-011) — DONE
-
-Sample %, dates, response limit, countries and languages now sit under a
-collapsed `AdvancedDisclosure` in the survey editor's "Who sees it" section.
-Multi-choice min/max selections remain inline (they only appear for that one
-question type). Nothing further to do here.
-
-## Logic map "Try a path" simulator polish (Phase G)
-
-The simulator and tree ship now. A follow-up polish pass could persist the last
-simulated path and animate node transitions, but the current static highlight is
-sufficient and has no correctness impact.
-
-## Plan reconciliation on a transient Shopify read failure
-
-`app/routes/app.plans.tsx` maps `paidPlanFromSubscriptions(...) ?? "free"` into
-`setPlan(..., { planStatus: "active" })`. A transient Shopify read failure
-therefore downgrades a paying merchant, and a cancelled merchant gets
-`planStatus` forced back to `active`. Left as-is on purpose: whether a read
-failure should downgrade a paying merchant is a billing-policy decision, not a
-mechanical fix. Tracked in `BUG_FIX_REPORT.md`.
