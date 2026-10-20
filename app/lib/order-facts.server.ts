@@ -1,4 +1,5 @@
 import { db } from "~/db.server";
+import { isRedactedOrder } from "~/lib/compliance.server";
 import { logger } from "~/lib/logger";
 
 /**
@@ -11,6 +12,8 @@ import { logger } from "~/lib/logger";
  */
 export async function recordOrderFact(shopId: string, orderId: string, isFirstOrder: boolean): Promise<void> {
   try {
+    // An order a customer asked to have redacted is never recorded again.
+    if (await isRedactedOrder(shopId, orderId)) return;
     await db.orderFact.upsert({
       where: { shopId_orderId: { shopId, orderId } },
       create: { shopId, orderId, isFirstOrder },

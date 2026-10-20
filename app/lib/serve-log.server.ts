@@ -1,4 +1,5 @@
 import { db } from "~/db.server";
+import { isRedactedOrder } from "~/lib/compliance.server";
 import { logger } from "~/lib/logger";
 import type { Placement, TargetingMiss } from "@shared/survey-config";
 import { isCheckoutPlacement, type CheckoutPlacement } from "~/lib/block-seen.server";
@@ -64,6 +65,8 @@ export function recordServe(
   if (!isCheckoutPlacement(placement)) return Promise.resolve();
   const write = (async () => {
     try {
+      // An order a customer asked to have redacted is never recorded again.
+      if (rest.orderId && (await isRedactedOrder(shopId, rest.orderId))) return;
       // A buyer reloading the page asks again with the same answer: keep one
       // line, moved to the top.
       if (rest.orderId) {

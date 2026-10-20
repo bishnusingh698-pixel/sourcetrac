@@ -9,7 +9,7 @@
  */
 import { createHmac, randomUUID } from "node:crypto";
 
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@prisma/client";
 
 import { action } from "~/routes/webhooks";
@@ -17,7 +17,12 @@ import { action } from "~/routes/webhooks";
 const prisma = new PrismaClient();
 const DOMAIN = "webhook-route-test.myshopify.com";
 
-function signed(topic: string, body: Record<string, unknown>, webhookId = `whroute-${randomUUID()}`): Request {
+function signed(
+  topic: string,
+  body: Record<string, unknown>,
+  webhookId = `whroute-${randomUUID()}`,
+  extraHeaders: Record<string, string> = {},
+): Request {
   const raw = JSON.stringify(body);
   const hmac = createHmac("sha256", process.env.SHOPIFY_API_SECRET ?? "").update(raw, "utf8").digest("base64");
   return new Request("https://example.test/webhooks", {
@@ -30,11 +35,13 @@ function signed(topic: string, body: Record<string, unknown>, webhookId = `whrou
       "X-Shopify-Shop-Domain": DOMAIN,
       "X-Shopify-API-Version": "2026-07",
       "X-Shopify-Webhook-Id": webhookId,
+      ...extraHeaders,
     },
   });
 }
 
 async function cleanup() {
+  await prisma.session.deleteMany({ where: { shop: DOMAIN } });
   await prisma.webhookEvent.deleteMany({ where: { webhookId: { startsWith: "whroute-" } } });
   await prisma.shop.deleteMany({ where: { shopDomain: DOMAIN } });
 }
@@ -54,6 +61,8 @@ beforeEach(async () => {
     })
   ).id;
 });
+
+afterEach(() => vi.unstubAllGlobals());
 
 afterAll(async () => {
   await cleanup();
@@ -83,6 +92,55 @@ describe("POST /webhooks", () => {
     expect(order?.totalPrice?.toString()).toBe("25");
     const answer = await prisma.surveyResponse.findFirstOrThrow({ where: { shopId } });
     expect(answer.reconciled).toBe(true);
+  });
+
+  it("applies app/uninstalled even when Shopify refuses to refresh the offline token (C2)", async () => {
+    // An expiring session past its expiry, with a refresh token Shopify has
+    // revoked: the library's own webhook auth tried to refresh it and threw.
+    await prisma.session.create({
+      data: {
+        id: `offline_${DOMAIN}`, shop: DOMAIN, state: "s", isOnline: false, scope: "read_orders", accessToken: "old",
+        expires: new Date(Date.now() - 60_000), refreshToken: "revoked", refreshTokenExpires: new Date(Date.now() + 86_400_000),
+      },
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ error: "invalid_subject_token" }), { status: 400 })),
+    );
+    const response = await action({ request: signed("app/uninstalled", { id: 930000 }) });
+    expect(response.status).toBe(200);
+    expect((await prisma.shop.findUniqueOrThrow({ where: { id: shopId } })).installState).toBe("uninstalled");
+    expect(await prisma.session.count({ where: { shop: DOMAIN } })).toBe(0);
+  });
+
+  it("ignores a late app/uninstalled once Shopify granted a token after it (H1)", async () => {
+    const uninstalledAt = new Date(Date.now() - 5 * 60_000);
+    // The first delivery failed, so the reinstall kept the old installedAt.
+    await prisma.shop.update({
+      where: { id: shopId },
+      data: { installedAt: new Date(Date.now() - 86_400_000), authorizedAt: new Date(Date.now() - 2 * 60_000) },
+    });
+    const response = await action({
+      request: signed("app/uninstalled", { id: 930000 }, undefined, { "X-Shopify-Triggered-At": uninstalledAt.toISOString() }),
+    });
+    expect(response.status).toBe(200);
+    const shop = await prisma.shop.findUniqueOrThrow({ where: { id: shopId } });
+    expect(shop.installState).toBe("installed");
+    // Still remembered, for a later shop/redact.
+    expect(shop.uninstallTriggeredAt?.toISOString()).toBe(uninstalledAt.toISOString());
+  });
+
+  it("ignores a scopes update older than the latest token grant (L17)", async () => {
+    await prisma.session.create({
+      data: { id: `offline_${DOMAIN}`, shop: DOMAIN, state: "s", isOnline: false, scope: "read_orders,write_orders", accessToken: "x" },
+    });
+    await prisma.shop.update({ where: { id: shopId }, data: { authorizedAt: new Date() } });
+    await action({
+      request: signed("app/scopes_update", { current: ["read_orders"] }, undefined, {
+        "X-Shopify-Triggered-At": new Date(Date.now() - 60_000).toISOString(),
+      }),
+    });
+    expect((await prisma.session.findFirstOrThrow({ where: { shop: DOMAIN } })).scope).toBe("read_orders,write_orders");
   });
 
   it("applies app/uninstalled", async () => {

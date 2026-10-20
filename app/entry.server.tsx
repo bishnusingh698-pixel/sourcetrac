@@ -5,7 +5,8 @@ import { createReadableStreamFromReadable } from "@react-router/node";
 import type { EntryContext } from "react-router";
 import { isbot } from "isbot";
 
-import { assertStartupInvariants } from "~/lib/env";
+import { maybeRunAllPendingDeletions } from "~/lib/compliance.server";
+import { assertStartupInvariants, env } from "~/lib/env";
 import { startKeepAwakeFromEnv } from "~/lib/keep-awake.server";
 import { logger } from "~/lib/logger";
 import { addDocumentResponseHeaders } from "~/shopify.server";
@@ -21,6 +22,17 @@ for (const warning of assertStartupInvariants()) {
 
 // A sleeping free-tier server makes buyers wait a minute for the survey.
 startKeepAwakeFromEnv();
+
+// A large customers/redact drains in the background; a restart or deploy cut
+// that drain short, and nothing resumed it until some other traffic arrived.
+// The database is awake at boot anyway (`npm run start` migrates first).
+try {
+  if (env().NODE_ENV === "production") void maybeRunAllPendingDeletions();
+} catch (error) {
+  logger.warn("deferred_redact_boot_drain_skipped", {
+    error: error instanceof Error ? error.message : String(error),
+  });
+}
 
 /**
  * Streaming SSR entry. Copied from the official React Router template — the

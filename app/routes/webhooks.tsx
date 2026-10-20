@@ -14,7 +14,7 @@ import {
 } from "~/lib/webhooks.server";
 import { maybeRunRetention } from "~/lib/retention.server";
 import { findShopByDomain, getAccessToken } from "~/lib/shop.server";
-import { authenticate } from "~/shopify.server";
+import { authenticateWebhook } from "~/shopify.server";
 
 /**
  * POST /webhooks
@@ -35,9 +35,10 @@ const COMPLIANCE_TOPICS = new Set(["customers/data_request", "customers/redact",
 export const action = async ({ request }: { request: Request }) => {
   const requestId = `wh_${Date.now().toString(36)}`;
 
-  // Verifies HMAC, then parses. A tampered body never reaches our handler.
-  const verified = await authenticate.webhook(request);
-  const { webhookId, shop, payload, session } = verified;
+  // Verifies HMAC, then parses. A tampered body never reaches our handler. No
+  // session is loaded or refreshed here (see `authenticateWebhook`).
+  const verified = await authenticateWebhook(request);
+  const { webhookId, shop, payload } = verified;
   // The library upper-cases the topic (`ORDERS_CREATE`); handlers use Shopify's
   // spelling (`orders/create`). See `normaliseWebhookTopic`.
   const topic = normaliseWebhookTopic(verified.topic);
@@ -47,7 +48,6 @@ export const action = async ({ request }: { request: Request }) => {
     topic,
     shop_domain: shop,
     webhook_id: webhookId,
-    has_session: Boolean(session),
   });
 
   // Shopify's delivery time, to order two updates within one second of
@@ -109,10 +109,10 @@ export const action = async ({ request }: { request: Request }) => {
       });
     }
 
-    // `session` is undefined when the webhook arrives after an uninstall.
-    // Falling back to the encrypted token covers the cold-start case, where no
-    // session row is loaded but we still hold a valid credential.
-    const accessToken = session?.accessToken ?? (await getAccessTokenForShop(shop));
+    // Only billing notices call Shopify. Resolving a token for every order
+    // delivery cost a lookup (and possibly a refresh) inside Shopify's
+    // five-second budget for nothing.
+    const accessToken = topic === "app_subscriptions/update" ? await getAccessTokenForShop(shop) : null;
 
     const result = await processWebhook({ topic, shopDomain: shop, payload, accessToken, triggeredAt });
 

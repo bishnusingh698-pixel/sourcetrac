@@ -156,7 +156,7 @@ Scope notes from the validator (informational):
 - **Why the tests pass:** they call `enqueueSync` / `parseSyncOptions` with objects.
 - **Note:** fixing this makes H2, H3, M6 and M7 live.
 
-### C2. A failed offline-token refresh makes `/webhooks` answer 500 before any handler runs, so uninstall, GDPR redaction and order webhooks can fail on every retry [GDPR, AUTH, ORD] — library path CONFIRMED and re-verified; Shopify's refusal is PLAUSIBLE
+### [x] C2. A failed offline-token refresh makes `/webhooks` answer 500 before any handler runs, so uninstall, GDPR redaction and order webhooks can fail on every retry [GDPR, AUTH, ORD] — library path CONFIRMED and re-verified; Shopify's refusal is PLAUSIBLE
 - **Where:**
   - `app/routes/webhooks.tsx:39`: `await authenticate.webhook(request)` is outside every try.
   - `app/shopify.server.ts:36`: `future.expiringOfflineAccessTokens: true`.
@@ -180,7 +180,7 @@ Scope notes from the validator (informational):
 
 ## High
 
-### H1. A quick reinstall keeps the old `installedAt`, so a late `app/uninstalled` or `shop/redact` treats the live install as uninstalled [AUTH, GDPR] — CONFIRMED in code; the timing is PLAUSIBLE
+### [x] H1. A quick reinstall keeps the old `installedAt`, so a late `app/uninstalled` or `shop/redact` treats the live install as uninstalled [AUTH, GDPR] — CONFIRMED in code; the timing is PLAUSIBLE
 - **Where:**
   - `app/lib/shop.server.ts:74-77`: `startsInstallation` comes from a separate read before the upsert, and is only true when the stored state is not `installed`.
   - `app/lib/webhooks.server.ts:341-345`: the stale-uninstall guard (`triggeredAt < installedAt`).
@@ -269,7 +269,7 @@ Scope notes from the validator (informational):
   3. If Shopify rotates refresh tokens, the loser throws: a 500 for a webhook, or a silent `null` token in `getAccessToken` callers.
   4. In the worst case the last `storeSession` persists an invalidated refresh token, and every later refresh fails (see C2) until the merchant reopens the admin.
 
-### M3. The `shop/redact` reinstall check only looks 49 hours back [GDPR] — PLAUSIBLE
+### [x] M3. The `shop/redact` reinstall check only looks 49 hours back [GDPR] — PLAUSIBLE
 - **Where:** `app/lib/compliance.server.ts:490`, `:513-518`.
 - **What is wrong:** `isLaterInstallation` treats an install as "later" only if `installedAt > triggeredAt - 49h`. That assumes Shopify always sends `shop/redact` exactly 48 hours after the uninstall.
 - **Scenario:**
@@ -278,13 +278,13 @@ Scope notes from the validator (informational):
   3. The reinstall falls outside the window, so `db.shop.delete` wipes the live shop.
 - **Fix direction:** compare against the actual uninstall time instead of a fixed window.
 
-### M4. `customers/redact` leaves the buyer's answers in a stored `DataRequest` export [GDPR] — CONFIRMED
+### [x] M4. `customers/redact` leaves the buyer's answers in a stored `DataRequest` export [GDPR] — CONFIRMED
 - **Where:** `app/lib/compliance.server.ts:111-125` (the export is written) and `:297-347` (`deleteOrdersForShop` never touches `DataRequest`).
 - **Scenario:**
   1. `customers/data_request` arrives for orders A and B, then `customers/redact` for the same orders.
   2. The buyer's verbatim `textValue` and `otherText` stay in `DataRequest.payload`, shown on the Settings page, for up to 30 days after the redact.
 
-### M5. Shopify's 5-second webhook budget is at risk on a cold start [ORD] — PLAUSIBLE
+### [x] M5. Shopify's 5-second webhook budget is at risk on a cold start [ORD] — PLAUSIBLE
 - **Where:**
   - `app/routes/webhooks.tsx:39`, `:61`, `:115`, `:117`, `:120`.
   - `app/lib/webhooks.server.ts:294`, `:456`, `:520-537`, `:545-562`.
@@ -443,46 +443,46 @@ Scope notes from the validator (informational):
 - **What is wrong:** on the last step Submit is simply disabled, with nothing showing which earlier question is missing.
 - **Effect:** buyers may give up. Nothing is lost on the server.
 
-### L10. Redacted orders get new `CheckoutLoad` and `OrderFact` rows [GDPR] — CONFIRMED
+### [x] L10. Redacted orders get new `CheckoutLoad` and `OrderFact` rows [GDPR] — CONFIRMED
 - **Where:** `app/lib/order-facts.server.ts:12-18`; `app/lib/serve-log.server.ts:59-72`; called from `app/routes/api.survey.tsx:133`, `:230`.
 - **What is wrong:** neither write checks `isRedactedOrder`.
 - **Scenario:** after `customers/redact`, the buyer reopens the Thank-you page. A new `OrderFact` (kept 90 days) and a `CheckoutLoad` with order id and country (kept 30 days) are written.
 
-### L11. A redacted order can be re-cached by a concurrent order webhook [ORD] — CONFIRMED (needs concurrency)
+### [x] L11. A redacted order can be re-cached by a concurrent order webhook [ORD] — CONFIRMED (needs concurrency)
 - **Where:** `app/lib/webhooks.server.ts:456` (the redacted check), then `:520-537` (the write). Not atomic with the redact.
 - **Scenario:**
   1. `orders/updated` passes the redacted check.
   2. `customers/redact` deletes the `OrderCache` row and inserts `RedactedOrder`.
   3. The webhook's update matches 0 rows, falls back to `create`, and recreates the redacted order's row.
 
-### L12. The deferred-redact drain does not save its progress [GDPR] — CONFIRMED
+### [x] L12. The deferred-redact drain does not save its progress [GDPR] — CONFIRMED
 - **Where:** `app/lib/compliance.server.ts:376-392`, `:405-421`.
 - **What is wrong:**
   - `startPendingDeletions` runs with `maxBatches = Infinity`, so the payload is only rewritten once the whole row is drained. A restart mid-drain starts over.
   - The dashboard and webhook drainers are not mutually excluded.
 - **Impact:** repeated work only; the deletes are idempotent.
 
-### L13. An unparseable `PendingDeletion` payload silently drops the deletion obligation [GDPR] — CONFIRMED (unlikely, since the payload is self-written)
+### [x] L13. An unparseable `PendingDeletion` payload silently drops the deletion obligation [GDPR] — CONFIRMED (unlikely, since the payload is self-written)
 - **Where:** `app/lib/compliance.server.ts:365-373`, `:384-385`.
 - **What is wrong:** a parse failure, or a non-array `orderIds`, sets `orderIds = []`. The row is then deleted with no log line.
 
-### L14. The deferred-redact sweep depends on traffic [GDPR] — PLAUSIBLE (deployment-dependent)
+### [x] L14. The deferred-redact sweep depends on traffic [GDPR] — PLAUSIBLE (deployment-dependent)
 - **Where:** `app/routes/webhooks.tsx:125-126`; `app/lib/compliance.server.ts:430-445`.
 - **What is wrong:** the remainder is drained only by other webhooks, dashboard visits or the external retention job. The in-process drain started by the redact is lost on a restart.
 - **Scenario:** a quiet, uninstalled shop with no cron configured can miss Shopify's 30-day deadline.
 
-### L16. The retention backstop can delete a just-reinstalled shop's sessions [GDPR] — CONFIRMED (narrow race)
+### [x] L16. The retention backstop can delete a just-reinstalled shop's sessions [GDPR] — CONFIRMED (narrow race)
 - **Where:** `app/lib/retention.server.ts:173-182`.
 - **What is wrong:** sessions are deleted by domain unconditionally, before the conditional `shop.deleteMany({ installState: "uninstalled" })`.
 - **Scenario:** a reinstall that lands in between loses its new session and has to re-authenticate.
 - **Also:** `uninstalledShopsDeleted` counts candidates, not actual deletions.
 
-### L17. `app/scopes_update` overwrites the stored scope with no ordering guard [GDPR, AUTH] — PLAUSIBLE
+### [x] L17. `app/scopes_update` overwrites the stored scope with no ordering guard [GDPR, AUTH] — PLAUSIBLE
 - **Where:** `app/lib/webhooks.server.ts:361-373`.
 - **What is wrong:** there is no `triggeredAt` / `installedAt` comparison.
 - **Scenario:** an out-of-order or pre-reinstall delivery writes an older scope set onto the new session. `canSync` then skips writes the merchant granted, and Settings shows the wrong grant state. It also writes for uninstalled shops.
 
-### L18. The `customers/data_request` export omits data held for the named orders [GDPR] — CONFIRMED
+### [x] L18. The `customers/data_request` export omits data held for the named orders [GDPR] — CONFIRMED
 - **Where:** `app/lib/compliance.server.ts:131-188`.
 - **What is wrong:** only answers are exported. `Response.country`, `locale`, `productIds` and `isFirstOrder`, the `OrderCache` totals, `OrderFact` and `CheckoutLoad.country` are all left out.
 
@@ -506,7 +506,7 @@ Scope notes from the validator (informational):
   2. `TOKEN_ENCRYPTION_KEY_PREVIOUS` is removed.
   3. The shop's tokens can no longer be decrypted (logged at warn only), and background Admin calls stop until the merchant reopens the app.
 
-### L22. Every order webhook resolves an access token it never uses [ORD] — CONFIRMED
+### [x] L22. Every order webhook resolves an access token it never uses [ORD] — CONFIRMED
 - **Where:** `app/routes/webhooks.tsx:115`, `:166-170`.
 - **What is wrong:** only `app_subscriptions/update` uses the token. When there is no session, `orders/*` still pays for a DB lookup plus `unauthenticated.admin`, and possibly a legacy exchange (network). That adds latency and failure points to M5 and C2.
 

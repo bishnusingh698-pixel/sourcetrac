@@ -90,6 +90,11 @@ model Shop {
   /// When the current installation began. A late app/uninstalled or
   /// shop/redact from an earlier installation is recognised by it.
   installedAt            DateTime?
+  /// When Shopify last granted the app a token for this shop (token exchange):
+  /// proof the app was installed then, even when no uninstall was recorded.
+  authorizedAt           DateTime?
+  /// X-Shopify-Triggered-At of the latest app/uninstalled, kept across reinstalls.
+  uninstallTriggeredAt   DateTime?
   plan                   Plan         @default(free)
   planStatus             PlanStatus   @default(active)
   subscriptionGid        String?

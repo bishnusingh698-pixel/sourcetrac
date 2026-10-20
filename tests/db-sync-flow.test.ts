@@ -185,7 +185,7 @@ describe("sync", () => {
       answers: [{ questionId: editor.questions[0]!.id, optionIds: [editor.questions[0]!.options[0]!.id] }],
       definition: { id: editor.id, name: editor.name, title: editor.title, layout: editor.layout, questions: editor.questions },
     } as Parameters<typeof submitAnswers>[0]);
-    expect(result.outcome).toBe("created");
+    if (result.outcome !== "created") throw new Error(`expected a stored answer, got ${result.outcome}`);
     const kinds = (await prisma.pendingSync.findMany({ where: { shopId, responseId: result.id } })).map((r) => r.kind);
     expect(kinds.sort()).toEqual(["flow", "tags"]);
     // The order is known, so the inline drain runs and both writes go out.

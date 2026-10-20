@@ -14,6 +14,7 @@ import {
   findShopById,
   getAccessToken,
   setCheckoutSupport,
+  lastKnownInstalledAt,
   setPlan,
 } from "~/lib/shop.server";
 import { checkoutSurfacesSupported, fetchShopPlanName } from "~/lib/shopify-rest.server";
@@ -339,10 +340,27 @@ export async function processWebhook(params: {
 
     case "app/uninstalled": {
       const shop = await findShopByDomain(shopDomain);
+      if (shop) {
+        // Remember when the app was removed, even when this delivery turns out
+        // to be stale: shop/redact compares a reinstall against it.
+        const removedAt = triggeredAt ?? new Date();
+        await retryDb(() =>
+          db.shop.updateMany({
+            where: {
+              id: shop.id,
+              OR: [{ uninstallTriggeredAt: null }, { uninstallTriggeredAt: { lt: removedAt } }],
+            },
+            data: { uninstallTriggeredAt: removedAt },
+          }),
+        );
+      }
       // A delivery retried after the merchant already reinstalled belongs to the
       // previous installation. Applying it would delete the new sessions, null
-      // the new token and drop a paying merchant to Free.
-      if (shop && triggeredAt && shop.installedAt && triggeredAt < shop.installedAt) {
+      // the new token and drop a paying merchant to Free. Shopify granting a
+      // token after the uninstall proves the reinstall, even when the first
+      // attempt at this delivery failed and `installedAt` is the old one.
+      const installedAt = shop ? lastKnownInstalledAt(shop) : null;
+      if (shop && triggeredAt && installedAt && triggeredAt < installedAt) {
         logger.info("app_uninstalled_stale_ignored", { shop_id: shop.id });
         return { action: "app_uninstalled", shopInternalId: shop.id };
       }
@@ -368,13 +386,22 @@ export async function processWebhook(params: {
       const current = Array.isArray(payload.current)
         ? payload.current.filter((scope): scope is string => typeof scope === "string")
         : null;
+      const shop = await findShopByDomain(shopDomain);
+      if (!shop || shop.installState !== "installed") {
+        logger.info("scopes_update_ignored_not_installed", { shop_domain: shopDomain });
+        return { action: "scopes_updated", shopInternalId: shop?.id ?? "" };
+      }
+      // A token granted after this change already carries the newer scopes; a
+      // late or retried delivery must not write the older set over them.
+      if (triggeredAt && shop.authorizedAt && triggeredAt < shop.authorizedAt) {
+        logger.info("scopes_update_stale_ignored", { shop_id: shop.id });
+        return { action: "scopes_updated", shopInternalId: shop.id };
+      }
       if (current) {
         await retryDb(() =>
           db.session.updateMany({ where: { shop: shopDomain, isOnline: false }, data: { scope: current.join(",") } }),
         );
       }
-      const shop = await findShopByDomain(shopDomain);
-      if (!shop) return { action: "scopes_updated", shopInternalId: "" };
       logger.info("scopes_updated", { shop_id: shop.id, current: payload.current });
       return { action: "scopes_updated", shopInternalId: shop.id };
     }
@@ -532,6 +559,15 @@ export async function upsertOrderCache(
       );
       applied = true;
       created = true;
+      // A customers/redact can land between the tombstone check above and
+      // this insert: it records the tombstone first, then deletes the row,
+      // which an update would have found but a fresh create re-adds. Checked
+      // again now that the row exists, so a redacted order never stays.
+      if (await isRedactedOrder(shopInternalId, orderId)) {
+        await retryDb(() => db.orderCache.deleteMany({ where: { shopId: shopInternalId, orderId } }));
+        logger.info("order_redacted_ignored", { shop_id: shopInternalId, order_id: orderId });
+        return { orderId, applied: false, reconciled: 0 };
+      }
     } catch (error) {
       if (!isUniqueViolation(error)) throw error;
       // Another delivery created the row between our update and our create (an

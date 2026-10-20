@@ -53,3 +53,38 @@ const shopify = shopifyApp({
 
 export const { addDocumentResponseHeaders, authenticate, login, registerWebhooks, unauthenticated } = shopify;
 export default shopify;
+
+/**
+ * Webhook verification only, by the library's own `authenticate.webhook`, on an
+ * instance whose session storage holds nothing.
+ *
+ * The main instance loads the offline session on every delivery and, with
+ * expiring tokens, refreshes it first; a refused or failed refresh throws
+ * before our handler runs. After an uninstall Shopify refuses that refresh, so
+ * `app/uninstalled`, `shop/redact` and the customer redactions answered 500 on
+ * every retry and were never applied. No handler needs the library's session:
+ * the one that needs a token (`app_subscriptions/update`) fetches it itself.
+ */
+const noSessions = {
+  storeSession: async () => true,
+  loadSession: async () => undefined,
+  deleteSession: async () => true,
+  deleteSessions: async () => true,
+  findSessionsByShop: async () => [],
+  isReady: async () => true,
+};
+
+const webhookVerifier = shopifyApp({
+  apiKey: env().SHOPIFY_API_KEY,
+  apiSecretKey: env().SHOPIFY_API_SECRET,
+  apiVersion: env().SHOPIFY_API_VERSION as ApiVersion,
+  scopes: env().SCOPES.split(",")
+    .map((scope) => scope.trim())
+    .filter(Boolean),
+  appUrl: env().APP_URL,
+  authPathPrefix: "/auth",
+  sessionStorage: noSessions as unknown as typeof sessionStorage,
+  future: { expiringOfflineAccessTokens: true },
+});
+
+export const authenticateWebhook = webhookVerifier.authenticate.webhook;

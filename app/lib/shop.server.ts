@@ -33,6 +33,10 @@ export type ShopRecord = {
   installState: "installed" | "uninstalled";
   /// When the current installation began (null on rows from before it was kept).
   installedAt: Date | null;
+  /// When Shopify last granted a token for the shop.
+  authorizedAt: Date | null;
+  /// When the latest app/uninstalled was triggered, kept across reinstalls.
+  uninstallTriggeredAt: Date | null;
 };
 
 export function defaultOptionsJson(): string {
@@ -86,6 +90,7 @@ export async function upsertShop(params: { shopDomain: string; shopId: string })
         installState: "installed",
         uninstalledAt: null,
         installedAt: new Date(),
+        authorizedAt: new Date(),
       },
       update: {
         // provisionShop falls back to the domain when Shopify's identity lookup
@@ -94,6 +99,11 @@ export async function upsertShop(params: { shopDomain: string; shopId: string })
         installState: "installed",
         uninstalledAt: null,
         ...(startsInstallation ? { installedAt: new Date() } : {}),
+        // Every caller holds a session Shopify just granted or accepted, so the
+        // app is installed now. A late uninstall triggered before this moment
+        // belongs to an earlier installation, even when that uninstall was
+        // never recorded and `installedAt` is still the old one.
+        authorizedAt: new Date(),
       },
       select: { id: true },
     }),
@@ -122,9 +132,21 @@ export async function findShopByDomain(shopDomain: string): Promise<ShopRecord |
         checkoutCheckedAt: true,
         installState: true,
         installedAt: true,
+        authorizedAt: true,
+        uninstallTriggeredAt: true,
       },
     }),
   );
+}
+
+/**
+ * The latest moment the app is known to have been installed on this shop: the
+ * start of its current installation or Shopify's last token grant.
+ */
+export function lastKnownInstalledAt(shop: { installedAt: Date | null; authorizedAt: Date | null }): Date | null {
+  const times = [shop.installedAt, shop.authorizedAt].filter((t): t is Date => t !== null);
+  if (times.length === 0) return null;
+  return new Date(Math.max(...times.map((t) => t.getTime())));
 }
 
 /** Lookup for request paths where an unknown shop must 404. */
@@ -155,6 +177,8 @@ export async function findShopById(shopId: string): Promise<ShopRecord | null> {
         checkoutCheckedAt: true,
         installState: true,
         installedAt: true,
+        authorizedAt: true,
+        uninstallTriggeredAt: true,
       },
     }),
   );
