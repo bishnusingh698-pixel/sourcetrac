@@ -1043,7 +1043,8 @@
     "products_remove": "Remover {{name}}",
     "products_missing": "Produto {{id}} (não encontrado na sua loja)",
     "products_unavailable": "O seletor de produtos da Shopify não abriu. Recarregue a página e tente de novo.",
-    "countries_other_questions": "Quer perguntas diferentes para compradores de um país? Duplique esta pesquisa, escolha os países aqui e coloque-a acima desta na página Pesquisas."
+    "countries_other_questions": "Quer perguntas diferentes para compradores de um país? Duplique esta pesquisa, escolha os países aqui e coloque-a acima desta na página Pesquisas.",
+    "language_rtl": "Escrito da direita para a esquerda. O checkout da Shopify mostra a pesquisa da direita para a esquerda para esses compradores."
   },
   "preview": {
     "title": "Prévia",

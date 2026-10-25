@@ -1043,7 +1043,8 @@
     "products_remove": "{{name}} verwijderen",
     "products_missing": "Product {{id}} (niet meer gevonden in je winkel)",
     "products_unavailable": "De productkiezer van Shopify kon niet worden geopend. Laad de pagina opnieuw en probeer het nog eens.",
-    "countries_other_questions": "Andere vragen voor kopers in één land? Dupliceer deze enquête, kies hier de landen en zet hem op de pagina Enquêtes boven deze."
+    "countries_other_questions": "Andere vragen voor kopers in één land? Dupliceer deze enquête, kies hier de landen en zet hem op de pagina Enquêtes boven deze.",
+    "language_rtl": "Wordt van rechts naar links geschreven. De Shopify-checkout toont de enquête voor deze kopers van rechts naar links."
   },
   "preview": {
     "title": "Voorbeeld",

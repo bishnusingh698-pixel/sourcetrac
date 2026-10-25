@@ -1043,7 +1043,8 @@
     "products_remove": "删除 {{name}}",
     "products_missing": "产品 {{id}}（商店中已找不到）",
     "products_unavailable": "无法打开 Shopify 产品选择器。请刷新页面后重试。",
-    "countries_other_questions": "想为某个国家/地区的买家设置不同的问题？复制此问卷，在此选择国家/地区，并在“问卷”页面将其移到此问卷上方。"
+    "countries_other_questions": "想为某个国家/地区的买家设置不同的问题？复制此问卷，在此选择国家/地区，并在“问卷”页面将其移到此问卷上方。",
+    "language_rtl": "从右向左书写。Shopify 结账页会为这些买家从右向左排列问卷。"
   },
   "preview": {
     "title": "预览",

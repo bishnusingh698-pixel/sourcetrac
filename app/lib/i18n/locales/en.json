@@ -1043,7 +1043,8 @@
     "products_remove": "Remove {{name}}",
     "products_missing": "Product {{id}} (no longer found in your store)",
     "products_unavailable": "Shopify's product picker couldn't open here. Reload the page and try again.",
-    "countries_other_questions": "Want different questions for buyers in one country? Duplicate this survey, set its countries here and move it above this one on the Surveys page."
+    "countries_other_questions": "Want different questions for buyers in one country? Duplicate this survey, set its countries here and move it above this one on the Surveys page.",
+    "language_rtl": "Written right to left. Shopify's checkout lays the survey out right to left for these buyers."
   },
   "preview": {
     "title": "Preview",

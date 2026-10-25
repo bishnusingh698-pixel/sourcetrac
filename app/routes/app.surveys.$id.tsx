@@ -43,7 +43,7 @@ import { getBlockSeen, markBlockAdded } from "~/lib/block-seen.server";
 import { BlockMissingBanner, postedPlacements } from "~/components/block-missing";
 import { checkoutEditorUrl, placementsMissingBlock } from "~/lib/checkout-editor";
 import { effectivePlan } from "~/lib/plans";
-import { LANGUAGES } from "~/lib/i18n";
+import { BUYER_LANGUAGES } from "@shared/buyer-languages";
 import { LIMITS } from "@shared/survey-rules";
 import { planTier } from "@shared/plan-features";
 import { getReadiness, readinessBlocksGoLive } from "@shared/templates/readiness";
@@ -89,7 +89,9 @@ export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) =>
     shopCurrency: display.currencyCode ?? null,
     // Start and end dates are the store's calendar days, in its own zone.
     shopTimeZone: isValidTimeZone(localeInfo.timeZone) ? localeInfo.timeZone : null,
-    languages: LANGUAGES.map((l) => ({ code: l.code, name: l.nativeName })),
+    // Every buyer language a survey can be translated into, not only the
+    // admin's ten (B11): Arabic, Hebrew, Korean, Polish and more.
+    languages: BUYER_LANGUAGES.map((l) => ({ code: l.code, name: l.name, rtl: l.rtl === true })),
     defaultLanguage: resolveAdminLanguage(request, shop.language, shop.adminLocale),
     limits: LIMITS,
     plan: planTier(effectivePlan(shop)),

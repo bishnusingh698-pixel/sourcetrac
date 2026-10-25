@@ -46,8 +46,8 @@ brief asks for.
 | B7 | minor | `app/lib/i18n/index.ts` (`intlLocaleFor`) | Dates and numbers follow the *language*, not the merchant's region: an English-speaking UK or Australian merchant gets US month/day order; a Swiss German merchant gets German separators. Shopify tells us the admin locale (`en-GB`, `de-CH`) and it is stored but unused for formatting. | [x] |
 | B8 | minor | `app/routes/app.responses.tsx` | Order totals are printed raw (`42.50 USD`) instead of locale-formatted money, unlike every other page. | [x] |
 | B9 | minor | `app/lib/csv.ts` | Exports omit the buyer's country, language and first-order flag, all of which are stored, so a merchant cannot analyse by them in a spreadsheet. | [x] |
-| B10 | minor | `extensions/*/locales` | Only 10 buyer languages. An Arabic, Hebrew, Korean, Polish, Turkish, Danish, Finnish or Norwegian checkout shows the block's buttons ("Submit", "Other", "Thanks") in English. | [ ] |
-| B11 | minor | `app/components/survey-settings-panels.tsx` (`Languages`) | Survey wording can only be translated into the 10 *admin* languages, so a merchant selling to Arabic- or Hebrew-speaking buyers cannot translate their survey at all. | [ ] |
+| B10 | minor | `extensions/*/locales` | Only 10 buyer languages. An Arabic, Hebrew, Korean, Polish, Turkish, Danish, Finnish or Norwegian checkout shows the block's buttons ("Submit", "Other", "Thanks") in English. | [x] |
+| B11 | minor | `app/components/survey-settings-panels.tsx` (`Languages`) | Survey wording can only be translated into the 10 *admin* languages, so a merchant selling to Arabic- or Hebrew-speaking buyers cannot translate their survey at all. | [x] |
 | B12 | minor | `app/components/survey-editor.tsx` (`FrameText`) | The look section offered only three of the eight stored design settings; the rest were unreachable. | [x] |
 
 Checked and found sound (no change): duplicate submission handling (unique
@@ -83,8 +83,8 @@ support address (only `sourcetracsupport@gmail.com` exists in the code).
 | F6 | Analytics country filter | Both Analytics tabs filter by the buyer's country (stored on every v2 answer). | [x] |
 | F7 | Analytics in the store's time zone | B6. Range edges and trend days are the store's calendar days. | [x] |
 | F8 | Look settings that work | B1/B12: show title, progress, star or number rating, scale labels, border, spacing, button and thank-you text, all applied in checkout and in the admin preview. | [x] |
-| F9 | More buyer languages, RTL | B10/B11: checkout UI strings in Arabic, Hebrew, Korean, Polish, Turkish, Danish, Finnish and Norwegian (Shopify renders right-to-left checkouts itself; our block uses logical layout only). Survey wording translatable into those too. | [ ] |
-| F10 | Easier new admin languages | `scripts/i18n-merge.mjs` merges a key file into every locale; the language list documents the three steps. | [ ] |
+| F9 | More buyer languages, RTL | B10/B11: checkout UI strings in Arabic, Hebrew, Korean, Polish, Turkish, Danish, Finnish and Norwegian (Shopify renders right-to-left checkouts itself; our block uses logical layout only). Survey wording translatable into those too. | [x] |
+| F10 | Easier new admin languages | `scripts/i18n-merge.mjs` merges a key file into every locale; the language list documents the three steps. | [x] |
 | F11 | Export columns | B9: `country`, `buyer_language`, `first_order` appended (existing columns keep their positions). | [x] |
 
 Existing features verified rather than rebuilt: multiple question types

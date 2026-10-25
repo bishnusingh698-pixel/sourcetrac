@@ -1043,7 +1043,8 @@
     "products_remove": "Supprimer {{name}}",
     "products_missing": "Produit {{id}} (introuvable dans votre boutique)",
     "products_unavailable": "Le sélecteur de produits de Shopify n'a pas pu s'ouvrir. Rechargez la page et réessayez.",
-    "countries_other_questions": "Des questions différentes pour les acheteurs d'un pays ? Dupliquez cette enquête, choisissez ses pays ici et placez-la au-dessus de celle-ci sur la page Enquêtes."
+    "countries_other_questions": "Des questions différentes pour les acheteurs d'un pays ? Dupliquez cette enquête, choisissez ses pays ici et placez-la au-dessus de celle-ci sur la page Enquêtes.",
+    "language_rtl": "S'écrit de droite à gauche. Le paiement Shopify affiche l'enquête de droite à gauche pour ces acheteurs."
   },
   "preview": {
     "title": "Aperçu",

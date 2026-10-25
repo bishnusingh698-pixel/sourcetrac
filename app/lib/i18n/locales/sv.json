@@ -1043,7 +1043,8 @@
     "products_remove": "Ta bort {{name}}",
     "products_missing": "Produkt {{id}} (finns inte längre i butiken)",
     "products_unavailable": "Shopifys produktväljare kunde inte öppnas. Ladda om sidan och försök igen.",
-    "countries_other_questions": "Vill du ställa andra frågor till köpare i ett land? Duplicera enkäten, välj länderna här och flytta den ovanför den här på sidan Enkäter."
+    "countries_other_questions": "Vill du ställa andra frågor till köpare i ett land? Duplicera enkäten, välj länderna här och flytta den ovanför den här på sidan Enkäter.",
+    "language_rtl": "Skrivs från höger till vänster. Shopifys kassa visar enkäten från höger till vänster för dessa köpare."
   },
   "preview": {
     "title": "Förhandsvisning",

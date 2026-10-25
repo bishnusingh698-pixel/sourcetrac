@@ -1043,7 +1043,8 @@
     "products_remove": "{{name}} entfernen",
     "products_missing": "Produkt {{id}} (nicht mehr im Shop gefunden)",
     "products_unavailable": "Die Produktauswahl von Shopify konnte hier nicht geöffnet werden. Laden Sie die Seite neu und versuchen Sie es erneut.",
-    "countries_other_questions": "Andere Fragen für Käufer in einem Land? Duplizieren Sie die Umfrage, wählen Sie hier ihre Länder und schieben Sie sie auf der Seite „Umfragen“ über diese."
+    "countries_other_questions": "Andere Fragen für Käufer in einem Land? Duplizieren Sie die Umfrage, wählen Sie hier ihre Länder und schieben Sie sie auf der Seite „Umfragen“ über diese.",
+    "language_rtl": "Wird von rechts nach links geschrieben. Der Shopify-Checkout zeigt die Umfrage für diese Käufer von rechts nach links."
   },
   "preview": {
     "title": "Vorschau",

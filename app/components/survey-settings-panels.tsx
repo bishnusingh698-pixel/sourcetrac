@@ -383,7 +383,7 @@ export function Languages({
 }: {
   draft: EditorSurvey;
   update: Update;
-  languages: Array<{ code: string; name: string }>;
+  languages: Array<{ code: string; name: string; rtl?: boolean }>;
   defaultLanguage: string;
   t: TFn;
   limits: typeof LIMITS;
@@ -440,6 +440,11 @@ export function Languages({
           </s-option>
         ))}
       </s-select>
+      {others.find((language) => language.code === locale)?.rtl ? (
+        <s-text color="subdued" fontSize="small">
+          {t("editor.language_rtl")}
+        </s-text>
+      ) : null}
 
       {draft.questions.map((question, qi) => (
         <s-box key={question.id || qi} padding="small" border="base" borderRadius="base">
