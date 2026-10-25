@@ -18,7 +18,8 @@
     "channels": "Channel report",
     "preferences": "Settings",
     "current": "(current page)",
-    "templates": "Templates"
+    "templates": "Templates",
+    "analytics": "Analytics"
   },
   "common": {
     "cancel": "Cancel",
@@ -141,7 +142,7 @@
     "language_step_skip": "Skip for now",
     "language_detected": "Detected from your Shopify admin",
     "step4_title": "Read your results",
-    "step4_body": "Results groups answers by question and shows the revenue behind each channel.",
+    "step4_body": "Analytics shows where buyers came from, the revenue behind each channel, and every question's answers.",
     "step4_action": "View results",
     "step1_body_done": "You have a live survey.",
     "step2_body_done": "The SourceTrac block has loaded on your Thank-you page."
@@ -161,7 +162,7 @@
     "truncated": "This file holds only the newest {{limit}} answers. Older answers were left out.",
     "choose_label": "What to download",
     "choose_all": "All surveys",
-    "choose_channels": "Channel report only (how buyers heard about you)",
+    "choose_channels": "Channels only (how buyers heard about you)",
     "shape_all": "One row per answer, with its survey and question. An order with several answers has several rows, so don't add up order_total.",
     "shape_survey": "One row per buyer, with one column per question.",
     "shape_channels": "One row per order, with the channel the buyer chose."
@@ -815,7 +816,7 @@
     "buyers_unknown_other": "{{count}} orders did not say whether they were a first order.",
     "surveys_subtitle": "Live surveys, and any others that got answers. {{range}}.",
     "col_key_result": "Key result",
-    "compare_surveys": "Compare surveys in Results",
+    "compare_surveys": "Compare surveys in Analytics",
     "capped_note": "Scores, buyers and surveys are based on the newest {{limit}} answers in this period."
   },
   "support": {
@@ -994,8 +995,8 @@
     "learn_stop_done": "Auto-stop already paused this survey once. It won't pause it again; switch it off and on to arm it again.",
     "status_auto_paused": "Paused automatically: the results became reliable. Buyers don't see this survey. Turn it back on any time; it won't pause itself again.",
     "other_label": "Label for the “Other” answer",
-    "channel_question": "Count this in the Channel report",
-    "channel_question_details": "Tick this for a “How did you hear about us?” question. Its answers become your channels, with their revenue, on the Dashboard and the Channel report.",
+    "channel_question": "Count these answers as your channels in Analytics",
+    "channel_question_details": "Tick this for a “How did you hear about us?” question. Its answers become your channels, with their revenue, on Home and under Analytics › Channels.",
     "where_title": "Where it shows",
     "placement_order_status": "Order status page",
     "audience_order_status_note": "On the Order status page, SourceTrac knows whether it is a first order only when the Thank-you page also has the SourceTrac block. Other orders don't see this survey there.",
@@ -1136,5 +1137,23 @@
     "too_few": "Pick at least {{min}} answers.",
     "failed": "The survey couldn't be created. Try again in a moment.",
     "cta": "Quick start (2 minutes)"
+  },
+  "tabs": {
+    "label": "Pages in this section",
+    "my_surveys": "My surveys",
+    "templates": "Templates",
+    "quick_start": "Quick start",
+    "channels": "Channels",
+    "results": "Survey results",
+    "answers": "Answers",
+    "export": "Export"
+  },
+  "analytics": {
+    "country_filter": "Buyers in",
+    "all_countries": "All countries",
+    "country_option": "{{country}} ({{count}})",
+    "zone_note": "Days follow your store's time zone ({{zone}}).",
+    "country_note": "Only buyers who checked out in {{country}}.",
+    "rate_unavailable_country": "The answer rate isn't shown for one country: Shopify orders don't record where the buyer checked out, so there is nothing to set the answers against."
   }
 }

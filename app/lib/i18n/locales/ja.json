@@ -18,7 +18,8 @@
     "channels": "チャネルレポート",
     "preferences": "設定",
     "current": "（現在のページ）",
-    "templates": "テンプレート"
+    "templates": "テンプレート",
+    "analytics": "分析"
   },
   "common": {
     "cancel": "キャンセル",
@@ -141,7 +142,7 @@
     "language_step_skip": "後で選ぶ",
     "language_detected": "Shopify 管理画面から検出",
     "step4_title": "結果を確認する",
-    "step4_body": "結果は質問ごとに回答をまとめ、チャネルごとの売上を表示します。",
+    "step4_body": "「分析」では、購入者の流入元、チャネルごとの売上、各質問の回答を確認できます。",
     "step4_action": "結果を見る",
     "step1_body_done": "公開中のアンケートがあります。",
     "step2_body_done": "SourceTracブロックがサンクスページで読み込まれました。"
@@ -161,7 +162,7 @@
     "truncated": "このファイルには最新の{{limit}}件の回答のみが含まれます。古い回答は含まれていません。",
     "choose_label": "ダウンロードする内容",
     "choose_all": "すべてのアンケート",
-    "choose_channels": "チャネルレポートのみ（購入者がどこでストアを知ったか）",
+    "choose_channels": "チャネルのみ（購入者がどこで知ったか）",
     "shape_all": "回答ごとに 1 行で、アンケートと質問を含みます。複数回答のある注文は複数行になるため、order_total は合計しないでください。",
     "shape_survey": "購入者ごとに 1 行、質問ごとに 1 列です。",
     "shape_channels": "注文ごとに 1 行で、購入者が選んだチャネルを含みます。"
@@ -815,7 +816,7 @@
     "buyers_unknown_other": "{{count}} 件の注文は初回注文かどうか不明です。",
     "surveys_subtitle": "公開中のアンケートと、回答があったその他のアンケート。{{range}}。",
     "col_key_result": "主な結果",
-    "compare_surveys": "結果ページでアンケートを比較",
+    "compare_surveys": "「分析」でアンケートを比較",
     "capped_note": "スコア、購入者、アンケートの数値は、この期間の最新 {{limit}} 件の回答に基づいています。"
   },
   "support": {
@@ -994,8 +995,8 @@
     "learn_stop_done": "自動停止はこのアンケートをすでに一度停止しました。再び停止することはありません。もう一度有効にするには、オフにしてからオンにしてください。",
     "status_auto_paused": "結果が信頼できるようになったため自動的に一時停止しました。購入者には表示されません。いつでも再開でき、再び自動停止することはありません。",
     "other_label": "「その他」の表示名",
-    "channel_question": "チャネルレポートに含める",
-    "channel_question_details": "「当店をどこで知りましたか？」のような質問で選択してください。回答が売上とともに、ダッシュボードとチャネルレポートのチャネルになります。",
+    "channel_question": "これらの回答を「分析」のチャネルとして集計する",
+    "channel_question_details": "「どこで当店を知りましたか？」の質問でオンにします。回答がチャネルとなり、ホームと「分析 › チャネル」に売上とともに表示されます。",
     "where_title": "表示する場所",
     "placement_order_status": "注文ステータスページ",
     "audience_order_status_note": "注文状況ページでは、サンクスページにもSourceTracブロックがある場合にのみ、初回注文かどうかがわかります。それ以外の注文には、そこでこのアンケートは表示されません。",
@@ -1136,5 +1137,23 @@
     "too_few": "回答を {{min}} 件以上選んでください。",
     "failed": "アンケートを作成できませんでした。しばらくしてからもう一度お試しください。",
     "cta": "クイックスタート（2分）"
+  },
+  "tabs": {
+    "label": "このセクションのページ",
+    "my_surveys": "マイアンケート",
+    "templates": "テンプレート",
+    "quick_start": "クイックスタート",
+    "channels": "チャネル",
+    "results": "アンケート結果",
+    "answers": "回答",
+    "export": "エクスポート"
+  },
+  "analytics": {
+    "country_filter": "購入者の国",
+    "all_countries": "すべての国",
+    "country_option": "{{country}}（{{count}}）",
+    "zone_note": "日付はストアのタイムゾーン（{{zone}}）に基づきます。",
+    "country_note": "{{country}} で購入した購入者のみ。",
+    "rate_unavailable_country": "国を1つに絞ると回答率は表示されません。Shopify の注文には購入者の国が記録されないため、回答数と比べる基準がありません。"
   }
 }

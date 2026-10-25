@@ -1,5 +1,6 @@
 import { Form, redirect, useActionData, useLoaderData, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from "react-router";
-import { useState } from "react";
+
+import { SectionTabs } from "~/components/section-tabs";import { useState } from "react";
 
 import { Panel, type BadgeTone, PageIntro } from "~/components/admin-ui";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
@@ -40,7 +41,7 @@ import { db } from "~/db.server";
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "surveys.title");
 
-export const handle = { titleKey: "surveys.title" };
+export const handle = { titleKey: "nav.surveys" };
 
 function statusTone(status: SurveyListItem["status"]): BadgeTone {
   if (status === "active") return "success";
@@ -207,6 +208,7 @@ export default function Surveys() {
 
   return (
     <s-stack gap="base">
+      <SectionTabs section="surveys" t={t} />
       <PageIntro actions={createActions}>{t("surveys.subtitle")}</PageIntro>
       {failureText ? <s-banner tone="critical">{failureText}</s-banner> : null}
       {missing.length > 0 ? (

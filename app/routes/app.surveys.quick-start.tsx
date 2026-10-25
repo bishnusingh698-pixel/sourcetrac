@@ -10,6 +10,7 @@ import {
   type MetaFunction,
 } from "react-router";
 
+import { SectionTabs } from "~/components/section-tabs";
 import { Banner, PageIntro, Panel } from "~/components/admin-ui";
 import { CountrySelect, countryName } from "~/components/country-select";
 import { SurveyPreview } from "~/components/survey-preview";
@@ -45,7 +46,7 @@ import { TEMPLATE_LOCALES, templateText } from "@shared/templates/locales";
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "quick.title");
 
-export const handle = { titleKey: "quick.title" };
+export const handle = { titleKey: "nav.surveys" };
 
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -242,6 +243,7 @@ export default function QuickStart() {
 
   return (
     <s-stack gap="base">
+      <SectionTabs section="surveys" t={t} />
       <PageIntro
         actions={
           <s-button href="/app/surveys/library" variant="tertiary">

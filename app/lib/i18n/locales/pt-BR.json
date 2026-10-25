@@ -18,7 +18,8 @@
     "channels": "Relatório de canais",
     "preferences": "Configurações",
     "current": "(página atual)",
-    "templates": "Modelos"
+    "templates": "Modelos",
+    "analytics": "Análises"
   },
   "common": {
     "cancel": "Cancelar",
@@ -141,7 +142,7 @@
     "language_step_skip": "Pular por enquanto",
     "language_detected": "Detectado pelo seu admin da Shopify",
     "step4_title": "Veja seus resultados",
-    "step4_body": "Resultados agrupa as respostas por pergunta e mostra a receita de cada canal.",
+    "step4_body": "Análises mostra de onde vieram os compradores, a receita de cada canal e as respostas de cada pergunta.",
     "step4_action": "Ver resultados",
     "step1_body_done": "Você tem uma pesquisa publicada.",
     "step2_body_done": "O bloco do SourceTrac carregou na sua página de agradecimento."
@@ -161,7 +162,7 @@
     "truncated": "Este arquivo contém apenas as {{limit}} respostas mais recentes. As mais antigas ficaram de fora.",
     "choose_label": "O que baixar",
     "choose_all": "Todas as pesquisas",
-    "choose_channels": "Só o relatório de canais (como os compradores conheceram você)",
+    "choose_channels": "Só canais (como os compradores conheceram você)",
     "shape_all": "Uma linha por resposta, com a pesquisa e a pergunta. Um pedido com várias respostas tem várias linhas, então não some order_total.",
     "shape_survey": "Uma linha por comprador, com uma coluna por pergunta.",
     "shape_channels": "Uma linha por pedido, com o canal que o comprador escolheu."
@@ -815,7 +816,7 @@
     "buyers_unknown_other": "{{count}} pedidos não indicaram se foram um primeiro pedido.",
     "surveys_subtitle": "Pesquisas ativas e qualquer outra que recebeu respostas. {{range}}.",
     "col_key_result": "Resultado principal",
-    "compare_surveys": "Comparar pesquisas em Resultados",
+    "compare_surveys": "Comparar pesquisas em Análises",
     "capped_note": "Notas, compradores e pesquisas se baseiam nas {{limit}} respostas mais recentes deste período."
   },
   "support": {
@@ -994,8 +995,8 @@
     "learn_stop_done": "A parada automática já pausou esta pesquisa uma vez. Ela não vai pausar de novo; desative e ative para armá-la outra vez.",
     "status_auto_paused": "Pausada automaticamente: os resultados ficaram confiáveis. Os compradores não veem esta pesquisa. Ative de novo quando quiser; ela não vai pausar outra vez.",
     "other_label": "Texto da resposta “Outro”",
-    "channel_question": "Contar no relatório de canais",
-    "channel_question_details": "Marque numa pergunta como “Como você nos conheceu?”. As respostas viram seus canais, com a receita, no Painel e no relatório de canais.",
+    "channel_question": "Contar estas respostas como seus canais em Análises",
+    "channel_question_details": "Marque para uma pergunta “Como você nos conheceu?”. As respostas viram seus canais, com a receita, no Início e em Análises › Canais.",
     "where_title": "Onde aparece",
     "placement_order_status": "Página de status do pedido",
     "audience_order_status_note": "Na página de status do pedido, o SourceTrac só sabe se é um primeiro pedido quando a página de agradecimento também tem o bloco do SourceTrac. Os outros pedidos não veem esta pesquisa ali.",
@@ -1136,5 +1137,23 @@
     "too_few": "Escolha pelo menos {{min}} respostas.",
     "failed": "Não foi possível criar a pesquisa. Tente novamente em instantes.",
     "cta": "Início rápido (2 minutos)"
+  },
+  "tabs": {
+    "label": "Páginas desta seção",
+    "my_surveys": "Minhas pesquisas",
+    "templates": "Modelos",
+    "quick_start": "Início rápido",
+    "channels": "Canais",
+    "results": "Resultados das pesquisas",
+    "answers": "Respostas",
+    "export": "Exportar"
+  },
+  "analytics": {
+    "country_filter": "Compradores em",
+    "all_countries": "Todos os países",
+    "country_option": "{{country}} ({{count}})",
+    "zone_note": "Os dias seguem o fuso horário da sua loja ({{zone}}).",
+    "country_note": "Só compradores que finalizaram a compra em {{country}}.",
+    "rate_unavailable_country": "A taxa de resposta não aparece para um único país: os pedidos da Shopify não registram onde o comprador finalizou a compra, então não há com o que comparar as respostas."
   }
 }

@@ -18,7 +18,8 @@
     "channels": "Report canali",
     "preferences": "Impostazioni",
     "current": "(pagina attuale)",
-    "templates": "Modelli"
+    "templates": "Modelli",
+    "analytics": "Analisi"
   },
   "common": {
     "cancel": "Annulla",
@@ -141,7 +142,7 @@
     "language_step_skip": "Salta per ora",
     "language_detected": "Rilevata dal tuo admin Shopify",
     "step4_title": "Consulta i risultati",
-    "step4_body": "Risultati raggruppa le risposte per domanda e mostra i ricavi di ogni canale.",
+    "step4_body": "Analisi mostra da dove arrivano gli acquirenti, il fatturato di ogni canale e le risposte a ogni domanda.",
     "step4_action": "Vedi risultati",
     "step1_body_done": "Hai un sondaggio pubblicato.",
     "step2_body_done": "Il blocco SourceTrac si è caricato nella tua pagina di ringraziamento."
@@ -161,7 +162,7 @@
     "truncated": "Questo file contiene solo le {{limit}} risposte più recenti. Quelle più vecchie sono state escluse.",
     "choose_label": "Cosa scaricare",
     "choose_all": "Tutti i sondaggi",
-    "choose_channels": "Solo report dei canali (come ti hanno conosciuto gli acquirenti)",
+    "choose_channels": "Solo canali (come ti hanno conosciuto gli acquirenti)",
     "shape_all": "Una riga per risposta, con il suo sondaggio e la sua domanda. Un ordine con più risposte ha più righe, quindi non sommare order_total.",
     "shape_survey": "Una riga per acquirente, con una colonna per domanda.",
     "shape_channels": "Una riga per ordine, con il canale scelto dall'acquirente."
@@ -815,7 +816,7 @@
     "buyers_unknown_other": "{{count}} ordini non indicano se erano un primo ordine.",
     "surveys_subtitle": "Sondaggi attivi e tutti gli altri che hanno ricevuto risposte. {{range}}.",
     "col_key_result": "Risultato chiave",
-    "compare_surveys": "Confronta i sondaggi in Risultati",
+    "compare_surveys": "Confronta i sondaggi in Analisi",
     "capped_note": "Punteggi, acquirenti e sondaggi si basano sulle {{limit}} risposte più recenti di questo periodo."
   },
   "support": {
@@ -994,8 +995,8 @@
     "learn_stop_done": "L'arresto automatico ha già messo in pausa questo sondaggio una volta. Non lo farà di nuovo; disattivalo e riattivalo per riarmarlo.",
     "status_auto_paused": "In pausa automaticamente: i risultati sono diventati affidabili. Gli acquirenti non vedono questo sondaggio. Riattivalo quando vuoi; non si fermerà di nuovo.",
     "other_label": "Testo della risposta «Altro»",
-    "channel_question": "Conta nel report dei canali",
-    "channel_question_details": "Selezionalo per una domanda tipo «Come ci hai conosciuto?». Le risposte diventano i tuoi canali, con il fatturato, nella Dashboard e nel report dei canali.",
+    "channel_question": "Conta queste risposte come i tuoi canali in Analisi",
+    "channel_question_details": "Selezionalo per una domanda «Come ci hai conosciuto?». Le risposte diventano i tuoi canali, con il fatturato, nella Home e in Analisi › Canali.",
     "where_title": "Dove appare",
     "placement_order_status": "Pagina di stato dell'ordine",
     "audience_order_status_note": "Nella pagina dello stato dell'ordine, SourceTrac sa se è un primo ordine solo quando anche la pagina di ringraziamento ha il blocco SourceTrac. Gli altri ordini lì non vedono questo sondaggio.",
@@ -1136,5 +1137,23 @@
     "too_few": "Scegli almeno {{min}} risposte.",
     "failed": "Impossibile creare il sondaggio. Riprova tra un momento.",
     "cta": "Avvio rapido (2 minuti)"
+  },
+  "tabs": {
+    "label": "Pagine di questa sezione",
+    "my_surveys": "I miei sondaggi",
+    "templates": "Modelli",
+    "quick_start": "Avvio rapido",
+    "channels": "Canali",
+    "results": "Risultati dei sondaggi",
+    "answers": "Risposte",
+    "export": "Esporta"
+  },
+  "analytics": {
+    "country_filter": "Acquirenti in",
+    "all_countries": "Tutti i paesi",
+    "country_option": "{{country}} ({{count}})",
+    "zone_note": "I giorni seguono il fuso orario del negozio ({{zone}}).",
+    "country_note": "Solo acquirenti che hanno pagato in {{country}}.",
+    "rate_unavailable_country": "Il tasso di risposta non è mostrato per un solo paese: gli ordini Shopify non registrano dove ha pagato l'acquirente, quindi non c'è nulla con cui confrontare le risposte."
   }
 }

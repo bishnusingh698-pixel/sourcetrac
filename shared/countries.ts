@@ -34,3 +34,10 @@ const KNOWN = new Set<string>(COUNTRY_CODES);
 export function isCountryCode(value: unknown): value is string {
   return typeof value === "string" && KNOWN.has(value);
 }
+
+/** The country in a `?country=` filter, when it is a code; anything else is no filter. */
+export function parseCountryParam(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const code = value.trim().toUpperCase();
+  return isCountryCode(code) ? code : null;
+}

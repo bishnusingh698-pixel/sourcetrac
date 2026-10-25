@@ -18,7 +18,8 @@
     "channels": "Kanalbericht",
     "preferences": "Einstellungen",
     "current": "(aktuelle Seite)",
-    "templates": "Vorlagen"
+    "templates": "Vorlagen",
+    "analytics": "Analysen"
   },
   "common": {
     "cancel": "Abbrechen",
@@ -141,7 +142,7 @@
     "language_step_skip": "Jetzt überspringen",
     "language_detected": "Aus Ihrer Shopify-Administration erkannt",
     "step4_title": "Ergebnisse ansehen",
-    "step4_body": "Ergebnisse gruppieren Antworten nach Frage und zeigen den Umsatz je Kanal.",
+    "step4_body": "Unter Analysen sehen Sie, woher Käufer kamen, den Umsatz je Kanal und die Antworten auf jede Frage.",
     "step4_action": "Ergebnisse ansehen",
     "step1_body_done": "Sie haben eine Live-Umfrage.",
     "step2_body_done": "Der SourceTrac-Block wurde auf Ihrer Danke-Seite geladen."
@@ -161,7 +162,7 @@
     "truncated": "Diese Datei enthält nur die neuesten {{limit}} Antworten. Ältere Antworten wurden weggelassen.",
     "choose_label": "Was möchten Sie herunterladen?",
     "choose_all": "Alle Umfragen",
-    "choose_channels": "Nur Kanalbericht (wie Käufer von Ihnen erfahren haben)",
+    "choose_channels": "Nur Kanäle (wie Käufer von Ihnen erfahren haben)",
     "shape_all": "Eine Zeile pro Antwort, mit Umfrage und Frage. Eine Bestellung mit mehreren Antworten hat mehrere Zeilen, addieren Sie order_total daher nicht.",
     "shape_survey": "Eine Zeile pro Käufer, mit einer Spalte pro Frage.",
     "shape_channels": "Eine Zeile pro Bestellung, mit dem Kanal, den der Käufer gewählt hat."
@@ -815,7 +816,7 @@
     "buyers_unknown_other": "Bei {{count}} Bestellungen ist unbekannt, ob es eine erste Bestellung war.",
     "surveys_subtitle": "Aktive Umfragen und alle anderen mit Antworten. {{range}}.",
     "col_key_result": "Wichtigstes Ergebnis",
-    "compare_surveys": "Umfragen in den Ergebnissen vergleichen",
+    "compare_surveys": "Umfragen unter Analysen vergleichen",
     "capped_note": "Bewertungen, Käufer und Umfragen beruhen auf den neuesten {{limit}} Antworten in diesem Zeitraum."
   },
   "support": {
@@ -994,8 +995,8 @@
     "learn_stop_done": "Der automatische Stopp hat diese Umfrage bereits einmal pausiert. Er pausiert sie nicht erneut; schalten Sie ihn aus und wieder ein, um ihn neu zu aktivieren.",
     "status_auto_paused": "Automatisch pausiert: Die Ergebnisse sind zuverlässig. Käufer sehen diese Umfrage nicht. Sie können sie jederzeit wieder aktivieren; sie pausiert sich nicht erneut.",
     "other_label": "Text der Antwort „Sonstiges“",
-    "channel_question": "Im Kanalbericht zählen",
-    "channel_question_details": "Aktivieren Sie das für eine Frage wie „Wie sind Sie auf uns aufmerksam geworden?“. Die Antworten werden mit ihrem Umsatz zu Ihren Kanälen im Dashboard und im Kanalbericht.",
+    "channel_question": "Diese Antworten unter Analysen als Ihre Kanäle zählen",
+    "channel_question_details": "Für eine Frage „Wie haben Sie von uns erfahren?“ aktivieren. Ihre Antworten werden zu Ihren Kanälen mit Umsatz, auf der Startseite und unter Analysen › Kanäle.",
     "where_title": "Wo sie erscheint",
     "placement_order_status": "Bestellstatusseite",
     "audience_order_status_note": "Auf der Bestellstatusseite weiß SourceTrac nur dann, ob es eine Erstbestellung ist, wenn auch die Danke-Seite den SourceTrac-Block hat. Andere Bestellungen sehen diese Umfrage dort nicht.",
@@ -1136,5 +1137,23 @@
     "too_few": "Wählen Sie mindestens {{min}} Antworten.",
     "failed": "Die Umfrage konnte nicht erstellt werden. Versuchen Sie es gleich noch einmal.",
     "cta": "Schnellstart (2 Minuten)"
+  },
+  "tabs": {
+    "label": "Seiten in diesem Bereich",
+    "my_surveys": "Meine Umfragen",
+    "templates": "Vorlagen",
+    "quick_start": "Schnellstart",
+    "channels": "Kanäle",
+    "results": "Umfrageergebnisse",
+    "answers": "Antworten",
+    "export": "Export"
+  },
+  "analytics": {
+    "country_filter": "Käufer in",
+    "all_countries": "Alle Länder",
+    "country_option": "{{country}} ({{count}})",
+    "zone_note": "Tage folgen der Zeitzone Ihres Shops ({{zone}}).",
+    "country_note": "Nur Käufer, die in {{country}} bestellt haben.",
+    "rate_unavailable_country": "Die Antwortquote wird für ein einzelnes Land nicht angezeigt: Shopify-Bestellungen speichern nicht, wo der Käufer bestellt hat, also fehlt die Vergleichsgröße."
   }
 }

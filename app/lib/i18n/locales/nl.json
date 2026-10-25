@@ -18,7 +18,8 @@
     "channels": "Kanaalrapport",
     "preferences": "Instellingen",
     "current": "(huidige pagina)",
-    "templates": "Sjablonen"
+    "templates": "Sjablonen",
+    "analytics": "Analyse"
   },
   "common": {
     "cancel": "Annuleren",
@@ -141,7 +142,7 @@
     "language_step_skip": "Nu overslaan",
     "language_detected": "Herkend uit je Shopify-beheer",
     "step4_title": "Bekijk je resultaten",
-    "step4_body": "Resultaten groepeert antwoorden per vraag en toont de omzet per kanaal.",
+    "step4_body": "Analyse laat zien waar kopers vandaan kwamen, de omzet per kanaal en de antwoorden op elke vraag.",
     "step4_action": "Bekijk resultaten",
     "step1_body_done": "Je hebt een live enquête.",
     "step2_body_done": "Het SourceTrac-blok is geladen op je bedankpagina."
@@ -161,7 +162,7 @@
     "truncated": "Dit bestand bevat alleen de nieuwste {{limit}} antwoorden. Oudere antwoorden zijn weggelaten.",
     "choose_label": "Wat wil je downloaden",
     "choose_all": "Alle enquêtes",
-    "choose_channels": "Alleen kanalenrapport (hoe kopers je vonden)",
+    "choose_channels": "Alleen kanalen (hoe kopers je vonden)",
     "shape_all": "Eén rij per antwoord, met de enquête en de vraag. Een bestelling met meerdere antwoorden heeft meerdere rijen, dus tel order_total niet op.",
     "shape_survey": "Eén rij per koper, met één kolom per vraag.",
     "shape_channels": "Eén rij per bestelling, met het kanaal dat de koper koos."
@@ -815,7 +816,7 @@
     "buyers_unknown_other": "Van {{count}} bestellingen is niet bekend of het een eerste bestelling was.",
     "surveys_subtitle": "Actieve enquêtes, en alle andere die antwoorden kregen. {{range}}.",
     "col_key_result": "Belangrijkste resultaat",
-    "compare_surveys": "Enquêtes vergelijken in Resultaten",
+    "compare_surveys": "Enquêtes vergelijken in Analyse",
     "capped_note": "Scores, kopers en enquêtes zijn gebaseerd op de nieuwste {{limit}} antwoorden in deze periode."
   },
   "support": {
@@ -994,8 +995,8 @@
     "learn_stop_done": "Automatisch stoppen heeft deze enquête al een keer gepauzeerd. Dat gebeurt niet opnieuw; zet het uit en weer aan om het opnieuw te activeren.",
     "status_auto_paused": "Automatisch gepauzeerd: de resultaten zijn betrouwbaar geworden. Kopers zien deze enquête niet. Zet hem wanneer je wilt weer aan; hij pauzeert niet opnieuw.",
     "other_label": "Tekst van het antwoord ‘Anders’",
-    "channel_question": "Meetellen in het kanaalrapport",
-    "channel_question_details": "Vink dit aan bij een vraag als ‘Hoe heb je ons leren kennen?’. De antwoorden worden je kanalen, met hun omzet, op het dashboard en in het kanaalrapport.",
+    "channel_question": "Deze antwoorden als je kanalen tellen in Analyse",
+    "channel_question_details": "Vink dit aan bij een vraag ‘Hoe heb je ons gevonden?’. De antwoorden worden je kanalen, met omzet, op Start en onder Analyse › Kanalen.",
     "where_title": "Waar hij verschijnt",
     "placement_order_status": "Orderstatuspagina",
     "audience_order_status_note": "Op de bestelstatuspagina weet SourceTrac alleen of het een eerste bestelling is als de bedankpagina ook het SourceTrac-blok heeft. Andere bestellingen zien deze enquête daar niet.",
@@ -1136,5 +1137,23 @@
     "too_few": "Kies minstens {{min}} antwoorden.",
     "failed": "De enquête kon niet worden gemaakt. Probeer het zo opnieuw.",
     "cta": "Snel starten (2 minuten)"
+  },
+  "tabs": {
+    "label": "Pagina's in dit onderdeel",
+    "my_surveys": "Mijn enquêtes",
+    "templates": "Sjablonen",
+    "quick_start": "Snel starten",
+    "channels": "Kanalen",
+    "results": "Enquêteresultaten",
+    "answers": "Antwoorden",
+    "export": "Exporteren"
+  },
+  "analytics": {
+    "country_filter": "Kopers in",
+    "all_countries": "Alle landen",
+    "country_option": "{{country}} ({{count}})",
+    "zone_note": "Dagen volgen de tijdzone van je winkel ({{zone}}).",
+    "country_note": "Alleen kopers die in {{country}} afrekenden.",
+    "rate_unavailable_country": "Het antwoordpercentage wordt niet getoond voor één land: Shopify-bestellingen leggen niet vast waar de koper afrekende, dus er is niets om de antwoorden mee te vergelijken."
   }
 }

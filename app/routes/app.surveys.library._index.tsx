@@ -1,5 +1,6 @@
 import { Form, redirect, useActionData, useLoaderData, useNavigation, useSearchParams, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 
+import { SectionTabs } from "~/components/section-tabs";
 import { Banner, PageIntro } from "~/components/admin-ui";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import { createTranslator } from "~/lib/i18n";
@@ -40,7 +41,7 @@ import type { TemplateCategory } from "@shared/templates/types";
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "library.title");
 
-export const handle = { titleKey: "library.title" };
+export const handle = { titleKey: "nav.surveys" };
 
 /** The template most stores should start with, shown on its own at the top. */
 const RECOMMENDED_ID = "channel-compass";
@@ -201,6 +202,7 @@ export default function TemplateLibrary() {
 
   return (
     <s-stack gap="base">
+      <SectionTabs section="surveys" t={t} />
       <PageIntro
         actions={
           <Form method="post">

@@ -1,5 +1,6 @@
 import { useLoaderData, type LoaderFunctionArgs, type MetaFunction } from "react-router";
-import { useState } from "react";
+
+import { SectionTabs } from "~/components/section-tabs";import { useState } from "react";
 
 import { Banner, MoneyList, Panel, PageIntro, Metric, BigNumber } from "~/components/admin-ui";
 import { SurveyPicker } from "~/components/survey-picker";
@@ -25,6 +26,9 @@ import { ensureShop } from "~/lib/provision.server";
 import { startOrderBackfill } from "~/lib/order-backfill.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { getReportTimeZone } from "~/lib/studio.server";
+import { answerCountries } from "~/lib/analytics-queries.server";
+import { CountryFilter, ReportScope } from "~/components/analytics-filters";
+import { parseCountryParam } from "@shared/countries";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -40,7 +44,7 @@ import { authenticate } from "~/shopify.server";
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "results.title");
 
-export const handle = { titleKey: "results.title" };
+export const handle = { titleKey: "nav.analytics" };
 
 /** Date ranges, as on the channel report, plus all time. */
 const RANGES = [
@@ -70,6 +74,8 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
 
   const url = new URL(request.url);
   const range = parseRange(url.searchParams.get("range"));
+  // F6: only buyers who checked out in one country.
+  const country = parseCountryParam(url.searchParams.get("country"));
   const surveys = await listSurveys(shop.id);
   const requestedId = url.searchParams.get("survey");
   const selectedId = surveys.find((s) => s.id === requestedId)?.id ?? surveys[0]?.id ?? null;
@@ -87,6 +93,9 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
 
   if (!selectedId) {
     return {
+      country: null,
+      countries: [],
+      timeZone: "UTC",
       range: range.key,
       surveys: [],
       compare: [],
@@ -111,17 +120,22 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
 
   const row = await getSurveyRow(shop.id, selectedId);
   // Bounded: the newest answers only, and the page says so when it is capped.
-  const [responses, everyResponse, rates] = await Promise.all([
-    fetchSurveyResponses({ shopId: shop.id, surveyId: selectedId, ...inWindow, limit: RESULTS_RESPONSE_LIMIT + 1 }),
+  const [responses, everyResponse, rates, countries] = await Promise.all([
+    fetchSurveyResponses({ shopId: shop.id, surveyId: selectedId, ...inWindow, country, limit: RESULTS_RESPONSE_LIMIT + 1 }),
     surveys.length > 1
-      ? fetchSurveyResponses({ shopId: shop.id, ...inWindow, limit: COMPARE_RESPONSE_LIMIT + 1 })
+      ? fetchSurveyResponses({ shopId: shop.id, ...inWindow, country, limit: COMPARE_RESPONSE_LIMIT + 1 })
       : Promise.resolve(null),
-    surveyAnswerRates({
-      shopId: shop.id,
-      surveys: surveys.map((s) => ({ id: s.id, createdAt: new Date(s.createdAt) })),
-      start: window.start,
-      end: window.end,
-    }),
+    // Orders do not record the buyer's country, so a one-country answer rate
+    // would set that country's answers against every order: none is shown.
+    country
+      ? Promise.resolve(new Map<string, { answered: number; orders: number }>())
+      : surveyAnswerRates({
+          shopId: shop.id,
+          surveys: surveys.map((s) => ({ id: s.id, createdAt: new Date(s.createdAt) })),
+          start: window.start,
+          end: window.end,
+        }),
+    answerCountries(shop.id),
   ]);
   const capped = responses.length > RESULTS_RESPONSE_LIMIT ? RESULTS_RESPONSE_LIMIT : null;
   if (capped !== null) responses.length = RESULTS_RESPONSE_LIMIT;
@@ -172,6 +186,9 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   });
 
   return {
+    country,
+    countries,
+    timeZone,
     range: range.key,
     surveys: surveys.map((s) => ({ id: s.id, name: s.name, responseCount: s.responseCount })),
     compare,
@@ -238,7 +255,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
 
 export default function Results() {
   const data = useLoaderData<typeof loader>();
-  const { t, locale } = useAdminI18n();
+  const { t, locale, language } = useAdminI18n();
   const [downloading, setDownloading] = useState(false);
   const [downloadFailed, setDownloadFailed] = useState(false);
 
@@ -247,7 +264,9 @@ export default function Results() {
     setDownloadFailed(false);
     try {
       const response = await fetch(
-        `/app/results/csv?survey=${encodeURIComponent(data.selected ?? "")}&range=${encodeURIComponent(data.range)}`,
+        `/app/results/csv?survey=${encodeURIComponent(data.selected ?? "")}&range=${encodeURIComponent(data.range)}${
+          data.country ? `&country=${data.country}` : ""
+        }`,
       );
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const url = URL.createObjectURL(await response.blob());
@@ -268,6 +287,7 @@ export default function Results() {
   if (data.surveys.length === 0 || !data.selected || !data.summary || !data.buyers) {
     return (
       <s-stack gap="base">
+        <SectionTabs section="analytics" t={t} />
         <PageIntro>{t("results.subtitle")}</PageIntro>
         <Banner tone="info" heading={t("results.empty_title")}>
           {t("results.empty_body")}
@@ -279,7 +299,7 @@ export default function Results() {
   const summary = data.summary;
   const buyers = data.buyers;
   const questionById = new Map(data.questions.map((q) => [q.id, q]));
-  const rangeQuery = `range=${encodeURIComponent(data.range)}`;
+  const rangeQuery = `range=${encodeURIComponent(data.range)}${data.country ? `&country=${data.country}` : ""}`;
   const rangeLabel = t(RANGES.find((range) => range.key === data.range)?.labelKey ?? "results.all_time");
   const percent = (value: number) => t("results.cross_percent", { percent: value });
   const knownBuyers = buyers.first.responses + buyers.returning.responses;
@@ -293,6 +313,7 @@ export default function Results() {
 
   return (
     <s-stack gap="base">
+      <SectionTabs section="analytics" t={t} />
       <PageIntro
         actions={
           <s-stack direction="inline" gap="small">
@@ -320,7 +341,9 @@ export default function Results() {
           {RANGES.map((range) => (
             <s-button
               key={range.key}
-              href={`/app/results?survey=${encodeURIComponent(data.selected ?? "")}&range=${range.key}`}
+              href={`/app/results?survey=${encodeURIComponent(data.selected ?? "")}&range=${range.key}${
+                data.country ? `&country=${data.country}` : ""
+              }`}
               variant={range.key === data.range ? "primary" : "secondary"}
             >
               {t(range.labelKey)}
@@ -328,6 +351,8 @@ export default function Results() {
           ))}
         </s-stack>
       </div>
+      <CountryFilter countries={data.countries} value={data.country} language={language} t={t} />
+      <ReportScope timeZone={data.timeZone} country={data.country} language={language} t={t} />
 
       {data.compare.length > 0 ? (
         <Panel title={t("results.compare_title")} description={t("results.compare_description", { range: rangeLabel })}>
@@ -373,7 +398,7 @@ export default function Results() {
         surveys={data.surveys}
         selected={data.selected}
         basePath="/app/results"
-        query={{ range: data.range }}
+        query={{ range: data.range, ...(data.country ? { country: data.country } : {}) }}
         label={t("responses.survey_label")}
       />
 

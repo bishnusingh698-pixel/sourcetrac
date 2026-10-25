@@ -63,12 +63,12 @@ support address (only `sourcetracsupport@gmail.com` exists in the code).
 
 | Id | Area | Problem | Status |
 | --- | --- | --- | --- |
-| U1 | Admin nav | Ten menu tiles (Dashboard, Surveys, Templates, Results, Channel report, Responses, Export, Plans, Settings, Help). Results vs Channel report vs Dashboard is the confusion merchants reported. | [ ] Seven sections: Home, Surveys, Analytics, Responses, Plans, Settings, Help. Analytics has two tabs (Channels, Survey results); Surveys has two (My surveys, Templates); Responses has two (Answers, Export). Old URLs keep working. |
+| U1 | Admin nav | Ten menu tiles (Dashboard, Surveys, Templates, Results, Channel report, Responses, Export, Plans, Settings, Help). Results vs Channel report vs Dashboard is the confusion merchants reported. | [x] Seven sections: Home, Surveys, Analytics, Responses, Plans, Settings, Help. Analytics has two tabs (Channels, Survey results); Surveys has two (My surveys, Templates); Responses has two (Answers, Export). Old URLs keep working. |
 | U2 | First run | Getting live takes: pick a template among 50, read the editor, find "Go live". | [x] One-screen quick start: country, answers preloaded for that market, Go live. |
 | U3 | Editor | "How did you hear about us?" answers are the same three US-centric lists everywhere. | [x] Country-aware presets with a searchable country list, loadable into any choice question. |
 | U4 | Editor | Settings without a sentence on what the buyer will see (layout, title, button, thank-you text, required, answer type). | [ ] Helper text on each. |
 | U5 | Editor | Look settings hidden under "Wording" with no explanation of why colours cannot be chosen. | [x] "Look and wording" section, with the reason colours and fonts follow the checkout's own branding. |
-| U6 | Analytics | No country filter; no way to compare markets. | [ ] Country filter on both Analytics tabs. |
+| U6 | Analytics | No country filter; no way to compare markets. | [x] Country filter on both Analytics tabs. |
 | U7 | Buyer | Scale questions without anchors; selected answer not marked (B2, B4). | [x] |
 
 ## Features
@@ -80,7 +80,7 @@ support address (only `sourcetracsupport@gmail.com` exists in the code).
 | F3 | Searchable country selector for presets | In the editor's answer list ("Load answers for a country") and in the quick start. Replacing answers on a question with answers asks first, and never on a question whose answers are already in results (it appends instead). | [x] |
 | F4 | Answers shown only in some countries | Per-answer "Only show in" list (Growth, like other country rules). Compiled into the config; the block hides those answers for buyers elsewhere. Additive migration `Option.countries`. "Add answers for another country" appends a market's own answers limited to that country. | [x] |
 | F5 | Product targeting | "Only orders with these products", picked with Shopify's product picker (App Bridge `resourcePicker`), stored as product ids, evaluated on the server from the order lines both blocks now send. Growth. Replaces the earlier decision to drop product rules (L7 in DECISIONS.md), which was right only while nothing evaluated them. | [x] |
-| F6 | Analytics country filter | Both Analytics tabs filter by the buyer's country (stored on every v2 answer). | [ ] |
+| F6 | Analytics country filter | Both Analytics tabs filter by the buyer's country (stored on every v2 answer). | [x] |
 | F7 | Analytics in the store's time zone | B6. Range edges and trend days are the store's calendar days. | [x] |
 | F8 | Look settings that work | B1/B12: show title, progress, star or number rating, scale labels, border, spacing, button and thank-you text, all applied in checkout and in the admin preview. | [x] |
 | F9 | More buyer languages, RTL | B10/B11: checkout UI strings in Arabic, Hebrew, Korean, Polish, Turkish, Danish, Finnish and Norwegian (Shopify renders right-to-left checkouts itself; our block uses logical layout only). Survey wording translatable into those too. | [ ] |

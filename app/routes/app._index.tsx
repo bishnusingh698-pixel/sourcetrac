@@ -48,7 +48,7 @@ import { authenticate } from "~/shopify.server";
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "nav.dashboard");
 
-export const handle = { titleKey: "nav.dashboard" };
+export const handle = { titleKey: "nav.home" };
 
 
 export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {

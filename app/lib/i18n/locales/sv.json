@@ -18,7 +18,8 @@
     "channels": "Kanalrapport",
     "preferences": "Inställningar",
     "current": "(aktuell sida)",
-    "templates": "Mallar"
+    "templates": "Mallar",
+    "analytics": "Analys"
   },
   "common": {
     "cancel": "Avbryt",
@@ -141,7 +142,7 @@
     "language_step_skip": "Hoppa över nu",
     "language_detected": "Identifierat från din Shopify-admin",
     "step4_title": "Se dina resultat",
-    "step4_body": "Resultat grupperar svar per fråga och visar intäkterna per kanal.",
+    "step4_body": "Analys visar var köparna kom ifrån, intäkterna per kanal och svaren på varje fråga.",
     "step4_action": "Visa resultat",
     "step1_body_done": "Du har en publicerad enkät.",
     "step2_body_done": "SourceTrac-blocket har laddats på din tacksida."
@@ -161,7 +162,7 @@
     "truncated": "Den här filen innehåller bara de {{limit}} senaste svaren. Äldre svar har utelämnats.",
     "choose_label": "Vad vill du ladda ned",
     "choose_all": "Alla enkäter",
-    "choose_channels": "Bara kanalrapporten (hur köpare hittade dig)",
+    "choose_channels": "Bara kanaler (hur köparna hittade dig)",
     "shape_all": "En rad per svar, med enkät och fråga. En beställning med flera svar har flera rader, så lägg inte ihop order_total.",
     "shape_survey": "En rad per köpare, med en kolumn per fråga.",
     "shape_channels": "En rad per beställning, med kanalen köparen valde."
@@ -815,7 +816,7 @@
     "buyers_unknown_other": "{{count}} ordrar visar inte om det var en första beställning.",
     "surveys_subtitle": "Aktiva enkäter och alla andra som fått svar. {{range}}.",
     "col_key_result": "Viktigaste resultat",
-    "compare_surveys": "Jämför enkäter i Resultat",
+    "compare_surveys": "Jämför enkäter under Analys",
     "capped_note": "Betyg, köpare och enkäter bygger på de senaste {{limit}} svaren under perioden."
   },
   "support": {
@@ -994,8 +995,8 @@
     "learn_stop_done": "Autostopp har redan pausat enkäten en gång. Den pausas inte igen; slå av och på för att aktivera det igen.",
     "status_auto_paused": "Pausad automatiskt: resultaten är tillförlitliga. Köpare ser inte enkäten. Slå på den igen när du vill; den pausas inte igen.",
     "other_label": "Text för svaret ”Annat”",
-    "channel_question": "Räkna i kanalrapporten",
-    "channel_question_details": "Markera för en fråga som ”Hur hörde du talas om oss?”. Svaren blir dina kanaler, med intäkter, på översikten och i kanalrapporten.",
+    "channel_question": "Räkna svaren som dina kanaler under Analys",
+    "channel_question_details": "Markera för en fråga ”Hur hittade du oss?”. Svaren blir dina kanaler, med intäkter, på Start och under Analys › Kanaler.",
     "where_title": "Var den visas",
     "placement_order_status": "Orderstatussidan",
     "audience_order_status_note": "På orderstatussidan vet SourceTrac bara om det är en första beställning när tacksidan också har SourceTrac-blocket. Andra beställningar ser inte enkäten där.",
@@ -1136,5 +1137,23 @@
     "too_few": "Välj minst {{min}} svar.",
     "failed": "Enkäten kunde inte skapas. Försök igen om en stund.",
     "cta": "Snabbstart (2 minuter)"
+  },
+  "tabs": {
+    "label": "Sidor i det här avsnittet",
+    "my_surveys": "Mina enkäter",
+    "templates": "Mallar",
+    "quick_start": "Snabbstart",
+    "channels": "Kanaler",
+    "results": "Enkätresultat",
+    "answers": "Svar",
+    "export": "Exportera"
+  },
+  "analytics": {
+    "country_filter": "Köpare i",
+    "all_countries": "Alla länder",
+    "country_option": "{{country}} ({{count}})",
+    "zone_note": "Dagarna följer butikens tidszon ({{zone}}).",
+    "country_note": "Bara köpare som handlade i {{country}}.",
+    "rate_unavailable_country": "Svarsfrekvensen visas inte för ett enskilt land: Shopify-beställningar sparar inte var köparen handlade, så det finns inget att jämföra svaren med."
   }
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLoaderData, useNavigate, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 
+import { SectionTabs } from "~/components/section-tabs";
 import { Panel, PageIntro } from "~/components/admin-ui";
 import { JustInTimeNotice } from "~/components/data-notice";
 import { countChannelAnswers, fetchResponsesInWindow, toExportRows } from "~/lib/analytics-queries.server";
@@ -36,7 +37,7 @@ import { authenticate } from "~/shopify.server";
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "export.title");
 
-export const handle = { titleKey: "export.title" };
+export const handle = { titleKey: "nav.responses" };
 
 /** Rows shown in the preview: the newest answers of the chosen file. */
 const PREVIEW_RESPONSES = 5;
@@ -144,6 +145,7 @@ export default function Export() {
 
   return (
     <s-stack gap="base">
+      <SectionTabs section="responses" t={t} />
       <PageIntro>{t("export.subtitle")}</PageIntro>
 
       <Panel title={t("export.panel_title")}>

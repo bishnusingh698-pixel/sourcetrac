@@ -18,7 +18,8 @@
     "channels": "渠道报告",
     "preferences": "设置",
     "current": "（当前页面）",
-    "templates": "模板"
+    "templates": "模板",
+    "analytics": "分析"
   },
   "common": {
     "cancel": "取消",
@@ -141,7 +142,7 @@
     "language_step_skip": "暂时跳过",
     "language_detected": "根据您的 Shopify 后台检测",
     "step4_title": "查看结果",
-    "step4_body": "结果按问题汇总回答，并显示每个渠道的收入。",
+    "step4_body": "“分析”会显示买家来自哪里、每个渠道带来的收入，以及每个问题的回答。",
     "step4_action": "查看结果",
     "step1_body_done": "你已有上线的问卷。",
     "step2_body_done": "SourceTrac 区块已在你的感谢页面加载。"
@@ -161,7 +162,7 @@
     "truncated": "此文件仅包含最新的 {{limit}} 条回答，较早的回答未包含在内。",
     "choose_label": "下载内容",
     "choose_all": "所有问卷",
-    "choose_channels": "仅渠道报告（买家如何得知您的店铺）",
+    "choose_channels": "仅渠道（买家如何知道您）",
     "shape_all": "每条回答一行，包含所属问卷和问题。一个订单有多条回答时会有多行，因此请勿对 order_total 求和。",
     "shape_survey": "每位买家一行，每个问题一列。",
     "shape_channels": "每个订单一行，包含买家选择的渠道。"
@@ -815,7 +816,7 @@
     "buyers_unknown_other": "{{count}} 个订单未表明是否为首单。",
     "surveys_subtitle": "进行中的问卷，以及其他收到回答的问卷。{{range}}。",
     "col_key_result": "关键结果",
-    "compare_surveys": "在结果中比较问卷",
+    "compare_surveys": "在“分析”中比较问卷",
     "capped_note": "评分、买家和问卷数据基于此期间最新的 {{limit}} 条回答。"
   },
   "support": {
@@ -994,8 +995,8 @@
     "learn_stop_done": "自动停止已暂停过此问卷一次，不会再次暂停。关闭后重新开启即可重新启用。",
     "status_auto_paused": "已自动暂停：结果已经可靠。买家看不到此问卷。您可以随时重新开启，它不会再次自动暂停。",
     "other_label": "“其他”选项的文字",
-    "channel_question": "计入渠道报告",
-    "channel_question_details": "用于“你是如何知道我们的？”这类问题。它的回答会作为你的渠道（附收入）显示在仪表板和渠道报告中。",
+    "channel_question": "在“分析”中将这些答案计为您的渠道",
+    "channel_question_details": "用于“您是如何知道我们的？”这类问题。其答案会成为您的渠道，并在首页和“分析 › 渠道”中显示收入。",
     "where_title": "显示位置",
     "placement_order_status": "订单状态页",
     "audience_order_status_note": "在订单状态页面上，只有当感谢页面也添加了 SourceTrac 区块时，SourceTrac 才知道这是否为首次订单。其他订单在那里不会看到此问卷。",
@@ -1136,5 +1137,23 @@
     "too_few": "请至少选择 {{min}} 个答案。",
     "failed": "无法创建问卷。请稍后再试。",
     "cta": "快速开始（2 分钟）"
+  },
+  "tabs": {
+    "label": "本部分的页面",
+    "my_surveys": "我的问卷",
+    "templates": "模板",
+    "quick_start": "快速开始",
+    "channels": "渠道",
+    "results": "问卷结果",
+    "answers": "回答",
+    "export": "导出"
+  },
+  "analytics": {
+    "country_filter": "买家所在地",
+    "all_countries": "所有国家/地区",
+    "country_option": "{{country}}（{{count}}）",
+    "zone_note": "日期按您商店的时区计算（{{zone}}）。",
+    "country_note": "仅包括在 {{country}} 结账的买家。",
+    "rate_unavailable_country": "单个国家/地区不显示回答率：Shopify 订单不记录买家的结账地点，因此无法与回答数对比。"
   }
 }

@@ -18,7 +18,8 @@
     "channels": "Rapport par canal",
     "preferences": "Paramètres",
     "current": "(page actuelle)",
-    "templates": "Modèles"
+    "templates": "Modèles",
+    "analytics": "Analyses"
   },
   "common": {
     "cancel": "Annuler",
@@ -141,7 +142,7 @@
     "language_step_skip": "Ignorer pour l'instant",
     "language_detected": "Détectée depuis votre administration Shopify",
     "step4_title": "Consultez vos résultats",
-    "step4_body": "Résultats regroupe les réponses par question et montre le chiffre d’affaires de chaque canal.",
+    "step4_body": "Analyses montre d'où viennent les acheteurs, le chiffre d'affaires de chaque canal et les réponses à chaque question.",
     "step4_action": "Voir les résultats",
     "step1_body_done": "Vous avez un sondage en ligne.",
     "step2_body_done": "Le bloc SourceTrac s'est chargé sur votre page de remerciement."
@@ -161,7 +162,7 @@
     "truncated": "Ce fichier ne contient que les {{limit}} réponses les plus récentes. Les plus anciennes ont été omises.",
     "choose_label": "Que télécharger",
     "choose_all": "Toutes les enquêtes",
-    "choose_channels": "Rapport des canaux uniquement (comment les acheteurs vous ont connu)",
+    "choose_channels": "Canaux uniquement (comment les acheteurs vous ont connu)",
     "shape_all": "Une ligne par réponse, avec son enquête et sa question. Une commande avec plusieurs réponses a plusieurs lignes : n'additionnez pas order_total.",
     "shape_survey": "Une ligne par acheteur, avec une colonne par question.",
     "shape_channels": "Une ligne par commande, avec le canal choisi par l'acheteur."
@@ -815,7 +816,7 @@
     "buyers_unknown_other": "{{count}} commandes n’indiquent pas s’il s’agissait d’une première commande.",
     "surveys_subtitle": "Sondages actifs, et tous ceux qui ont reçu des réponses. {{range}}.",
     "col_key_result": "Résultat clé",
-    "compare_surveys": "Comparer les sondages dans Résultats",
+    "compare_surveys": "Comparer les enquêtes dans Analyses",
     "capped_note": "Les scores, acheteurs et sondages reposent sur les {{limit}} réponses les plus récentes de cette période."
   },
   "support": {
@@ -994,8 +995,8 @@
     "learn_stop_done": "L'arrêt automatique a déjà mis ce sondage en pause une fois. Il ne le refera pas ; désactivez-le puis réactivez-le pour le réarmer.",
     "status_auto_paused": "Mis en pause automatiquement : les résultats sont devenus fiables. Les acheteurs ne voient pas ce sondage. Réactivez-le quand vous voulez ; il ne se remettra pas en pause.",
     "other_label": "Libellé de la réponse « Autre »",
-    "channel_question": "Compter dans le rapport des canaux",
-    "channel_question_details": "Cochez-le pour une question « Comment nous avez-vous connus ? ». Ses réponses deviennent vos canaux, avec leur chiffre d'affaires, dans le tableau de bord et le rapport des canaux.",
+    "channel_question": "Compter ces réponses comme vos canaux dans Analyses",
+    "channel_question_details": "Cochez pour une question « Comment nous avez-vous connus ? ». Ses réponses deviennent vos canaux, avec leur chiffre d'affaires, sur l'accueil et dans Analyses › Canaux.",
     "where_title": "Où il s'affiche",
     "placement_order_status": "Page d'état de la commande",
     "audience_order_status_note": "Sur la page d'état de la commande, SourceTrac ne sait s'il s'agit d'une première commande que si la page de remerciement contient aussi le bloc SourceTrac. Les autres commandes n'y voient pas ce sondage.",
@@ -1136,5 +1137,23 @@
     "too_few": "Choisissez au moins {{min}} réponses.",
     "failed": "L'enquête n'a pas pu être créée. Réessayez dans un instant.",
     "cta": "Démarrage rapide (2 minutes)"
+  },
+  "tabs": {
+    "label": "Pages de cette section",
+    "my_surveys": "Mes enquêtes",
+    "templates": "Modèles",
+    "quick_start": "Démarrage rapide",
+    "channels": "Canaux",
+    "results": "Résultats des enquêtes",
+    "answers": "Réponses",
+    "export": "Exporter"
+  },
+  "analytics": {
+    "country_filter": "Acheteurs en/au",
+    "all_countries": "Tous les pays",
+    "country_option": "{{country}} ({{count}})",
+    "zone_note": "Les jours suivent le fuseau horaire de votre boutique ({{zone}}).",
+    "country_note": "Uniquement les acheteurs ayant commandé depuis : {{country}}.",
+    "rate_unavailable_country": "Le taux de réponse n'est pas affiché pour un seul pays : les commandes Shopify n'indiquent pas d'où l'acheteur a commandé, il n'y a donc rien à quoi comparer les réponses."
   }
 }

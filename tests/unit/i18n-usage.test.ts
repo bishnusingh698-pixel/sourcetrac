@@ -71,6 +71,14 @@ function declarativeKeys(): Map<string, string[]> {
       if (key) keys.set(key, ["app/lib/nav.ts (NAV)"]);
     }
   }
+  // The section tabs' labels live in the same file.
+  const tabsBlock = /export const SECTION_TABS = \{([\s\S]*?)\} as const/.exec(navSource);
+  if (tabsBlock?.[1]) {
+    for (const match of tabsBlock[1].matchAll(/labelKey:\s*["'`]([a-z0-9_.]+)["'`]/g)) {
+      const key = match[1];
+      if (key) keys.set(key, ["app/lib/nav.ts (SECTION_TABS)"]);
+    }
+  }
 
   return keys;
 }
@@ -108,7 +116,8 @@ describe("i18n key usage", () => {
   it("reads every nav item's key", () => {
     // The nav list is the one place these keys live; a regex that silently
     // stopped matching it would let a renamed key ship as a raw string.
-    expect(declarativeKeys().size).toBe(10);
+    // Seven sections and seven section tabs.
+    expect(declarativeKeys().size).toBe(14);
   });
 
   it("finds keys in source", () => {

@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest";
 
 import { TopNav } from "~/components/top-nav";
 import { createTranslator } from "~/lib/i18n";
-import { activeNavPath, NAV } from "~/lib/nav";
+import { activeNavPath, NAV, SECTION_TABS } from "~/lib/nav";
 
 const ROOT = process.cwd();
 const t = createTranslator("en");
@@ -36,13 +36,18 @@ describe("activeNavPath", () => {
     ["/app", "/app"],
     ["/app/", "/app"],
     ["/app/surveys", "/app/surveys"],
-    ["/app/surveys/library", "/app/surveys/library"],
+    // Templates, Quick start and the editor are pages of Surveys.
+    ["/app/surveys/library", "/app/surveys"],
+    ["/app/surveys/quick-start", "/app/surveys"],
     ["/app/surveys/cm123", "/app/surveys"],
-    ["/app/results", "/app/results"],
+    // Channels and Survey results are the two tabs of Analytics.
     ["/app/dashboard", "/app/dashboard"],
+    ["/app/results", "/app/dashboard"],
+    ["/app/results/csv", "/app/dashboard"],
+    // Export is a tab of Responses.
     ["/app/responses", "/app/responses"],
-    ["/app/export", "/app/export"],
-    ["/app/export/csv", "/app/export"],
+    ["/app/export", "/app/responses"],
+    ["/app/export/csv", "/app/responses"],
     ["/app/plans", "/app/plans"],
     ["/app/settings", "/app/settings"],
     ["/app/help", "/app/help"],
@@ -54,14 +59,18 @@ describe("activeNavPath", () => {
     expect(activeNavPath("/app/privacy")).toBeNull();
     // A prefix must end at a segment boundary.
     expect(activeNavPath("/app/surveysx")).toBeNull();
+    expect(activeNavPath("/app/resultsx")).toBeNull();
     expect(activeNavPath("/application")).toBeNull();
   });
 });
 
 describe("the nav list", () => {
-  it("points every item at a route that exists", () => {
+  it("points every item, and every tab, at a route that exists", () => {
     for (const item of NAV) {
       expect(routeFileFor(item.to), `${item.to} has no route file`).not.toBeNull();
+    }
+    for (const tabs of Object.values(SECTION_TABS)) {
+      for (const tab of tabs) expect(routeFileFor(tab.to), `${tab.to} has no route file`).not.toBeNull();
     }
   });
 
@@ -71,15 +80,29 @@ describe("the nav list", () => {
     expect(sidebar).not.toContain("/app");
   });
 
-  it("puts templates in Shopify's sidebar, so they are found without knowing where they hide", () => {
-    expect(NAV.find((item) => item.to === "/app/surveys/library")?.sidebar).toBe(true);
+  it("is seven clear sections: Home, Surveys, Analytics, Responses, Plans, Settings, Help (U1)", () => {
+    expect(NAV.map((item) => item.key)).toEqual([
+      "nav.home",
+      "nav.surveys",
+      "nav.analytics",
+      "nav.responses",
+      "nav.plans",
+      "nav.preferences",
+      "nav.help",
+    ]);
   });
 
-  it("puts NPS (Results) and the channel report one tap away", () => {
-    const paths = NAV.map((item) => item.to);
-    expect(paths).toContain("/app/results");
-    expect(paths).toContain("/app/dashboard");
-    expect(paths[0]).toBe("/app");
+  it("keeps templates, NPS (Survey results) and the channel report one tab away from a menu item", () => {
+    const tabs = Object.values(SECTION_TABS).flatMap((list) => list.map((tab): string => tab.to));
+    expect(tabs).toContain("/app/surveys/library");
+    expect(tabs).toContain("/app/results");
+    expect(tabs).toContain("/app/dashboard");
+    expect(tabs).toContain("/app/export");
+    // Every tab lights up the menu item of its own section.
+    for (const [section, list] of Object.entries(SECTION_TABS)) {
+      const owners = new Set(list.map((tab) => activeNavPath(tab.to)));
+      expect(owners.size, `${section} tabs belong to one menu item`).toBe(1);
+    }
   });
 });
 
