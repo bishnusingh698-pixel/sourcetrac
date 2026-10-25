@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks"
 
 import {
   log,
+  optionsForCountry,
   orderOptionsForBuyer,
   OTHER_CHANNEL,
   type AnswerInput,
@@ -37,6 +38,8 @@ export interface MultiSurveyApi {
   }) => Promise<SubmitResult | null>;
   /** The buyer's language (e.g. "de"), for language targeting and translation. */
   getLocale?: () => string | null;
+  /** The buyer's checkout country, for answers limited to some countries (F4). */
+  getCountry?: () => string | null;
   t: (key: string, fallback: string) => string;
 }
 
@@ -299,11 +302,13 @@ export function useMultiSurvey(
       // (their GIDs differ: OrderIdentity on Thank-you, Order on Order status).
       const localized = localizeSurvey(config.survey, locale);
       const seed = orderId.match(/(\d+)$/)?.[1] ?? orderId;
+      // Answers the merchant limited to other countries are left out (F4).
+      const country = apiRef.current.getCountry?.() ?? null;
       setSurvey({
         ...localized,
         questions: localized.questions.map((question) => ({
           ...question,
-          options: orderOptionsForBuyer(question.options, question.randomizeOptions === true, seed),
+          options: orderOptionsForBuyer(optionsForCountry(question.options, country), question.randomizeOptions === true, seed),
         })),
       });
       setPhase("asking");

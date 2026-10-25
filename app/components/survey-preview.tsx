@@ -178,7 +178,14 @@ function choiceLabel(question: Question, id: string, t: TFn): string {
   if (question.type === "yes_no") return id === YES_NO_IDS.yes ? t("surveys.yes") : t("surveys.no");
   if (question.type === "satisfaction_5") return t(`surveys.satisfaction_${id}`);
   const option = resolveOptions(question).find((o) => o.id === id);
-  return option?.isOther ? t("preview.other_label") : (option?.label ?? id);
+  if (option?.isOther) return t("preview.other_label");
+  const label = option?.label ?? id;
+  // F4: an answer only some buyers see says where, so the merchant is not
+  // surprised it is missing for buyers elsewhere.
+  const countries = option?.countries ?? [];
+  if (countries.length === 0) return label;
+  const shown = countries.slice(0, 3).join(", ");
+  return `${label} (${countries.length > 3 ? `${shown} +${countries.length - 3}` : shown})`;
 }
 
 /** The ids and numeric values a buyer picks from, for one-pick questions. */

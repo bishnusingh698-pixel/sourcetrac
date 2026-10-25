@@ -1026,7 +1026,12 @@
     "answer_type_details": "Comment les acheteurs répondent : toucher une réponse, en cocher plusieurs, choisir une note ou écrire.",
     "required_details": "Les acheteurs ne peuvent pas envoyer leurs réponses avant d'avoir répondu à celle-ci. Laissez désactivé pour qu'ils puissent la passer.",
     "placeholder_details": "Texte d'exemple grisé dans le champ de réponse vide.",
-    "long_answer_details": "Un champ plus haut pour les réponses de plus de quelques mots."
+    "long_answer_details": "Un champ plus haut pour les réponses de plus de quelques mots.",
+    "answer_countries_button": "Pays pour {{label}}",
+    "answer_countries_title": "Afficher « {{label}} » uniquement dans ces pays",
+    "answer_countries_details": "Les acheteurs ailleurs ne voient pas cette réponse. Ne cochez rien pour l'afficher partout. Pratique pour proposer LINE seulement au Japon, ou Snapchat seulement dans le Golfe, dans une seule enquête.",
+    "answer_countries_summary": "Affiché uniquement en : {{list}}",
+    "answer_countries_locked": "Afficher une réponse dans certains pays seulement est disponible avec {{plan}}."
   },
   "preview": {
     "title": "Aperçu",
@@ -1091,7 +1096,10 @@
     "add_one": "Ajouter {{count}} réponse manquante",
     "add_other": "Ajouter {{count}} réponses manquantes",
     "replace_note": "Les réponses conservées restent liées à leurs résultats. Les résultats d'une réponse supprimée sont aussi conservés.",
-    "full": "Cette question a déjà le nombre maximal de réponses ({{max}})."
+    "full": "Cette question a déjà le nombre maximal de réponses ({{max}}).",
+    "only_there": "Afficher les réponses ajoutées uniquement aux acheteurs en {{country}} et dans les pays associés",
+    "only_there_details": "Les acheteurs ailleurs voient toujours vos autres réponses. Modifiez la liste avec le bouton globe à côté de chaque réponse.",
+    "only_there_locked": "Les réponses limitées à certains pays sont disponibles avec {{plan}}."
   },
   "quick": {
     "title": "Démarrage rapide",

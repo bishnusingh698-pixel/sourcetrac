@@ -1026,7 +1026,12 @@
     "answer_type_details": "Hoe kopers antwoorden: één aantikken, meerdere aanvinken, een score kiezen of schrijven.",
     "required_details": "Kopers kunnen pas versturen als ze deze vraag hebben beantwoord. Laat uit om overslaan toe te staan.",
     "placeholder_details": "Grijze voorbeeldtekst in het lege antwoordvak.",
-    "long_answer_details": "Een hoger vak voor antwoorden van meer dan een paar woorden."
+    "long_answer_details": "Een hoger vak voor antwoorden van meer dan een paar woorden.",
+    "answer_countries_button": "Landen voor {{label}}",
+    "answer_countries_title": "‘{{label}}’ alleen in deze landen tonen",
+    "answer_countries_details": "Kopers elders zien dit antwoord niet. Vink niets aan om het overal te tonen. Handig om in één enquête LINE alleen voor Japan of Snapchat alleen voor de Golfregio te tonen.",
+    "answer_countries_summary": "Alleen getoond in: {{list}}",
+    "answer_countries_locked": "Een antwoord alleen in sommige landen tonen is beschikbaar met {{plan}}."
   },
   "preview": {
     "title": "Voorbeeld",
@@ -1091,7 +1096,10 @@
     "add_one": "{{count}} ontbrekend antwoord toevoegen",
     "add_other": "{{count}} ontbrekende antwoorden toevoegen",
     "replace_note": "Antwoorden die je houdt blijven aan hun resultaten gekoppeld. Ook de resultaten van een verwijderd antwoord blijven bewaard.",
-    "full": "Deze vraag heeft al het maximale aantal antwoorden ({{max}})."
+    "full": "Deze vraag heeft al het maximale aantal antwoorden ({{max}}).",
+    "only_there": "Toegevoegde antwoorden alleen tonen aan kopers in {{country}} en de landen in dezelfde groep",
+    "only_there_details": "Kopers elders zien je andere antwoorden gewoon. Wijzig de lijst met de wereldbolknop naast elk antwoord.",
+    "only_there_locked": "Antwoorden die alleen in sommige landen worden getoond, zijn beschikbaar met {{plan}}."
   },
   "quick": {
     "title": "Snel starten",

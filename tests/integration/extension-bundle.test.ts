@@ -691,3 +691,23 @@ describe("the merchant's look settings reach the buyer (B1, B2, B4)", () => {
     expect(field?.getAttribute("labelAccessibilityVisibility") ?? field?.getAttribute("labelaccessibilityvisibility")).toBe("exclusive");
   });
 });
+
+describe("answers limited to some countries reach only those buyers (F4)", () => {
+  it("hides an answer limited to Japan from a buyer checking out in the US", async () => {
+    const page = await mount(await bundle(LOOK_SURFACE), LOOK_SURFACE, false, {
+      questions: [
+        question("q1", "single_choice", {
+          options: [
+            { id: "a", label: "Instagram", isOther: false },
+            { id: "b", label: "Google", isOther: false },
+            { id: "c", label: "LINE", isOther: false, countries: ["JP"] },
+          ],
+        }),
+      ],
+    });
+    page.setOrder(LOOK_SURFACE.value);
+    await waitFor(() => page.body().querySelectorAll("s-clickable").length > 0);
+    const labels = [...page.body().querySelectorAll("s-clickable")].map((tile) => tile.textContent);
+    expect(labels).toEqual(["Instagram", "Google"]);
+  });
+});

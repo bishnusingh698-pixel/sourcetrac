@@ -1026,7 +1026,12 @@
     "answer_type_details": "Wie Käufer antworten: eine Antwort tippen, mehrere ankreuzen, eine Bewertung wählen oder schreiben.",
     "required_details": "Käufer können erst senden, wenn sie diese Frage beantwortet haben. Deaktiviert lassen, damit sie sie überspringen können.",
     "placeholder_details": "Grauer Beispieltext im leeren Antwortfeld.",
-    "long_answer_details": "Ein höheres Feld für Antworten, die länger als ein paar Wörter sind."
+    "long_answer_details": "Ein höheres Feld für Antworten, die länger als ein paar Wörter sind.",
+    "answer_countries_button": "Länder für {{label}}",
+    "answer_countries_title": "„{{label}}“ nur in diesen Ländern anzeigen",
+    "answer_countries_details": "Käufer in anderen Ländern sehen diese Antwort nicht. Nichts auswählen, um sie überall zu zeigen. So zeigen Sie in einer Umfrage etwa LINE nur in Japan oder Snapchat nur am Golf.",
+    "answer_countries_summary": "Nur angezeigt in: {{list}}",
+    "answer_countries_locked": "Antworten nur in bestimmten Ländern anzuzeigen ist mit {{plan}} verfügbar."
   },
   "preview": {
     "title": "Vorschau",
@@ -1091,7 +1096,10 @@
     "add_one": "{{count}} fehlende Antwort hinzufügen",
     "add_other": "{{count}} fehlende Antworten hinzufügen",
     "replace_note": "Behaltene Antworten bleiben mit ihren Ergebnissen verknüpft. Auch die Ergebnisse entfernter Antworten bleiben erhalten.",
-    "full": "Diese Frage hat bereits die Höchstzahl an Antworten ({{max}})."
+    "full": "Diese Frage hat bereits die Höchstzahl an Antworten ({{max}}).",
+    "only_there": "Hinzugefügte Antworten nur Käufern in {{country}} und den zugehörigen Ländern zeigen",
+    "only_there_details": "Käufer anderswo sehen weiterhin Ihre übrigen Antworten. Ändern Sie die Liste mit der Globus-Schaltfläche neben jeder Antwort.",
+    "only_there_locked": "Antworten nur für bestimmte Länder sind mit {{plan}} verfügbar."
   },
   "quick": {
     "title": "Schnellstart",

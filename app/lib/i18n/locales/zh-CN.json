@@ -1026,7 +1026,12 @@
     "answer_type_details": "买家的回答方式：点选一个、勾选多个、选择分数或填写文字。",
     "required_details": "买家必须回答此题后才能提交。不勾选则可以跳过。",
     "placeholder_details": "空白答案框中的灰色示例文字。",
-    "long_answer_details": "更高的输入框，适合较长的回答。"
+    "long_answer_details": "更高的输入框，适合较长的回答。",
+    "answer_countries_button": "{{label}} 的国家/地区",
+    "answer_countries_title": "仅在这些国家/地区显示“{{label}}”",
+    "answer_countries_details": "在其他国家/地区结账的买家看不到此答案。全部不勾选则在所有地区显示。例如可在同一份问卷中只对日本显示 LINE，或只对海湾地区显示 Snapchat。",
+    "answer_countries_summary": "仅在以下地区显示：{{list}}",
+    "answer_countries_locked": "仅在部分国家/地区显示答案的功能在 {{plan}} 中提供。"
   },
   "preview": {
     "title": "预览",
@@ -1091,7 +1096,10 @@
     "add_one": "添加 {{count}} 个缺少的答案",
     "add_other": "添加 {{count}} 个缺少的答案",
     "replace_note": "保留的答案仍与其结果关联。删除的答案的结果也会保留。",
-    "full": "此问题的答案数已达上限（{{max}} 个）。"
+    "full": "此问题的答案数已达上限（{{max}} 个）。",
+    "only_there": "仅向 {{country}} 及同组国家/地区的买家显示新增答案",
+    "only_there_details": "其他地区的买家仍会看到您的其他答案。可用每个答案旁的地球按钮修改列表。",
+    "only_there_locked": "仅在部分国家/地区显示的答案在 {{plan}} 中提供。"
   },
   "quick": {
     "title": "快速开始",

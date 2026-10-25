@@ -216,6 +216,8 @@ export type SurveyOptionDef = {
   archived?: boolean;
   /** locale -> translated label. */
   translations?: Record<string, string | undefined>;
+  /** F4: only buyers checking out in these countries see it. Empty or absent: everyone. */
+  countries?: string[];
 };
 
 export type ShowIf = {

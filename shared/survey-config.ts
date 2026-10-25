@@ -55,6 +55,8 @@ export type CompiledOption = {
   exclusive?: boolean;
   /** locale -> translated label. */
   translations?: Record<string, string | undefined>;
+  /** F4: shown only to buyers in these countries. Absent: everyone. */
+  countries?: string[];
 };
 
 export type CompiledQuestion = {

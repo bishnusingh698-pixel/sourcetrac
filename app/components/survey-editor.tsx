@@ -15,6 +15,7 @@ import type { EditorSurvey } from "~/lib/surveys.server";
 import type { PresetLabels } from "~/lib/channel-presets.server";
 import { JustInTimeNotice } from "~/components/data-notice";
 import { CountrySelect, countryName } from "~/components/country-select";
+import { CountryPicker } from "~/components/country-picker";
 import { mergePresetAnswers, presetAnswersForCountry, type PresetAnswer } from "~/lib/preset-options";
 
 /** What the editor needs to offer country presets (F2/F3). */
@@ -630,6 +631,9 @@ function AnswerList({
   const options = question.options.filter((o) => !o.isOther);
   const others = question.options.filter((o) => o.isOther);
   const count = options.length;
+  // The answer whose country list is open (F4), if any.
+  const [countriesFor, setCountriesFor] = useState<string | null>(null);
+  const language = presets?.language ?? "en";
   const setOptions = (next: Option[]) => setQuestion(index, { options: [...next, ...others] });
   const optionsError = errors.get(`questions[${index}].options`);
 
@@ -642,7 +646,8 @@ function AnswerList({
         </s-banner>
       ) : null}
       {options.map((option, i) => (
-        <s-grid key={option.id || `new-${i}`} gridTemplateColumns="minmax(0, 1fr) auto" gap="small" alignItems="center">
+        <s-stack key={option.id || `new-${i}`} gap="small-200">
+        <s-grid gridTemplateColumns="minmax(0, 1fr) auto auto" gap="small" alignItems="center">
           <s-text-field
             id={errorId(`questions[${index}].options[${i}].label`)}
             label={t("editor.answer_n", { n: i + 1 })}
@@ -664,7 +669,38 @@ function AnswerList({
             disabled={count <= limits.MIN_OPTIONS || undefined}
             onClick={() => setOptions(options.filter((_, j) => j !== i))}
           />
+          <s-button
+            type="button"
+            variant="tertiary"
+            icon="globe"
+            accessibilityLabel={t("editor.answer_countries_button", { label: option.label })}
+            onClick={() => setCountriesFor(countriesFor === option.id ? null : option.id)}
+          />
         </s-grid>
+        {(option.countries?.length ?? 0) > 0 && countriesFor !== option.id ? (
+          <s-text color="subdued" fontSize="small">
+            {t("editor.answer_countries_summary", {
+              list: (option.countries ?? []).map((code) => countryName(code, language)).join(", "),
+            })}
+          </s-text>
+        ) : null}
+        {countriesFor === option.id ? (
+          // F4: a Growth rule, like the survey's own country list. An answer
+          // that already has one keeps its control after a downgrade.
+          !planHas(plan, "advanced_targeting") && (option.countries?.length ?? 0) === 0 ? (
+            <LockedNote t={t} plan="growth">{t("editor.answer_countries_locked", { plan: t("plans.growth") })}</LockedNote>
+          ) : (
+            <CountryPicker
+              value={option.countries ?? []}
+              onChange={(codes) => setOptions(options.map((o, j) => (j === i ? { ...o, countries: codes } : o)))}
+              language={language}
+              label={t("editor.answer_countries_title", { label: option.label })}
+              details={t("editor.answer_countries_details")}
+              t={t}
+            />
+          )
+        ) : null}
+        </s-stack>
       ))}
       <s-stack direction="inline" gap="small" alignItems="center">
         <s-button
@@ -1033,8 +1069,11 @@ function PresetLoader({
   t: TFn;
 }) {
   const [country, setCountry] = useState<string>(presets.shopCountry ?? "US");
-  const { answers } = presetAnswersForCountry(country, presets.labels, question.templateKey);
-  const build = (answer: PresetAnswer): Option => ({
+  // F4: answers added for another market can be shown only to its buyers.
+  const [onlyThere, setOnlyThere] = useState(false);
+  const { market, answers } = presetAnswersForCountry(country, presets.labels, question.templateKey);
+  const canLimit = planHas(plan, "advanced_targeting") && market.countries.length > 0;
+  const build = (answer: PresetAnswer, limitTo: readonly string[] = []): Option => ({
     id: newItemId(),
     label: answer.label,
     isOther: false,
@@ -1042,11 +1081,11 @@ function PresetLoader({
     archived: false,
     translations: answer.translations,
     templateKey: answer.templateKey,
+    ...(limitTo.length > 0 ? { countries: [...limitTo] } : {}),
   });
   const name = countryName(country, presets.language);
   const missing = answers.filter((a) => !options.some((o) => o.label.trim().toLowerCase() === a.label.trim().toLowerCase()));
   const full = options.length >= max;
-  void plan;
 
   return (
     <s-stack gap="small">
@@ -1068,11 +1107,29 @@ function PresetLoader({
           type="button"
           variant="tertiary"
           disabled={full || missing.length === 0 || undefined}
-          onClick={() => onApply(mergePresetAnswers(options, answers, "add", max, build))}
+          onClick={() =>
+            onApply(
+              mergePresetAnswers(options, answers, "add", max, (answer) =>
+                build(answer, onlyThere && canLimit ? market.countries : []),
+              ),
+            )
+          }
         >
           {t("presets.add", { count: Math.min(missing.length, Math.max(0, max - options.length)) })}
         </s-button>
       </s-stack>
+      {market.countries.length > 0 ? (
+        planHas(plan, "advanced_targeting") ? (
+          <s-checkbox
+            label={t("presets.only_there", { country: name })}
+            details={t("presets.only_there_details")}
+            checked={onlyThere || undefined}
+            onChange={(e: Event) => setOnlyThere(checkboxChecked(e))}
+          />
+        ) : (
+          <LockedNote t={t} plan="growth">{t("presets.only_there_locked", { plan: t("plans.growth") })}</LockedNote>
+        )
+      ) : null}
       <s-text color="subdued" fontSize="small">
         {full ? t("presets.full", { max }) : t("presets.replace_note")}
       </s-text>

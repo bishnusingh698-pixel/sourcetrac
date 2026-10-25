@@ -1026,7 +1026,12 @@
     "answer_type_details": "購入者の回答方法：1つを選ぶ、複数にチェック、点数を選ぶ、または入力する。",
     "required_details": "この質問に答えるまで回答を送信できません。スキップできるようにするにはオフのままにします。",
     "placeholder_details": "空の回答欄に表示される灰色の例文です。",
-    "long_answer_details": "数語より長い回答向けの高さのある入力欄です。"
+    "long_answer_details": "数語より長い回答向けの高さのある入力欄です。",
+    "answer_countries_button": "{{label}} の対象国",
+    "answer_countries_title": "「{{label}}」をこれらの国でのみ表示",
+    "answer_countries_details": "他の国で購入する人にはこの回答は表示されません。すべて未選択ならどこでも表示されます。1つのアンケートで、LINEは日本だけ、Snapchatは湾岸地域だけ、といった使い方ができます。",
+    "answer_countries_summary": "表示する国：{{list}}",
+    "answer_countries_locked": "回答を一部の国だけに表示する機能は {{plan}} で利用できます。"
   },
   "preview": {
     "title": "プレビュー",
@@ -1091,7 +1096,10 @@
     "add_one": "足りない回答を {{count}} 件追加",
     "add_other": "足りない回答を {{count}} 件追加",
     "replace_note": "残した回答は結果と結びついたままです。削除した回答の結果も保持されます。",
-    "full": "この質問はすでに回答の上限（{{max}} 件）に達しています。"
+    "full": "この質問はすでに回答の上限（{{max}} 件）に達しています。",
+    "only_there": "追加した回答を {{country}} と同じグループの国の購入者だけに表示",
+    "only_there_details": "他の国の購入者には引き続きほかの回答が表示されます。各回答の横の地球ボタンでリストを変更できます。",
+    "only_there_locked": "一部の国だけに表示する回答は {{plan}} で利用できます。"
   },
   "quick": {
     "title": "クイックスタート",

@@ -1026,7 +1026,12 @@
     "answer_type_details": "Come rispondono gli acquirenti: toccare una risposta, sceglierne diverse, dare un punteggio o scrivere.",
     "required_details": "Gli acquirenti non possono inviare finché non rispondono a questa. Lascia disattivato per permettere di saltarla.",
     "placeholder_details": "Testo di esempio grigio nella casella di risposta vuota.",
-    "long_answer_details": "Una casella più alta per risposte di più di qualche parola."
+    "long_answer_details": "Una casella più alta per risposte di più di qualche parola.",
+    "answer_countries_button": "Paesi per {{label}}",
+    "answer_countries_title": "Mostra «{{label}}» solo in questi paesi",
+    "answer_countries_details": "Chi acquista altrove non vede questa risposta. Lascia tutto deselezionato per mostrarla ovunque. Utile per mostrare LINE solo in Giappone o Snapchat solo nel Golfo, in un unico sondaggio.",
+    "answer_countries_summary": "Mostrato solo in: {{list}}",
+    "answer_countries_locked": "Mostrare una risposta solo in alcuni paesi è disponibile con {{plan}}."
   },
   "preview": {
     "title": "Anteprima",
@@ -1091,7 +1096,10 @@
     "add_one": "Aggiungi {{count}} risposta mancante",
     "add_other": "Aggiungi {{count}} risposte mancanti",
     "replace_note": "Le risposte che tieni restano collegate ai loro risultati. Anche i risultati di una risposta rimossa vengono conservati.",
-    "full": "Questa domanda ha già il numero massimo di risposte ({{max}})."
+    "full": "Questa domanda ha già il numero massimo di risposte ({{max}}).",
+    "only_there": "Mostra le risposte aggiunte solo agli acquirenti in {{country}} e nei paesi del suo gruppo",
+    "only_there_details": "Gli acquirenti altrove continuano a vedere le altre risposte. Cambia l'elenco con il pulsante a forma di globo accanto a ogni risposta.",
+    "only_there_locked": "Le risposte mostrate solo in alcuni paesi sono disponibili con {{plan}}."
   },
   "quick": {
     "title": "Avvio rapido",

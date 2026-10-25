@@ -1026,7 +1026,12 @@
     "answer_type_details": "Hur köparna svarar: tryck på ett svar, bocka för flera, välj ett betyg eller skriv.",
     "required_details": "Köparna kan inte skicka förrän de har svarat på den här. Låt den vara av så att de kan hoppa över den.",
     "placeholder_details": "Grå exempeltext i den tomma svarsrutan.",
-    "long_answer_details": "En högre ruta för svar som är längre än några ord."
+    "long_answer_details": "En högre ruta för svar som är längre än några ord.",
+    "answer_countries_button": "Länder för {{label}}",
+    "answer_countries_title": "Visa ”{{label}}” bara i dessa länder",
+    "answer_countries_details": "Köpare i andra länder ser inte det här svaret. Lämna allt omarkerat för att visa det överallt. Bra för att visa LINE bara i Japan eller Snapchat bara i Gulfen, i en och samma enkät.",
+    "answer_countries_summary": "Visas bara i: {{list}}",
+    "answer_countries_locked": "Att visa ett svar bara i vissa länder ingår i {{plan}}."
   },
   "preview": {
     "title": "Förhandsvisning",
@@ -1091,7 +1096,10 @@
     "add_one": "Lägg till {{count}} saknat svar",
     "add_other": "Lägg till {{count}} saknade svar",
     "replace_note": "Svar du behåller förblir kopplade till sina resultat. Resultaten för ett borttaget svar sparas också.",
-    "full": "Frågan har redan det högsta antalet svar ({{max}})."
+    "full": "Frågan har redan det högsta antalet svar ({{max}}).",
+    "only_there": "Visa de tillagda svaren bara för köpare i {{country}} och länderna i samma grupp",
+    "only_there_details": "Köpare på andra håll ser fortfarande dina andra svar. Ändra listan med jordglobsknappen bredvid varje svar.",
+    "only_there_locked": "Svar som bara visas i vissa länder ingår i {{plan}}."
   },
   "quick": {
     "title": "Snabbstart",

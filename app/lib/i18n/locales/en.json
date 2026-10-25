@@ -1026,7 +1026,12 @@
     "answer_type_details": "How buyers answer: tap one, tick several, pick a score or write.",
     "required_details": "Buyers can't send their answers until they answer this one. Leave it off to let them skip it.",
     "placeholder_details": "Grey example text inside the empty answer box.",
-    "long_answer_details": "A taller box for answers longer than a few words."
+    "long_answer_details": "A taller box for answers longer than a few words.",
+    "answer_countries_button": "Countries for {{label}}",
+    "answer_countries_title": "Show “{{label}}” only in these countries",
+    "answer_countries_details": "Buyers checking out elsewhere don't see this answer. Leave all unticked to show it everywhere. Use it to list LINE only for Japan, or Snapchat only for the Gulf, in one survey.",
+    "answer_countries_summary": "Only shown in: {{list}}",
+    "answer_countries_locked": "Showing an answer only in some countries is available on {{plan}}."
   },
   "preview": {
     "title": "Preview",
@@ -1091,7 +1096,10 @@
     "add_one": "Add {{count}} missing answer",
     "add_other": "Add {{count}} missing answers",
     "replace_note": "Answers you keep stay linked to their results. Results for an answer you remove are kept too.",
-    "full": "This question already has the most answers it can hold ({{max}})."
+    "full": "This question already has the most answers it can hold ({{max}}).",
+    "only_there": "Show the added answers only to buyers in {{country}} and the countries grouped with it",
+    "only_there_details": "Buyers elsewhere keep seeing your other answers. Change the list with the globe button next to each answer.",
+    "only_there_locked": "Answers shown only in some countries are available on {{plan}}."
   },
   "quick": {
     "title": "Quick start",

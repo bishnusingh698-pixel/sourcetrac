@@ -20,12 +20,17 @@ export function CountryPicker({
   language,
   error,
   t,
+  label,
+  details,
 }: {
   value: readonly string[];
   onChange: (codes: string[]) => void;
   language: string;
   error?: string;
   t: TFn;
+  /** Heading and help; the survey's own country rule by default. */
+  label?: string;
+  details?: string;
 }) {
   const [query, setQuery] = useState("");
 
@@ -69,8 +74,8 @@ export function CountryPicker({
 
   return (
     <s-stack gap="small">
-      <s-text type="strong">{t("editor.countries")}</s-text>
-      <s-text color="subdued">{t("editor.countries_details")}</s-text>
+      <s-text type="strong">{label ?? t("editor.countries")}</s-text>
+      <s-text color="subdued">{details ?? t("editor.countries_details")}</s-text>
       {invalid.length > 0 ? (
         <Banner tone="warning" heading={t("editor.countries_invalid", { codes: invalid.join(", ") })}>
           <s-button onClick={() => onChange([...selected])}>{t("editor.countries_remove_invalid")}</s-button>

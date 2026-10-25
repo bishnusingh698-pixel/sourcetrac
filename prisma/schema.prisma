@@ -422,6 +422,10 @@ model Option {
   translations String  @default("{}")
   /// The template's stable option id this row was created from, if any.
   templateKey  String?
+  /// JSON array of ISO country codes. Non-empty: only buyers checking out in
+  /// one of these countries see this answer. "[]" (the default, and every row
+  /// from before the column) is every country.
+  countries    String  @default("[]")
 
   question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 

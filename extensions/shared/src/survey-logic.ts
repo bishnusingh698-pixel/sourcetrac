@@ -33,7 +33,27 @@ export type CompiledOption = {
   /** T6: selecting it clears the others in multiple choice. */
   exclusive?: boolean;
   translations?: Record<string, string | undefined>;
+  /** F4: shown only to buyers in these countries. Absent: everyone. */
+  countries?: string[];
 };
+
+/**
+ * The answers a buyer in `country` sees: every answer without a country list,
+ * and those whose list names the buyer's country. When the checkout does not
+ * say where the buyer is, every answer is shown: hiding answers from a buyer we
+ * know nothing about would bias the results more than showing one extra.
+ */
+export function optionsForCountry<T extends { countries?: string[]; isOther?: boolean }>(
+  options: readonly T[],
+  country: string | null,
+): T[] {
+  if (!country) return [...options];
+  const code = country.toUpperCase();
+  const kept = options.filter((option) => !option.countries || option.countries.length === 0 || option.countries.includes(code));
+  // A question left with nothing to pick (every answer limited elsewhere)
+  // would block a required question: show every answer instead.
+  return kept.some((option) => !option.isOther) ? kept : [...options];
+}
 
 export type CompiledQuestion = {
   id: string;
@@ -668,5 +688,20 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
     }
   }
 
-  return { fetchSurveyConfig, fetchSurvey, fetchPreview, submitResponse, submitAnswers, getLocale: buyerLocale, t };
+  /** The buyer's checkout country (ISO alpha-2), or null. */
+  function buyerCountry(): string | null {
+    const country = safeRead(() => binding.getCountry?.());
+    return typeof country === "string" && /^[A-Za-z]{2}$/.test(country) ? country.toUpperCase() : null;
+  }
+
+  return {
+    fetchSurveyConfig,
+    fetchSurvey,
+    fetchPreview,
+    submitResponse,
+    submitAnswers,
+    getLocale: buyerLocale,
+    getCountry: buyerCountry,
+    t,
+  };
 }
