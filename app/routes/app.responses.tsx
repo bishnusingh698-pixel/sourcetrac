@@ -15,13 +15,13 @@ import { ensureShop } from "~/lib/provision.server";
 import { startOrderBackfill } from "~/lib/order-backfill.server";
 import { guarded } from "~/lib/admin-errors.server";
 import { formatMoney, parseMoneyToMinor } from "~/lib/money";
+import { authenticate } from "~/shopify.server";
 
 /** A stored decimal total as locale money, or the decimal and code if it cannot be read. */
 function moneyText(total: string, currency: string, locale: string): string {
   const parsed = parseMoneyToMinor(total, currency);
   return parsed.ok ? formatMoney(parsed.minor, currency, locale) : `${total} ${currency}`;
 }
-import { authenticate } from "~/shopify.server";
 
 /**
  * Responses — one row per buyer answer, for the new multi-question surveys.
