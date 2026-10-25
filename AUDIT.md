@@ -66,7 +66,7 @@ support address (only `sourcetracsupport@gmail.com` exists in the code).
 | U1 | Admin nav | Ten menu tiles (Dashboard, Surveys, Templates, Results, Channel report, Responses, Export, Plans, Settings, Help). Results vs Channel report vs Dashboard is the confusion merchants reported. | [x] Seven sections: Home, Surveys, Analytics, Responses, Plans, Settings, Help. Analytics has two tabs (Channels, Survey results); Surveys has two (My surveys, Templates); Responses has two (Answers, Export). Old URLs keep working. |
 | U2 | First run | Getting live takes: pick a template among 50, read the editor, find "Go live". | [x] One-screen quick start: country, answers preloaded for that market, Go live. |
 | U3 | Editor | "How did you hear about us?" answers are the same three US-centric lists everywhere. | [x] Country-aware presets with a searchable country list, loadable into any choice question. |
-| U4 | Editor | Settings without a sentence on what the buyer will see (layout, title, button, thank-you text, required, answer type). | [ ] Helper text on each. |
+| U4 | Editor | Settings without a sentence on what the buyer will see (layout, title, button, thank-you text, required, answer type). | [x] Helper text on each. |
 | U5 | Editor | Look settings hidden under "Wording" with no explanation of why colours cannot be chosen. | [x] "Look and wording" section, with the reason colours and fonts follow the checkout's own branding. |
 | U6 | Analytics | No country filter; no way to compare markets. | [x] Country filter on both Analytics tabs. |
 | U7 | Buyer | Scale questions without anchors; selected answer not marked (B2, B4). | [x] |

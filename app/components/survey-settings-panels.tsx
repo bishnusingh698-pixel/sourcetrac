@@ -58,6 +58,9 @@ export function Audience({ draft, update, t }: { draft: EditorSurvey; update: Up
       <s-choice value="first_order">{t("editor.audience_first")}</s-choice>
       <s-choice value="returning">{t("editor.audience_returning")}</s-choice>
     </s-choice-list>
+    <s-text color="subdued" fontSize="small">
+      {t("editor.audience_details")}
+    </s-text>
     {orderStatusNote ? (
       <s-text color="subdued" fontSize="small">
         {t("editor.audience_order_status_note")}

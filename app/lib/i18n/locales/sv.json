@@ -264,7 +264,7 @@
     "faq_title": "Vanliga frågor",
     "contact_tip": "Innan du skriver: om enkäten saknas löser kontrollen i kassaredigeraren från de två första svaren ovan oftast problemet.",
     "q_create": "Hur skapar jag min enkät?",
-    "a_create": "Gå till Enkäter och välj Ny enkät. Välj en mall eller börja från början, redigera frågorna och klicka på Publicera. För att visa den för köpare går du i Shopify till Inställningar › Kassa, klickar på Anpassa, väljer Tack i sidmenyn högst upp, lägger till blocket ”SourceTrac survey” och klickar på Spara. Blocket läggs bara till en gång.",
+    "a_create": "Snabbast är Enkäter › Snabbstart: välj var de flesta köparna finns, kontrollera svaren och tryck på Gå live. Du kan också välja en mall under Enkäter › Mallar. Lägg sedan till blocket: gå till Inställningar › Kassa i Shopify-administratören, klicka på Anpassa, välj Tack i sidmenyn högst upp, lägg till blocket ”SourceTrac survey” och tryck på Spara. Blocket läggs bara till en gång.",
     "q_not_showing": "Varför visas inte frågan på min tack-sida?",
     "a_not_showing": "Kontrollera fyra saker. För det första måste enkäten vara publicerad i SourceTrac. För det andra måste blocket ”SourceTrac survey” finnas på tacksidan i Shopifys kassaredigerare (Inställningar › Kassa › Anpassa, sedan Tack i sidmenyn) och redigeraren vara sparad. För det tredje tillfrågas varje beställning bara en gång: en beställning som redan svarat visar aldrig enkäten igen, så testa med en ny beställning. För det fjärde erbjuder Shopify inte blocket på tacksidan i Starter-planen.",
     "q_missing_revenue": "Varför saknar ett av mina svar intäkter?",
@@ -288,7 +288,13 @@
     "q_once_per_order": "Jag svarade en gång och nu visas inte enkäten. Varför?",
     "a_once_per_order": "Varje beställning tillfrågas bara en gång. Efter ett svar visar SourceTrac aldrig enkäten för den beställningen igen, inte ens om sidan laddas om, så ingen tillfrågas två gånger. Lägg en ny beställning för att testa igen.",
     "q_order_status": "Kan enkäten även visas på orderstatussidan?",
-    "a_order_status": "Ja, som ett valfritt tillägg. Orderstatussidan är sidan köpare kommer till när de öppnar ”Visa din beställning” i sina ordermejl. Markera den under ”Var den visas” i enkäten, välj sedan Orderstatus i sidmenyn i kassaredigeraren, lägg till blocket ”SourceTrac survey” och klicka på Spara. Den finns bara i menyn om din butik använder Shopifys nya kundkonton (Inställningar › Kundkonton). Varje beställning tillfrågas fortfarande bara en gång."
+    "a_order_status": "Ja, som ett valfritt tillägg. Orderstatussidan är sidan köpare kommer till när de öppnar ”Visa din beställning” i sina ordermejl. Markera den under ”Var den visas” i enkäten, välj sedan Orderstatus i sidmenyn i kassaredigeraren, lägg till blocket ”SourceTrac survey” och klicka på Spara. Den finns bara i menyn om din butik använder Shopifys nya kundkonton (Inställningar › Kundkonton). Varje beställning tillfrågas fortfarande bara en gång.",
+    "q_countries": "Mina köpare finns i flera länder. Kan svaren skilja sig åt?",
+    "a_countries": "Ja. I redigeraren laddar ”Använd svar för ett land” de appar och sajter som köpare i det landet oftast hittar butiker på. Jordglobsknappen bredvid ett svar visar det bara för köpare i länderna du väljer (Growth), så en enkät kan visa LINE i Japan och Snapchat i Gulfen. För andra frågor duplicerar du enkäten, begränsar den till de länderna under ”Vem ser den” och flyttar upp den ovanför den andra på sidan Enkäter.",
+    "q_look": "Kan jag ändra enkätens färger och typsnitt?",
+    "a_look": "Enkäten använder alltid kassans egna typsnitt och färger (Inställningar › Kassa › Anpassa), eftersom Shopify inte låter appar ändra dem, så den ser alltid ut som en del av butiken. Under ”Utseende och texter” ändrar du rubrik, intro, knapp och tacktext, visar en fråga i taget, använder stjärnor för betyg, väljer orden under en skala och väljer kant och avstånd.",
+    "q_languages": "Ser köparna enkäten på sitt eget språk?",
+    "a_languages": "Mallar och snabbstarten är översatta till tio språk. Under ”Språk” i enkäten kan du lägga till eller ändra översättningar, även på arabiska, hebreiska, koreanska, polska, turkiska och de nordiska språken. Köparen ser sitt kassaspråk om enkäten har det, annars din egen text; knapparna är översatta till alla dessa språk."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac är inte tillgängligt med din plan",
@@ -787,7 +793,7 @@
     "view": "Visa",
     "reliable_ideas": "Dina resultat för {{name}} är tillförlitliga. Se vad köparna berättade.",
     "unpublished": "{{name}} har opublicerade ändringar. Granska och publicera.",
-    "open_report": "Öppna kanalrapporten",
+    "open_report": "Visa alla kanaler",
     "do_it": "Gå dit",
     "see_results": "Se de senaste svaren på {{name}}.",
     "subtitle": "Din butik i korthet: intäkter per kanal, kundbetyg och alla enkäter.",
@@ -1044,7 +1050,8 @@
     "products_missing": "Produkt {{id}} (finns inte längre i butiken)",
     "products_unavailable": "Shopifys produktväljare kunde inte öppnas. Ladda om sidan och försök igen.",
     "countries_other_questions": "Vill du ställa andra frågor till köpare i ett land? Duplicera enkäten, välj länderna här och flytta den ovanför den här på sidan Enkäter.",
-    "language_rtl": "Skrivs från höger till vänster. Shopifys kassa visar enkäten från höger till vänster för dessa köpare."
+    "language_rtl": "Skrivs från höger till vänster. Shopifys kassa visar enkäten från höger till vänster för dessa köpare.",
+    "audience_details": "Shopify berättar på tacksidan om det är köparens första beställning i din butik."
   },
   "preview": {
     "title": "Förhandsvisning",

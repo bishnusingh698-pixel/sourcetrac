@@ -264,7 +264,7 @@
     "faq_title": "Frequently asked",
     "contact_tip": "Before writing, the fastest fix for a missing survey is usually the checkout editor check in the first two answers above.",
     "q_create": "How do I create my survey?",
-    "a_create": "Go to Surveys and choose New survey. Pick a template or start from scratch, edit the questions and press Go live. To show it to buyers, in Shopify admin go to Settings › Checkout, click Customize, choose Thank you from the page menu at the top, add the “SourceTrac survey” block and press Save. You only add the block once.",
+    "a_create": "The fastest way is Surveys › Quick start: pick where most of your buyers are, check the answers and press Go live. You can also pick a template under Surveys › Templates. Then add the block: in Shopify admin go to Settings › Checkout, click Customize, choose Thank you from the page menu at the top, add the “SourceTrac survey” block and press Save. You only add the block once.",
     "q_not_showing": "Why is the question not showing on my thank-you page?",
     "a_not_showing": "Four things are worth checking. First, the survey must be live in SourceTrac. Second, the “SourceTrac survey” block must be on the Thank you page in Shopify's checkout editor (Settings › Checkout › Customize, then Thank you in the page menu), and the editor saved. Third, each order is asked only once: an order that already answered never shows the survey again, so test with a new order. Fourth, Shopify does not offer the Thank you page block on the Starter plan.",
     "q_missing_revenue": "Why is one of my answers missing revenue?",
@@ -288,7 +288,13 @@
     "q_once_per_order": "I answered once and now the survey doesn't show. Why?",
     "a_once_per_order": "Each order is asked only once. After an answer, SourceTrac never shows that order the survey again, even if the page is reloaded, so buyers are never asked twice. To test again, place a new order.",
     "q_order_status": "Can the survey also show on the Order status page?",
-    "a_order_status": "Yes, as an optional extra. The Order status page is where buyers land when they open “View your order” from their order emails. Tick it under “Where it shows” in the survey, then in the checkout editor choose Order status from the page menu, add the “SourceTrac survey” block and press Save. It's in the menu only if your store uses Shopify's new customer accounts (Settings › Customer accounts). Each order is still asked only once."
+    "a_order_status": "Yes, as an optional extra. The Order status page is where buyers land when they open “View your order” from their order emails. Tick it under “Where it shows” in the survey, then in the checkout editor choose Order status from the page menu, add the “SourceTrac survey” block and press Save. It's in the menu only if your store uses Shopify's new customer accounts (Settings › Customer accounts). Each order is still asked only once.",
+    "q_countries": "My buyers are in several countries. Can the answers differ?",
+    "a_countries": "Yes. In the survey editor, “Use answers for a country” loads the apps and sites buyers in a country usually find shops on. The globe button next to an answer shows it only to buyers in the countries you pick (Growth), so one survey can offer LINE in Japan and Snapchat in the Gulf. For different questions, duplicate the survey, limit it to those countries under “Who sees it” and move it above the other on the Surveys page.",
+    "q_look": "Can I change the survey's colours and fonts?",
+    "a_look": "The survey always uses your checkout's own fonts and colours (Settings › Checkout › Customize), because Shopify doesn't let apps change them, so it always looks like part of your store. Under “Look and wording” in the survey you can change the title, intro, button and thank-you text, show questions one at a time, use stars for ratings, set the words under a scale, and choose a border and spacing.",
+    "q_languages": "Will buyers see the survey in their language?",
+    "a_languages": "Templates and the quick start come translated into ten languages. Under “Languages” in the survey you can add or change translations, including Arabic, Hebrew, Korean, Polish, Turkish and the Nordic languages. A buyer sees their checkout language when the survey has it, and your own wording otherwise; the buttons are translated for all of these languages."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac is not available on your plan",
@@ -787,7 +793,7 @@
     "view": "View",
     "reliable_ideas": "Your {{name}} results are reliable. See what buyers told you.",
     "unpublished": "{{name}} has unpublished changes. Review and publish.",
-    "open_report": "Open channel report",
+    "open_report": "See all channels",
     "do_it": "Go",
     "see_results": "See the latest answers to {{name}}.",
     "subtitle": "Your store at a glance: revenue by channel, customer scores and every survey.",
@@ -1044,7 +1050,8 @@
     "products_missing": "Product {{id}} (no longer found in your store)",
     "products_unavailable": "Shopify's product picker couldn't open here. Reload the page and try again.",
     "countries_other_questions": "Want different questions for buyers in one country? Duplicate this survey, set its countries here and move it above this one on the Surveys page.",
-    "language_rtl": "Written right to left. Shopify's checkout lays the survey out right to left for these buyers."
+    "language_rtl": "Written right to left. Shopify's checkout lays the survey out right to left for these buyers.",
+    "audience_details": "Shopify tells us on the Thank-you page whether this is the buyer's first order with your store."
   },
   "preview": {
     "title": "Preview",

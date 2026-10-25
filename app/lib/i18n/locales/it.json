@@ -264,7 +264,7 @@
     "faq_title": "Domande frequenti",
     "contact_tip": "Prima di scriverci: se il sondaggio non compare, di solito basta il controllo nell'editor del checkout descritto nelle prime due risposte qui sopra.",
     "q_create": "Come creo il mio sondaggio?",
-    "a_create": "Vai su Sondaggi e scegli Nuovo sondaggio. Scegli un modello o parti da zero, modifica le domande e premi Pubblica. Per mostrarlo agli acquirenti, in Shopify vai su Impostazioni › Checkout, fai clic su Personalizza, scegli Grazie dal menu delle pagine in alto, aggiungi il blocco «SourceTrac survey» e premi Salva. Il blocco si aggiunge una sola volta.",
+    "a_create": "Il modo più rapido è Sondaggi › Avvio rapido: scegli dove si trova la maggior parte degli acquirenti, controlla le risposte e premi Pubblica. Puoi anche scegliere un modello in Sondaggi › Modelli. Poi aggiungi il blocco: nell'admin di Shopify vai a Impostazioni › Checkout, fai clic su Personalizza, scegli Ringraziamento dal menu delle pagine in alto, aggiungi il blocco «SourceTrac survey» e premi Salva. Il blocco si aggiunge una sola volta.",
     "q_not_showing": "Perché la domanda non compare nella mia pagina di conferma ordine?",
     "a_not_showing": "Controlla quattro cose. Primo, il sondaggio deve essere pubblicato in SourceTrac. Secondo, il blocco «SourceTrac survey» deve essere nella pagina di ringraziamento dell'editor del checkout di Shopify (Impostazioni › Checkout › Personalizza, poi Grazie nel menu delle pagine) e l'editor salvato. Terzo, ogni ordine viene interrogato una sola volta: un ordine che ha già risposto non mostra più il sondaggio, quindi prova con un nuovo ordine. Quarto, Shopify non offre il blocco della pagina di ringraziamento nel piano Starter.",
     "q_missing_revenue": "Perché a una delle mie risposte manca il fatturato?",
@@ -288,7 +288,13 @@
     "q_once_per_order": "Ho risposto una volta e ora il sondaggio non appare. Perché?",
     "a_once_per_order": "Ogni ordine viene interrogato una sola volta. Dopo una risposta, SourceTrac non mostra più il sondaggio a quell'ordine, nemmeno ricaricando la pagina, così nessuno risponde due volte. Per riprovare, fai un nuovo ordine.",
     "q_order_status": "Il sondaggio può comparire anche nella pagina di stato dell'ordine?",
-    "a_order_status": "Sì, come extra facoltativo. La pagina di stato dell'ordine è quella che gli acquirenti aprono con «Visualizza ordine» dalle email dell'ordine. Selezionala in «Dove appare» nel sondaggio, poi nell'editor del checkout scegli Stato dell'ordine dal menu delle pagine, aggiungi il blocco «SourceTrac survey» e premi Salva. È nel menu solo se il tuo negozio usa i nuovi account cliente di Shopify (Impostazioni › Account cliente). Ogni ordine viene comunque interrogato una sola volta."
+    "a_order_status": "Sì, come extra facoltativo. La pagina di stato dell'ordine è quella che gli acquirenti aprono con «Visualizza ordine» dalle email dell'ordine. Selezionala in «Dove appare» nel sondaggio, poi nell'editor del checkout scegli Stato dell'ordine dal menu delle pagine, aggiungi il blocco «SourceTrac survey» e premi Salva. È nel menu solo se il tuo negozio usa i nuovi account cliente di Shopify (Impostazioni › Account cliente). Ogni ordine viene comunque interrogato una sola volta.",
+    "q_countries": "I miei acquirenti sono in più paesi. Le risposte possono cambiare?",
+    "a_countries": "Sì. Nell'editor, «Usa le risposte per un paese» carica le app e i siti su cui gli acquirenti di quel paese scoprono di solito i negozi. Il pulsante a forma di globo accanto a una risposta la mostra solo agli acquirenti dei paesi scelti (Growth), così un sondaggio offre LINE in Giappone e Snapchat nel Golfo. Per domande diverse, duplica il sondaggio, limitalo a quei paesi in «Chi lo vede» e spostalo sopra l'altro nella pagina Sondaggi.",
+    "q_look": "Posso cambiare colori e caratteri del sondaggio?",
+    "a_look": "Il sondaggio usa sempre caratteri e colori del checkout (Impostazioni › Checkout › Personalizza), perché Shopify non consente alle app di cambiarli: così sembra sempre parte del negozio. In «Aspetto e testi» puoi cambiare titolo, introduzione, pulsante e messaggio di ringraziamento, mostrare una domanda alla volta, usare le stelle per le valutazioni, impostare le parole sotto una scala e scegliere bordo e spaziatura.",
+    "q_languages": "Gli acquirenti vedranno il sondaggio nella loro lingua?",
+    "a_languages": "I modelli e l'avvio rapido sono tradotti in dieci lingue. In «Lingue» nel sondaggio puoi aggiungere o modificare le traduzioni, anche in arabo, ebraico, coreano, polacco, turco e nelle lingue nordiche. L'acquirente vede la lingua del suo checkout se il sondaggio la prevede, altrimenti il tuo testo; i pulsanti sono tradotti in tutte queste lingue."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac non è disponibile con il tuo piano",
@@ -787,7 +793,7 @@
     "view": "Vedi",
     "reliable_ideas": "I tuoi risultati per {{name}} sono affidabili. Scopri cosa ti hanno detto gli acquirenti.",
     "unpublished": "{{name}} ha modifiche non pubblicate. Rivedi e pubblica.",
-    "open_report": "Apri il report canali",
+    "open_report": "Vedi tutti i canali",
     "do_it": "Vai",
     "see_results": "Guarda le ultime risposte a {{name}}.",
     "subtitle": "Il tuo negozio in un colpo d’occhio: ricavi per canale, punteggi dei clienti e tutti i sondaggi.",
@@ -1044,7 +1050,8 @@
     "products_missing": "Prodotto {{id}} (non più presente nel negozio)",
     "products_unavailable": "Non è stato possibile aprire il selettore prodotti di Shopify. Ricarica la pagina e riprova.",
     "countries_other_questions": "Domande diverse per gli acquirenti di un paese? Duplica questo sondaggio, scegli qui i suoi paesi e spostalo sopra questo nella pagina Sondaggi.",
-    "language_rtl": "Si scrive da destra a sinistra. Il checkout di Shopify mostra il sondaggio da destra a sinistra per questi acquirenti."
+    "language_rtl": "Si scrive da destra a sinistra. Il checkout di Shopify mostra il sondaggio da destra a sinistra per questi acquirenti.",
+    "audience_details": "Shopify indica nella pagina di ringraziamento se è il primo ordine dell'acquirente nel tuo negozio."
   },
   "preview": {
     "title": "Anteprima",

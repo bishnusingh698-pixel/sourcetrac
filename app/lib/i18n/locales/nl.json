@@ -264,7 +264,7 @@
     "faq_title": "Veelgestelde vragen",
     "contact_tip": "Voordat je schrijft: als de enquête ontbreekt, helpt meestal de controle in de checkout-editor uit de eerste twee antwoorden hierboven.",
     "q_create": "Hoe maak ik mijn enquête?",
-    "a_create": "Ga naar Enquêtes en kies Nieuwe enquête. Kies een sjabloon of begin vanaf nul, bewerk de vragen en klik op Live zetten. Om hem aan kopers te tonen, ga je in Shopify naar Instellingen › Checkout, klik je op Aanpassen, kies je bovenaan in het paginamenu Bedankt, voeg je het blok ‘SourceTrac survey’ toe en klik je op Opslaan. Het blok voeg je maar één keer toe.",
+    "a_create": "Het snelst gaat het via Enquêtes › Snel starten: kies waar de meeste kopers zijn, controleer de antwoorden en klik op Live zetten. Je kunt ook een sjabloon kiezen onder Enquêtes › Sjablonen. Voeg daarna het blok toe: ga in de Shopify-beheeromgeving naar Instellingen › Checkout, klik op Aanpassen, kies Bedankt in het paginamenu bovenaan, voeg het blok ‘SourceTrac survey’ toe en klik op Opslaan. Het blok voeg je maar één keer toe.",
     "q_not_showing": "Waarom verschijnt de vraag niet op mijn bedankpagina?",
     "a_not_showing": "Controleer vier dingen. Ten eerste moet de enquête live zijn in SourceTrac. Ten tweede moet het blok ‘SourceTrac survey’ op de bedankpagina in de checkout-editor van Shopify staan (Instellingen › Checkout › Aanpassen, dan Bedankt in het paginamenu) en moet de editor zijn opgeslagen. Ten derde wordt elke bestelling maar één keer gevraagd: een bestelling die al antwoordde toont de enquête nooit meer, dus test met een nieuwe bestelling. Ten vierde biedt Shopify het blok op de bedankpagina niet aan in het Starter-abonnement.",
     "q_missing_revenue": "Waarom ontbreekt bij een van mijn antwoorden de omzet?",
@@ -288,7 +288,13 @@
     "q_once_per_order": "Ik heb één keer geantwoord en nu verschijnt de enquête niet meer. Waarom?",
     "a_once_per_order": "Elke bestelling wordt maar één keer gevraagd. Na een antwoord toont SourceTrac die bestelling de enquête nooit meer, ook niet na herladen, zodat niemand twee keer wordt gevraagd. Plaats een nieuwe bestelling om opnieuw te testen.",
     "q_order_status": "Kan de enquête ook op de bestelstatuspagina verschijnen?",
-    "a_order_status": "Ja, als optionele extra. De bestelstatuspagina is waar kopers terechtkomen als ze ‘Bestelling bekijken’ openen in hun bestelmails. Vink hem aan bij ‘Waar hij verschijnt’ in de enquête, kies daarna in de checkout-editor in het paginamenu Bestelstatus, voeg het blok ‘SourceTrac survey’ toe en klik op Opslaan. Hij staat alleen in het menu als je winkel de nieuwe klantaccounts van Shopify gebruikt (Instellingen › Klantaccounts). Elke bestelling wordt nog steeds maar één keer gevraagd."
+    "a_order_status": "Ja, als optionele extra. De bestelstatuspagina is waar kopers terechtkomen als ze ‘Bestelling bekijken’ openen in hun bestelmails. Vink hem aan bij ‘Waar hij verschijnt’ in de enquête, kies daarna in de checkout-editor in het paginamenu Bestelstatus, voeg het blok ‘SourceTrac survey’ toe en klik op Opslaan. Hij staat alleen in het menu als je winkel de nieuwe klantaccounts van Shopify gebruikt (Instellingen › Klantaccounts). Elke bestelling wordt nog steeds maar één keer gevraagd.",
+    "q_countries": "Mijn kopers zitten in meerdere landen. Kunnen de antwoorden verschillen?",
+    "a_countries": "Ja. In de editor laadt ‘Antwoorden voor een land gebruiken’ de apps en sites waarop kopers in dat land meestal winkels vinden. Met de wereldbolknop naast een antwoord toon je het alleen aan kopers in de gekozen landen (Growth), zodat één enquête LINE in Japan en Snapchat in de Golfregio biedt. Voor andere vragen dupliceer je de enquête, beperk je die onder ‘Wie ziet hem’ tot die landen en zet je hem op de pagina Enquêtes boven de andere.",
+    "q_look": "Kan ik de kleuren en lettertypen van de enquête aanpassen?",
+    "a_look": "De enquête gebruikt altijd de lettertypen en kleuren van je checkout (Instellingen › Checkout › Aanpassen), omdat Shopify apps die niet laat wijzigen; zo ziet hij er altijd uit als onderdeel van je winkel. Onder ‘Uiterlijk en teksten’ wijzig je titel, intro, knop en bedanktekst, toon je vragen één voor één, gebruik je sterren voor beoordelingen, stel je de woorden onder een schaal in en kies je rand en ruimte.",
+    "q_languages": "Zien kopers de enquête in hun eigen taal?",
+    "a_languages": "Sjablonen en Snel starten zijn vertaald in tien talen. Onder ‘Talen’ in de enquête kun je vertalingen toevoegen of aanpassen, ook in het Arabisch, Hebreeuws, Koreaans, Pools, Turks en de Scandinavische talen. Een koper ziet de taal van zijn checkout als de enquête die heeft, en anders je eigen tekst; de knoppen zijn in al deze talen vertaald."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac is niet beschikbaar in je abonnement",
@@ -787,7 +793,7 @@
     "view": "Bekijken",
     "reliable_ideas": "Je resultaten voor {{name}} zijn betrouwbaar. Bekijk wat kopers je vertelden.",
     "unpublished": "{{name}} heeft niet-gepubliceerde wijzigingen. Bekijk en publiceer.",
-    "open_report": "Kanaalrapport openen",
+    "open_report": "Alle kanalen bekijken",
     "do_it": "Ga",
     "see_results": "Bekijk de nieuwste antwoorden op {{name}}.",
     "subtitle": "Je winkel in één oogopslag: omzet per kanaal, klantscores en al je enquêtes.",
@@ -1044,7 +1050,8 @@
     "products_missing": "Product {{id}} (niet meer gevonden in je winkel)",
     "products_unavailable": "De productkiezer van Shopify kon niet worden geopend. Laad de pagina opnieuw en probeer het nog eens.",
     "countries_other_questions": "Andere vragen voor kopers in één land? Dupliceer deze enquête, kies hier de landen en zet hem op de pagina Enquêtes boven deze.",
-    "language_rtl": "Wordt van rechts naar links geschreven. De Shopify-checkout toont de enquête voor deze kopers van rechts naar links."
+    "language_rtl": "Wordt van rechts naar links geschreven. De Shopify-checkout toont de enquête voor deze kopers van rechts naar links.",
+    "audience_details": "Shopify laat op de bedankpagina weten of dit de eerste bestelling van de koper in je winkel is."
   },
   "preview": {
     "title": "Voorbeeld",

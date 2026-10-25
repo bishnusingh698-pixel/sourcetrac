@@ -264,7 +264,7 @@
     "faq_title": "Perguntas frequentes",
     "contact_tip": "Antes de escrever: se a pesquisa não aparece, a verificação no editor de checkout das duas primeiras respostas acima costuma resolver.",
     "q_create": "Como crio minha pesquisa?",
-    "a_create": "Vá em Pesquisas e escolha Nova pesquisa. Escolha um modelo ou comece do zero, edite as perguntas e clique em Publicar. Para mostrar aos compradores, na Shopify vá em Configurações › Checkout, clique em Personalizar, escolha Agradecimento no menu de páginas no topo, adicione o bloco “SourceTrac survey” e clique em Salvar. O bloco é adicionado só uma vez.",
+    "a_create": "O jeito mais rápido é Pesquisas › Início rápido: escolha onde está a maioria dos compradores, confira as respostas e toque em Publicar. Você também pode escolher um modelo em Pesquisas › Modelos. Depois adicione o bloco: no admin da Shopify, vá em Configurações › Checkout, clique em Personalizar, escolha Agradecimento no menu de páginas no topo, adicione o bloco “SourceTrac survey” e clique em Salvar. O bloco é adicionado só uma vez.",
     "q_not_showing": "Por que a pergunta não aparece na minha página de confirmação de pedido?",
     "a_not_showing": "Vale verificar quatro coisas. Primeiro, a pesquisa precisa estar publicada no SourceTrac. Segundo, o bloco “SourceTrac survey” precisa estar na página de agradecimento do editor de checkout da Shopify (Configurações › Checkout › Personalizar, depois Agradecimento no menu de páginas) e o editor salvo. Terceiro, cada pedido é perguntado só uma vez: um pedido que já respondeu nunca mais mostra a pesquisa, então teste com um pedido novo. Quarto, a Shopify não oferece o bloco da página de agradecimento no plano Starter.",
     "q_missing_revenue": "Por que uma das minhas respostas está sem receita?",
@@ -288,7 +288,13 @@
     "q_once_per_order": "Respondi uma vez e agora a pesquisa não aparece. Por quê?",
     "a_once_per_order": "Cada pedido é perguntado só uma vez. Depois de uma resposta, o SourceTrac não mostra mais a pesquisa para aquele pedido, mesmo recarregando a página, para ninguém responder duas vezes. Para testar de novo, faça um pedido novo.",
     "q_order_status": "A pesquisa também pode aparecer na página de status do pedido?",
-    "a_order_status": "Sim, como extra opcional. A página de status do pedido é onde os compradores chegam ao abrir “Ver pedido” nos e-mails do pedido. Marque-a em “Onde aparece” na pesquisa e, depois, no editor de checkout, escolha Status do pedido no menu de páginas, adicione o bloco “SourceTrac survey” e clique em Salvar. Ela só aparece no menu se sua loja usa as novas contas de cliente da Shopify (Configurações › Contas de cliente). Cada pedido continua sendo perguntado só uma vez."
+    "a_order_status": "Sim, como extra opcional. A página de status do pedido é onde os compradores chegam ao abrir “Ver pedido” nos e-mails do pedido. Marque-a em “Onde aparece” na pesquisa e, depois, no editor de checkout, escolha Status do pedido no menu de páginas, adicione o bloco “SourceTrac survey” e clique em Salvar. Ela só aparece no menu se sua loja usa as novas contas de cliente da Shopify (Configurações › Contas de cliente). Cada pedido continua sendo perguntado só uma vez.",
+    "q_countries": "Meus compradores estão em vários países. As respostas podem variar?",
+    "a_countries": "Sim. No editor, “Usar respostas de um país” carrega os apps e sites em que os compradores daquele país costumam descobrir lojas. O botão do globo ao lado de uma resposta a mostra só para compradores dos países escolhidos (Growth), então uma pesquisa oferece LINE no Japão e Snapchat no Golfo. Para perguntas diferentes, duplique a pesquisa, limite-a a esses países em “Quem vê” e coloque-a acima da outra na página Pesquisas.",
+    "q_look": "Posso mudar as cores e as fontes da pesquisa?",
+    "a_look": "A pesquisa sempre usa as fontes e cores do seu checkout (Configurações › Checkout › Personalizar), porque a Shopify não permite que apps as alterem; assim ela sempre parece parte da sua loja. Em “Aparência e textos” você muda o título, a introdução, o botão e o agradecimento, mostra uma pergunta por vez, usa estrelas nas avaliações, define as palavras abaixo de uma escala e escolhe borda e espaçamento.",
+    "q_languages": "Os compradores verão a pesquisa no idioma deles?",
+    "a_languages": "Os modelos e o início rápido vêm traduzidos em dez idiomas. Em “Idiomas”, na pesquisa, você adiciona ou altera traduções, inclusive árabe, hebraico, coreano, polonês, turco e os idiomas nórdicos. O comprador vê o idioma do checkout quando a pesquisa tem, e seu próprio texto caso contrário; os botões são traduzidos em todos esses idiomas."
   },
   "shell": {
     "plan_blocked_title": "O SourceTrac não está disponível no seu plano",
@@ -787,7 +793,7 @@
     "view": "Ver",
     "reliable_ideas": "Seus resultados de {{name}} são confiáveis. Veja o que os compradores disseram.",
     "unpublished": "{{name}} tem alterações não publicadas. Revise e publique.",
-    "open_report": "Abrir relatório de canais",
+    "open_report": "Ver todos os canais",
     "do_it": "Ir",
     "see_results": "Veja as respostas mais recentes de {{name}}.",
     "subtitle": "Sua loja em um relance: receita por canal, notas dos clientes e todas as suas pesquisas.",
@@ -1044,7 +1050,8 @@
     "products_missing": "Produto {{id}} (não encontrado na sua loja)",
     "products_unavailable": "O seletor de produtos da Shopify não abriu. Recarregue a página e tente de novo.",
     "countries_other_questions": "Quer perguntas diferentes para compradores de um país? Duplique esta pesquisa, escolha os países aqui e coloque-a acima desta na página Pesquisas.",
-    "language_rtl": "Escrito da direita para a esquerda. O checkout da Shopify mostra a pesquisa da direita para a esquerda para esses compradores."
+    "language_rtl": "Escrito da direita para a esquerda. O checkout da Shopify mostra a pesquisa da direita para a esquerda para esses compradores.",
+    "audience_details": "A Shopify informa na página de agradecimento se este é o primeiro pedido do comprador na sua loja."
   },
   "preview": {
     "title": "Prévia",

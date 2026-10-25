@@ -264,7 +264,7 @@
     "faq_title": "Häufige Fragen",
     "contact_tip": "Bevor Sie schreiben: Fehlt die Umfrage, hilft meist die Prüfung im Checkout-Editor aus den ersten beiden Antworten oben.",
     "q_create": "Wie erstelle ich meine Umfrage?",
-    "a_create": "Gehen Sie zu Umfragen und wählen Sie Neue Umfrage. Wählen Sie eine Vorlage oder beginnen Sie ohne, bearbeiten Sie die Fragen und klicken Sie auf Live schalten. Damit Käufer sie sehen, gehen Sie in Shopify zu Einstellungen › Checkout, klicken Sie auf Anpassen, wählen Sie oben im Seitenmenü „Danke“, fügen Sie den Block „SourceTrac survey“ hinzu und klicken Sie auf Speichern. Der Block wird nur einmal hinzugefügt.",
+    "a_create": "Am schnellsten geht es über Umfragen › Schnellstart: Wählen Sie, wo die meisten Käufer sind, prüfen Sie die Antworten und klicken Sie auf Live schalten. Sie können auch unter Umfragen › Vorlagen eine Vorlage wählen. Fügen Sie dann den Block hinzu: Gehen Sie im Shopify-Admin zu Einstellungen › Checkout, klicken Sie auf Anpassen, wählen Sie oben im Seitenmenü „Danke“, fügen Sie den Block „SourceTrac survey“ hinzu und klicken Sie auf Speichern. Den Block fügen Sie nur einmal hinzu.",
     "q_not_showing": "Warum erscheint die Frage nicht auf meiner Bestellbestätigungsseite?",
     "a_not_showing": "Prüfen Sie vier Dinge. Erstens muss die Umfrage in SourceTrac live sein. Zweitens muss der Block „SourceTrac survey“ im Checkout-Editor von Shopify auf der Danke-Seite sein (Einstellungen › Checkout › Anpassen, dann „Danke“ im Seitenmenü) und der Editor gespeichert sein. Drittens wird jede Bestellung nur einmal gefragt: Eine Bestellung, die schon geantwortet hat, zeigt die Umfrage nie wieder, testen Sie also mit einer neuen Bestellung. Viertens bietet Shopify den Block auf der Danke-Seite im Starter-Tarif nicht an.",
     "q_missing_revenue": "Warum fehlt bei einer meiner Antworten der Umsatz?",
@@ -288,7 +288,13 @@
     "q_once_per_order": "Ich habe einmal geantwortet und jetzt erscheint die Umfrage nicht mehr. Warum?",
     "a_once_per_order": "Jede Bestellung wird nur einmal gefragt. Nach einer Antwort zeigt SourceTrac dieser Bestellung die Umfrage nie wieder, auch nicht nach dem Neuladen der Seite, damit Käufer nie zweimal gefragt werden. Für einen neuen Test geben Sie eine neue Bestellung auf.",
     "q_order_status": "Kann die Umfrage auch auf der Bestellstatusseite erscheinen?",
-    "a_order_status": "Ja, als optionale Ergänzung. Auf der Bestellstatusseite landen Käufer, wenn sie in ihren Bestell-E-Mails „Bestellung ansehen“ öffnen. Aktivieren Sie sie in der Umfrage unter „Wo sie erscheint“, wählen Sie dann im Checkout-Editor im Seitenmenü „Bestellstatus“, fügen Sie den Block „SourceTrac survey“ hinzu und klicken Sie auf Speichern. Die Seite steht nur im Menü, wenn Ihr Shop die neuen Kundenkonten von Shopify nutzt (Einstellungen › Kundenkonten). Jede Bestellung wird weiterhin nur einmal gefragt."
+    "a_order_status": "Ja, als optionale Ergänzung. Auf der Bestellstatusseite landen Käufer, wenn sie in ihren Bestell-E-Mails „Bestellung ansehen“ öffnen. Aktivieren Sie sie in der Umfrage unter „Wo sie erscheint“, wählen Sie dann im Checkout-Editor im Seitenmenü „Bestellstatus“, fügen Sie den Block „SourceTrac survey“ hinzu und klicken Sie auf Speichern. Die Seite steht nur im Menü, wenn Ihr Shop die neuen Kundenkonten von Shopify nutzt (Einstellungen › Kundenkonten). Jede Bestellung wird weiterhin nur einmal gefragt.",
+    "q_countries": "Meine Käufer sind in mehreren Ländern. Können die Antworten unterschiedlich sein?",
+    "a_countries": "Ja. Im Umfrage-Editor lädt „Antworten für ein Land verwenden“ die Apps und Seiten, über die Käufer dort meist Shops finden. Mit der Globus-Schaltfläche neben einer Antwort zeigen Sie sie nur Käufern in den gewählten Ländern (Growth), so bietet eine Umfrage LINE in Japan und Snapchat am Golf. Für andere Fragen duplizieren Sie die Umfrage, beschränken sie unter „Wer sie sieht“ auf diese Länder und schieben sie auf der Seite „Umfragen“ nach oben.",
+    "q_look": "Kann ich Farben und Schriften der Umfrage ändern?",
+    "a_look": "Die Umfrage nutzt immer die Schriften und Farben Ihres Checkouts (Einstellungen › Checkout › Anpassen), weil Shopify Apps keine Änderung erlaubt. So wirkt sie immer wie ein Teil Ihres Shops. Unter „Aussehen und Texte“ ändern Sie Titel, Einleitung, Schaltfläche und Dankestext, zeigen Fragen einzeln, nutzen Sterne für Bewertungen, legen die Texte unter einer Skala fest und wählen Rahmen und Abstände.",
+    "q_languages": "Sehen Käufer die Umfrage in ihrer Sprache?",
+    "a_languages": "Vorlagen und der Schnellstart sind in zehn Sprachen übersetzt. Unter „Sprachen“ in der Umfrage können Sie Übersetzungen hinzufügen oder ändern, auch Arabisch, Hebräisch, Koreanisch, Polnisch, Türkisch und die nordischen Sprachen. Käufer sehen ihre Checkout-Sprache, wenn die Umfrage sie hat, sonst Ihren eigenen Text; die Schaltflächen sind in all diese Sprachen übersetzt."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac ist in Ihrem Tarif nicht verfügbar",
@@ -787,7 +793,7 @@
     "view": "Ansehen",
     "reliable_ideas": "Ihre Ergebnisse für {{name}} sind aussagekräftig. Sehen Sie, was Käufer Ihnen gesagt haben.",
     "unpublished": "{{name}} hat unveröffentlichte Änderungen. Prüfen und veröffentlichen.",
-    "open_report": "Kanalbericht öffnen",
+    "open_report": "Alle Kanäle ansehen",
     "do_it": "Los geht's",
     "see_results": "Sehen Sie die neuesten Antworten auf {{name}}.",
     "subtitle": "Ihr Shop auf einen Blick: Umsatz nach Kanal, Kundenbewertungen und alle Umfragen.",
@@ -1044,7 +1050,8 @@
     "products_missing": "Produkt {{id}} (nicht mehr im Shop gefunden)",
     "products_unavailable": "Die Produktauswahl von Shopify konnte hier nicht geöffnet werden. Laden Sie die Seite neu und versuchen Sie es erneut.",
     "countries_other_questions": "Andere Fragen für Käufer in einem Land? Duplizieren Sie die Umfrage, wählen Sie hier ihre Länder und schieben Sie sie auf der Seite „Umfragen“ über diese.",
-    "language_rtl": "Wird von rechts nach links geschrieben. Der Shopify-Checkout zeigt die Umfrage für diese Käufer von rechts nach links."
+    "language_rtl": "Wird von rechts nach links geschrieben. Der Shopify-Checkout zeigt die Umfrage für diese Käufer von rechts nach links.",
+    "audience_details": "Shopify meldet auf der Danke-Seite, ob es die erste Bestellung des Käufers in Ihrem Shop ist."
   },
   "preview": {
     "title": "Vorschau",

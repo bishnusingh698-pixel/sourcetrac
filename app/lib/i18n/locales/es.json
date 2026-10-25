@@ -264,7 +264,7 @@
     "faq_title": "Preguntas frecuentes",
     "contact_tip": "Antes de escribir: si la encuesta no aparece, la revisión del editor de checkout de las dos primeras respuestas suele resolverlo.",
     "q_create": "¿Cómo creo mi encuesta?",
-    "a_create": "Ve a Encuestas y elige Nueva encuesta. Elige una plantilla o empieza desde cero, edita las preguntas y pulsa Publicar. Para que la vean los compradores, en Shopify ve a Configuración › Checkout, haz clic en Personalizar, elige Gracias en el menú de páginas de arriba, añade el bloque «SourceTrac survey» y pulsa Guardar. El bloque solo se añade una vez.",
+    "a_create": "Lo más rápido es Encuestas › Inicio rápido: elige dónde están la mayoría de tus compradores, revisa las respuestas y pulsa Publicar. También puedes elegir una plantilla en Encuestas › Plantillas. Después añade el bloque: en el panel de Shopify ve a Configuración › Pantalla de pago, haz clic en Personalizar, elige Agradecimiento en el menú de páginas de arriba, añade el bloque «SourceTrac survey» y pulsa Guardar. El bloque solo se añade una vez.",
     "q_not_showing": "¿Por qué no aparece la pregunta en mi página de confirmación de pedido?",
     "a_not_showing": "Conviene revisar cuatro cosas. Primero, la encuesta debe estar publicada en SourceTrac. Segundo, el bloque «SourceTrac survey» debe estar en la página de agradecimiento del editor de checkout de Shopify (Configuración › Checkout › Personalizar y luego Gracias en el menú de páginas) y el editor guardado. Tercero, cada pedido se pregunta una sola vez: un pedido que ya respondió no vuelve a mostrar la encuesta, así que prueba con un pedido nuevo. Cuarto, Shopify no ofrece el bloque de la página de agradecimiento en el plan Starter.",
     "q_missing_revenue": "¿Por qué a una de mis respuestas le faltan los ingresos?",
@@ -288,7 +288,13 @@
     "q_once_per_order": "Respondí una vez y ahora la encuesta no aparece. ¿Por qué?",
     "a_once_per_order": "Cada pedido se pregunta una sola vez. Tras una respuesta, SourceTrac no vuelve a mostrar la encuesta a ese pedido, aunque se recargue la página, para que nadie responda dos veces. Para volver a probar, haz un pedido nuevo.",
     "q_order_status": "¿La encuesta puede mostrarse también en la página de estado del pedido?",
-    "a_order_status": "Sí, como extra opcional. La página de estado del pedido es la que ven los compradores al abrir «Ver tu pedido» en los correos del pedido. Márcala en «Dónde se muestra» dentro de la encuesta y luego, en el editor de checkout, elige Estado del pedido en el menú de páginas, añade el bloque «SourceTrac survey» y pulsa Guardar. Solo aparece en el menú si tu tienda usa las nuevas cuentas de cliente de Shopify (Configuración › Cuentas de cliente). Cada pedido se sigue preguntando una sola vez."
+    "a_order_status": "Sí, como extra opcional. La página de estado del pedido es la que ven los compradores al abrir «Ver tu pedido» en los correos del pedido. Márcala en «Dónde se muestra» dentro de la encuesta y luego, en el editor de checkout, elige Estado del pedido en el menú de páginas, añade el bloque «SourceTrac survey» y pulsa Guardar. Solo aparece en el menú si tu tienda usa las nuevas cuentas de cliente de Shopify (Configuración › Cuentas de cliente). Cada pedido se sigue preguntando una sola vez.",
+    "q_countries": "Mis compradores están en varios países. ¿Pueden variar las respuestas?",
+    "a_countries": "Sí. En el editor, «Usar respuestas para un país» carga las apps y sitios donde los compradores de ese país suelen descubrir tiendas. El botón del globo junto a una respuesta la muestra solo a compradores de los países que elijas (Growth), así una encuesta ofrece LINE en Japón y Snapchat en el Golfo. Para preguntas distintas, duplica la encuesta, limítala a esos países en «Quién la ve» y súbela por encima de la otra en la página Encuestas.",
+    "q_look": "¿Puedo cambiar los colores y las fuentes de la encuesta?",
+    "a_look": "La encuesta siempre usa las fuentes y colores de tu pantalla de pago (Configuración › Pantalla de pago › Personalizar), porque Shopify no permite que las apps los cambien; así siempre parece parte de tu tienda. En «Aspecto y textos» puedes cambiar el título, la introducción, el botón y el mensaje de agradecimiento, mostrar una pregunta a la vez, usar estrellas en las valoraciones, definir las palabras bajo una escala y elegir borde y espaciado.",
+    "q_languages": "¿Verán los compradores la encuesta en su idioma?",
+    "a_languages": "Las plantillas y el inicio rápido vienen traducidos a diez idiomas. En «Idiomas» dentro de la encuesta puedes añadir o cambiar traducciones, incluidos árabe, hebreo, coreano, polaco, turco y los idiomas nórdicos. El comprador ve el idioma de su pago si la encuesta lo tiene y, si no, tu propio texto; los botones están traducidos a todos estos idiomas."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac no está disponible en tu plan",
@@ -787,7 +793,7 @@
     "view": "Ver",
     "reliable_ideas": "Tus resultados de {{name}} son fiables. Mira lo que te han dicho los compradores.",
     "unpublished": "{{name}} tiene cambios sin publicar. Revisa y publica.",
-    "open_report": "Abrir informe de canales",
+    "open_report": "Ver todos los canales",
     "do_it": "Ir",
     "see_results": "Mira las últimas respuestas a {{name}}.",
     "subtitle": "Tu tienda de un vistazo: ingresos por canal, puntuaciones de clientes y todas tus encuestas.",
@@ -1044,7 +1050,8 @@
     "products_missing": "Producto {{id}} (ya no está en tu tienda)",
     "products_unavailable": "El selector de productos de Shopify no pudo abrirse. Recarga la página e inténtalo de nuevo.",
     "countries_other_questions": "¿Preguntas distintas para compradores de un país? Duplica esta encuesta, elige aquí sus países y súbela por encima de esta en la página Encuestas.",
-    "language_rtl": "Se escribe de derecha a izquierda. La pantalla de pago de Shopify muestra la encuesta de derecha a izquierda para estos compradores."
+    "language_rtl": "Se escribe de derecha a izquierda. La pantalla de pago de Shopify muestra la encuesta de derecha a izquierda para estos compradores.",
+    "audience_details": "Shopify indica en la página de agradecimiento si es el primer pedido del comprador en tu tienda."
   },
   "preview": {
     "title": "Vista previa",

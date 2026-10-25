@@ -264,7 +264,7 @@
     "faq_title": "Questions fréquentes",
     "contact_tip": "Avant d'écrire : si le sondage n'apparaît pas, la vérification dans l'éditeur de paiement décrite dans les deux premières réponses ci-dessus règle généralement le problème.",
     "q_create": "Comment créer mon sondage ?",
-    "a_create": "Allez dans Sondages et choisissez Nouveau sondage. Prenez un modèle ou partez de zéro, modifiez les questions et cliquez sur Mettre en ligne. Pour que les acheteurs le voient, dans Shopify allez dans Paramètres › Checkout, cliquez sur Personnaliser, choisissez Remerciements dans le menu des pages en haut, ajoutez le bloc « SourceTrac survey » et cliquez sur Enregistrer. Le bloc ne s'ajoute qu'une fois.",
+    "a_create": "Le plus rapide : Enquêtes › Démarrage rapide. Choisissez où se trouvent la plupart de vos acheteurs, vérifiez les réponses et cliquez sur Mettre en ligne. Vous pouvez aussi choisir un modèle sous Enquêtes › Modèles. Ajoutez ensuite le bloc : dans l'administration Shopify, allez dans Paramètres › Paiement, cliquez sur Personnaliser, choisissez Remerciement dans le menu des pages en haut, ajoutez le bloc « SourceTrac survey » et cliquez sur Enregistrer. Le bloc ne s'ajoute qu'une fois.",
     "q_not_showing": "Pourquoi la question n'apparaît-elle pas sur ma page de confirmation de commande ?",
     "a_not_showing": "Vérifiez quatre points. D'abord, le sondage doit être en ligne dans SourceTrac. Ensuite, le bloc « SourceTrac survey » doit être sur la page de remerciement de l'éditeur de checkout de Shopify (Paramètres › Checkout › Personnaliser, puis Remerciements dans le menu des pages) et l'éditeur enregistré. Troisièmement, chaque commande n'est interrogée qu'une fois : une commande qui a déjà répondu ne montre plus le sondage, testez donc avec une nouvelle commande. Enfin, Shopify ne propose pas ce bloc sur le forfait Starter.",
     "q_missing_revenue": "Pourquoi une de mes réponses n'a-t-elle pas de chiffre d'affaires ?",
@@ -288,7 +288,13 @@
     "q_once_per_order": "J'ai répondu une fois et le sondage ne s'affiche plus. Pourquoi ?",
     "a_once_per_order": "Chaque commande n'est interrogée qu'une fois. Après une réponse, SourceTrac ne montre plus le sondage pour cette commande, même si la page est rechargée, pour que personne ne soit interrogé deux fois. Pour tester à nouveau, passez une nouvelle commande.",
     "q_order_status": "Le sondage peut-il aussi s'afficher sur la page de statut de commande ?",
-    "a_order_status": "Oui, en option. La page de statut de commande est celle que les acheteurs ouvrent avec « Voir ma commande » dans leurs e-mails de commande. Cochez-la sous « Où il s'affiche » dans le sondage, puis dans l'éditeur de checkout choisissez Statut de la commande dans le menu des pages, ajoutez le bloc « SourceTrac survey » et cliquez sur Enregistrer. Elle n'apparaît dans le menu que si votre boutique utilise les nouveaux comptes clients de Shopify (Paramètres › Comptes clients). Chaque commande n'est toujours interrogée qu'une fois."
+    "a_order_status": "Oui, en option. La page de statut de commande est celle que les acheteurs ouvrent avec « Voir ma commande » dans leurs e-mails de commande. Cochez-la sous « Où il s'affiche » dans le sondage, puis dans l'éditeur de checkout choisissez Statut de la commande dans le menu des pages, ajoutez le bloc « SourceTrac survey » et cliquez sur Enregistrer. Elle n'apparaît dans le menu que si votre boutique utilise les nouveaux comptes clients de Shopify (Paramètres › Comptes clients). Chaque commande n'est toujours interrogée qu'une fois.",
+    "q_countries": "Mes acheteurs sont dans plusieurs pays. Les réponses peuvent-elles varier ?",
+    "a_countries": "Oui. Dans l'éditeur, « Utiliser les réponses d'un pays » charge les apps et sites sur lesquels les acheteurs de ce pays découvrent habituellement les boutiques. Le bouton globe à côté d'une réponse la réserve aux acheteurs des pays choisis (Growth) : une même enquête propose LINE au Japon et Snapchat dans le Golfe. Pour des questions différentes, dupliquez l'enquête, limitez-la à ces pays sous « Qui la voit » et placez-la au-dessus de l'autre sur la page Enquêtes.",
+    "q_look": "Puis-je changer les couleurs et les polices de l'enquête ?",
+    "a_look": "L'enquête utilise toujours les polices et couleurs de votre paiement (Paramètres › Paiement › Personnaliser), car Shopify ne permet pas aux apps de les modifier : elle ressemble ainsi toujours à votre boutique. Dans « Apparence et textes », vous pouvez changer le titre, l'introduction, le bouton et le message de remerciement, afficher une question à la fois, utiliser des étoiles pour les notes, définir les mots sous une échelle et choisir bordure et espacement.",
+    "q_languages": "Les acheteurs verront-ils l'enquête dans leur langue ?",
+    "a_languages": "Les modèles et le démarrage rapide sont traduits en dix langues. Sous « Langues » dans l'enquête, vous pouvez ajouter ou modifier des traductions, y compris en arabe, hébreu, coréen, polonais, turc et dans les langues nordiques. L'acheteur voit la langue de son paiement si l'enquête la propose, sinon votre propre texte ; les boutons sont traduits dans toutes ces langues."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac n'est pas disponible avec votre forfait",
@@ -787,7 +793,7 @@
     "view": "Voir",
     "reliable_ideas": "Vos résultats pour {{name}} sont fiables. Découvrez ce que les acheteurs vous ont dit.",
     "unpublished": "{{name}} a des modifications non publiées. Vérifier et publier.",
-    "open_report": "Ouvrir le rapport par canal",
+    "open_report": "Voir tous les canaux",
     "do_it": "Y aller",
     "see_results": "Consultez les dernières réponses à {{name}}.",
     "subtitle": "Votre boutique en un coup d’œil : chiffre d’affaires par canal, scores clients et tous vos sondages.",
@@ -1044,7 +1050,8 @@
     "products_missing": "Produit {{id}} (introuvable dans votre boutique)",
     "products_unavailable": "Le sélecteur de produits de Shopify n'a pas pu s'ouvrir. Rechargez la page et réessayez.",
     "countries_other_questions": "Des questions différentes pour les acheteurs d'un pays ? Dupliquez cette enquête, choisissez ses pays ici et placez-la au-dessus de celle-ci sur la page Enquêtes.",
-    "language_rtl": "S'écrit de droite à gauche. Le paiement Shopify affiche l'enquête de droite à gauche pour ces acheteurs."
+    "language_rtl": "S'écrit de droite à gauche. Le paiement Shopify affiche l'enquête de droite à gauche pour ces acheteurs.",
+    "audience_details": "Shopify indique sur la page de remerciement s'il s'agit de la première commande de l'acheteur dans votre boutique."
   },
   "preview": {
     "title": "Aperçu",
