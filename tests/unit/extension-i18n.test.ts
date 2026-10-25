@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { OTHER_CHANNEL, surveyChoices } from "../../extensions/shared/src/survey-logic";
 import { LANGUAGES } from "~/lib/i18n";
+import { BUYER_LANGUAGES } from "@shared/buyer-languages";
 
 /**
  * Buyer-facing strings in the checkout extensions.
@@ -59,6 +60,14 @@ describe("checkout extension locales", () => {
           const name = code === "en" ? "en.default.json" : `${code}.json`;
           expect(files, name).toContain(name);
         }
+      });
+
+      it("ships a file for every language a survey can be translated into, right-to-left ones included (B10)", () => {
+        for (const { code } of BUYER_LANGUAGES) {
+          const name = code === "en" ? "en.default.json" : `${code}.json`;
+          expect(files, name).toContain(name);
+        }
+        expect(BUYER_LANGUAGES.filter((l) => l.rtl).map((l) => l.code)).toEqual(["ar", "he"]);
       });
 
       for (const file of files) {

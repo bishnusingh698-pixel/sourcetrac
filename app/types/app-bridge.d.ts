@@ -40,6 +40,17 @@ declare global {
        * full page load needs in its query string to sign back in.
        */
       config?: { shop?: string; host?: string; locale?: string };
+      /**
+       * Shopify's own product picker (App Bridge resource picker). Resolves to
+       * the selection, or undefined when the merchant cancels.
+       */
+      resourcePicker?(options: {
+        type: "product";
+        multiple?: boolean | number;
+        action?: "add" | "select";
+        selectionIds?: Array<{ id: string }>;
+        filter?: { variants?: boolean; draft?: boolean; archived?: boolean };
+      }): Promise<Array<{ id: string; title?: string }> | undefined>;
     };
   }
 }

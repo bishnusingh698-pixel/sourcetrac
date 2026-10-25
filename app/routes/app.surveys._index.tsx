@@ -1,5 +1,6 @@
 import { Form, redirect, useActionData, useLoaderData, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from "react-router";
-import { useState } from "react";
+
+import { SectionTabs } from "~/components/section-tabs";import { useState } from "react";
 
 import { Panel, type BadgeTone, PageIntro } from "~/components/admin-ui";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
@@ -25,8 +26,7 @@ import { CheckoutCheck, type CheckoutCheckView } from "~/components/checkout-che
 import { runCheckoutCheck } from "~/lib/checkout-check.server";
 import { recentServes } from "~/lib/serve-log.server";
 import { getShopLocaleInfo } from "~/lib/studio.server";
-import { intlLocaleFor } from "~/lib/i18n";
-import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
+import { resolveAdminLanguage, resolveFormatLocale } from "~/lib/i18n/resolve.server";
 import { isValidTimeZone } from "@shared/zoned-date";
 import { db } from "~/db.server";
 
@@ -41,7 +41,7 @@ import { db } from "~/db.server";
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "surveys.title");
 
-export const handle = { titleKey: "surveys.title" };
+export const handle = { titleKey: "nav.surveys" };
 
 function statusTone(status: SurveyListItem["status"]): BadgeTone {
   if (status === "active") return "success";
@@ -59,7 +59,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     getShopLocaleInfo(shop.id, shop.shopDomain, session.accessToken),
   ]);
   // Times read in the store's own zone and the merchant's language.
-  const format = new Intl.DateTimeFormat(intlLocaleFor(resolveAdminLanguage(request, shop.language, shop.adminLocale)), {
+  const format = new Intl.DateTimeFormat(resolveFormatLocale(request, resolveAdminLanguage(request, shop.language, shop.adminLocale), shop.adminLocale), {
     timeZone: isValidTimeZone(localeInfo.timeZone) ? localeInfo.timeZone : "UTC",
     dateStyle: "medium",
     timeStyle: "short",
@@ -196,13 +196,19 @@ export default function Surveys() {
     : null;
 
   const createActions = (
-    <s-button href="/app/surveys/library" variant="primary" icon="plus">
-      {t("surveys.new_survey")}
-    </s-button>
+    <>
+      <s-button href="/app/surveys/quick-start" icon="wand">
+        {t("quick.cta")}
+      </s-button>
+      <s-button href="/app/surveys/library" variant="primary" icon="plus">
+        {t("surveys.new_survey")}
+      </s-button>
+    </>
   );
 
   return (
     <s-stack gap="base">
+      <SectionTabs section="surveys" t={t} />
       <PageIntro actions={createActions}>{t("surveys.subtitle")}</PageIntro>
       {failureText ? <s-banner tone="critical">{failureText}</s-banner> : null}
       {missing.length > 0 ? (

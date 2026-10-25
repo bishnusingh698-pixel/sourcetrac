@@ -66,6 +66,8 @@ export async function fetchResponsesInWindow(params: {
   end?: Date;
   channel?: string;
   limit?: number;
+  /** Only buyers who checked out in this country (ISO alpha-2), F6. */
+  country?: string | null;
 }): Promise<ResponseWithOrder[]> {
   const keys = await channelKeysForShop(params.shopId);
   // A channel is asked for by its shared key; the stored answers carry each
@@ -97,6 +99,7 @@ export async function fetchResponsesInWindow(params: {
         ${params.start ? Prisma.sql`AND r."submittedAt" >= ${params.start}` : Prisma.empty}
         ${params.end ? Prisma.sql`AND r."submittedAt" < ${params.end}` : Prisma.empty}
         ${params.channel ? Prisma.sql`AND r.channel IN (${Prisma.join(rawChannels)})` : Prisma.empty}
+        ${params.country ? Prisma.sql`AND r.country = ${params.country}` : Prisma.empty}
       ORDER BY r."submittedAt" DESC, r.id DESC
       ${params.limit ? Prisma.sql`LIMIT ${params.limit}` : Prisma.empty}
     `,
@@ -155,7 +158,9 @@ function channelAnswersSql(shopId: string): Prisma.Sql {
   return Prisma.sql`
     SELECT
       l.id, l."orderId", l.channel, l."otherText", l."submittedAt", l."isLocked",
-      l.reconciled, l."unreconcilable"
+      l.reconciled, l."unreconcilable",
+      -- The single-question survey never recorded where the buyer was.
+      NULL::text AS country
     FROM "SurveyResponse" l
     WHERE l."shopId" = ${shopId}
       AND NOT EXISTS (SELECT 1 FROM "Response" b WHERE b.id = 'bf-response-' || l.id)
@@ -172,7 +177,8 @@ function channelAnswersSql(shopId: string): Prisma.Sql {
       v."createdAt" AS "submittedAt",
       v.flagged AS "isLocked",
       (v."orderTotal" IS NOT NULL) AS reconciled,
-      v."unverifiedFailed" AS "unreconcilable"
+      v."unverifiedFailed" AS "unreconcilable",
+      v.country
     FROM "Response" v
     JOIN "Survey" s ON s.id = v."surveyId"
     JOIN "Answer" a ON a."responseId" = v.id AND a."questionId" = s."channelReportQuestionId"
@@ -204,6 +210,23 @@ export async function channelCountsForShop(shopId: string): Promise<Array<{ chan
   return [...merged.entries()]
     .sort((a, b) => b[1] - a[1])
     .map(([channel, count]) => ({ channel, label: channelLabel(channel, labels), count }));
+}
+
+/**
+ * The countries buyers answered from (v2 answers only; the single-question
+ * survey never recorded one), busiest first, for the Analytics country filter.
+ */
+export async function answerCountries(shopId: string): Promise<Array<{ code: string; count: number }>> {
+  const rows = await retryDb(() =>
+    db.response.groupBy({
+      by: ["country"],
+      where: { shopId, country: { not: null } },
+      _count: { _all: true },
+    }),
+  );
+  return rows
+    .flatMap((row) => (row.country ? [{ code: row.country, count: row._count._all }] : []))
+    .sort((a, b) => b.count - a.count || a.code.localeCompare(b.code));
 }
 
 /** Whether the shop has any answer at all, in either store. Two indexed lookups. */
@@ -297,11 +320,17 @@ function toResponseWithOrder(row: ResponseWithOrderRow): ResponseWithOrder {
 }
 
 /** Denormalised count, used for the previous-period comparison. */
-export async function countResponsesInWindow(params: { shopId: string; start: Date; end: Date }): Promise<number> {
+export async function countResponsesInWindow(params: {
+  shopId: string;
+  start: Date;
+  end: Date;
+  country?: string | null;
+}): Promise<number> {
   const rows = await retryDb(() =>
     db.$queryRaw<Array<{ count: bigint }>>`
       SELECT COUNT(*)::bigint AS count FROM (${channelAnswersSql(params.shopId)}) r
       WHERE r."submittedAt" >= ${params.start} AND r."submittedAt" < ${params.end}
+        ${params.country ? Prisma.sql`AND r.country = ${params.country}` : Prisma.empty}
     `,
   );
   return Number(rows[0]?.count ?? 0);
@@ -510,16 +539,29 @@ export function toExportRows(rows: ReadonlyArray<ResponseWithOrder>, context: Ex
   });
 }
 
-export async function fetchDashboardData(params: { shopId: string; days: number; now?: Date }) {
+export async function fetchDashboardData(params: {
+  shopId: string;
+  days: number;
+  now?: Date;
+  /** The store's IANA zone: range edges are its midnights. */
+  timeZone?: string | null;
+  /**
+   * Only buyers in this country (F6). Orders do not record the buyer's
+   * country, so there is no honest response rate for one country: the rate's
+   * counts are left at zero and the report says the rate is not available.
+   */
+  country?: string | null;
+}) {
   const now = params.now ?? new Date();
-  const { start, end } = windowBounds(params.days, now);
-  const previous = previousWindowBounds(params.days, now);
+  const { start, end } = windowBounds(params.days, now, params.timeZone);
+  const previous = previousWindowBounds(params.days, now, params.timeZone);
+  const country = params.country ?? null;
 
   const [responses, ordersInWindow, previousCount, rateResponses, anyAnswer] = await Promise.all([
-    fetchResponsesInWindow({ shopId: params.shopId, start, end }),
-    countEligibleOrdersInWindow({ shopId: params.shopId, start, end }),
-    countResponsesInWindow({ shopId: params.shopId, start: previous.start, end: previous.end }),
-    countAnsweredEligibleOrdersInWindow({ shopId: params.shopId, start, end }),
+    fetchResponsesInWindow({ shopId: params.shopId, start, end, country }),
+    country ? Promise.resolve(0) : countEligibleOrdersInWindow({ shopId: params.shopId, start, end }),
+    countResponsesInWindow({ shopId: params.shopId, start: previous.start, end: previous.end, country }),
+    country ? Promise.resolve(0) : countAnsweredEligibleOrdersInWindow({ shopId: params.shopId, start, end }),
     hasAnyAnswer(params.shopId),
   ]);
 

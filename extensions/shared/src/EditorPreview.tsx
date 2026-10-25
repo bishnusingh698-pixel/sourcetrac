@@ -117,6 +117,7 @@ export function EditorPreview({ survey }: { survey: SurveyState }) {
         onSubmit={survey.submit}
         busy={survey.busy}
         t={t}
+        design={survey.survey.design}
       />
       <s-text color="subdued" type="small">
         {previewInfo?.pinned

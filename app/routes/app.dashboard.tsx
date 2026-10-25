@@ -1,11 +1,11 @@
 import { useLoaderData, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 
-import { intlLocaleFor } from "~/lib/i18n";
-import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
+import { SectionTabs } from "~/components/section-tabs";
+import { resolveAdminLanguage, resolveFormatLocale } from "~/lib/i18n/resolve.server";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 
 import { Panel, PageIntro, RangeSwitcher } from "~/components/admin-ui";
-import { ChannelTable, OtherAnswers, ReportNotes, TopChannelCallout, formatPercent } from "~/components/channel-report";
+import { ChannelTable, OtherAnswers, ReportNotes, Sparkline, TopChannelCallout, formatPercent } from "~/components/channel-report";
 import { loadChannelReport } from "~/lib/channel-report.server";
 import { ensureShop } from "~/lib/provision.server";
 import { startOrderBackfill } from "~/lib/order-backfill.server";
@@ -13,6 +13,10 @@ import { maybeMarkUnreconcilable } from "~/lib/responses.server";
 import { maybeRunPendingSync } from "~/lib/sync.server";
 import { maybeRunPendingDeletions } from "~/lib/compliance.server";
 import { guarded } from "~/lib/admin-errors.server";
+import { getReportTimeZone } from "~/lib/studio.server";
+import { answerCountries } from "~/lib/analytics-queries.server";
+import { CountryFilter, ReportScope } from "~/components/analytics-filters";
+import { parseCountryParam } from "@shared/countries";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -31,13 +35,16 @@ import { authenticate } from "~/shopify.server";
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "nav.channels");
 
-export const handle = { titleKey: "nav.channels" };
+export const handle = { titleKey: "nav.analytics" };
 
 /** `labelKey` is resolved per render; see the NAV comment in `app.tsx`. */
 const RANGES = [
   { days: 7, labelKey: "dashboard.last_7" },
   { days: 30, labelKey: "dashboard.last_30" },
   { days: 90, labelKey: "dashboard.last_90" },
+  // A year, for seasonal comparisons; still a bounded read for a store of
+  // the target size (a few thousand answers a month).
+  { days: 365, labelKey: "dashboard.last_365" },
 ] as const;
 
 function parseRange(value: string | null): (typeof RANGES)[number] {
@@ -63,23 +70,31 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   void maybeRunPendingDeletions(shop.id);
 
 
-  const range = parseRange(new URL(request.url).searchParams.get("range"));
+  const url = new URL(request.url);
+  const range = parseRange(url.searchParams.get("range"));
+  const country = parseCountryParam(url.searchParams.get("country"));
   // Money is formatted here, so the loader needs the language itself: the
   // shell's loader runs in parallel and its data is not available yet.
-  const locale = intlLocaleFor(resolveAdminLanguage(request, shop.language, shop.adminLocale));
-  const report = await loadChannelReport({ shop, days: range.days, locale });
+  const locale = resolveFormatLocale(request, resolveAdminLanguage(request, shop.language, shop.adminLocale), shop.adminLocale);
+  const timeZone = await getReportTimeZone(shop.id, shop.shopDomain, session.accessToken);
+  const [report, countries] = await Promise.all([
+    loadChannelReport({ shop, days: range.days, locale, timeZone, country }),
+    answerCountries(shop.id),
+  ]);
 
-  return { range, ...report };
+  return { range, timeZone, countries, ...report };
 });
 
 export default function ChannelReportPage() {
   const data = useLoaderData<typeof loader>();
-  const { t, locale } = useAdminI18n();
+  const { t, locale, language } = useAdminI18n();
   const rangeLabel = t(data.range.labelKey);
   const { summary } = data;
+  const countryQuery = data.country ? `&country=${data.country}` : "";
 
   return (
     <s-stack gap="base">
+      <SectionTabs section="analytics" t={t} />
       <PageIntro
         actions={
           <RangeSwitcher
@@ -87,7 +102,7 @@ export default function ChannelReportPage() {
             options={RANGES.map((range) => ({
               key: String(range.days),
               label: t(range.labelKey),
-              href: `/app/dashboard?range=${range.days}`,
+              href: `/app/dashboard?range=${range.days}${countryQuery}`,
               current: range.days === data.range.days,
             }))}
           />
@@ -95,6 +110,10 @@ export default function ChannelReportPage() {
       >
         {t("dashboard.subtitle")}
       </PageIntro>
+      <s-stack direction="inline" gap="base" alignItems="end">
+        <CountryFilter countries={data.countries} value={data.country} language={language} t={t} />
+      </s-stack>
+      <ReportScope timeZone={data.timeZone} country={data.country} language={language} t={t} />
 
       {data.hasAnyResponse ? (
         <>
@@ -111,7 +130,9 @@ export default function ChannelReportPage() {
                 {/* The one number the table cannot show: how many orders
                     answered at all. null is "no orders yet", never 0%. */}
                 <s-text color="subdued" fontSize="small">
-                  {summary.responseRate === null
+                  {!data.rateAvailable
+                    ? t("analytics.rate_unavailable_country")
+                    : summary.responseRate === null
                     ? t("dashboard.response_rate_no_orders")
                     : t("dashboard.rate_line", {
                         rate: formatPercent(summary.responseRate, locale),
@@ -121,6 +142,11 @@ export default function ChannelReportPage() {
                 </s-text>
               </s-stack>
             )}
+          </Panel>
+
+          {/* Answers per day, for the range and country chosen above. */}
+          <Panel title={t("dashboard.trend_title")} description={t("dashboard.trend_subtitle", { range: rangeLabel })}>
+            <Sparkline points={data.trend} t={t} locale={locale} />
           </Panel>
 
           {data.otherAnswers.length > 0 ? (

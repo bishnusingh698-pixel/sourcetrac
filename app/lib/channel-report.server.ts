@@ -30,8 +30,13 @@ export async function loadChannelReport(params: {
   days: number;
   locale: string;
   now?: Date;
+  /** The store's IANA zone: range edges and trend days are its calendar days. */
+  timeZone?: string | null;
+  /** Only buyers who checked out in this country (F6). */
+  country?: string | null;
 }) {
-  const { shop, days, locale } = params;
+  const { shop, days, locale, timeZone } = params;
+  const country = params.country ?? null;
   const money = (minor: number, currency: string) => formatMoney(minor, currency, locale);
 
   // Responses store the channel slug (`friend-or-family`). Show the
@@ -41,7 +46,7 @@ export async function loadChannelReport(params: {
 
   // One clock for the window and the trend, so they cannot straddle midnight.
   const now = params.now ?? new Date();
-  const data = await fetchDashboardData({ shopId: shop.id, days, now });
+  const data = await fetchDashboardData({ shopId: shop.id, days, now, timeZone, country });
   const { summary, channels } = computeStats({
     responses: data.responses,
     decidedAmounts: data.decidedAmounts,
@@ -49,7 +54,7 @@ export async function loadChannelReport(params: {
     rateResponses: data.rateResponses,
     previousResponsesCount: data.previousCount,
   });
-  const trend = buildTrend({ responses: data.responses, decidedAmounts: data.decidedAmounts, days, now });
+  const trend = buildTrend({ responses: data.responses, decidedAmounts: data.decidedAmounts, days, now, timeZone });
 
   // null for "other": translated in the component, not here.
   const labelFor = (channel: string) =>
@@ -63,6 +68,13 @@ export async function loadChannelReport(params: {
     // quiet month is not shown the brand-new "no answers yet" state.
     hasAnyResponse: data.anyAnswer,
     ordersInWindow: data.ordersInWindow,
+    /** The country the report is limited to, if any. */
+    country,
+    /**
+     * False for one country: orders do not record where the buyer checked
+     * out, so there is no order count to set the answers against.
+     */
+    rateAvailable: country === null,
     summary: {
       totalResponses: summary.totalResponses,
       // Only a Free shop is shown the over-cap prompt. `isLocked` is never

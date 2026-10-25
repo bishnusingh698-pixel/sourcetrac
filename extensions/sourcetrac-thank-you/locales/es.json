@@ -33,6 +33,12 @@
     "editorAudience": "Esta encuesta tiene reglas en \"Quién la ve\", así que algunos pedidos no la verán.",
     "editorOncePerOrder": "Cada pedido se pregunta una vez. Tras una respuesta, ese pedido no vuelve a mostrar la encuesta, así que prueba con un pedido nuevo.",
     "editorWaking": "SourceTrac se está iniciando. Tras un rato sin actividad, puede tardar hasta un minuto.",
-    "editorOtherPage": "Esta encuesta no está configurada para mostrarse en esta página. Activa esta página en «Dónde se muestra» en SourceTrac."
+    "editorOtherPage": "Esta encuesta no está configurada para mostrarse en esta página. Activa esta página en «Dónde se muestra» en SourceTrac.",
+    "selected": "seleccionado",
+    "ratingLow": "Muy malo",
+    "ratingHigh": "Excelente",
+    "npsLow": "Poco probable",
+    "npsHigh": "Muy probable",
+    "ratingAria": "{{n}} de 5"
   }
 }

@@ -18,7 +18,8 @@
     "channels": "Report canali",
     "preferences": "Impostazioni",
     "current": "(pagina attuale)",
-    "templates": "Modelli"
+    "templates": "Modelli",
+    "analytics": "Analisi"
   },
   "common": {
     "cancel": "Annulla",
@@ -95,7 +96,8 @@
     "total_row": "Totale",
     "rate_line": "Tasso di risposta: {{rate}}. Hanno risposto {{answered}} ordini su {{total}} di questo periodo.",
     "other_title": "Con le parole degli acquirenti",
-    "other_subtitle": "Cosa hanno scritto gli acquirenti quando nessuno dei tuoi canali andava bene. Prima i più recenti."
+    "other_subtitle": "Cosa hanno scritto gli acquirenti quando nessuno dei tuoi canali andava bene. Prima i più recenti.",
+    "last_365": "Ultimi 12 mesi"
   },
   "settings": {
     "title": "Impostazioni",
@@ -141,7 +143,7 @@
     "language_step_skip": "Salta per ora",
     "language_detected": "Rilevata dal tuo admin Shopify",
     "step4_title": "Consulta i risultati",
-    "step4_body": "Risultati raggruppa le risposte per domanda e mostra i ricavi di ogni canale.",
+    "step4_body": "Analisi mostra da dove arrivano gli acquirenti, il fatturato di ogni canale e le risposte a ogni domanda.",
     "step4_action": "Vedi risultati",
     "step1_body_done": "Hai un sondaggio pubblicato.",
     "step2_body_done": "Il blocco SourceTrac si è caricato nella tua pagina di ringraziamento."
@@ -161,7 +163,7 @@
     "truncated": "Questo file contiene solo le {{limit}} risposte più recenti. Quelle più vecchie sono state escluse.",
     "choose_label": "Cosa scaricare",
     "choose_all": "Tutti i sondaggi",
-    "choose_channels": "Solo report dei canali (come ti hanno conosciuto gli acquirenti)",
+    "choose_channels": "Solo canali (come ti hanno conosciuto gli acquirenti)",
     "shape_all": "Una riga per risposta, con il suo sondaggio e la sua domanda. Un ordine con più risposte ha più righe, quindi non sommare order_total.",
     "shape_survey": "Una riga per acquirente, con una colonna per domanda.",
     "shape_channels": "Una riga per ordine, con il canale scelto dall'acquirente."
@@ -263,7 +265,7 @@
     "faq_title": "Domande frequenti",
     "contact_tip": "Prima di scriverci: se il sondaggio non compare, di solito basta il controllo nell'editor del checkout descritto nelle prime due risposte qui sopra.",
     "q_create": "Come creo il mio sondaggio?",
-    "a_create": "Vai su Sondaggi e scegli Nuovo sondaggio. Scegli un modello o parti da zero, modifica le domande e premi Pubblica. Per mostrarlo agli acquirenti, in Shopify vai su Impostazioni › Checkout, fai clic su Personalizza, scegli Grazie dal menu delle pagine in alto, aggiungi il blocco «SourceTrac survey» e premi Salva. Il blocco si aggiunge una sola volta.",
+    "a_create": "Il modo più rapido è Sondaggi › Avvio rapido: scegli dove si trova la maggior parte degli acquirenti, controlla le risposte e premi Pubblica. Puoi anche scegliere un modello in Sondaggi › Modelli. Poi aggiungi il blocco: nell'admin di Shopify vai a Impostazioni › Checkout, fai clic su Personalizza, scegli Ringraziamento dal menu delle pagine in alto, aggiungi il blocco «SourceTrac survey» e premi Salva. Il blocco si aggiunge una sola volta.",
     "q_not_showing": "Perché la domanda non compare nella mia pagina di conferma ordine?",
     "a_not_showing": "Controlla quattro cose. Primo, il sondaggio deve essere pubblicato in SourceTrac. Secondo, il blocco «SourceTrac survey» deve essere nella pagina di ringraziamento dell'editor del checkout di Shopify (Impostazioni › Checkout › Personalizza, poi Grazie nel menu delle pagine) e l'editor salvato. Terzo, ogni ordine viene interrogato una sola volta: un ordine che ha già risposto non mostra più il sondaggio, quindi prova con un nuovo ordine. Quarto, Shopify non offre il blocco della pagina di ringraziamento nel piano Starter.",
     "q_missing_revenue": "Perché a una delle mie risposte manca il fatturato?",
@@ -287,7 +289,13 @@
     "q_once_per_order": "Ho risposto una volta e ora il sondaggio non appare. Perché?",
     "a_once_per_order": "Ogni ordine viene interrogato una sola volta. Dopo una risposta, SourceTrac non mostra più il sondaggio a quell'ordine, nemmeno ricaricando la pagina, così nessuno risponde due volte. Per riprovare, fai un nuovo ordine.",
     "q_order_status": "Il sondaggio può comparire anche nella pagina di stato dell'ordine?",
-    "a_order_status": "Sì, come extra facoltativo. La pagina di stato dell'ordine è quella che gli acquirenti aprono con «Visualizza ordine» dalle email dell'ordine. Selezionala in «Dove appare» nel sondaggio, poi nell'editor del checkout scegli Stato dell'ordine dal menu delle pagine, aggiungi il blocco «SourceTrac survey» e premi Salva. È nel menu solo se il tuo negozio usa i nuovi account cliente di Shopify (Impostazioni › Account cliente). Ogni ordine viene comunque interrogato una sola volta."
+    "a_order_status": "Sì, come extra facoltativo. La pagina di stato dell'ordine è quella che gli acquirenti aprono con «Visualizza ordine» dalle email dell'ordine. Selezionala in «Dove appare» nel sondaggio, poi nell'editor del checkout scegli Stato dell'ordine dal menu delle pagine, aggiungi il blocco «SourceTrac survey» e premi Salva. È nel menu solo se il tuo negozio usa i nuovi account cliente di Shopify (Impostazioni › Account cliente). Ogni ordine viene comunque interrogato una sola volta.",
+    "q_countries": "I miei acquirenti sono in più paesi. Le risposte possono cambiare?",
+    "a_countries": "Sì. Nell'editor, «Usa le risposte per un paese» carica le app e i siti su cui gli acquirenti di quel paese scoprono di solito i negozi. Il pulsante a forma di globo accanto a una risposta la mostra solo agli acquirenti dei paesi scelti (Growth), così un sondaggio offre LINE in Giappone e Snapchat nel Golfo. Per domande diverse, duplica il sondaggio, limitalo a quei paesi in «Chi lo vede» e spostalo sopra l'altro nella pagina Sondaggi.",
+    "q_look": "Posso cambiare colori e caratteri del sondaggio?",
+    "a_look": "Il sondaggio usa sempre caratteri e colori del checkout (Impostazioni › Checkout › Personalizza), perché Shopify non consente alle app di cambiarli: così sembra sempre parte del negozio. In «Aspetto e testi» puoi cambiare titolo, introduzione, pulsante e messaggio di ringraziamento, mostrare una domanda alla volta, usare le stelle per le valutazioni, impostare le parole sotto una scala e scegliere bordo e spaziatura.",
+    "q_languages": "Gli acquirenti vedranno il sondaggio nella loro lingua?",
+    "a_languages": "I modelli e l'avvio rapido sono tradotti in dieci lingue. In «Lingue» nel sondaggio puoi aggiungere o modificare le traduzioni, anche in arabo, ebraico, coreano, polacco, turco e nelle lingue nordiche. L'acquirente vede la lingua del suo checkout se il sondaggio la prevede, altrimenti il tuo testo; i pulsanti sono tradotti in tutte queste lingue."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac non è disponibile con il tuo piano",
@@ -583,7 +591,9 @@
     "check_new_order": "Ogni ordine viene interrogato una sola volta. Prova con un nuovo ordine, poi guarda «Checkout recenti» qui sotto per vedere cosa è successo.",
     "check_block_never_order_status": "Pagina di stato dell'ordine: il blocco SourceTrac non si è ancora caricato qui. Nell'editor del checkout scegli Stato dell'ordine dal menu delle pagine, aggiungi il blocco «SourceTrac survey» e premi Salva. È nel menu solo se il tuo negozio usa i nuovi account cliente.",
     "validation_currency_unavailable": "Non è stato possibile leggere la valuta del negozio. Riprova a salvare tra poco.",
-    "validation_order_value_range": "Il valore massimo dell'ordine deve essere almeno pari al minimo."
+    "validation_order_value_range": "Il valore massimo dell'ordine deve essere almeno pari al minimo.",
+    "reason_products": "«{{survey}}» è limitato agli ordini con alcuni prodotti, e questo ordine non ne conteneva nessuno.",
+    "reason_products_unknown": "«{{survey}}» è limitato agli ordini con alcuni prodotti, e questo checkout non ha indicato i prodotti ordinati. Verifica che i blocchi SourceTrac siano aggiornati."
   },
   "templates": {
     "nps": {
@@ -683,7 +693,10 @@
     "status_total_unreadable": "Totale illeggibile",
     "status_no_order": "Nessun ordine",
     "survey_label": "Sondaggio",
-    "export_cta": "Esporta CSV"
+    "export_cta": "Esporta CSV",
+    "col_buyer": "Acquirente",
+    "first_order": "Primo ordine",
+    "returning": "Cliente abituale"
   },
   "library": {
     "title": "Modelli",
@@ -781,7 +794,7 @@
     "view": "Vedi",
     "reliable_ideas": "I tuoi risultati per {{name}} sono affidabili. Scopri cosa ti hanno detto gli acquirenti.",
     "unpublished": "{{name}} ha modifiche non pubblicate. Rivedi e pubblica.",
-    "open_report": "Apri il report canali",
+    "open_report": "Vedi tutti i canali",
     "do_it": "Vai",
     "see_results": "Guarda le ultime risposte a {{name}}.",
     "subtitle": "Il tuo negozio in un colpo d’occhio: ricavi per canale, punteggi dei clienti e tutti i sondaggi.",
@@ -810,7 +823,7 @@
     "buyers_unknown_other": "{{count}} ordini non indicano se erano un primo ordine.",
     "surveys_subtitle": "Sondaggi attivi e tutti gli altri che hanno ricevuto risposte. {{range}}.",
     "col_key_result": "Risultato chiave",
-    "compare_surveys": "Confronta i sondaggi in Risultati",
+    "compare_surveys": "Confronta i sondaggi in Analisi",
     "capped_note": "Punteggi, acquirenti e sondaggi si basano sulle {{limit}} risposte più recenti di questo periodo."
   },
   "support": {
@@ -840,7 +853,7 @@
     "questions_help": "Sii breve. Da una a tre domande ottengono più risposte.",
     "placement_thank_you": "Pagina di ringraziamento",
     "who_title": "Chi lo vede",
-    "more_rules": "Altre regole (valore dell'ordine, paesi, date)",
+    "more_rules": "Altre regole (valore dell'ordine, paesi, prodotti, date)",
     "optional_title": "Facoltativo",
     "wording_title": "Titolo, introduzione e pulsanti",
     "languages_title": "Lingue",
@@ -989,8 +1002,8 @@
     "learn_stop_done": "L'arresto automatico ha già messo in pausa questo sondaggio una volta. Non lo farà di nuovo; disattivalo e riattivalo per riarmarlo.",
     "status_auto_paused": "In pausa automaticamente: i risultati sono diventati affidabili. Gli acquirenti non vedono questo sondaggio. Riattivalo quando vuoi; non si fermerà di nuovo.",
     "other_label": "Testo della risposta «Altro»",
-    "channel_question": "Conta nel report dei canali",
-    "channel_question_details": "Selezionalo per una domanda tipo «Come ci hai conosciuto?». Le risposte diventano i tuoi canali, con il fatturato, nella Dashboard e nel report dei canali.",
+    "channel_question": "Conta queste risposte come i tuoi canali in Analisi",
+    "channel_question_details": "Selezionalo per una domanda «Come ci hai conosciuto?». Le risposte diventano i tuoi canali, con il fatturato, nella Home e in Analisi › Canali.",
     "where_title": "Dove appare",
     "placement_order_status": "Pagina di stato dell'ordine",
     "audience_order_status_note": "Nella pagina dello stato dell'ordine, SourceTrac sa se è un primo ordine solo quando anche la pagina di ringraziamento ha il blocco SourceTrac. Gli altri ordini lì non vedono questo sondaggio.",
@@ -999,7 +1012,47 @@
     "placement_once": "Ogni ordine viene interrogato una sola volta. Se l'acquirente risponde su una pagina, il sondaggio è nascosto sull'altra.",
     "store_step_order_status": "Per la pagina di stato dell'ordine: nello stesso menu delle pagine scegli Stato dell'ordine, aggiungi lì il blocco «SourceTrac survey» e premi Salva. È nel menu solo se il tuo negozio usa i nuovi account cliente (Impostazioni › Account cliente).",
     "block_order_status_title": "Aggiungi il blocco SourceTrac anche alla pagina di stato dell'ordine",
-    "block_missing_order_status_body": "Questo sondaggio è impostato anche per la pagina di stato dell'ordine, ma il blocco non si è ancora caricato lì. Nell'editor del checkout scegli Stato dell'ordine dal menu delle pagine, aggiungi il blocco «SourceTrac survey» e premi Salva. Se Stato dell'ordine non è nel menu, il tuo negozio usa gli account cliente classici: cambiali in Impostazioni › Account cliente oppure deseleziona la pagina in «Dove appare»."
+    "block_missing_order_status_body": "Questo sondaggio è impostato anche per la pagina di stato dell'ordine, ma il blocco non si è ancora caricato lì. Nell'editor del checkout scegli Stato dell'ordine dal menu delle pagine, aggiungi il blocco «SourceTrac survey» e premi Salva. Se Stato dell'ordine non è nel menu, il tuo negozio usa gli account cliente classici: cambiali in Impostazioni › Account cliente oppure deseleziona la pagina in «Dove appare».",
+    "look_title": "Aspetto e testi",
+    "look_help": "Caratteri e colori seguono sempre il branding del checkout (Impostazioni › Checkout › Personalizza). Shopify non consente alle app di modificarli, quindi il sondaggio si abbina sempre al tuo negozio.",
+    "layout_details": "«Una alla volta» mostra un pulsante Avanti tra le domande. «Tutte in una schermata» è adatto a una-tre domande brevi.",
+    "show_title_details": "Il breve titolo sopra le domande.",
+    "show_progress": "Mostra l'avanzamento (ad esempio «1 di 3»)",
+    "title_details": "Mostrato sopra le domande quando «Mostra il titolo» è attivo.",
+    "intro_details": "Una riga sotto il titolo. Lascia vuoto per non mostrarla.",
+    "button_details": "Il pulsante che gli acquirenti premono per inviare le risposte.",
+    "thanks_details": "Mostrato per qualche secondo dopo la risposta, poi il blocco si chiude.",
+    "frame": "Cornice",
+    "frame_border": "In un riquadro con bordo",
+    "frame_none": "Senza bordo",
+    "frame_details": "Un riquadro distingue il sondaggio dai dettagli dell'ordine intorno.",
+    "spacing": "Spaziatura",
+    "spacing_comfortable": "Ampia",
+    "spacing_compact": "Compatta",
+    "rating_style_details": "Le stelle si riempiono fino alla scelta. I numeri vanno da 1 a 5.",
+    "scale_low": "Testo all'estremo basso della scala",
+    "scale_high": "Testo all'estremo alto della scala",
+    "scale_details": "Mostrato sotto le domande di valutazione e da 0 a 10. Lascia vuoto per il testo standard, tradotto per ogni acquirente: «Pessimo» – «Eccellente» per le valutazioni, «Poco probabile» – «Molto probabile» da 0 a 10.",
+    "answer_type_details": "Come rispondono gli acquirenti: toccare una risposta, sceglierne diverse, dare un punteggio o scrivere.",
+    "required_details": "Gli acquirenti non possono inviare finché non rispondono a questa. Lascia disattivato per permettere di saltarla.",
+    "placeholder_details": "Testo di esempio grigio nella casella di risposta vuota.",
+    "long_answer_details": "Una casella più alta per risposte di più di qualche parola.",
+    "answer_countries_button": "Paesi per {{label}}",
+    "answer_countries_title": "Mostra «{{label}}» solo in questi paesi",
+    "answer_countries_details": "Chi acquista altrove non vede questa risposta. Lascia tutto deselezionato per mostrarla ovunque. Utile per mostrare LINE solo in Giappone o Snapchat solo nel Golfo, in un unico sondaggio.",
+    "answer_countries_summary": "Mostrato solo in: {{list}}",
+    "answer_countries_locked": "Mostrare una risposta solo in alcuni paesi è disponibile con {{plan}}.",
+    "products": "Solo ordini con questi prodotti",
+    "products_details": "Mostra il sondaggio solo se l'ordine include almeno uno di questi prodotti. Lascia vuoto per tutti gli ordini.",
+    "products_none": "Nessun prodotto scelto: tutti gli ordini possono vedere il sondaggio.",
+    "products_choose": "Scegli prodotti",
+    "products_change": "Modifica prodotti",
+    "products_remove": "Rimuovi {{name}}",
+    "products_missing": "Prodotto {{id}} (non più presente nel negozio)",
+    "products_unavailable": "Non è stato possibile aprire il selettore prodotti di Shopify. Ricarica la pagina e riprova.",
+    "countries_other_questions": "Domande diverse per gli acquirenti di un paese? Duplica questo sondaggio, scegli qui i suoi paesi e spostalo sopra questo nella pagina Sondaggi.",
+    "language_rtl": "Si scrive da destra a sinistra. Il checkout di Shopify mostra il sondaggio da destra a sinistra per questi acquirenti.",
+    "audience_details": "Shopify indica nella pagina di ringraziamento se è il primo ordine dell'acquirente nel tuo negozio."
   },
   "preview": {
     "title": "Anteprima",
@@ -1020,7 +1073,9 @@
     "next": "Avanti",
     "try_it": "Provalo come un acquirente. Non viene salvato nulla.",
     "other_label": "Altro",
-    "other_placeholder": "Raccontaci di più"
+    "other_placeholder": "Raccontaci di più",
+    "rating_low": "Pessimo",
+    "rating_high": "Eccellente"
   },
   "privacy": {
     "notice": "SourceTrac conserva le risposte ai sondaggi e i dati degli ordini per {{months}} mesi. Non conserva mai nomi, email, numeri di telefono, indirizzi o dati di pagamento degli acquirenti.",
@@ -1050,5 +1105,64 @@
     "policy_text": "Dopo il checkout potremmo chiederti di rispondere a un breve sondaggio facoltativo, ad esempio su come ci hai conosciuto. Le tue risposte vengono conservate insieme al numero d'ordine dal nostro fornitore di sondaggi, SourceTrac, per un massimo di {{months}} mesi, e vengono usate solo per capire quali canali ci portano clienti. Non vengono mai vendute né usate per la pubblicità.",
     "actions_notice": "Le azioni Shopify copiano le risposte nel tuo negozio Shopify come tag degli ordini, tag dei clienti o metacampi dei clienti. Da quel momento seguono le regole di Shopify per i dati del tuo negozio, non i tempi di eliminazione di SourceTrac.",
     "export_notice": "Il file contiene numeri d'ordine, risposte, totali degli ordini e il testo scritto dagli acquirenti. Conservalo con la stessa cura degli altri documenti del negozio."
+  },
+  "presets": {
+    "load_title": "Usa le risposte per un paese",
+    "load_help": "Scegli dove si trova la maggior parte dei tuoi acquirenti. Ottieni le app e i siti su cui lì si scoprono di solito i negozi, pronti da modificare.",
+    "country_label": "Paese",
+    "search": "Cerca paesi",
+    "no_match": "Nessun paese corrisponde alla ricerca.",
+    "preview": "Risposte per {{country}}: {{list}}",
+    "replace": "Sostituisci le mie risposte",
+    "add_one": "Aggiungi {{count}} risposta mancante",
+    "add_other": "Aggiungi {{count}} risposte mancanti",
+    "replace_note": "Le risposte che tieni restano collegate ai loro risultati. Anche i risultati di una risposta rimossa vengono conservati.",
+    "full": "Questa domanda ha già il numero massimo di risposte ({{max}}).",
+    "only_there": "Mostra le risposte aggiunte solo agli acquirenti in {{country}} e nei paesi del suo gruppo",
+    "only_there_details": "Gli acquirenti altrove continuano a vedere le altre risposte. Cambia l'elenco con il pulsante a forma di globo accanto a ogni risposta.",
+    "only_there_locked": "Le risposte mostrate solo in alcuni paesi sono disponibili con {{plan}}."
+  },
+  "quick": {
+    "title": "Avvio rapido",
+    "subtitle": "Pubblica un sondaggio «Come ci hai conosciuto?» in circa due minuti. Puoi cambiare tutto in seguito.",
+    "templates_link": "Sfoglia invece i modelli",
+    "country_title": "1. Dove si trova la maggior parte dei tuoi acquirenti?",
+    "country_help": "Carichiamo le app e i siti su cui lì si scoprono di solito i negozi.",
+    "answers_title": "2. Scegli le risposte che gli acquirenti possono selezionare",
+    "answers_help": "Risposte comuni per {{country}}. Togli la spunta a quelle che non servono e aggiungi le tue.",
+    "add_label": "Aggiungi una tua risposta",
+    "add_button": "Aggiungi",
+    "custom_remove": "Rimuovi {{label}}",
+    "other": "Aggiungi «Altro» con una casella di testo",
+    "other_details": "Gli acquirenti la cui risposta non è in elenco possono scriverla. Vedrai cosa hanno scritto in Analisi.",
+    "follow_up": "Chiedere quale creator o account, dopo un'app social o un creator",
+    "follow_up_details": "Una seconda domanda facoltativa. Senza, gli acquirenti rispondono con un solo tocco.",
+    "launch_title": "3. Pubblica",
+    "launch_help": "Gli acquirenti vedono il sondaggio nella pagina di ringraziamento non appena aggiungi il blocco SourceTrac nell'editor del checkout di Shopify. Lo apriamo noi subito dopo.",
+    "go_live": "Pubblica",
+    "create_draft": "Crea sondaggio",
+    "limit_note_one": "Il tuo piano include {{count}} sondaggio attivo ed è già in uso, quindi questo viene salvato come bozza. Metti in pausa l'altro o passa a un piano superiore per usarli entrambi.",
+    "limit_note_other": "Il tuo piano include {{count}} sondaggi attivi e sono tutti in uso, quindi questo viene salvato come bozza. Mettine uno in pausa o passa a un piano superiore.",
+    "too_few": "Scegli almeno {{min}} risposte.",
+    "failed": "Impossibile creare il sondaggio. Riprova tra un momento.",
+    "cta": "Avvio rapido (2 minuti)"
+  },
+  "tabs": {
+    "label": "Pagine di questa sezione",
+    "my_surveys": "I miei sondaggi",
+    "templates": "Modelli",
+    "quick_start": "Avvio rapido",
+    "channels": "Canali",
+    "results": "Risultati dei sondaggi",
+    "answers": "Risposte",
+    "export": "Esporta"
+  },
+  "analytics": {
+    "country_filter": "Acquirenti in",
+    "all_countries": "Tutti i paesi",
+    "country_option": "{{country}} ({{count}})",
+    "zone_note": "I giorni seguono il fuso orario del negozio ({{zone}}).",
+    "country_note": "Solo acquirenti che hanno pagato in {{country}}.",
+    "rate_unavailable_country": "Il tasso di risposta non è mostrato per un solo paese: gli ordini Shopify non registrano dove ha pagato l'acquirente, quindi non c'è nulla con cui confrontare le risposte."
   }
 }

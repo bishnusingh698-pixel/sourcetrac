@@ -39,9 +39,10 @@ export function useAdminI18n(): { t: TFunction; language: LanguageCode; locale: 
   const shell = useRouteLoaderData<typeof shellLoader>("routes/app");
   const language = shell?.language ?? DEFAULT_LANGUAGE;
   const messages = shell?.messages;
+  const formatLocale = shell?.formatLocale;
   return useMemo(
-    () => ({ t: shellTranslator(language, messages), language, locale: intlLocaleFor(language) }),
-    [language, messages],
+    () => ({ t: shellTranslator(language, messages), language, locale: formatLocale ?? intlLocaleFor(language) }),
+    [language, messages, formatLocale],
   );
 }
 

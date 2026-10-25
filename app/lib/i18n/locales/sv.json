@@ -18,7 +18,8 @@
     "channels": "Kanalrapport",
     "preferences": "Inställningar",
     "current": "(aktuell sida)",
-    "templates": "Mallar"
+    "templates": "Mallar",
+    "analytics": "Analys"
   },
   "common": {
     "cancel": "Avbryt",
@@ -95,7 +96,8 @@
     "total_row": "Totalt",
     "rate_line": "Svarsfrekvens: {{rate}}. {{answered}} av {{total}} ordrar under perioden svarade.",
     "other_title": "Med köparnas egna ord",
-    "other_subtitle": "Vad köpare skrev när ingen av dina kanaler passade. Senaste först."
+    "other_subtitle": "Vad köpare skrev när ingen av dina kanaler passade. Senaste först.",
+    "last_365": "Senaste 12 månaderna"
   },
   "settings": {
     "title": "Inställningar",
@@ -141,7 +143,7 @@
     "language_step_skip": "Hoppa över nu",
     "language_detected": "Identifierat från din Shopify-admin",
     "step4_title": "Se dina resultat",
-    "step4_body": "Resultat grupperar svar per fråga och visar intäkterna per kanal.",
+    "step4_body": "Analys visar var köparna kom ifrån, intäkterna per kanal och svaren på varje fråga.",
     "step4_action": "Visa resultat",
     "step1_body_done": "Du har en publicerad enkät.",
     "step2_body_done": "SourceTrac-blocket har laddats på din tacksida."
@@ -161,7 +163,7 @@
     "truncated": "Den här filen innehåller bara de {{limit}} senaste svaren. Äldre svar har utelämnats.",
     "choose_label": "Vad vill du ladda ned",
     "choose_all": "Alla enkäter",
-    "choose_channels": "Bara kanalrapporten (hur köpare hittade dig)",
+    "choose_channels": "Bara kanaler (hur köparna hittade dig)",
     "shape_all": "En rad per svar, med enkät och fråga. En beställning med flera svar har flera rader, så lägg inte ihop order_total.",
     "shape_survey": "En rad per köpare, med en kolumn per fråga.",
     "shape_channels": "En rad per beställning, med kanalen köparen valde."
@@ -263,7 +265,7 @@
     "faq_title": "Vanliga frågor",
     "contact_tip": "Innan du skriver: om enkäten saknas löser kontrollen i kassaredigeraren från de två första svaren ovan oftast problemet.",
     "q_create": "Hur skapar jag min enkät?",
-    "a_create": "Gå till Enkäter och välj Ny enkät. Välj en mall eller börja från början, redigera frågorna och klicka på Publicera. För att visa den för köpare går du i Shopify till Inställningar › Kassa, klickar på Anpassa, väljer Tack i sidmenyn högst upp, lägger till blocket ”SourceTrac survey” och klickar på Spara. Blocket läggs bara till en gång.",
+    "a_create": "Snabbast är Enkäter › Snabbstart: välj var de flesta köparna finns, kontrollera svaren och tryck på Gå live. Du kan också välja en mall under Enkäter › Mallar. Lägg sedan till blocket: gå till Inställningar › Kassa i Shopify-administratören, klicka på Anpassa, välj Tack i sidmenyn högst upp, lägg till blocket ”SourceTrac survey” och tryck på Spara. Blocket läggs bara till en gång.",
     "q_not_showing": "Varför visas inte frågan på min tack-sida?",
     "a_not_showing": "Kontrollera fyra saker. För det första måste enkäten vara publicerad i SourceTrac. För det andra måste blocket ”SourceTrac survey” finnas på tacksidan i Shopifys kassaredigerare (Inställningar › Kassa › Anpassa, sedan Tack i sidmenyn) och redigeraren vara sparad. För det tredje tillfrågas varje beställning bara en gång: en beställning som redan svarat visar aldrig enkäten igen, så testa med en ny beställning. För det fjärde erbjuder Shopify inte blocket på tacksidan i Starter-planen.",
     "q_missing_revenue": "Varför saknar ett av mina svar intäkter?",
@@ -287,7 +289,13 @@
     "q_once_per_order": "Jag svarade en gång och nu visas inte enkäten. Varför?",
     "a_once_per_order": "Varje beställning tillfrågas bara en gång. Efter ett svar visar SourceTrac aldrig enkäten för den beställningen igen, inte ens om sidan laddas om, så ingen tillfrågas två gånger. Lägg en ny beställning för att testa igen.",
     "q_order_status": "Kan enkäten även visas på orderstatussidan?",
-    "a_order_status": "Ja, som ett valfritt tillägg. Orderstatussidan är sidan köpare kommer till när de öppnar ”Visa din beställning” i sina ordermejl. Markera den under ”Var den visas” i enkäten, välj sedan Orderstatus i sidmenyn i kassaredigeraren, lägg till blocket ”SourceTrac survey” och klicka på Spara. Den finns bara i menyn om din butik använder Shopifys nya kundkonton (Inställningar › Kundkonton). Varje beställning tillfrågas fortfarande bara en gång."
+    "a_order_status": "Ja, som ett valfritt tillägg. Orderstatussidan är sidan köpare kommer till när de öppnar ”Visa din beställning” i sina ordermejl. Markera den under ”Var den visas” i enkäten, välj sedan Orderstatus i sidmenyn i kassaredigeraren, lägg till blocket ”SourceTrac survey” och klicka på Spara. Den finns bara i menyn om din butik använder Shopifys nya kundkonton (Inställningar › Kundkonton). Varje beställning tillfrågas fortfarande bara en gång.",
+    "q_countries": "Mina köpare finns i flera länder. Kan svaren skilja sig åt?",
+    "a_countries": "Ja. I redigeraren laddar ”Använd svar för ett land” de appar och sajter som köpare i det landet oftast hittar butiker på. Jordglobsknappen bredvid ett svar visar det bara för köpare i länderna du väljer (Growth), så en enkät kan visa LINE i Japan och Snapchat i Gulfen. För andra frågor duplicerar du enkäten, begränsar den till de länderna under ”Vem ser den” och flyttar upp den ovanför den andra på sidan Enkäter.",
+    "q_look": "Kan jag ändra enkätens färger och typsnitt?",
+    "a_look": "Enkäten använder alltid kassans egna typsnitt och färger (Inställningar › Kassa › Anpassa), eftersom Shopify inte låter appar ändra dem, så den ser alltid ut som en del av butiken. Under ”Utseende och texter” ändrar du rubrik, intro, knapp och tacktext, visar en fråga i taget, använder stjärnor för betyg, väljer orden under en skala och väljer kant och avstånd.",
+    "q_languages": "Ser köparna enkäten på sitt eget språk?",
+    "a_languages": "Mallar och snabbstarten är översatta till tio språk. Under ”Språk” i enkäten kan du lägga till eller ändra översättningar, även på arabiska, hebreiska, koreanska, polska, turkiska och de nordiska språken. Köparen ser sitt kassaspråk om enkäten har det, annars din egen text; knapparna är översatta till alla dessa språk."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac är inte tillgängligt med din plan",
@@ -583,7 +591,9 @@
     "check_new_order": "Varje beställning tillfrågas bara en gång. Testa med en ny beställning och se sedan ”Senaste kassor” nedan för vad som hände.",
     "check_block_never_order_status": "Orderstatussidan: SourceTrac-blocket har inte laddats här ännu. Välj Orderstatus i sidmenyn i kassaredigeraren, lägg till blocket ”SourceTrac survey” och klicka på Spara. Sidan finns bara i menyn om din butik använder de nya kundkontona.",
     "validation_currency_unavailable": "Butikens valuta kunde inte läsas just nu. Försök spara igen om en stund.",
-    "validation_order_value_range": "Det högsta ordervärdet måste vara minst lika högt som det lägsta."
+    "validation_order_value_range": "Det högsta ordervärdet måste vara minst lika högt som det lägsta.",
+    "reason_products": "”{{survey}}” gäller bara beställningar med vissa produkter, och den här beställningen hade ingen av dem.",
+    "reason_products_unknown": "”{{survey}}” gäller bara beställningar med vissa produkter, och den här kassan angav inte vilka produkter som beställdes. Kontrollera att dina SourceTrac-block är uppdaterade."
   },
   "templates": {
     "nps": {
@@ -683,7 +693,10 @@
     "status_total_unreadable": "Totalen kan inte läsas",
     "status_no_order": "Ingen order",
     "survey_label": "Enkät",
-    "export_cta": "Exportera CSV"
+    "export_cta": "Exportera CSV",
+    "col_buyer": "Köpare",
+    "first_order": "Första beställningen",
+    "returning": "Återkommande köpare"
   },
   "library": {
     "title": "Mallar",
@@ -781,7 +794,7 @@
     "view": "Visa",
     "reliable_ideas": "Dina resultat för {{name}} är tillförlitliga. Se vad köparna berättade.",
     "unpublished": "{{name}} har opublicerade ändringar. Granska och publicera.",
-    "open_report": "Öppna kanalrapporten",
+    "open_report": "Visa alla kanaler",
     "do_it": "Gå dit",
     "see_results": "Se de senaste svaren på {{name}}.",
     "subtitle": "Din butik i korthet: intäkter per kanal, kundbetyg och alla enkäter.",
@@ -810,7 +823,7 @@
     "buyers_unknown_other": "{{count}} ordrar visar inte om det var en första beställning.",
     "surveys_subtitle": "Aktiva enkäter och alla andra som fått svar. {{range}}.",
     "col_key_result": "Viktigaste resultat",
-    "compare_surveys": "Jämför enkäter i Resultat",
+    "compare_surveys": "Jämför enkäter under Analys",
     "capped_note": "Betyg, köpare och enkäter bygger på de senaste {{limit}} svaren under perioden."
   },
   "support": {
@@ -840,7 +853,7 @@
     "questions_help": "Håll det kort. En till tre frågor ger flest svar.",
     "placement_thank_you": "Tacksidan",
     "who_title": "Vem som ser den",
-    "more_rules": "Fler regler (ordervärde, länder, datum)",
+    "more_rules": "Fler regler (ordervärde, länder, produkter, datum)",
     "optional_title": "Valfritt",
     "wording_title": "Rubrik, inledning och knappar",
     "languages_title": "Språk",
@@ -989,8 +1002,8 @@
     "learn_stop_done": "Autostopp har redan pausat enkäten en gång. Den pausas inte igen; slå av och på för att aktivera det igen.",
     "status_auto_paused": "Pausad automatiskt: resultaten är tillförlitliga. Köpare ser inte enkäten. Slå på den igen när du vill; den pausas inte igen.",
     "other_label": "Text för svaret ”Annat”",
-    "channel_question": "Räkna i kanalrapporten",
-    "channel_question_details": "Markera för en fråga som ”Hur hörde du talas om oss?”. Svaren blir dina kanaler, med intäkter, på översikten och i kanalrapporten.",
+    "channel_question": "Räkna svaren som dina kanaler under Analys",
+    "channel_question_details": "Markera för en fråga ”Hur hittade du oss?”. Svaren blir dina kanaler, med intäkter, på Start och under Analys › Kanaler.",
     "where_title": "Var den visas",
     "placement_order_status": "Orderstatussidan",
     "audience_order_status_note": "På orderstatussidan vet SourceTrac bara om det är en första beställning när tacksidan också har SourceTrac-blocket. Andra beställningar ser inte enkäten där.",
@@ -999,7 +1012,47 @@
     "placement_once": "Varje beställning tillfrågas bara en gång. Svarar köparen på en sida döljs enkäten på den andra.",
     "store_step_order_status": "För orderstatussidan: välj Orderstatus i samma sidmeny, lägg till blocket ”SourceTrac survey” där och klicka på Spara. Den finns bara i menyn om din butik använder de nya kundkontona (Inställningar › Kundkonton).",
     "block_order_status_title": "Lägg till SourceTrac-blocket på orderstatussidan också",
-    "block_missing_order_status_body": "Enkäten ska också visas på orderstatussidan, men blocket har inte laddats där ännu. Välj Orderstatus i sidmenyn i kassaredigeraren, lägg till blocket ”SourceTrac survey” och klicka på Spara. Om Orderstatus inte finns i menyn använder din butik klassiska kundkonton: byt under Inställningar › Kundkonton eller avmarkera sidan under ”Var den visas”."
+    "block_missing_order_status_body": "Enkäten ska också visas på orderstatussidan, men blocket har inte laddats där ännu. Välj Orderstatus i sidmenyn i kassaredigeraren, lägg till blocket ”SourceTrac survey” och klicka på Spara. Om Orderstatus inte finns i menyn använder din butik klassiska kundkonton: byt under Inställningar › Kundkonton eller avmarkera sidan under ”Var den visas”.",
+    "look_title": "Utseende och texter",
+    "look_help": "Typsnitt och färger följer alltid kassans varumärkesprofil (Inställningar › Kassa › Anpassa). Shopify låter inte appar ändra dem, så enkäten passar alltid din butik.",
+    "layout_details": "”En i taget” visar en Nästa-knapp mellan frågorna. ”Alla på en sida” passar för en till tre korta frågor.",
+    "show_title_details": "Den korta rubriken ovanför frågorna.",
+    "show_progress": "Visa förlopp (till exempel ”1 av 3”)",
+    "title_details": "Visas ovanför frågorna när ”Visa rubriken” är på.",
+    "intro_details": "En rad under rubriken. Lämna tomt om du inte vill ha någon.",
+    "button_details": "Knappen som köparna trycker på för att skicka sina svar.",
+    "thanks_details": "Visas några sekunder efter att köparen svarat, sedan stängs blocket.",
+    "frame": "Ram",
+    "frame_border": "I en ruta med kant",
+    "frame_none": "Utan kant",
+    "frame_details": "En ruta skiljer enkäten från orderuppgifterna runt omkring.",
+    "spacing": "Avstånd",
+    "spacing_comfortable": "Luftigt",
+    "spacing_compact": "Kompakt",
+    "rating_style_details": "Stjärnorna fylls upp till köparens val. Siffror visar 1 till 5.",
+    "scale_low": "Text vid skalans låga ände",
+    "scale_high": "Text vid skalans höga ände",
+    "scale_details": "Visas under betygsfrågor och frågor från 0 till 10. Lämna tomt för standardtexten, översatt för varje köpare: ”Mycket dåligt” till ”Utmärkt” för betyg, ”Inte troligt” till ”Mycket troligt” för 0 till 10.",
+    "answer_type_details": "Hur köparna svarar: tryck på ett svar, bocka för flera, välj ett betyg eller skriv.",
+    "required_details": "Köparna kan inte skicka förrän de har svarat på den här. Låt den vara av så att de kan hoppa över den.",
+    "placeholder_details": "Grå exempeltext i den tomma svarsrutan.",
+    "long_answer_details": "En högre ruta för svar som är längre än några ord.",
+    "answer_countries_button": "Länder för {{label}}",
+    "answer_countries_title": "Visa ”{{label}}” bara i dessa länder",
+    "answer_countries_details": "Köpare i andra länder ser inte det här svaret. Lämna allt omarkerat för att visa det överallt. Bra för att visa LINE bara i Japan eller Snapchat bara i Gulfen, i en och samma enkät.",
+    "answer_countries_summary": "Visas bara i: {{list}}",
+    "answer_countries_locked": "Att visa ett svar bara i vissa länder ingår i {{plan}}.",
+    "products": "Bara beställningar med dessa produkter",
+    "products_details": "Visar enkäten bara när beställningen innehåller minst en av dessa produkter. Lämna tomt för alla beställningar.",
+    "products_none": "Ingen produkt vald: alla beställningar kan se enkäten.",
+    "products_choose": "Välj produkter",
+    "products_change": "Ändra produkter",
+    "products_remove": "Ta bort {{name}}",
+    "products_missing": "Produkt {{id}} (finns inte längre i butiken)",
+    "products_unavailable": "Shopifys produktväljare kunde inte öppnas. Ladda om sidan och försök igen.",
+    "countries_other_questions": "Vill du ställa andra frågor till köpare i ett land? Duplicera enkäten, välj länderna här och flytta den ovanför den här på sidan Enkäter.",
+    "language_rtl": "Skrivs från höger till vänster. Shopifys kassa visar enkäten från höger till vänster för dessa köpare.",
+    "audience_details": "Shopify berättar på tacksidan om det är köparens första beställning i din butik."
   },
   "preview": {
     "title": "Förhandsvisning",
@@ -1020,7 +1073,9 @@
     "next": "Nästa",
     "try_it": "Klicka dig igenom den som en köpare. Inget sparas.",
     "other_label": "Annat",
-    "other_placeholder": "Berätta mer"
+    "other_placeholder": "Berätta mer",
+    "rating_low": "Mycket dåligt",
+    "rating_high": "Utmärkt"
   },
   "privacy": {
     "notice": "SourceTrac sparar enkätsvar och orderuppgifter i {{months}} månader. Köparens namn, e-post, telefonnummer, adress eller betalningsuppgifter sparas aldrig.",
@@ -1050,5 +1105,64 @@
     "policy_text": "Efter köpet kan vi be dig svara på en kort, frivillig enkät, till exempel om hur du hörde talas om oss. Dina svar sparas tillsammans med ditt ordernummer av vår enkätleverantör, SourceTrac, i upp till {{months}} månader och används bara för att förstå vilka kanaler som ger oss kunder. De säljs aldrig och används aldrig för reklam.",
     "actions_notice": "Shopify-åtgärder kopierar svar till din Shopify-butik som ordertaggar, kundtaggar eller kundmetafält. Därefter gäller Shopifys regler för din butiksdata, inte SourceTracs raderingsschema.",
     "export_notice": "Filen innehåller ordernummer, svar, ordervärden och text som köpare har skrivit. Förvara den lika säkert som dina andra butiksuppgifter."
+  },
+  "presets": {
+    "load_title": "Använd svar för ett land",
+    "load_help": "Välj var de flesta av dina köpare finns. Du får de appar och sajter som människor där oftast hittar butiker på, redo att redigera.",
+    "country_label": "Land",
+    "search": "Sök länder",
+    "no_match": "Inget land matchar sökningen.",
+    "preview": "Svar för {{country}}: {{list}}",
+    "replace": "Ersätt mina svar",
+    "add_one": "Lägg till {{count}} saknat svar",
+    "add_other": "Lägg till {{count}} saknade svar",
+    "replace_note": "Svar du behåller förblir kopplade till sina resultat. Resultaten för ett borttaget svar sparas också.",
+    "full": "Frågan har redan det högsta antalet svar ({{max}}).",
+    "only_there": "Visa de tillagda svaren bara för köpare i {{country}} och länderna i samma grupp",
+    "only_there_details": "Köpare på andra håll ser fortfarande dina andra svar. Ändra listan med jordglobsknappen bredvid varje svar.",
+    "only_there_locked": "Svar som bara visas i vissa länder ingår i {{plan}}."
+  },
+  "quick": {
+    "title": "Snabbstart",
+    "subtitle": "Få en enkät ”Hur hittade du oss?” live på ungefär två minuter. Du kan ändra allt senare.",
+    "templates_link": "Bläddra bland mallar i stället",
+    "country_title": "1. Var finns de flesta av dina köpare?",
+    "country_help": "Vi laddar de appar och sajter som människor där oftast hittar butiker på.",
+    "answers_title": "2. Välj svaren köparna kan välja",
+    "answers_help": "Vanliga svar för {{country}}. Avmarkera det som inte passar och lägg till egna.",
+    "add_label": "Lägg till ett eget svar",
+    "add_button": "Lägg till",
+    "custom_remove": "Ta bort {{label}}",
+    "other": "Lägg till ”Annat” med en textruta",
+    "other_details": "Köpare vars svar inte finns med kan skriva det. Du ser vad de skrev under Analys.",
+    "follow_up": "Fråga vilken kreatör eller vilket konto, efter en social app eller en kreatör",
+    "follow_up_details": "En andra, frivillig fråga. Utan den svarar köparna med ett enda tryck.",
+    "launch_title": "3. Gå live",
+    "launch_help": "Köparna ser enkäten på din tacksida så snart SourceTrac-blocket har lagts till i Shopifys kassaredigerare. Vi öppnar den åt dig härnäst.",
+    "go_live": "Gå live",
+    "create_draft": "Skapa enkät",
+    "limit_note_one": "Din plan har {{count}} aktiv enkät och den används redan, så den här sparas som utkast. Pausa den andra eller uppgradera för att köra båda.",
+    "limit_note_other": "Din plan har {{count}} aktiva enkäter och alla används, så den här sparas som utkast. Pausa en eller uppgradera.",
+    "too_few": "Välj minst {{min}} svar.",
+    "failed": "Enkäten kunde inte skapas. Försök igen om en stund.",
+    "cta": "Snabbstart (2 minuter)"
+  },
+  "tabs": {
+    "label": "Sidor i det här avsnittet",
+    "my_surveys": "Mina enkäter",
+    "templates": "Mallar",
+    "quick_start": "Snabbstart",
+    "channels": "Kanaler",
+    "results": "Enkätresultat",
+    "answers": "Svar",
+    "export": "Exportera"
+  },
+  "analytics": {
+    "country_filter": "Köpare i",
+    "all_countries": "Alla länder",
+    "country_option": "{{country}} ({{count}})",
+    "zone_note": "Dagarna följer butikens tidszon ({{zone}}).",
+    "country_note": "Bara köpare som handlade i {{country}}.",
+    "rate_unavailable_country": "Svarsfrekvensen visas inte för ett enskilt land: Shopify-beställningar sparar inte var köparen handlade, så det finns inget att jämföra svaren med."
   }
 }

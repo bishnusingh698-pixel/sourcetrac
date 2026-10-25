@@ -33,6 +33,12 @@
     "editorAudience": "Deze enquête heeft regels onder \"Wie deze ziet\", dus sommige bestellingen zien hem niet.",
     "editorOncePerOrder": "Elke bestelling wordt één keer gevraagd. Na een antwoord toont die bestelling geen enquête meer, dus test met een nieuwe bestelling.",
     "editorWaking": "SourceTrac wordt gestart. Na een rustige periode kan dat tot een minuut duren.",
-    "editorOtherPage": "Deze enquête staat niet aan voor deze pagina. Zet deze pagina aan onder 'Waar hij verschijnt' in SourceTrac."
+    "editorOtherPage": "Deze enquête staat niet aan voor deze pagina. Zet deze pagina aan onder 'Waar hij verschijnt' in SourceTrac.",
+    "selected": "geselecteerd",
+    "ratingLow": "Zeer slecht",
+    "ratingHigh": "Uitstekend",
+    "npsLow": "Niet waarschijnlijk",
+    "npsHigh": "Zeer waarschijnlijk",
+    "ratingAria": "{{n}} van 5"
   }
 }

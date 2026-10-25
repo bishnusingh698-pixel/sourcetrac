@@ -416,3 +416,53 @@ describe("pickTopChannel", () => {
     expect(pickTopChannel([], [])).toBeNull();
   });
 });
+
+describe("ranges and trend days in the store's time zone (B6)", () => {
+  // 2026-10-15 03:30 UTC is still 14 October, 20:30, in Los Angeles (UTC-7).
+  const now = new Date("2026-10-15T03:30:00.000Z");
+  const LA = "America/Los_Angeles";
+
+  it("starts the window at the store's midnight, not UTC's", () => {
+    const { start, end } = windowBounds(7, now, LA);
+    expect(end.getTime()).toBe(now.getTime());
+    // Today in LA is the 14th, so seven days start on the 8th at 00:00 PDT.
+    expect(start.toISOString()).toBe("2026-10-08T07:00:00.000Z");
+    // Without a zone the old UTC behaviour is unchanged.
+    expect(windowBounds(7, now).start.toISOString()).toBe("2026-10-09T00:00:00.000Z");
+  });
+
+  it("puts an evening order on the store's own day, and the last point is the store's today", () => {
+    const trend = buildTrend({
+      responses: [response({ submittedAt: new Date("2026-10-14T04:00:00.000Z") })], // 13 Oct, 21:00 in LA
+      decidedAmounts: [],
+      days: 7,
+      now,
+      timeZone: LA,
+    });
+    expect(trend.at(-1)?.date).toBe("2026-10-14");
+    expect(trend.find((p) => p.date === "2026-10-13")?.responses).toBe(1);
+    expect(trend.find((p) => p.date === "2026-10-14")?.responses).toBe(0);
+  });
+
+  it("keeps one bucket per calendar day across a daylight-saving change", () => {
+    // Europe/Berlin leaves summer time on 25 October 2026 (a 25-hour day).
+    const after = new Date("2026-10-27T12:00:00.000Z");
+    const trend = buildTrend({ responses: [], decidedAmounts: [], days: 7, now: after, timeZone: "Europe/Berlin" });
+    expect(trend.map((p) => p.date)).toEqual([
+      "2026-10-21",
+      "2026-10-22",
+      "2026-10-23",
+      "2026-10-24",
+      "2026-10-25",
+      "2026-10-26",
+      "2026-10-27",
+    ]);
+    const { start } = windowBounds(7, after, "Europe/Berlin");
+    // 21 October is still summer time (UTC+2).
+    expect(start.toISOString()).toBe("2026-10-20T22:00:00.000Z");
+  });
+
+  it("falls back to UTC for an unknown zone", () => {
+    expect(windowBounds(7, now, "Not/AZone").start.toISOString()).toBe("2026-10-09T00:00:00.000Z");
+  });
+});

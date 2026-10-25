@@ -52,6 +52,8 @@ type ExportParams = {
   /** Only answers given in [start, end), when set (the Results page's range). */
   start?: Date;
   end?: Date;
+  /** Only buyers who checked out in this country (Analytics' country filter). */
+  country?: string | null;
 };
 
 type QuestionInfo = { id: string; text: string; type: string };
@@ -76,6 +78,7 @@ async function loadResponses(params: ExportParams & { surveyId?: string }) {
     ...(params.surveyId ? { surveyId: params.surveyId } : {}),
     ...(params.start ? { start: params.start } : {}),
     ...(params.end ? { end: params.end } : {}),
+    ...(params.country ? { country: params.country } : {}),
     limit: limit + 1,
   });
   const truncated = fetched.length > limit;
@@ -96,6 +99,9 @@ function orderColumns(response: SurveyResponseRow, shopDomain: string, timeZone:
     currency: total?.currency ?? null,
     revenueStatus: surveyRevenueStatus(response),
     orderLink: response.orderId ? orderAdminLink(shopDomain, response.orderId) : "",
+    country: response.country ?? null,
+    buyerLanguage: response.locale ?? null,
+    firstOrder: response.isFirstOrder === null ? null : response.isFirstOrder ? ("yes" as const) : ("no" as const),
   };
 }
 

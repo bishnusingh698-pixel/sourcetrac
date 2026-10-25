@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 
 import { describeFollowUp, type FollowUp } from "@shared/survey-summary";
 import {
+  customScaleLabel,
   reconcileMultiChoiceSelection,
   resolveOptions,
   SATISFACTION_OPTIONS,
@@ -58,24 +59,28 @@ export function SurveyPreview({ survey, t }: { survey: EditorSurvey; t: TFn }) {
     }
   };
 
+  // The same look settings the checkout block applies.
+  const gap = survey.design.spacing === "compact" ? "small" : "base";
+  const frameClass = survey.design.cardBorder === "no_border" ? "st-preview st-preview--flat" : "st-preview";
+
   return (
     <s-stack gap="small">
-      <div className="st-preview" role="group" aria-label={t("preview.aria")}>
+      <div className={frameClass} role="group" aria-label={t("preview.aria")}>
         {done ? (
-          <s-stack gap="base">
+          <s-stack gap={gap}>
             <s-text type="strong">{survey.thankYouText || t("preview.thanks")}</s-text>
             <s-button type="button" variant="secondary" icon="reset" onClick={restart}>
               {t("preview.restart")}
             </s-button>
           </s-stack>
         ) : (
-          <s-stack gap="base">
+          <s-stack gap={gap}>
             {survey.design.showTitle && survey.title ? <s-text type="strong">{survey.title}</s-text> : null}
             {survey.intro ? <s-text color="subdued">{survey.intro}</s-text> : null}
 
             {questions.length === 0 ? <s-text color="subdued">{t("preview.empty")}</s-text> : null}
 
-            {oneByOne && visible.length > 1 ? (
+            {oneByOne && visible.length > 1 && survey.design.showProgress ? (
               <s-text color="subdued" fontSize="small">
                 {t("preview.progress", { current: index + 1, total: visible.length })}
               </s-text>
@@ -173,7 +178,14 @@ function choiceLabel(question: Question, id: string, t: TFn): string {
   if (question.type === "yes_no") return id === YES_NO_IDS.yes ? t("surveys.yes") : t("surveys.no");
   if (question.type === "satisfaction_5") return t(`surveys.satisfaction_${id}`);
   const option = resolveOptions(question).find((o) => o.id === id);
-  return option?.isOther ? t("preview.other_label") : (option?.label ?? id);
+  if (option?.isOther) return t("preview.other_label");
+  const label = option?.label ?? id;
+  // F4: an answer only some buyers see says where, so the merchant is not
+  // surprised it is missing for buyers elsewhere.
+  const countries = option?.countries ?? [];
+  if (countries.length === 0) return label;
+  const shown = countries.slice(0, 3).join(", ");
+  return `${label} (${countries.length > 3 ? `${shown} +${countries.length - 3}` : shown})`;
 }
 
 /** The ids and numeric values a buyer picks from, for one-pick questions. */
@@ -300,8 +312,8 @@ function Answer({
           values={[1, 2, 3, 4, 5]}
           value={value?.numberValue ?? null}
           stars={design.ratingStyle === "stars"}
-          low={design.scaleLowLabel}
-          high={design.scaleHighLabel}
+          low={customScaleLabel(design.scaleLowLabel) ?? t("preview.rating_low")}
+          high={customScaleLabel(design.scaleHighLabel) ?? t("preview.rating_high")}
           label={label}
           onPick={(n) => onAnswer({ numberValue: n })}
         />
@@ -311,8 +323,8 @@ function Answer({
         <Scale
           values={Array.from({ length: 11 }, (_, n) => n)}
           value={value?.numberValue ?? null}
-          low={design.scaleLowLabel || t("surveys.nps_low")}
-          high={design.scaleHighLabel || t("surveys.nps_high")}
+          low={customScaleLabel(design.scaleLowLabel) ?? t("surveys.nps_low")}
+          high={customScaleLabel(design.scaleHighLabel) ?? t("surveys.nps_high")}
           label={label}
           onPick={(n) => onAnswer({ numberValue: n })}
         />

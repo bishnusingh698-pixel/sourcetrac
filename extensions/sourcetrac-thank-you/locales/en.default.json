@@ -33,6 +33,12 @@
     "editorAudience": "This survey has rules under \"Who sees it\", so some orders won't see it.",
     "editorOncePerOrder": "Each order is asked once. After a buyer answers, that order shows no survey again, so test with a new order.",
     "editorWaking": "SourceTrac is starting up. This can take up to a minute after a quiet spell.",
-    "editorOtherPage": "This survey is not set to show on this page. Turn this page on under \"Where it shows\" in SourceTrac."
+    "editorOtherPage": "This survey is not set to show on this page. Turn this page on under \"Where it shows\" in SourceTrac.",
+    "selected": "selected",
+    "ratingLow": "Very poor",
+    "ratingHigh": "Excellent",
+    "npsLow": "Not likely",
+    "npsHigh": "Very likely",
+    "ratingAria": "{{n}} out of 5"
   }
 }

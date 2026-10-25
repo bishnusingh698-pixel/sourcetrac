@@ -18,7 +18,8 @@
     "channels": "Informe de canales",
     "preferences": "Ajustes",
     "current": "(página actual)",
-    "templates": "Plantillas"
+    "templates": "Plantillas",
+    "analytics": "Análisis"
   },
   "common": {
     "cancel": "Cancelar",
@@ -95,7 +96,8 @@
     "total_row": "Total",
     "rate_line": "Tasa de respuesta: {{rate}}. Respondieron {{answered}} de {{total}} pedidos de este periodo.",
     "other_title": "En palabras de los compradores",
-    "other_subtitle": "Lo que escribieron los compradores cuando ninguno de tus canales encajaba. Lo más reciente primero."
+    "other_subtitle": "Lo que escribieron los compradores cuando ninguno de tus canales encajaba. Lo más reciente primero.",
+    "last_365": "Últimos 12 meses"
   },
   "settings": {
     "title": "Configuración",
@@ -141,7 +143,7 @@
     "language_step_skip": "Omitir por ahora",
     "language_detected": "Detectado desde tu administración de Shopify",
     "step4_title": "Consulte sus resultados",
-    "step4_body": "Resultados agrupa las respuestas por pregunta y muestra los ingresos de cada canal.",
+    "step4_body": "Análisis muestra de dónde vinieron los compradores, los ingresos de cada canal y las respuestas a cada pregunta.",
     "step4_action": "Ver resultados",
     "step1_body_done": "Tienes una encuesta publicada.",
     "step2_body_done": "El bloque de SourceTrac se ha cargado en tu página de agradecimiento."
@@ -161,7 +163,7 @@
     "truncated": "Este archivo solo contiene las {{limit}} respuestas más recientes. Se omitieron las más antiguas.",
     "choose_label": "Qué descargar",
     "choose_all": "Todas las encuestas",
-    "choose_channels": "Solo informe de canales (cómo te conocieron los compradores)",
+    "choose_channels": "Solo canales (cómo te conocieron los compradores)",
     "shape_all": "Una fila por respuesta, con su encuesta y pregunta. Un pedido con varias respuestas tiene varias filas, así que no sumes order_total.",
     "shape_survey": "Una fila por comprador, con una columna por pregunta.",
     "shape_channels": "Una fila por pedido, con el canal que eligió el comprador."
@@ -263,7 +265,7 @@
     "faq_title": "Preguntas frecuentes",
     "contact_tip": "Antes de escribir: si la encuesta no aparece, la revisión del editor de checkout de las dos primeras respuestas suele resolverlo.",
     "q_create": "¿Cómo creo mi encuesta?",
-    "a_create": "Ve a Encuestas y elige Nueva encuesta. Elige una plantilla o empieza desde cero, edita las preguntas y pulsa Publicar. Para que la vean los compradores, en Shopify ve a Configuración › Checkout, haz clic en Personalizar, elige Gracias en el menú de páginas de arriba, añade el bloque «SourceTrac survey» y pulsa Guardar. El bloque solo se añade una vez.",
+    "a_create": "Lo más rápido es Encuestas › Inicio rápido: elige dónde están la mayoría de tus compradores, revisa las respuestas y pulsa Publicar. También puedes elegir una plantilla en Encuestas › Plantillas. Después añade el bloque: en el panel de Shopify ve a Configuración › Pantalla de pago, haz clic en Personalizar, elige Agradecimiento en el menú de páginas de arriba, añade el bloque «SourceTrac survey» y pulsa Guardar. El bloque solo se añade una vez.",
     "q_not_showing": "¿Por qué no aparece la pregunta en mi página de confirmación de pedido?",
     "a_not_showing": "Conviene revisar cuatro cosas. Primero, la encuesta debe estar publicada en SourceTrac. Segundo, el bloque «SourceTrac survey» debe estar en la página de agradecimiento del editor de checkout de Shopify (Configuración › Checkout › Personalizar y luego Gracias en el menú de páginas) y el editor guardado. Tercero, cada pedido se pregunta una sola vez: un pedido que ya respondió no vuelve a mostrar la encuesta, así que prueba con un pedido nuevo. Cuarto, Shopify no ofrece el bloque de la página de agradecimiento en el plan Starter.",
     "q_missing_revenue": "¿Por qué a una de mis respuestas le faltan los ingresos?",
@@ -287,7 +289,13 @@
     "q_once_per_order": "Respondí una vez y ahora la encuesta no aparece. ¿Por qué?",
     "a_once_per_order": "Cada pedido se pregunta una sola vez. Tras una respuesta, SourceTrac no vuelve a mostrar la encuesta a ese pedido, aunque se recargue la página, para que nadie responda dos veces. Para volver a probar, haz un pedido nuevo.",
     "q_order_status": "¿La encuesta puede mostrarse también en la página de estado del pedido?",
-    "a_order_status": "Sí, como extra opcional. La página de estado del pedido es la que ven los compradores al abrir «Ver tu pedido» en los correos del pedido. Márcala en «Dónde se muestra» dentro de la encuesta y luego, en el editor de checkout, elige Estado del pedido en el menú de páginas, añade el bloque «SourceTrac survey» y pulsa Guardar. Solo aparece en el menú si tu tienda usa las nuevas cuentas de cliente de Shopify (Configuración › Cuentas de cliente). Cada pedido se sigue preguntando una sola vez."
+    "a_order_status": "Sí, como extra opcional. La página de estado del pedido es la que ven los compradores al abrir «Ver tu pedido» en los correos del pedido. Márcala en «Dónde se muestra» dentro de la encuesta y luego, en el editor de checkout, elige Estado del pedido en el menú de páginas, añade el bloque «SourceTrac survey» y pulsa Guardar. Solo aparece en el menú si tu tienda usa las nuevas cuentas de cliente de Shopify (Configuración › Cuentas de cliente). Cada pedido se sigue preguntando una sola vez.",
+    "q_countries": "Mis compradores están en varios países. ¿Pueden variar las respuestas?",
+    "a_countries": "Sí. En el editor, «Usar respuestas para un país» carga las apps y sitios donde los compradores de ese país suelen descubrir tiendas. El botón del globo junto a una respuesta la muestra solo a compradores de los países que elijas (Growth), así una encuesta ofrece LINE en Japón y Snapchat en el Golfo. Para preguntas distintas, duplica la encuesta, limítala a esos países en «Quién la ve» y súbela por encima de la otra en la página Encuestas.",
+    "q_look": "¿Puedo cambiar los colores y las fuentes de la encuesta?",
+    "a_look": "La encuesta siempre usa las fuentes y colores de tu pantalla de pago (Configuración › Pantalla de pago › Personalizar), porque Shopify no permite que las apps los cambien; así siempre parece parte de tu tienda. En «Aspecto y textos» puedes cambiar el título, la introducción, el botón y el mensaje de agradecimiento, mostrar una pregunta a la vez, usar estrellas en las valoraciones, definir las palabras bajo una escala y elegir borde y espaciado.",
+    "q_languages": "¿Verán los compradores la encuesta en su idioma?",
+    "a_languages": "Las plantillas y el inicio rápido vienen traducidos a diez idiomas. En «Idiomas» dentro de la encuesta puedes añadir o cambiar traducciones, incluidos árabe, hebreo, coreano, polaco, turco y los idiomas nórdicos. El comprador ve el idioma de su pago si la encuesta lo tiene y, si no, tu propio texto; los botones están traducidos a todos estos idiomas."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac no está disponible en tu plan",
@@ -583,7 +591,9 @@
     "check_new_order": "Cada pedido se pregunta una sola vez. Prueba con un pedido nuevo y luego mira «Pagos recientes» más abajo para ver qué pasó.",
     "check_block_never_order_status": "Página de estado del pedido: el bloque de SourceTrac aún no se ha cargado aquí. En el editor de checkout, elige Estado del pedido en el menú de páginas, añade el bloque «SourceTrac survey» y pulsa Guardar. Solo aparece en el menú si tu tienda usa las nuevas cuentas de cliente.",
     "validation_currency_unavailable": "No se pudo leer la moneda de tu tienda en este momento. Vuelve a guardar en un momento.",
-    "validation_order_value_range": "El valor máximo del pedido debe ser al menos el mínimo."
+    "validation_order_value_range": "El valor máximo del pedido debe ser al menos el mínimo.",
+    "reason_products": "«{{survey}}» se limita a pedidos con algunos productos, y este pedido no tenía ninguno.",
+    "reason_products_unknown": "«{{survey}}» se limita a pedidos con algunos productos, y esta compra no indicó qué productos se pidieron. Comprueba que tus bloques de SourceTrac estén actualizados."
   },
   "templates": {
     "nps": {
@@ -683,7 +693,10 @@
     "status_total_unreadable": "Total ilegible",
     "status_no_order": "Sin pedido",
     "survey_label": "Encuesta",
-    "export_cta": "Exportar CSV"
+    "export_cta": "Exportar CSV",
+    "col_buyer": "Comprador",
+    "first_order": "Primer pedido",
+    "returning": "Comprador recurrente"
   },
   "library": {
     "title": "Plantillas",
@@ -781,7 +794,7 @@
     "view": "Ver",
     "reliable_ideas": "Tus resultados de {{name}} son fiables. Mira lo que te han dicho los compradores.",
     "unpublished": "{{name}} tiene cambios sin publicar. Revisa y publica.",
-    "open_report": "Abrir informe de canales",
+    "open_report": "Ver todos los canales",
     "do_it": "Ir",
     "see_results": "Mira las últimas respuestas a {{name}}.",
     "subtitle": "Tu tienda de un vistazo: ingresos por canal, puntuaciones de clientes y todas tus encuestas.",
@@ -810,7 +823,7 @@
     "buyers_unknown_other": "{{count}} pedidos no indican si eran un primer pedido.",
     "surveys_subtitle": "Encuestas activas y cualquier otra que haya recibido respuestas. {{range}}.",
     "col_key_result": "Resultado clave",
-    "compare_surveys": "Comparar encuestas en Resultados",
+    "compare_surveys": "Comparar encuestas en Análisis",
     "capped_note": "Las puntuaciones, compradores y encuestas se basan en las {{limit}} respuestas más recientes de este periodo."
   },
   "support": {
@@ -840,7 +853,7 @@
     "questions_help": "Hazla corta. Las encuestas de una a tres preguntas son las que más respuestas reciben.",
     "placement_thank_you": "Página de agradecimiento",
     "who_title": "Quién la ve",
-    "more_rules": "Más reglas (valor del pedido, países, fechas)",
+    "more_rules": "Más reglas (valor del pedido, países, productos, fechas)",
     "optional_title": "Opcional",
     "wording_title": "Título, introducción y botones",
     "languages_title": "Idiomas",
@@ -989,8 +1002,8 @@
     "learn_stop_done": "La parada automática ya pausó esta encuesta una vez. No la volverá a pausar; desactívala y actívala para armarla de nuevo.",
     "status_auto_paused": "Pausada automáticamente: los resultados ya son fiables. Los compradores no ven esta encuesta. Vuelve a activarla cuando quieras; no se pausará de nuevo.",
     "other_label": "Texto de la respuesta «Otro»",
-    "channel_question": "Contar en el informe de canales",
-    "channel_question_details": "Márcalo en una pregunta tipo «¿Cómo nos conociste?». Sus respuestas serán tus canales, con sus ingresos, en el Panel y el informe de canales.",
+    "channel_question": "Contar estas respuestas como tus canales en Análisis",
+    "channel_question_details": "Márcalo para una pregunta «¿Cómo nos conociste?». Sus respuestas se convierten en tus canales, con sus ingresos, en Inicio y en Análisis › Canales.",
     "where_title": "Dónde se muestra",
     "placement_order_status": "Página de estado del pedido",
     "audience_order_status_note": "En la página de estado del pedido, SourceTrac solo sabe si es un primer pedido cuando la página de agradecimiento también tiene el bloque de SourceTrac. Los demás pedidos no ven esta encuesta ahí.",
@@ -999,7 +1012,47 @@
     "placement_once": "Cada pedido se pregunta una sola vez. Si el comprador responde en una página, la encuesta se oculta en la otra.",
     "store_step_order_status": "Para la página de estado del pedido: en el mismo menú de páginas elige Estado del pedido, añade allí el bloque «SourceTrac survey» y pulsa Guardar. Solo aparece en el menú si tu tienda usa las nuevas cuentas de cliente (Configuración › Cuentas de cliente).",
     "block_order_status_title": "Añade también el bloque de SourceTrac a tu página de estado del pedido",
-    "block_missing_order_status_body": "Esta encuesta también está configurada para la página de estado del pedido, pero el bloque aún no se ha cargado allí. En el editor de checkout, elige Estado del pedido en el menú de páginas, añade el bloque «SourceTrac survey» y pulsa Guardar. Si Estado del pedido no está en el menú, tu tienda usa las cuentas de cliente clásicas: cámbialas en Configuración › Cuentas de cliente o desmarca la página en «Dónde se muestra»."
+    "block_missing_order_status_body": "Esta encuesta también está configurada para la página de estado del pedido, pero el bloque aún no se ha cargado allí. En el editor de checkout, elige Estado del pedido en el menú de páginas, añade el bloque «SourceTrac survey» y pulsa Guardar. Si Estado del pedido no está en el menú, tu tienda usa las cuentas de cliente clásicas: cámbialas en Configuración › Cuentas de cliente o desmarca la página en «Dónde se muestra».",
+    "look_title": "Aspecto y textos",
+    "look_help": "Las fuentes y los colores siguen siempre la marca de tu pantalla de pago (Configuración › Pantalla de pago › Personalizar). Shopify no permite que las apps los cambien, así que la encuesta siempre combina con tu tienda.",
+    "layout_details": "«Una a la vez» muestra un botón Siguiente entre preguntas. «Todas en una pantalla» va bien para una a tres preguntas cortas.",
+    "show_title_details": "El título corto encima de las preguntas.",
+    "show_progress": "Mostrar el progreso (por ejemplo «1 de 3»)",
+    "title_details": "Se muestra encima de las preguntas cuando «Mostrar el título» está activado.",
+    "intro_details": "Una línea bajo el título. Déjalo vacío para no mostrar ninguna.",
+    "button_details": "El botón que pulsan los compradores para enviar sus respuestas.",
+    "thanks_details": "Se muestra unos segundos después de que el comprador responde y luego el bloque se cierra.",
+    "frame": "Marco",
+    "frame_border": "En un recuadro con borde",
+    "frame_none": "Sin borde",
+    "frame_details": "Un recuadro separa la encuesta de los detalles del pedido que la rodean.",
+    "spacing": "Espaciado",
+    "spacing_comfortable": "Amplio",
+    "spacing_compact": "Compacto",
+    "rating_style_details": "Las estrellas se rellenan hasta la elección del comprador. Los números van del 1 al 5.",
+    "scale_low": "Texto en el extremo bajo de la escala",
+    "scale_high": "Texto en el extremo alto de la escala",
+    "scale_details": "Aparece bajo las preguntas de valoración y de 0 a 10. Déjalo vacío para usar el texto estándar, traducido para cada comprador: «Muy malo» a «Excelente» en valoraciones, «Poco probable» a «Muy probable» de 0 a 10.",
+    "answer_type_details": "Cómo responden los compradores: tocar una opción, marcar varias, elegir una puntuación o escribir.",
+    "required_details": "Los compradores no pueden enviar sus respuestas hasta contestar esta. Déjalo desactivado para que puedan saltarla.",
+    "placeholder_details": "Texto de ejemplo en gris dentro del cuadro de respuesta vacío.",
+    "long_answer_details": "Un cuadro más alto para respuestas de más de unas pocas palabras.",
+    "answer_countries_button": "Países para {{label}}",
+    "answer_countries_title": "Mostrar «{{label}}» solo en estos países",
+    "answer_countries_details": "Los compradores de otros países no ven esta respuesta. Déjalo todo sin marcar para mostrarla en todas partes. Sirve para mostrar LINE solo en Japón o Snapchat solo en el Golfo, en una sola encuesta.",
+    "answer_countries_summary": "Solo se muestra en: {{list}}",
+    "answer_countries_locked": "Mostrar una respuesta solo en algunos países está disponible con {{plan}}.",
+    "products": "Solo pedidos con estos productos",
+    "products_details": "Muestra la encuesta solo si el pedido incluye al menos uno de estos productos. Déjalo vacío para todos los pedidos.",
+    "products_none": "Ningún producto elegido: todos los pedidos pueden ver la encuesta.",
+    "products_choose": "Elegir productos",
+    "products_change": "Cambiar productos",
+    "products_remove": "Quitar {{name}}",
+    "products_missing": "Producto {{id}} (ya no está en tu tienda)",
+    "products_unavailable": "El selector de productos de Shopify no pudo abrirse. Recarga la página e inténtalo de nuevo.",
+    "countries_other_questions": "¿Preguntas distintas para compradores de un país? Duplica esta encuesta, elige aquí sus países y súbela por encima de esta en la página Encuestas.",
+    "language_rtl": "Se escribe de derecha a izquierda. La pantalla de pago de Shopify muestra la encuesta de derecha a izquierda para estos compradores.",
+    "audience_details": "Shopify indica en la página de agradecimiento si es el primer pedido del comprador en tu tienda."
   },
   "preview": {
     "title": "Vista previa",
@@ -1020,7 +1073,9 @@
     "next": "Siguiente",
     "try_it": "Recórrela como un comprador. No se guarda nada.",
     "other_label": "Otro",
-    "other_placeholder": "Cuéntanos más"
+    "other_placeholder": "Cuéntanos más",
+    "rating_low": "Muy malo",
+    "rating_high": "Excelente"
   },
   "privacy": {
     "notice": "SourceTrac guarda las respuestas de las encuestas y los datos de los pedidos durante {{months}} meses. Nunca guarda nombres, correos, teléfonos, direcciones ni datos de pago de los compradores.",
@@ -1050,5 +1105,64 @@
     "policy_text": "Después de la compra, es posible que te pidamos responder una breve encuesta opcional, por ejemplo cómo nos conociste. Tus respuestas se guardan junto con tu número de pedido en nuestro proveedor de encuestas, SourceTrac, durante un máximo de {{months}} meses, y solo se usan para entender qué canales nos traen clientes. Nunca se venden ni se usan con fines publicitarios.",
     "actions_notice": "Las acciones de Shopify copian las respuestas en tu tienda de Shopify como etiquetas de pedido, etiquetas de cliente o metacampos de cliente. A partir de ahí siguen las reglas de Shopify para los datos de tu tienda, no el calendario de eliminación de SourceTrac.",
     "export_notice": "El archivo contiene números de pedido, respuestas, totales de pedidos y cualquier texto que hayan escrito los compradores. Guárdalo con el mismo cuidado que el resto de registros de tu tienda."
+  },
+  "presets": {
+    "load_title": "Usar respuestas para un país",
+    "load_help": "Elige dónde están la mayoría de tus compradores. Obtienes las apps y sitios donde la gente de allí suele descubrir tiendas, listos para editar.",
+    "country_label": "País",
+    "search": "Buscar países",
+    "no_match": "Ningún país coincide con esa búsqueda.",
+    "preview": "Respuestas para {{country}}: {{list}}",
+    "replace": "Reemplazar mis respuestas",
+    "add_one": "Añadir {{count}} respuesta que falta",
+    "add_other": "Añadir {{count}} respuestas que faltan",
+    "replace_note": "Las respuestas que mantienes siguen vinculadas a sus resultados. También se conservan los resultados de las que quitas.",
+    "full": "Esta pregunta ya tiene el máximo de respuestas ({{max}}).",
+    "only_there": "Mostrar las respuestas añadidas solo a compradores en {{country}} y los países de su grupo",
+    "only_there_details": "Los compradores de otros lugares siguen viendo tus demás respuestas. Cambia la lista con el botón del globo junto a cada respuesta.",
+    "only_there_locked": "Las respuestas solo para algunos países están disponibles con {{plan}}."
+  },
+  "quick": {
+    "title": "Inicio rápido",
+    "subtitle": "Publica una encuesta «¿Cómo nos conociste?» en unos dos minutos. Puedes cambiarlo todo después.",
+    "templates_link": "Ver plantillas en su lugar",
+    "country_title": "1. ¿Dónde están la mayoría de tus compradores?",
+    "country_help": "Cargamos las apps y sitios donde la gente de allí suele descubrir tiendas.",
+    "answers_title": "2. Elige las respuestas que pueden escoger los compradores",
+    "answers_help": "Respuestas habituales para {{country}}. Desmarca las que no apliquen y añade las tuyas.",
+    "add_label": "Añadir tu propia respuesta",
+    "add_button": "Añadir",
+    "custom_remove": "Quitar {{label}}",
+    "other": "Añadir «Otro» con un cuadro de texto",
+    "other_details": "Los compradores cuya respuesta no está en la lista pueden escribirla. Verás lo que escribieron en Análisis.",
+    "follow_up": "Preguntar qué creador o cuenta, después de una red social o un creador",
+    "follow_up_details": "Una segunda pregunta opcional. Sin ella, los compradores responden con un solo toque.",
+    "launch_title": "3. Publicar",
+    "launch_help": "Los compradores ven la encuesta en tu página de agradecimiento cuando añades el bloque de SourceTrac en el editor de la pantalla de pago de Shopify. Lo abrimos por ti a continuación.",
+    "go_live": "Publicar",
+    "create_draft": "Crear encuesta",
+    "limit_note_one": "Tu plan incluye {{count}} encuesta activa y ya está en uso, así que esta se guarda como borrador. Pausa la otra o mejora tu plan para usar ambas.",
+    "limit_note_other": "Tu plan incluye {{count}} encuestas activas y todas están en uso, así que esta se guarda como borrador. Pausa una o mejora tu plan para usar más.",
+    "too_few": "Elige al menos {{min}} respuestas.",
+    "failed": "No se pudo crear la encuesta. Inténtalo de nuevo en un momento.",
+    "cta": "Inicio rápido (2 minutos)"
+  },
+  "tabs": {
+    "label": "Páginas de esta sección",
+    "my_surveys": "Mis encuestas",
+    "templates": "Plantillas",
+    "quick_start": "Inicio rápido",
+    "channels": "Canales",
+    "results": "Resultados de encuestas",
+    "answers": "Respuestas",
+    "export": "Exportar"
+  },
+  "analytics": {
+    "country_filter": "Compradores en",
+    "all_countries": "Todos los países",
+    "country_option": "{{country}} ({{count}})",
+    "zone_note": "Los días siguen la zona horaria de tu tienda ({{zone}}).",
+    "country_note": "Solo compradores que pagaron en {{country}}.",
+    "rate_unavailable_country": "La tasa de respuesta no se muestra para un solo país: los pedidos de Shopify no guardan dónde pagó el comprador, así que no hay con qué comparar las respuestas."
   }
 }

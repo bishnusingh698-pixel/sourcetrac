@@ -69,6 +69,9 @@ export type SurveyResponseRow = {
   isFirstOrder: boolean | null;
   /** T8: numeric product ids on the order's lines (may be empty). */
   productIds: string[];
+  /** The buyer's checkout country (ISO alpha-2) and language, when the checkout said. */
+  country?: string | null;
+  locale?: string | null;
   answers: SurveyAnswerRow[];
   order: OrderFacts | null;
 };
@@ -90,12 +93,15 @@ export async function fetchSurveyResponses(params: {
   end?: Date;
   limit?: number;
   offset?: number;
+  /** Only answers from buyers in this country (ISO alpha-2). */
+  country?: string | null;
 }): Promise<SurveyResponseRow[]> {
   const rows = await retryDb(() =>
     db.response.findMany({
       where: {
         shopId: params.shopId,
         ...(params.surveyId ? { surveyId: params.surveyId } : {}),
+        ...(params.country ? { country: params.country } : {}),
         ...(params.start || params.end
           ? { createdAt: { ...(params.start ? { gte: params.start } : {}), ...(params.end ? { lt: params.end } : {}) } }
           : {}),
@@ -151,6 +157,8 @@ export async function fetchSurveyResponses(params: {
       createdAt: row.createdAt,
       isFirstOrder: row.isFirstOrder,
       productIds: safeParseArray(row.productIds),
+      country: row.country,
+      locale: row.locale,
       answers: row.answers.map((answer) => ({
         questionId: answer.questionId,
         optionIds: safeParseArray(answer.optionIds),
@@ -633,6 +641,6 @@ export function answerRatePercent(rate: { answered: number; orders: number } | u
   return Math.min(100, Math.round((rate.answered / rate.orders) * 100));
 }
 
-export function surveyWindowBounds(days: number, now = new Date()) {
-  return { ...windowBounds(days, now), previous: previousWindowBounds(days, now) };
+export function surveyWindowBounds(days: number, now = new Date(), timeZone?: string | null) {
+  return { ...windowBounds(days, now, timeZone), previous: previousWindowBounds(days, now, timeZone) };
 }

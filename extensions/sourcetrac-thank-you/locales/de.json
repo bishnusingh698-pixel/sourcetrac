@@ -33,6 +33,12 @@
     "editorAudience": "Für diese Umfrage gibt es Regeln unter „Wer sie sieht“, daher sehen manche Bestellungen sie nicht.",
     "editorOncePerOrder": "Jede Bestellung wird einmal gefragt. Nach einer Antwort zeigt diese Bestellung keine Umfrage mehr, teste also mit einer neuen Bestellung.",
     "editorWaking": "SourceTrac startet. Nach einer ruhigen Phase kann das bis zu einer Minute dauern.",
-    "editorOtherPage": "Diese Umfrage ist für diese Seite nicht aktiviert. Aktivieren Sie die Seite in SourceTrac unter „Wo sie erscheint“."
+    "editorOtherPage": "Diese Umfrage ist für diese Seite nicht aktiviert. Aktivieren Sie die Seite in SourceTrac unter „Wo sie erscheint“.",
+    "selected": "ausgewählt",
+    "ratingLow": "Sehr schlecht",
+    "ratingHigh": "Ausgezeichnet",
+    "npsLow": "Unwahrscheinlich",
+    "npsHigh": "Sehr wahrscheinlich",
+    "ratingAria": "{{n}} von 5"
   }
 }

@@ -252,23 +252,23 @@
  * The grid of page tiles in `TopNav`. The links are Polaris `s-clickable`s;
  * only their arrangement and the tile's inner layout live here.
  *
- * No row ever scrolls. Columns are 5 up to desktop width and 10 on desktop,
- * so the ten pages always fill whole rows (5 + 5, or 10) and look the same
+ * No row ever scrolls. Columns are 4 on a phone and 7 from tablet width, so
+ * the seven sections fill their rows (4 + 3, or 7) and look the same
  * everywhere. Media queries respond to the admin iframe's width, which is the
  * width the tiles actually have.
  */
 .st-topnav-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.25rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-@media (min-width: 56rem) {
+@media (min-width: 48rem) {
   .st-topnav-grid {
-    grid-template-columns: repeat(10, minmax(0, 1fr));
+    grid-template-columns: repeat(7, minmax(0, 1fr));
   }
 }
 
@@ -300,6 +300,44 @@
   line-height: 1.2;
   overflow-wrap: anywhere;
   hyphens: auto;
+}
+
+/* --- Section tabs ------------------------------------------------------- */
+
+/*
+ * The pages of one section (Surveys, Analytics, Responses). A wrapping row, so
+ * long labels in French or German go to a second line instead of scrolling;
+ * the current tab is underlined in the theme's text colour.
+ */
+.st-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  border-block-end: 1px solid var(--p-color-border, currentColor);
+}
+
+.st-tab {
+  display: inline-block;
+  padding-block: 0.5rem;
+  margin-block-end: -1px;
+  color: var(--p-color-text-secondary, currentColor);
+  text-decoration: none;
+  font-weight: 500;
+  border-block-end: 2px solid transparent;
+}
+
+.st-tab:hover {
+  color: var(--p-color-text, currentColor);
+}
+
+.st-tab:focus-visible {
+  outline: 2px solid var(--p-color-border-focus, currentColor);
+  outline-offset: 2px;
+}
+
+.st-tab--current {
+  color: var(--p-color-text, currentColor);
+  border-block-end-color: currentColor;
 }
 
 /* --- Charts ---------------------------------------------------------------- */
@@ -379,6 +417,11 @@
   padding: 1rem;
   background: var(--p-color-bg-surface, transparent);
   overflow-wrap: anywhere;
+}
+
+/* "No border" in the survey's look settings: the block sits flat on the page. */
+.st-preview--flat {
+  border-color: transparent;
 }
 
 .st-preview-q {

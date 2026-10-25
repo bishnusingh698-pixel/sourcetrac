@@ -1,4 +1,5 @@
 import { DEFAULT_LANGUAGE, resolveLanguage, type LanguageCode } from "./languages";
+import { intlLocaleFor, regionalLocale } from "./index";
 
 /**
  * Which language to render a request in.
@@ -96,6 +97,31 @@ export function languageSwitchHref(
  * the shell loader. For loaders that format text on the server (money, dates)
  * and so cannot wait for the shell's data, which loads in parallel.
  */
+/**
+ * The locale for dates and numbers: the admin language, in the merchant's own
+ * region when their browser (`Accept-Language`) or Shopify's admin locale
+ * names one for that language. `en-GB` formats 25/10/2026, `en-US` 10/25/2026.
+ */
+export function resolveFormatLocale(
+  request: Request,
+  language: LanguageCode,
+  rememberedAdminLocale?: string | null,
+): string {
+  const url = new URL(request.url);
+  const candidates = [
+    ...(request.headers.get("accept-language") ?? "")
+      .split(",")
+      .map((part) => part.split(";")[0]?.trim() ?? "")
+      .filter((tag) => tag && tag !== "*"),
+    url.searchParams.get("locale") ?? rememberedAdminLocale ?? "",
+  ];
+  for (const candidate of candidates) {
+    const regional = regionalLocale(language, candidate);
+    if (regional) return regional;
+  }
+  return intlLocaleFor(language);
+}
+
 export function resolveAdminLanguage(
   request: Request,
   saved: string | null | undefined,

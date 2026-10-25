@@ -18,7 +18,8 @@
     "channels": "渠道报告",
     "preferences": "设置",
     "current": "（当前页面）",
-    "templates": "模板"
+    "templates": "模板",
+    "analytics": "分析"
   },
   "common": {
     "cancel": "取消",
@@ -95,7 +96,8 @@
     "total_row": "合计",
     "rate_line": "回答率：{{rate}}。此期间 {{total}} 个订单中有 {{answered}} 个作答。",
     "other_title": "买家的原话",
-    "other_subtitle": "当你列出的渠道都不符合时，买家写下的内容。最新的在前。"
+    "other_subtitle": "当你列出的渠道都不符合时，买家写下的内容。最新的在前。",
+    "last_365": "过去 12 个月"
   },
   "settings": {
     "title": "设置",
@@ -141,7 +143,7 @@
     "language_step_skip": "暂时跳过",
     "language_detected": "根据您的 Shopify 后台检测",
     "step4_title": "查看结果",
-    "step4_body": "结果按问题汇总回答，并显示每个渠道的收入。",
+    "step4_body": "“分析”会显示买家来自哪里、每个渠道带来的收入，以及每个问题的回答。",
     "step4_action": "查看结果",
     "step1_body_done": "你已有上线的问卷。",
     "step2_body_done": "SourceTrac 区块已在你的感谢页面加载。"
@@ -161,7 +163,7 @@
     "truncated": "此文件仅包含最新的 {{limit}} 条回答，较早的回答未包含在内。",
     "choose_label": "下载内容",
     "choose_all": "所有问卷",
-    "choose_channels": "仅渠道报告（买家如何得知您的店铺）",
+    "choose_channels": "仅渠道（买家如何知道您）",
     "shape_all": "每条回答一行，包含所属问卷和问题。一个订单有多条回答时会有多行，因此请勿对 order_total 求和。",
     "shape_survey": "每位买家一行，每个问题一列。",
     "shape_channels": "每个订单一行，包含买家选择的渠道。"
@@ -263,7 +265,7 @@
     "faq_title": "常见问题",
     "contact_tip": "联系我们之前：如果调查问卷没有显示，通常按照上方前两条回答检查结账编辑器即可解决。",
     "q_create": "如何创建我的调查问卷？",
-    "a_create": "前往“问卷”，选择“新建问卷”。选择模板或从空白开始，编辑问题并点击“上线”。要让买家看到，请在 Shopify 后台进入“设置 › 结账”，点击“自定义”，从顶部页面菜单选择“感谢”，添加“SourceTrac survey”区块并保存。区块只需添加一次。",
+    "a_create": "最快的方式是“问卷 › 快速开始”：选择大多数买家所在的地方，检查答案，然后点击“上线”。也可以在“问卷 › 模板”中选择模板。然后添加区块：在 Shopify 后台前往“设置 › 结账”，点击“自定义”，在顶部页面菜单中选择“感谢”，添加“SourceTrac survey”区块并点击“保存”。区块只需添加一次。",
     "q_not_showing": "为什么问题没有显示在我的感谢页上？",
     "a_not_showing": "请检查四点：第一，问卷已在 SourceTrac 中上线；第二，Shopify 结账编辑器（设置 › 结账 › 自定义，然后在页面菜单选择“感谢”）的感谢页面上有“SourceTrac survey”区块，并且已保存；第三，每个订单只会被询问一次，已回答的订单不会再显示问卷，请用新订单测试；第四，Shopify 的 Starter 套餐不提供感谢页面区块。",
     "q_missing_revenue": "为什么我的某条回答缺少收入？",
@@ -287,7 +289,13 @@
     "q_once_per_order": "我回答过一次后问卷就不显示了，为什么？",
     "a_once_per_order": "每个订单只会被询问一次。回答后，即使刷新页面，SourceTrac 也不会再为该订单显示问卷，因此买家不会被重复询问。要再次测试，请下一个新订单。",
     "q_order_status": "问卷也可以显示在订单状态页面吗？",
-    "a_order_status": "可以，作为可选的附加功能。订单状态页面是买家在订单邮件中点击“查看订单”后看到的页面。请在问卷的“显示位置”中勾选它，然后在结账编辑器的页面菜单中选择“订单状态”，添加“SourceTrac survey”区块并保存。只有店铺使用 Shopify 新版客户账户时菜单中才会出现该页面（设置 › 客户账户）。每个订单仍然只询问一次。"
+    "a_order_status": "可以，作为可选的附加功能。订单状态页面是买家在订单邮件中点击“查看订单”后看到的页面。请在问卷的“显示位置”中勾选它，然后在结账编辑器的页面菜单中选择“订单状态”，添加“SourceTrac survey”区块并保存。只有店铺使用 Shopify 新版客户账户时菜单中才会出现该页面（设置 › 客户账户）。每个订单仍然只询问一次。",
+    "q_countries": "我的买家分布在多个国家/地区，答案可以不同吗？",
+    "a_countries": "可以。在问卷编辑器中，“使用某个国家/地区的答案”会载入该地区买家常用来发现店铺的应用和网站。答案旁的地球按钮可让该答案仅对所选国家/地区的买家显示（Growth），这样同一份问卷可以在日本显示 LINE，在海湾地区显示 Snapchat。如需不同的问题，请复制问卷，在“谁能看到”中限制为这些国家/地区，并在“问卷”页面将其移到另一份之上。",
+    "q_look": "可以更改问卷的颜色和字体吗？",
+    "a_look": "问卷始终使用结账页自身的字体和颜色（设置 › 结账 › 自定义），因为 Shopify 不允许应用更改它们，所以问卷总像是商店的一部分。在问卷的“外观和文字”中，您可以修改标题、简介、按钮和感谢文字，一次显示一个问题，评分使用星星，设置量表下方的文字，并选择边框和间距。",
+    "q_languages": "买家会看到自己语言的问卷吗？",
+    "a_languages": "模板和快速开始已翻译成十种语言。在问卷的“语言”中可以添加或修改翻译，包括阿拉伯语、希伯来语、韩语、波兰语、土耳其语和北欧语言。如果问卷有买家的结账语言，买家就会看到该语言，否则会看到您自己的文字；按钮已翻译为所有这些语言。"
   },
   "shell": {
     "plan_blocked_title": "SourceTrac 在您当前的套餐中不可用",
@@ -583,7 +591,9 @@
     "check_new_order": "每个订单只会被询问一次。请用新订单测试，然后在下方“最近的结账”中查看结果。",
     "check_block_never_order_status": "订单状态页面：SourceTrac 区块尚未在此加载。请在结账编辑器的页面菜单中选择“订单状态”，添加“SourceTrac survey”区块并保存。只有店铺使用新版客户账户时菜单中才会出现该页面。",
     "validation_currency_unavailable": "暂时无法读取商店的货币。请稍后再保存一次。",
-    "validation_order_value_range": "最高订单金额不能低于最低订单金额。"
+    "validation_order_value_range": "最高订单金额不能低于最低订单金额。",
+    "reason_products": "“{{survey}}”仅限包含特定产品的订单，而此订单不含这些产品。",
+    "reason_products_unknown": "“{{survey}}”仅限包含特定产品的订单，但此次结账未提供所订购的产品。请确认您的 SourceTrac 区块为最新版本。"
   },
   "templates": {
     "nps": {
@@ -683,7 +693,10 @@
     "status_total_unreadable": "总额无法读取",
     "status_no_order": "无订单",
     "survey_label": "问卷",
-    "export_cta": "导出 CSV"
+    "export_cta": "导出 CSV",
+    "col_buyer": "买家",
+    "first_order": "首次下单",
+    "returning": "回头客"
   },
   "library": {
     "title": "模板",
@@ -781,7 +794,7 @@
     "view": "查看",
     "reliable_ideas": "{{name}} 的结果已经可靠。看看买家告诉了您什么。",
     "unpublished": "{{name}} 有未发布的更改。查看并发布。",
-    "open_report": "打开渠道报告",
+    "open_report": "查看所有渠道",
     "do_it": "前往",
     "see_results": "查看 {{name}} 的最新回答。",
     "subtitle": "店铺概况一目了然：各渠道收入、客户评分以及所有问卷。",
@@ -810,7 +823,7 @@
     "buyers_unknown_other": "{{count}} 个订单未表明是否为首单。",
     "surveys_subtitle": "进行中的问卷，以及其他收到回答的问卷。{{range}}。",
     "col_key_result": "关键结果",
-    "compare_surveys": "在结果中比较问卷",
+    "compare_surveys": "在“分析”中比较问卷",
     "capped_note": "评分、买家和问卷数据基于此期间最新的 {{limit}} 条回答。"
   },
   "support": {
@@ -840,7 +853,7 @@
     "questions_help": "尽量简短。一到三个问题能收到最多回答。",
     "placement_thank_you": "感谢页",
     "who_title": "显示对象",
-    "more_rules": "更多规则（订单金额、国家/地区、日期）",
+    "more_rules": "更多规则（订单金额、国家/地区、产品、日期）",
     "optional_title": "可选",
     "wording_title": "标题、简介和按钮",
     "languages_title": "语言",
@@ -989,8 +1002,8 @@
     "learn_stop_done": "自动停止已暂停过此问卷一次，不会再次暂停。关闭后重新开启即可重新启用。",
     "status_auto_paused": "已自动暂停：结果已经可靠。买家看不到此问卷。您可以随时重新开启，它不会再次自动暂停。",
     "other_label": "“其他”选项的文字",
-    "channel_question": "计入渠道报告",
-    "channel_question_details": "用于“你是如何知道我们的？”这类问题。它的回答会作为你的渠道（附收入）显示在仪表板和渠道报告中。",
+    "channel_question": "在“分析”中将这些答案计为您的渠道",
+    "channel_question_details": "用于“您是如何知道我们的？”这类问题。其答案会成为您的渠道，并在首页和“分析 › 渠道”中显示收入。",
     "where_title": "显示位置",
     "placement_order_status": "订单状态页",
     "audience_order_status_note": "在订单状态页面上，只有当感谢页面也添加了 SourceTrac 区块时，SourceTrac 才知道这是否为首次订单。其他订单在那里不会看到此问卷。",
@@ -999,7 +1012,47 @@
     "placement_once": "每个订单只询问一次。买家在一个页面回答后，另一个页面就不会再显示问卷。",
     "store_step_order_status": "订单状态页面：在同一页面菜单中选择“订单状态”，在那里添加“SourceTrac survey”区块并保存。只有店铺使用新版客户账户时菜单中才会出现该页面（设置 › 客户账户）。",
     "block_order_status_title": "也请将 SourceTrac 区块添加到订单状态页面",
-    "block_missing_order_status_body": "此问卷也设置为在订单状态页面显示，但该页面尚未加载区块。请在结账编辑器的页面菜单中选择“订单状态”，添加“SourceTrac survey”区块并保存。如果菜单中没有“订单状态”，说明店铺使用的是经典客户账户：请在“设置 › 客户账户”中切换，或在“显示位置”中取消勾选该页面。"
+    "block_missing_order_status_body": "此问卷也设置为在订单状态页面显示，但该页面尚未加载区块。请在结账编辑器的页面菜单中选择“订单状态”，添加“SourceTrac survey”区块并保存。如果菜单中没有“订单状态”，说明店铺使用的是经典客户账户：请在“设置 › 客户账户”中切换，或在“显示位置”中取消勾选该页面。",
+    "look_title": "外观和文字",
+    "look_help": "字体和颜色始终沿用您的结账品牌设置（设置 › 结账 › 自定义）。Shopify 不允许应用更改它们，因此问卷总是与您的商店风格一致。",
+    "layout_details": "“一次一个”会在问题之间显示“下一步”按钮。“全部在一页”适合一到三个简短问题。",
+    "show_title_details": "问题上方的简短标题。",
+    "show_progress": "显示进度（例如“第 1 题，共 3 题”）",
+    "title_details": "开启“显示标题”时显示在问题上方。",
+    "intro_details": "标题下方的一行文字。留空则不显示。",
+    "button_details": "买家点击以提交答案的按钮。",
+    "thanks_details": "买家回答后显示几秒钟，然后区块会关闭。",
+    "frame": "边框",
+    "frame_border": "带边框的方框",
+    "frame_none": "无边框",
+    "frame_details": "方框能让问卷与周围的订单信息区分开。",
+    "spacing": "间距",
+    "spacing_comfortable": "宽松",
+    "spacing_compact": "紧凑",
+    "rating_style_details": "星星会填充到买家选择的位置。数字显示 1 到 5。",
+    "scale_low": "量表低端的文字",
+    "scale_high": "量表高端的文字",
+    "scale_details": "显示在评分题和 0 到 10 分题目下方。留空则使用标准文字，并为每位买家翻译：评分题为“非常差”到“非常好”，0 到 10 分为“不太可能”到“非常可能”。",
+    "answer_type_details": "买家的回答方式：点选一个、勾选多个、选择分数或填写文字。",
+    "required_details": "买家必须回答此题后才能提交。不勾选则可以跳过。",
+    "placeholder_details": "空白答案框中的灰色示例文字。",
+    "long_answer_details": "更高的输入框，适合较长的回答。",
+    "answer_countries_button": "{{label}} 的国家/地区",
+    "answer_countries_title": "仅在这些国家/地区显示“{{label}}”",
+    "answer_countries_details": "在其他国家/地区结账的买家看不到此答案。全部不勾选则在所有地区显示。例如可在同一份问卷中只对日本显示 LINE，或只对海湾地区显示 Snapchat。",
+    "answer_countries_summary": "仅在以下地区显示：{{list}}",
+    "answer_countries_locked": "仅在部分国家/地区显示答案的功能在 {{plan}} 中提供。",
+    "products": "仅限包含这些产品的订单",
+    "products_details": "仅当订单至少包含其中一个产品时才显示问卷。留空则对所有订单显示。",
+    "products_none": "未选择产品：所有订单都能看到问卷。",
+    "products_choose": "选择产品",
+    "products_change": "更改产品",
+    "products_remove": "删除 {{name}}",
+    "products_missing": "产品 {{id}}（商店中已找不到）",
+    "products_unavailable": "无法打开 Shopify 产品选择器。请刷新页面后重试。",
+    "countries_other_questions": "想为某个国家/地区的买家设置不同的问题？复制此问卷，在此选择国家/地区，并在“问卷”页面将其移到此问卷上方。",
+    "language_rtl": "从右向左书写。Shopify 结账页会为这些买家从右向左排列问卷。",
+    "audience_details": "Shopify 会在感谢页告诉我们这是否是买家在您商店的首单。"
   },
   "preview": {
     "title": "预览",
@@ -1020,7 +1073,9 @@
     "next": "下一步",
     "try_it": "像买家一样点击作答。不会保存任何内容。",
     "other_label": "其他",
-    "other_placeholder": "请告诉我们更多"
+    "other_placeholder": "请告诉我们更多",
+    "rating_low": "非常差",
+    "rating_high": "非常好"
   },
   "privacy": {
     "notice": "SourceTrac 会将问卷回答和订单信息保留 {{months}} 个月。它从不存储买家的姓名、电子邮件、电话、地址或付款信息。",
@@ -1050,5 +1105,64 @@
     "policy_text": "结账后，我们可能会请您填写一份简短的可选问卷，例如您是如何了解到我们的。您的回答会由我们的问卷服务商 SourceTrac 与您的订单号一起保存，最长 {{months}} 个月，仅用于了解哪些渠道为我们带来顾客。这些回答绝不会被出售或用于广告。",
     "actions_notice": "Shopify 操作会将回答以订单标签、客户标签或客户元字段的形式复制到您的 Shopify 店铺中。之后，这些数据遵循 Shopify 对您店铺数据的规则，而不是 SourceTrac 的删除时间表。",
     "export_notice": "该文件包含订单号、回答、订单总额以及买家输入的任何文字。请像保管其他店铺记录一样妥善保管。"
+  },
+  "presets": {
+    "load_title": "使用某个国家/地区的答案",
+    "load_help": "选择大多数买家所在的地方。您会得到当地人常用来发现店铺的应用和网站，可直接编辑。",
+    "country_label": "国家/地区",
+    "search": "搜索国家/地区",
+    "no_match": "没有符合搜索条件的国家/地区。",
+    "preview": "{{country}} 的答案：{{list}}",
+    "replace": "替换我的答案",
+    "add_one": "添加 {{count}} 个缺少的答案",
+    "add_other": "添加 {{count}} 个缺少的答案",
+    "replace_note": "保留的答案仍与其结果关联。删除的答案的结果也会保留。",
+    "full": "此问题的答案数已达上限（{{max}} 个）。",
+    "only_there": "仅向 {{country}} 及同组国家/地区的买家显示新增答案",
+    "only_there_details": "其他地区的买家仍会看到您的其他答案。可用每个答案旁的地球按钮修改列表。",
+    "only_there_locked": "仅在部分国家/地区显示的答案在 {{plan}} 中提供。"
+  },
+  "quick": {
+    "title": "快速开始",
+    "subtitle": "大约两分钟即可上线“您是如何知道我们的？”问卷。之后可以随时修改。",
+    "templates_link": "改为浏览模板",
+    "country_title": "1. 大多数买家在哪里？",
+    "country_help": "我们会载入当地人常用来发现店铺的应用和网站。",
+    "answers_title": "2. 选择买家可选的答案",
+    "answers_help": "{{country}} 的常见答案。取消不适用的选项，并添加您自己的答案。",
+    "add_label": "添加您自己的答案",
+    "add_button": "添加",
+    "custom_remove": "删除 {{label}}",
+    "other": "添加带文本框的“其他”",
+    "other_details": "答案不在列表中的买家可以自行填写。您可以在“分析”中查看他们写的内容。",
+    "follow_up": "选择社交应用或创作者后，追问是哪位创作者或哪个账号",
+    "follow_up_details": "第二个可选问题。不开启时，买家只需点一下即可完成回答。",
+    "launch_title": "3. 上线",
+    "launch_help": "在 Shopify 结账编辑器中添加 SourceTrac 区块后，买家就会在感谢页上看到问卷。接下来我们会为您打开编辑器。",
+    "go_live": "上线",
+    "create_draft": "创建问卷",
+    "limit_note_one": "您的套餐包含 {{count}} 个上线问卷且已在使用，因此此问卷将保存为草稿。暂停另一个问卷或升级即可同时运行。",
+    "limit_note_other": "您的套餐包含 {{count}} 个上线问卷且均已在使用，因此此问卷将保存为草稿。暂停一个或升级即可运行更多。",
+    "too_few": "请至少选择 {{min}} 个答案。",
+    "failed": "无法创建问卷。请稍后再试。",
+    "cta": "快速开始（2 分钟）"
+  },
+  "tabs": {
+    "label": "本部分的页面",
+    "my_surveys": "我的问卷",
+    "templates": "模板",
+    "quick_start": "快速开始",
+    "channels": "渠道",
+    "results": "问卷结果",
+    "answers": "回答",
+    "export": "导出"
+  },
+  "analytics": {
+    "country_filter": "买家所在地",
+    "all_countries": "所有国家/地区",
+    "country_option": "{{country}}（{{count}}）",
+    "zone_note": "日期按您商店的时区计算（{{zone}}）。",
+    "country_note": "仅包括在 {{country}} 结账的买家。",
+    "rate_unavailable_country": "单个国家/地区不显示回答率：Shopify 订单不记录买家的结账地点，因此无法与回答数对比。"
   }
 }

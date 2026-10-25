@@ -8,6 +8,7 @@
  */
 
 import { fetchProductTitles, fetchShopDisplay, fetchShopLocaleInfo } from "~/lib/shopify-graphql.server";
+import { isValidTimeZone } from "@shared/zoned-date";
 
 export type ShopDisplay = {
   name: string | null;
@@ -94,6 +95,19 @@ export async function getShopLocaleInfo(
   prune(localeCache, now);
   localeCache.set(shopId, { value, expiresAt: now + (value.timeZone === null ? EMPTY_TTL_MS : LOCALE_TTL_MS) });
   return value;
+}
+
+/**
+ * The zone reports are cut in: the store's own, or UTC when Shopify cannot be
+ * asked just now. Pages that show dates name the zone they used.
+ */
+export async function getReportTimeZone(
+  shopId: string,
+  shopDomain: string,
+  accessToken: string | null | undefined,
+): Promise<string> {
+  const { timeZone } = await getShopLocaleInfo(shopId, shopDomain, accessToken);
+  return isValidTimeZone(timeZone) ? timeZone : "UTC";
 }
 
 /** Test seam: drop the cache between cases. */

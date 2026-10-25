@@ -18,7 +18,8 @@
     "channels": "Relatório de canais",
     "preferences": "Configurações",
     "current": "(página atual)",
-    "templates": "Modelos"
+    "templates": "Modelos",
+    "analytics": "Análises"
   },
   "common": {
     "cancel": "Cancelar",
@@ -95,7 +96,8 @@
     "total_row": "Total",
     "rate_line": "Taxa de resposta: {{rate}}. {{answered}} de {{total}} pedidos deste período responderam.",
     "other_title": "Nas palavras dos compradores",
-    "other_subtitle": "O que os compradores escreveram quando nenhum dos seus canais servia. Mais recentes primeiro."
+    "other_subtitle": "O que os compradores escreveram quando nenhum dos seus canais servia. Mais recentes primeiro.",
+    "last_365": "Últimos 12 meses"
   },
   "settings": {
     "title": "Configurações",
@@ -141,7 +143,7 @@
     "language_step_skip": "Pular por enquanto",
     "language_detected": "Detectado pelo seu admin da Shopify",
     "step4_title": "Veja seus resultados",
-    "step4_body": "Resultados agrupa as respostas por pergunta e mostra a receita de cada canal.",
+    "step4_body": "Análises mostra de onde vieram os compradores, a receita de cada canal e as respostas de cada pergunta.",
     "step4_action": "Ver resultados",
     "step1_body_done": "Você tem uma pesquisa publicada.",
     "step2_body_done": "O bloco do SourceTrac carregou na sua página de agradecimento."
@@ -161,7 +163,7 @@
     "truncated": "Este arquivo contém apenas as {{limit}} respostas mais recentes. As mais antigas ficaram de fora.",
     "choose_label": "O que baixar",
     "choose_all": "Todas as pesquisas",
-    "choose_channels": "Só o relatório de canais (como os compradores conheceram você)",
+    "choose_channels": "Só canais (como os compradores conheceram você)",
     "shape_all": "Uma linha por resposta, com a pesquisa e a pergunta. Um pedido com várias respostas tem várias linhas, então não some order_total.",
     "shape_survey": "Uma linha por comprador, com uma coluna por pergunta.",
     "shape_channels": "Uma linha por pedido, com o canal que o comprador escolheu."
@@ -263,7 +265,7 @@
     "faq_title": "Perguntas frequentes",
     "contact_tip": "Antes de escrever: se a pesquisa não aparece, a verificação no editor de checkout das duas primeiras respostas acima costuma resolver.",
     "q_create": "Como crio minha pesquisa?",
-    "a_create": "Vá em Pesquisas e escolha Nova pesquisa. Escolha um modelo ou comece do zero, edite as perguntas e clique em Publicar. Para mostrar aos compradores, na Shopify vá em Configurações › Checkout, clique em Personalizar, escolha Agradecimento no menu de páginas no topo, adicione o bloco “SourceTrac survey” e clique em Salvar. O bloco é adicionado só uma vez.",
+    "a_create": "O jeito mais rápido é Pesquisas › Início rápido: escolha onde está a maioria dos compradores, confira as respostas e toque em Publicar. Você também pode escolher um modelo em Pesquisas › Modelos. Depois adicione o bloco: no admin da Shopify, vá em Configurações › Checkout, clique em Personalizar, escolha Agradecimento no menu de páginas no topo, adicione o bloco “SourceTrac survey” e clique em Salvar. O bloco é adicionado só uma vez.",
     "q_not_showing": "Por que a pergunta não aparece na minha página de confirmação de pedido?",
     "a_not_showing": "Vale verificar quatro coisas. Primeiro, a pesquisa precisa estar publicada no SourceTrac. Segundo, o bloco “SourceTrac survey” precisa estar na página de agradecimento do editor de checkout da Shopify (Configurações › Checkout › Personalizar, depois Agradecimento no menu de páginas) e o editor salvo. Terceiro, cada pedido é perguntado só uma vez: um pedido que já respondeu nunca mais mostra a pesquisa, então teste com um pedido novo. Quarto, a Shopify não oferece o bloco da página de agradecimento no plano Starter.",
     "q_missing_revenue": "Por que uma das minhas respostas está sem receita?",
@@ -287,7 +289,13 @@
     "q_once_per_order": "Respondi uma vez e agora a pesquisa não aparece. Por quê?",
     "a_once_per_order": "Cada pedido é perguntado só uma vez. Depois de uma resposta, o SourceTrac não mostra mais a pesquisa para aquele pedido, mesmo recarregando a página, para ninguém responder duas vezes. Para testar de novo, faça um pedido novo.",
     "q_order_status": "A pesquisa também pode aparecer na página de status do pedido?",
-    "a_order_status": "Sim, como extra opcional. A página de status do pedido é onde os compradores chegam ao abrir “Ver pedido” nos e-mails do pedido. Marque-a em “Onde aparece” na pesquisa e, depois, no editor de checkout, escolha Status do pedido no menu de páginas, adicione o bloco “SourceTrac survey” e clique em Salvar. Ela só aparece no menu se sua loja usa as novas contas de cliente da Shopify (Configurações › Contas de cliente). Cada pedido continua sendo perguntado só uma vez."
+    "a_order_status": "Sim, como extra opcional. A página de status do pedido é onde os compradores chegam ao abrir “Ver pedido” nos e-mails do pedido. Marque-a em “Onde aparece” na pesquisa e, depois, no editor de checkout, escolha Status do pedido no menu de páginas, adicione o bloco “SourceTrac survey” e clique em Salvar. Ela só aparece no menu se sua loja usa as novas contas de cliente da Shopify (Configurações › Contas de cliente). Cada pedido continua sendo perguntado só uma vez.",
+    "q_countries": "Meus compradores estão em vários países. As respostas podem variar?",
+    "a_countries": "Sim. No editor, “Usar respostas de um país” carrega os apps e sites em que os compradores daquele país costumam descobrir lojas. O botão do globo ao lado de uma resposta a mostra só para compradores dos países escolhidos (Growth), então uma pesquisa oferece LINE no Japão e Snapchat no Golfo. Para perguntas diferentes, duplique a pesquisa, limite-a a esses países em “Quem vê” e coloque-a acima da outra na página Pesquisas.",
+    "q_look": "Posso mudar as cores e as fontes da pesquisa?",
+    "a_look": "A pesquisa sempre usa as fontes e cores do seu checkout (Configurações › Checkout › Personalizar), porque a Shopify não permite que apps as alterem; assim ela sempre parece parte da sua loja. Em “Aparência e textos” você muda o título, a introdução, o botão e o agradecimento, mostra uma pergunta por vez, usa estrelas nas avaliações, define as palavras abaixo de uma escala e escolhe borda e espaçamento.",
+    "q_languages": "Os compradores verão a pesquisa no idioma deles?",
+    "a_languages": "Os modelos e o início rápido vêm traduzidos em dez idiomas. Em “Idiomas”, na pesquisa, você adiciona ou altera traduções, inclusive árabe, hebraico, coreano, polonês, turco e os idiomas nórdicos. O comprador vê o idioma do checkout quando a pesquisa tem, e seu próprio texto caso contrário; os botões são traduzidos em todos esses idiomas."
   },
   "shell": {
     "plan_blocked_title": "O SourceTrac não está disponível no seu plano",
@@ -583,7 +591,9 @@
     "check_new_order": "Cada pedido é perguntado só uma vez. Teste com um pedido novo e veja em “Checkouts recentes” abaixo o que aconteceu.",
     "check_block_never_order_status": "Página de status do pedido: o bloco do SourceTrac ainda não carregou aqui. No editor de checkout, escolha Status do pedido no menu de páginas, adicione o bloco “SourceTrac survey” e clique em Salvar. Ela só aparece no menu se sua loja usa as novas contas de cliente.",
     "validation_currency_unavailable": "Não foi possível ler a moeda da sua loja agora. Tente salvar de novo daqui a pouco.",
-    "validation_order_value_range": "O valor máximo do pedido deve ser pelo menos o mínimo."
+    "validation_order_value_range": "O valor máximo do pedido deve ser pelo menos o mínimo.",
+    "reason_products": "“{{survey}}” é só para pedidos com alguns produtos, e este pedido não tinha nenhum deles.",
+    "reason_products_unknown": "“{{survey}}” é só para pedidos com alguns produtos, e este checkout não informou os produtos pedidos. Verifique se os blocos SourceTrac estão atualizados."
   },
   "templates": {
     "nps": {
@@ -683,7 +693,10 @@
     "status_total_unreadable": "Total ilegível",
     "status_no_order": "Sem pedido",
     "survey_label": "Pesquisa",
-    "export_cta": "Exportar CSV"
+    "export_cta": "Exportar CSV",
+    "col_buyer": "Comprador",
+    "first_order": "Primeiro pedido",
+    "returning": "Comprador recorrente"
   },
   "library": {
     "title": "Modelos",
@@ -781,7 +794,7 @@
     "view": "Ver",
     "reliable_ideas": "Seus resultados de {{name}} são confiáveis. Veja o que os compradores disseram.",
     "unpublished": "{{name}} tem alterações não publicadas. Revise e publique.",
-    "open_report": "Abrir relatório de canais",
+    "open_report": "Ver todos os canais",
     "do_it": "Ir",
     "see_results": "Veja as respostas mais recentes de {{name}}.",
     "subtitle": "Sua loja em um relance: receita por canal, notas dos clientes e todas as suas pesquisas.",
@@ -810,7 +823,7 @@
     "buyers_unknown_other": "{{count}} pedidos não indicaram se foram um primeiro pedido.",
     "surveys_subtitle": "Pesquisas ativas e qualquer outra que recebeu respostas. {{range}}.",
     "col_key_result": "Resultado principal",
-    "compare_surveys": "Comparar pesquisas em Resultados",
+    "compare_surveys": "Comparar pesquisas em Análises",
     "capped_note": "Notas, compradores e pesquisas se baseiam nas {{limit}} respostas mais recentes deste período."
   },
   "support": {
@@ -840,7 +853,7 @@
     "questions_help": "Seja breve. De uma a três perguntas recebem mais respostas.",
     "placement_thank_you": "Página de agradecimento",
     "who_title": "Quem vê",
-    "more_rules": "Mais regras (valor do pedido, países, datas)",
+    "more_rules": "Mais regras (valor do pedido, países, produtos, datas)",
     "optional_title": "Opcional",
     "wording_title": "Título, introdução e botões",
     "languages_title": "Idiomas",
@@ -989,8 +1002,8 @@
     "learn_stop_done": "A parada automática já pausou esta pesquisa uma vez. Ela não vai pausar de novo; desative e ative para armá-la outra vez.",
     "status_auto_paused": "Pausada automaticamente: os resultados ficaram confiáveis. Os compradores não veem esta pesquisa. Ative de novo quando quiser; ela não vai pausar outra vez.",
     "other_label": "Texto da resposta “Outro”",
-    "channel_question": "Contar no relatório de canais",
-    "channel_question_details": "Marque numa pergunta como “Como você nos conheceu?”. As respostas viram seus canais, com a receita, no Painel e no relatório de canais.",
+    "channel_question": "Contar estas respostas como seus canais em Análises",
+    "channel_question_details": "Marque para uma pergunta “Como você nos conheceu?”. As respostas viram seus canais, com a receita, no Início e em Análises › Canais.",
     "where_title": "Onde aparece",
     "placement_order_status": "Página de status do pedido",
     "audience_order_status_note": "Na página de status do pedido, o SourceTrac só sabe se é um primeiro pedido quando a página de agradecimento também tem o bloco do SourceTrac. Os outros pedidos não veem esta pesquisa ali.",
@@ -999,7 +1012,47 @@
     "placement_once": "Cada pedido é perguntado só uma vez. Se o comprador responder em uma página, a pesquisa some da outra.",
     "store_step_order_status": "Para a página de status do pedido: no mesmo menu de páginas, escolha Status do pedido, adicione lá o bloco “SourceTrac survey” e clique em Salvar. Ela só aparece no menu se sua loja usa as novas contas de cliente (Configurações › Contas de cliente).",
     "block_order_status_title": "Adicione o bloco do SourceTrac também à página de status do pedido",
-    "block_missing_order_status_body": "Esta pesquisa também está configurada para a página de status do pedido, mas o bloco ainda não carregou lá. No editor de checkout, escolha Status do pedido no menu de páginas, adicione o bloco “SourceTrac survey” e clique em Salvar. Se Status do pedido não estiver no menu, sua loja usa contas de cliente clássicas: mude em Configurações › Contas de cliente ou desmarque a página em “Onde aparece”."
+    "block_missing_order_status_body": "Esta pesquisa também está configurada para a página de status do pedido, mas o bloco ainda não carregou lá. No editor de checkout, escolha Status do pedido no menu de páginas, adicione o bloco “SourceTrac survey” e clique em Salvar. Se Status do pedido não estiver no menu, sua loja usa contas de cliente clássicas: mude em Configurações › Contas de cliente ou desmarque a página em “Onde aparece”.",
+    "look_title": "Aparência e textos",
+    "look_help": "Fontes e cores sempre seguem a identidade visual do seu checkout (Configurações › Checkout › Personalizar). A Shopify não permite que apps as alterem, então a pesquisa sempre combina com sua loja.",
+    "layout_details": "“Uma por vez” mostra um botão Avançar entre as perguntas. “Todas em uma tela” funciona bem para uma a três perguntas curtas.",
+    "show_title_details": "O título curto acima das perguntas.",
+    "show_progress": "Mostrar o progresso (por exemplo “1 de 3”)",
+    "title_details": "Aparece acima das perguntas quando “Mostrar o título” está ativado.",
+    "intro_details": "Uma linha abaixo do título. Deixe em branco para não mostrar.",
+    "button_details": "O botão que os compradores tocam para enviar as respostas.",
+    "thanks_details": "Aparece por alguns segundos depois que o comprador responde e então o bloco se fecha.",
+    "frame": "Moldura",
+    "frame_border": "Em uma caixa com borda",
+    "frame_none": "Sem borda",
+    "frame_details": "Uma caixa destaca a pesquisa dos detalhes do pedido ao redor.",
+    "spacing": "Espaçamento",
+    "spacing_comfortable": "Confortável",
+    "spacing_compact": "Compacto",
+    "rating_style_details": "As estrelas se preenchem até a escolha do comprador. Os números vão de 1 a 5.",
+    "scale_low": "Texto no início da escala",
+    "scale_high": "Texto no fim da escala",
+    "scale_details": "Aparece abaixo das perguntas de avaliação e de 0 a 10. Deixe em branco para o texto padrão, traduzido para cada comprador: “Muito ruim” a “Excelente” nas avaliações, “Pouco provável” a “Muito provável” de 0 a 10.",
+    "answer_type_details": "Como os compradores respondem: tocar uma opção, marcar várias, escolher uma nota ou escrever.",
+    "required_details": "Os compradores só podem enviar depois de responder a esta. Deixe desativado para que possam pular.",
+    "placeholder_details": "Texto de exemplo em cinza dentro da caixa de resposta vazia.",
+    "long_answer_details": "Uma caixa mais alta para respostas com mais do que algumas palavras.",
+    "answer_countries_button": "Países para {{label}}",
+    "answer_countries_title": "Mostrar “{{label}}” só nestes países",
+    "answer_countries_details": "Compradores de outros países não veem esta resposta. Deixe tudo desmarcado para mostrá-la em todo lugar. Serve para mostrar LINE só no Japão ou Snapchat só no Golfo, em uma única pesquisa.",
+    "answer_countries_summary": "Mostrado só em: {{list}}",
+    "answer_countries_locked": "Mostrar uma resposta só em alguns países está disponível no {{plan}}.",
+    "products": "Só pedidos com estes produtos",
+    "products_details": "Mostra a pesquisa só quando o pedido inclui pelo menos um destes produtos. Deixe vazio para todos os pedidos.",
+    "products_none": "Nenhum produto escolhido: todos os pedidos podem ver a pesquisa.",
+    "products_choose": "Escolher produtos",
+    "products_change": "Alterar produtos",
+    "products_remove": "Remover {{name}}",
+    "products_missing": "Produto {{id}} (não encontrado na sua loja)",
+    "products_unavailable": "O seletor de produtos da Shopify não abriu. Recarregue a página e tente de novo.",
+    "countries_other_questions": "Quer perguntas diferentes para compradores de um país? Duplique esta pesquisa, escolha os países aqui e coloque-a acima desta na página Pesquisas.",
+    "language_rtl": "Escrito da direita para a esquerda. O checkout da Shopify mostra a pesquisa da direita para a esquerda para esses compradores.",
+    "audience_details": "A Shopify informa na página de agradecimento se este é o primeiro pedido do comprador na sua loja."
   },
   "preview": {
     "title": "Prévia",
@@ -1020,7 +1073,9 @@
     "next": "Próxima",
     "try_it": "Responda como um comprador. Nada é salvo.",
     "other_label": "Outro",
-    "other_placeholder": "Conte mais"
+    "other_placeholder": "Conte mais",
+    "rating_low": "Muito ruim",
+    "rating_high": "Excelente"
   },
   "privacy": {
     "notice": "O SourceTrac guarda as respostas da pesquisa e os dados do pedido por {{months}} meses. Ele nunca guarda nomes, e-mails, telefones, endereços ou dados de pagamento dos compradores.",
@@ -1050,5 +1105,64 @@
     "policy_text": "Depois do checkout, podemos pedir que você responda a uma pesquisa curta e opcional, como onde nos conheceu. Suas respostas são guardadas com o número do seu pedido pelo nosso provedor de pesquisas, o SourceTrac, por até {{months}} meses, e são usadas apenas para entender quais canais nos trazem clientes. Elas nunca são vendidas nem usadas para publicidade.",
     "actions_notice": "As Ações do Shopify copiam as respostas para a sua loja Shopify como tags de pedido, tags de cliente ou metacampos de cliente. A partir daí, elas seguem as regras da Shopify para os dados da sua loja, não o prazo de exclusão do SourceTrac.",
     "export_notice": "O arquivo contém números de pedido, respostas, totais dos pedidos e qualquer texto que os compradores digitaram. Guarde-o com o mesmo cuidado que os outros registros da sua loja."
+  },
+  "presets": {
+    "load_title": "Usar respostas de um país",
+    "load_help": "Escolha onde está a maioria dos seus compradores. Você recebe os apps e sites em que as pessoas de lá costumam descobrir lojas, prontos para editar.",
+    "country_label": "País",
+    "search": "Buscar países",
+    "no_match": "Nenhum país corresponde a essa busca.",
+    "preview": "Respostas para {{country}}: {{list}}",
+    "replace": "Substituir minhas respostas",
+    "add_one": "Adicionar {{count}} resposta que falta",
+    "add_other": "Adicionar {{count}} respostas que faltam",
+    "replace_note": "As respostas mantidas continuam ligadas aos resultados. Os resultados de uma resposta removida também são mantidos.",
+    "full": "Esta pergunta já tem o máximo de respostas ({{max}}).",
+    "only_there": "Mostrar as respostas adicionadas só para compradores em {{country}} e nos países do mesmo grupo",
+    "only_there_details": "Compradores de outros lugares continuam vendo suas outras respostas. Altere a lista com o botão do globo ao lado de cada resposta.",
+    "only_there_locked": "Respostas só para alguns países estão disponíveis no {{plan}}."
+  },
+  "quick": {
+    "title": "Início rápido",
+    "subtitle": "Coloque no ar uma pesquisa “Como você nos conheceu?” em cerca de dois minutos. Dá para mudar tudo depois.",
+    "templates_link": "Ver modelos em vez disso",
+    "country_title": "1. Onde está a maioria dos seus compradores?",
+    "country_help": "Carregamos os apps e sites em que as pessoas de lá costumam descobrir lojas.",
+    "answers_title": "2. Escolha as respostas que os compradores podem selecionar",
+    "answers_help": "Respostas comuns para {{country}}. Desmarque as que não se aplicam e adicione as suas.",
+    "add_label": "Adicionar sua própria resposta",
+    "add_button": "Adicionar",
+    "custom_remove": "Remover {{label}}",
+    "other": "Adicionar “Outro” com uma caixa de texto",
+    "other_details": "Compradores cuja resposta não está na lista podem digitá-la. Você verá o que escreveram em Análises.",
+    "follow_up": "Perguntar qual criador ou perfil, depois de uma rede social ou um criador",
+    "follow_up_details": "Uma segunda pergunta opcional. Sem ela, os compradores respondem com um único toque.",
+    "launch_title": "3. Publicar",
+    "launch_help": "Os compradores veem a pesquisa na sua página de agradecimento assim que o bloco SourceTrac for adicionado no editor de checkout da Shopify. Nós o abrimos para você em seguida.",
+    "go_live": "Publicar",
+    "create_draft": "Criar pesquisa",
+    "limit_note_one": "Seu plano inclui {{count}} pesquisa ativa e ela já está em uso, então esta é salva como rascunho. Pause a outra ou faça upgrade para usar as duas.",
+    "limit_note_other": "Seu plano inclui {{count}} pesquisas ativas e todas estão em uso, então esta é salva como rascunho. Pause uma ou faça upgrade para usar mais.",
+    "too_few": "Escolha pelo menos {{min}} respostas.",
+    "failed": "Não foi possível criar a pesquisa. Tente novamente em instantes.",
+    "cta": "Início rápido (2 minutos)"
+  },
+  "tabs": {
+    "label": "Páginas desta seção",
+    "my_surveys": "Minhas pesquisas",
+    "templates": "Modelos",
+    "quick_start": "Início rápido",
+    "channels": "Canais",
+    "results": "Resultados das pesquisas",
+    "answers": "Respostas",
+    "export": "Exportar"
+  },
+  "analytics": {
+    "country_filter": "Compradores em",
+    "all_countries": "Todos os países",
+    "country_option": "{{country}} ({{count}})",
+    "zone_note": "Os dias seguem o fuso horário da sua loja ({{zone}}).",
+    "country_note": "Só compradores que finalizaram a compra em {{country}}.",
+    "rate_unavailable_country": "A taxa de resposta não aparece para um único país: os pedidos da Shopify não registram onde o comprador finalizou a compra, então não há com o que comparar as respostas."
   }
 }

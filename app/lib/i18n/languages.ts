@@ -1,6 +1,14 @@
 /**
  * Supported languages and locale mapping.
  *
+ * Adding an admin language: add an entry to `LANGUAGES` and the `LanguageCode`
+ * union, add `locales/<code>.json` (a translated copy of `en.json`) and
+ * register it in `bundled-locales.ts`. New strings for every language at once
+ * go through `scripts/i18n-merge.mjs`, which refuses a key file that misses a
+ * language. Buyer languages (what a survey can be translated into, and the
+ * checkout block's own buttons) are a separate, longer list:
+ * `shared/buyer-languages.ts`.
+ *
  * A code is the only thing stored in the database and in the `?lng=` cookie. The
  * display name, English name and flag are presentation only and are always
  * written in the language's own script, so the picker is readable to a merchant

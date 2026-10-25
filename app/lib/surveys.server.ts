@@ -66,6 +66,8 @@ export type EditorOption = {
   translations: Record<string, string | undefined>;
   /** The template's stable option id this row came from, if any. */
   templateKey?: string | null;
+  /** F4: only buyers in these countries see it; empty or absent is everyone. */
+  countries?: string[];
 };
 
 export type EditorQuestion = Omit<SurveyQuestionDef, "options"> & {
@@ -300,6 +302,7 @@ export function rowToEditor(
             exclusive: option.exclusive ?? false,
             archived: false,
             translations: option.translations ?? {},
+            countries: Array.isArray(option.countries) ? option.countries : [],
           })),
         })),
       };
@@ -334,8 +337,15 @@ function toEditorQuestion(question: SurveyWithQuestions["questions"][number]): E
       archived: option.archived,
       translations: parseJson(option.translations, {}),
       templateKey: option.templateKey,
+      countries: parseCountries(option.countries),
     })),
   };
+}
+
+/** A stored country list: valid codes only, so a damaged row never hides an answer from everyone. */
+function parseCountries(raw: string | null | undefined): string[] {
+  const list = parseJson<unknown>(raw, []);
+  return Array.isArray(list) ? list.filter((code): code is string => typeof code === "string" && isCountryCode(code)) : [];
 }
 
 function editorToDefinition(survey: EditorSurvey): SurveyDefinition {
@@ -594,6 +604,7 @@ async function persistQuestions(
         isOther: option.isOther ?? false,
         exclusive: option.exclusive ?? false,
         translations: JSON.stringify(option.translations ?? {}),
+        countries: JSON.stringify(option.countries ?? []),
       };
       let savedOptionId: string;
       if (existingOption && existingOption.questionId === savedQuestionId) {
@@ -712,6 +723,13 @@ function sanitizeSurveyInput(input: SurveyInput): SurveyInput {
         if (optionIds.has(option.id)) fail(`questions[${index}].options[${optionIndex}]`, "duplicate_id", "Two answers share an id.");
         optionIds.add(option.id);
       }
+      // An answer limited to countries no checkout reports would be shown to nobody.
+      if (option.countries !== undefined) {
+        const list = option.countries;
+        if (!Array.isArray(list) || list.length > 250 || list.some((code) => typeof code !== "string" || !isCountryCode(code))) {
+          fail(`questions[${index}].options[${optionIndex}].countries`, "invalid_country", "Not a country code.");
+        }
+      }
     });
   });
   // The editor checks this before going live; a post from anywhere else is
@@ -825,16 +843,23 @@ function sanitizeSurveyInput(input: SurveyInput): SurveyInput {
     fail("syncOptions", "invalid_sync_options", "The sync settings could not be read.");
   }
 
-  // Product and collection rules were accepted, plan-gated and stored, but the
-  // checkout never sends what they need and nothing evaluates them, so a
-  // "products only" survey showed on every order. No editor offers them; a
-  // crafted or old save is stored without them rather than pretending.
+  // Product rules (F5) are evaluated on the server from the order lines both
+  // blocks send, so they are kept; ids are Shopify's numeric product ids.
+  // Collection rules are still dropped: nothing resolves a collection to its
+  // products, so a "collection only" survey would have shown on every order.
+  if ((targeting.productIds ?? []).some((id) => !/^\d{1,20}$/.test(id))) {
+    fail("targeting.productIds", "invalid_targeting", "A product could not be read. Choose the products again.");
+  }
   const {
-    productIds: _productIds,
+    productIds,
     collectionIds: _collectionIds,
     resolvedProductIds: _resolvedProductIds,
-    ...appliedTargeting
+    ...rest
   } = targeting;
+  const appliedTargeting: Targeting = {
+    ...rest,
+    ...(productIds && productIds.length > 0 ? { productIds: [...new Set(productIds)] } : {}),
+  };
 
   return { ...input, placements, targeting: appliedTargeting, ...(design ? { design } : {}) };
 }
@@ -936,6 +961,7 @@ async function assertPlanAllowsSurvey(shopId: string, input: SurveyInput): Promi
   // checked first: a new survey has nothing to grandfather.
   const feature = firstLockedFeature(tier, input, []);
   if (feature) throw planFeatureError(feature);
+  if (!planHas(tier, "advanced_targeting") && addsAnswerCountries(input, null)) throw planFeatureError("advanced_targeting");
 
   const plan = catalogPlanFromKey(tier);
   if (planIncludesGrowth(plan)) return;
@@ -1025,6 +1051,26 @@ function canonicalJson(value: unknown): string {
   return JSON.stringify(value) ?? "null";
 }
 
+/**
+ * Whether the input limits an answer to some countries in a way the survey did
+ * not already (F4, a Growth rule like the survey's own country list). An answer
+ * that kept its list, or narrowed it, is grandfathered after a downgrade.
+ */
+function addsAnswerCountries(input: SurveyInput, existing: SurveyWithQuestions | null): boolean {
+  const had = new Map<string, Set<string>>();
+  for (const question of existing?.questions ?? []) {
+    for (const option of question.options) had.set(option.id, new Set(parseCountries(option.countries)));
+  }
+  return input.questions.some((question) =>
+    (question.options ?? []).some((option) => {
+      const wanted = option.countries ?? [];
+      if (wanted.length === 0) return false;
+      const before = option.id ? had.get(option.id) : undefined;
+      return !before || before.size === 0 || wanted.some((code) => !before.has(code));
+    }),
+  );
+}
+
 function planFeatureError(feature: PlanFeature): ValidationError {
   return new ValidationError(
     "That setting is included in a paid plan.",
@@ -1054,6 +1100,7 @@ async function assertPlanAllowsEdit(
     ...(existing.draft ? [rowToEditor(existing)] : []),
   ]);
   if (feature) throw planFeatureError(feature);
+  if (!planHas(tier, "advanced_targeting") && addsAnswerCountries(input, existing)) throw planFeatureError("advanced_targeting");
 
   const plan = catalogPlanFromKey(tier);
   if (planIncludesGrowth(plan)) return;
@@ -1454,9 +1501,15 @@ function toCompiledQuestion(question: SurveyWithQuestions["questions"][number]):
         isOther: option.isOther,
         exclusive: option.exclusive,
         translations: parseJson(option.translations, {}),
+        ...countriesField(parseCountries(option.countries)),
       })),
     translations: parseJson(question.translations, {}),
   };
+}
+
+/** Only a limited answer carries the field, so most configs stay as small as before. */
+function countriesField(countries: string[]): { countries?: string[] } {
+  return countries.length > 0 ? { countries } : {};
 }
 
 export function compileSurvey(row: SurveyWithQuestions): CompiledSurvey {

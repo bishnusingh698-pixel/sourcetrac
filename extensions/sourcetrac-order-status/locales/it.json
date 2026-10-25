@@ -33,6 +33,12 @@
     "editorPlanHidden": "Il tuo piano mostra meno sondaggi attivi di quanti ne hai, e questo non è tra quelli, quindi gli acquirenti non lo vedranno. Cambia piano in SourceTrac o metti in pausa un sondaggio con priorità più alta.",
     "editorAudience": "Questo sondaggio ha regole in \"Chi lo vede\", quindi alcuni ordini non lo vedranno.",
     "editorOncePerOrder": "Ogni ordine viene interrogato una volta. Dopo una risposta quell'ordine non mostra più il sondaggio, quindi prova con un nuovo ordine.",
-    "editorWaking": "SourceTrac si sta avviando. Dopo un periodo di inattività può volerci fino a un minuto."
+    "editorWaking": "SourceTrac si sta avviando. Dopo un periodo di inattività può volerci fino a un minuto.",
+    "selected": "selezionato",
+    "ratingLow": "Pessimo",
+    "ratingHigh": "Eccellente",
+    "npsLow": "Poco probabile",
+    "npsHigh": "Molto probabile",
+    "ratingAria": "{{n}} su 5"
   }
 }

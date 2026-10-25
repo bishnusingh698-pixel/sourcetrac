@@ -1,11 +1,12 @@
 import { useLoaderData, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 
+import { SectionTabs } from "~/components/section-tabs";
 import { Panel, PageIntro } from "~/components/admin-ui";
 import { SurveyPicker } from "~/components/survey-picker";
 import { orderAdminLink, resolveExportTimeZone, type RevenueStatus } from "~/lib/csv";
-import { createTranslator, intlLocaleFor } from "~/lib/i18n";
+import { createTranslator } from "~/lib/i18n";
 import { answerParts } from "~/lib/answer-text";
-import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
+import { resolveAdminLanguage, resolveFormatLocale } from "~/lib/i18n/resolve.server";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import { currentOrderTotal, fetchSurveyResponses, surveyRevenueStatus } from "~/lib/survey-analytics.server";
 import { getShopLocaleInfo } from "~/lib/studio.server";
@@ -13,6 +14,13 @@ import { getSurveyRow, listSurveys } from "~/lib/surveys.server";
 import { ensureShop } from "~/lib/provision.server";
 import { startOrderBackfill } from "~/lib/order-backfill.server";
 import { guarded } from "~/lib/admin-errors.server";
+import { formatMoney, parseMoneyToMinor } from "~/lib/money";
+
+/** A stored decimal total as locale money, or the decimal and code if it cannot be read. */
+function moneyText(total: string, currency: string, locale: string): string {
+  const parsed = parseMoneyToMinor(total, currency);
+  return parsed.ok ? formatMoney(parsed.minor, currency, locale) : `${total} ${currency}`;
+}
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -27,7 +35,7 @@ import { authenticate } from "~/shopify.server";
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "responses.title");
 
-export const handle = { titleKey: "responses.title" };
+export const handle = { titleKey: "nav.responses" };
 
 const PAGE_SIZE = 50;
 const MAX_PAGE = 10_000;
@@ -46,7 +54,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const page = Math.min(MAX_PAGE, Math.max(0, Math.floor(Number(url.searchParams.get("page") ?? "0") || 0)));
 
   const language = resolveAdminLanguage(request, shop.language, shop.adminLocale);
-  const locale = intlLocaleFor(language);
+  const locale = resolveFormatLocale(request, language, shop.adminLocale);
 
   if (!selectedId) {
     return { surveys: [], selected: null, rows: [], page: 0, hasMore: false, labels: {}, timeZone: "UTC" };
@@ -65,6 +73,12 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const { timeZone: shopZone } = await getShopLocaleInfo(shop.id, shop.shopDomain, session.accessToken);
   const timeZone = resolveExportTimeZone(shopZone);
   const when = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone });
+  let regionNames: Intl.DisplayNames | null = null;
+  try {
+    regionNames = new Intl.DisplayNames([locale, "en"], { type: "region" });
+  } catch {
+    regionNames = null;
+  }
 
   const responses = await fetchSurveyResponses({
     shopId: shop.id,
@@ -97,9 +111,17 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
         orderLink: response.orderId ? orderAdminLink(shop.shopDomain, response.orderId) : null,
         submittedAt: when.format(response.createdAt),
         placement: response.placement,
-        total: total?.total ?? null,
-        currency: total?.currency ?? null,
+        // Formatted like money everywhere else ("$42.50", "42,50 €"), not the
+        // raw stored decimal; the raw figure stays in the CSV.
+        total: total ? moneyText(total.total, total.currency, locale) : null,
         counted: status === "counted",
+        // Where the buyer checked out, and whether it was their first order.
+        buyer: [
+          response.country ? (regionNames?.of(response.country) ?? response.country) : null,
+          response.isFirstOrder === null ? null : t(response.isFirstOrder ? "responses.first_order" : "responses.returning"),
+        ]
+          .filter(Boolean)
+          .join(" · "),
         /** i18n key suffix for the status cell. */
         status: STATUS_KEY[status],
         answers,
@@ -138,6 +160,7 @@ export default function Responses() {
   if (!data.selected) {
     return (
       <s-stack gap="base">
+        <SectionTabs section="responses" t={t} />
         <PageIntro>{t("responses.subtitle")}</PageIntro>
         <Panel title={t("responses.empty_title")}>
           <s-text>{t("responses.empty_body")}</s-text>
@@ -148,6 +171,7 @@ export default function Responses() {
 
   return (
     <s-stack gap="base">
+      <SectionTabs section="responses" t={t} />
       <PageIntro
         actions={
           <s-button href="/app/export" icon="export">
@@ -174,6 +198,7 @@ export default function Responses() {
               <s-table-header listSlot="primary">{t("responses.col_order")}</s-table-header>
               <s-table-header listSlot="secondary">{`${t("responses.col_when")} (${data.timeZone})`}</s-table-header>
               <s-table-header listSlot="labeled">{t("responses.col_where")}</s-table-header>
+              <s-table-header listSlot="labeled">{t("responses.col_buyer")}</s-table-header>
               <s-table-header listSlot="labeled">{t("responses.col_answer")}</s-table-header>
               <s-table-header listSlot="labeled">{t("responses.col_total")}</s-table-header>
               <s-table-header listSlot="labeled">{t("responses.col_status")}</s-table-header>
@@ -192,10 +217,11 @@ export default function Responses() {
                   </s-table-cell>
                   <s-table-cell>{row.submittedAt}</s-table-cell>
                   <s-table-cell>{t(`surveys.placement_${row.placement}`)}</s-table-cell>
+                  <s-table-cell>{row.buyer || "—"}</s-table-cell>
                   <s-table-cell>{row.answers.map((a) => a.text).filter(Boolean).join(" · ") || "—"}</s-table-cell>
                   <s-table-cell>
                     <s-text fontVariantNumeric="tabular-nums">
-                      {row.total ? `${row.total} ${row.currency ?? ""}`.trim() : "—"}
+                      {row.total ?? "—"}
                     </s-text>
                   </s-table-cell>
                   <s-table-cell>

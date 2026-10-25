@@ -2,9 +2,12 @@
  * Analytics aggregation. Pure functions over already-fetched rows, so the maths
  * is unit-testable without a database and the route stays a thin shell.
  *
- * All windows are UTC and half-open [start, end) (docs/03 FLOW 15).
+ * Windows are half-open [start, end) and cut at midnight in the store's own
+ * time zone (UTC when it is not known), so "last 7 days" and each trend day
+ * are the merchant's calendar days. Billing periods are separate and stay UTC.
  */
 
+import { addDaysToKey, dayKeyInZone, startOfDayInZone } from "@shared/zoned-date";
 import { averageOrderValue, percentChange, type CurrencyCode } from "./money";
 import { rollupByCurrency } from "./revenue";
 
@@ -15,29 +18,26 @@ export function isTrendWindow(value: unknown): value is TrendWindow {
   return typeof value === "number" && (TREND_WINDOWS as readonly number[]).includes(value);
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-function startOfUtcDay(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-}
-
 /**
- * Half-open UTC window `[start, now)` covering `days` calendar days: today so
- * far plus the `days - 1` whole days before it.
+ * Half-open window `[start, now)` covering `days` calendar days in the store's
+ * zone: today so far plus the `days - 1` whole days before it.
  *
- * `start` sits on a UTC midnight, never mid-day. A rolling `now - days` start
- * made the summary count the afternoon before the first chart bucket while the
- * chart (which buckets by calendar day) left it out, so the two disagreed.
+ * `start` sits on a midnight of the store's day, never mid-day. A rolling
+ * `now - days` start made the summary count the afternoon before the first
+ * chart bucket while the chart (which buckets by calendar day) left it out, so
+ * the two disagreed. A UTC midnight had the same problem for every store not
+ * on UTC: in California the window began at 16:00 the day before.
  */
-export function windowBounds(days: number, now = new Date()): { start: Date; end: Date } {
+export function windowBounds(days: number, now = new Date(), timeZone?: string | null): { start: Date; end: Date } {
   const end = new Date(now.getTime());
-  const start = new Date(startOfUtcDay(now).getTime() - (days - 1) * DAY_MS);
+  const today = dayKeyInZone(now, timeZone);
+  const start = startOfDayInZone(addDaysToKey(today, -(days - 1)), timeZone);
   return { start, end };
 }
 
 /** The window of identical length immediately before the current one. */
-export function previousWindowBounds(days: number, now = new Date()): { start: Date; end: Date } {
-  const { start, end } = windowBounds(days, now);
+export function previousWindowBounds(days: number, now = new Date(), timeZone?: string | null): { start: Date; end: Date } {
+  const { start, end } = windowBounds(days, now, timeZone);
   const length = end.getTime() - start.getTime();
   return {
     start: new Date(start.getTime() - length),
@@ -212,43 +212,44 @@ function rollupCountsByCurrency(
 }
 
 export type TrendPoint = {
-  /** ISO date in UTC, e.g. "2026-10-01". */
+  /** The store's calendar day, e.g. "2026-10-01". */
   date: string;
   responses: number;
   revenueByCurrency: Array<{ currency: CurrencyCode; minor: number }>;
 };
 
 /**
- * Bucket responses into daily UTC points. Days with no responses are emitted as
- * zero rather than omitted, so the trend line has no misleading gaps.
+ * Bucket responses into the store's calendar days. Days with no responses are
+ * emitted as zero rather than omitted, so the trend line has no misleading gaps.
  */
 export function buildTrend(params: {
   responses: ReadonlyArray<ResponseRow>;
   decidedAmounts: ReadonlyArray<DecidedAmount>;
   days: number;
   now?: Date;
+  /** The store's IANA zone; UTC when absent. */
+  timeZone?: string | null;
 }): TrendPoint[] {
-  const { responses, decidedAmounts, days, now = new Date() } = params;
-  const { start } = windowBounds(days, now);
+  const { responses, decidedAmounts, days, now = new Date(), timeZone } = params;
 
-  // The window starts on a UTC midnight, so adding whole days gives exactly one
-  // key per calendar day and the last key is the current UTC day.
+  // One key per calendar day, counted on the dates themselves (not by adding
+  // 24 hours), so a daylight-saving day is still exactly one bucket and the
+  // last key is the store's today.
+  const today = dayKeyInZone(now, timeZone);
   const dayKeys: string[] = [];
-  for (let i = 0; i < days; i += 1) {
-    dayKeys.push(toUtcDateKey(new Date(start.getTime() + i * DAY_MS)));
-  }
+  for (let i = days - 1; i >= 0; i -= 1) dayKeys.push(addDaysToKey(today, -i));
 
   const dayKeySet = new Set(dayKeys);
   const responsesByDay = new Map<string, number>();
   for (const row of responses) {
-    const key = toUtcDateKey(row.submittedAt);
+    const key = dayKeyInZone(row.submittedAt, timeZone);
     if (!dayKeySet.has(key)) continue;
     responsesByDay.set(key, (responsesByDay.get(key) ?? 0) + 1);
   }
 
   const revenueByDay = new Map<string, Array<{ currency: CurrencyCode; minor: number }>>();
   for (const entry of decidedAmounts) {
-    const key = toUtcDateKey(entry.submittedAt);
+    const key = dayKeyInZone(entry.submittedAt, timeZone);
     if (!dayKeySet.has(key)) continue;
     const bucket = revenueByDay.get(key) ?? [];
     bucket.push({ currency: entry.currency, minor: entry.minor });
@@ -262,7 +263,7 @@ export function buildTrend(params: {
   }));
 }
 
-/** UTC date key. Never uses local time — a merchant's timezone must not shift buckets. */
+/** UTC date key, for the stores whose zone is not known. */
 export function toUtcDateKey(date: Date): string {
   return date.toISOString().slice(0, 10);
 }

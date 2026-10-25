@@ -33,7 +33,27 @@ export type CompiledOption = {
   /** T6: selecting it clears the others in multiple choice. */
   exclusive?: boolean;
   translations?: Record<string, string | undefined>;
+  /** F4: shown only to buyers in these countries. Absent: everyone. */
+  countries?: string[];
 };
+
+/**
+ * The answers a buyer in `country` sees: every answer without a country list,
+ * and those whose list names the buyer's country. When the checkout does not
+ * say where the buyer is, every answer is shown: hiding answers from a buyer we
+ * know nothing about would bias the results more than showing one extra.
+ */
+export function optionsForCountry<T extends { countries?: string[]; isOther?: boolean }>(
+  options: readonly T[],
+  country: string | null,
+): T[] {
+  if (!country) return [...options];
+  const code = country.toUpperCase();
+  const kept = options.filter((option) => !option.countries || option.countries.length === 0 || option.countries.includes(code));
+  // A question left with nothing to pick (every answer limited elsewhere)
+  // would block a required question: show every answer instead.
+  return kept.some((option) => !option.isOther) ? kept : [...options];
+}
 
 export type CompiledQuestion = {
   id: string;
@@ -67,7 +87,55 @@ export type CompiledSurvey = {
   targeting?: Record<string, unknown>;
   questions: CompiledQuestion[];
   translations?: Record<string, unknown>;
+  /** The merchant's look settings. Absent from configs compiled by older servers. */
+  design?: SurveyDesign;
 };
+
+/**
+ * The look settings the merchant picked in the survey editor. Mirrors
+ * `CompiledDesign` in shared/survey-config.ts (this bundle cannot import it).
+ * Fonts and colours are never here: they come from the store's checkout.
+ */
+export type SurveyDesign = {
+  layout?: "all" | "one_by_one";
+  showProgress?: boolean;
+  showTitle?: boolean;
+  ratingStyle?: "numbers" | "stars";
+  scaleLowLabel?: string;
+  scaleHighLabel?: string;
+  cardBorder?: "border" | "no_border";
+  spacing?: "compact" | "comfortable";
+};
+
+/**
+ * The editor's default scale labels, as stored in English. A label equal to one
+ * of these (or empty) is "not customised": the block shows its own translated
+ * default instead, so a German buyer never reads "Very poor". Mirrors
+ * `DEFAULT_DESIGN` and `DEFAULT_NPS_SCALE` in shared/survey-rules.ts.
+ */
+const DEFAULT_SCALE_LABELS = new Set(["", "Very poor", "Excellent", "Not likely", "Very likely"]);
+
+/**
+ * The words under a rating or 0–10 scale: the merchant's own when they wrote
+ * some, otherwise the block's translated defaults for that kind of scale.
+ */
+export function scaleAnchors(
+  type: "rating_5" | "nps",
+  design: SurveyDesign | undefined,
+  t: (key: string, fallback: string) => string,
+): { low: string; high: string } {
+  const own = (value: string | undefined) => {
+    const trimmed = (value ?? "").trim();
+    return DEFAULT_SCALE_LABELS.has(trimmed) ? null : trimmed;
+  };
+  const low =
+    own(design?.scaleLowLabel) ??
+    (type === "nps" ? t("sourcetrac.npsLow", "Not likely") : t("sourcetrac.ratingLow", "Very poor"));
+  const high =
+    own(design?.scaleHighLabel) ??
+    (type === "nps" ? t("sourcetrac.npsHigh", "Very likely") : t("sourcetrac.ratingHigh", "Excellent"));
+  return { low, high };
+}
 
 /** Shape returned by GET /api/survey. */
 export type SurveyConfigV2 = {
@@ -190,6 +258,12 @@ export interface SurveyConfig {
 export interface SubmitResult {
   ok: boolean;
   counted: boolean;
+  /**
+   * Set by the block itself (never by the server) when the server refused the
+   * answer outright (400, 401...). Sending it again cannot help, so it is not
+   * kept for a later load.
+   */
+  rejected?: boolean;
 }
 
 /**
@@ -275,8 +349,17 @@ export interface ApiBinding {
    * be skipped, showing the survey on every order.
    */
   getOrderTotal?: () => { amount: number; currencyCode: string } | null | undefined;
-  /** Numeric product ids on the order (Thank-you only), for results by product. */
+  /** Numeric product ids on the order, for results by product and product targeting. */
   getProductIds?: () => readonly string[];
+  /**
+   * The extension's `storage` API, where an answer that could not be sent is
+   * kept for the next load (see `useMultiSurvey`). Optional.
+   */
+  storage?: {
+    read: (key: string) => Promise<unknown>;
+    write: (key: string, value: unknown) => Promise<void>;
+    delete: (key: string) => Promise<void>;
+  };
 }
 
 /** The log label for a placement; only Order-status is not the Thank-you page. */
@@ -419,6 +502,7 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
     label: string,
     surface: SurveySurface,
     run: (timeoutMs: number) => Promise<T>,
+    onGiveUp?: (retryable: boolean) => void,
   ): Promise<T | null> {
     const deadline = Date.now() + SUBMIT_BUDGET_MS;
     let backoff = INITIAL_BACKOFF_MS;
@@ -436,6 +520,7 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
         const remaining = deadline - Date.now();
 
         if (!retryable || remaining <= 0 || attemptNumber >= MAX_ATTEMPTS) {
+          onGiveUp?.(retryable);
           log(`${label}_gave_up`, {
             surface,
             attempts: attemptNumber,
@@ -505,6 +590,14 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
     if (typeof isFirstOrder === "boolean") query.set("isFirstOrder", isFirstOrder ? "1" : "0");
     const country = safeRead(() => binding.getCountry?.());
     if (typeof country === "string" && country.length > 0) query.set("country", country.slice(0, 2).toUpperCase());
+    // F5: the order's products, for "only orders with these products". Sent
+    // whenever the host exposes lines, even with none we can read, so the
+    // server can tell "no matching product" from "an older block".
+    const products = binding.getProductIds ? safeRead(() => binding.getProductIds?.()) : undefined;
+    if (Array.isArray(products)) {
+      const ids = [...new Set(products)].filter((id) => /^\d{1,20}$/.test(id)).slice(0, 25);
+      query.set("products", ids.join(","));
+    }
     const total = safeRead(() => binding.getOrderTotal?.());
     if (total && Number.isFinite(total.amount) && total.amount >= 0 && /^[A-Za-z]{3}$/.test(total.currencyCode)) {
       query.set("total", String(total.amount));
@@ -553,14 +646,15 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
   }
 
   /** Submit a full multi-question answer set. */
-  function submitAnswers(params: {
+  async function submitAnswers(params: {
     surveyId: string;
     surveyVersion?: number;
     orderId: string | null;
     placement: Placement;
     answers: AnswerInput[];
-  }) {
-    return withRetries("survey_answers", surfaceOf(params.placement), (timeoutMs) =>
+  }): Promise<SubmitResult | null> {
+    let refused = false;
+    const result = await withRetries("survey_answers", surfaceOf(params.placement), (timeoutMs) =>
       attempt<SubmitResult>("/api/survey-responses", {
         method: "POST",
         // Field names must match app/routes/api.survey-responses.tsx exactly.
@@ -576,7 +670,13 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
           ...submitFacts(),
         }),
       }, { timeoutMs }),
+      (retryable) => {
+        refused = !retryable;
+      },
     );
+    // Null still means "could not be sent"; a refusal is told apart so the
+    // block does not keep an answer the server will never take.
+    return result ?? (refused ? { ok: false, counted: false, rejected: true } : null);
   }
 
   function submitFacts(): { isFirstOrder?: boolean; country?: string; productIds?: string[] } {
@@ -620,5 +720,21 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
     }
   }
 
-  return { fetchSurveyConfig, fetchSurvey, fetchPreview, submitResponse, submitAnswers, getLocale: buyerLocale, t };
+  /** The buyer's checkout country (ISO alpha-2), or null. */
+  function buyerCountry(): string | null {
+    const country = safeRead(() => binding.getCountry?.());
+    return typeof country === "string" && /^[A-Za-z]{2}$/.test(country) ? country.toUpperCase() : null;
+  }
+
+  return {
+    fetchSurveyConfig,
+    fetchSurvey,
+    fetchPreview,
+    submitResponse,
+    submitAnswers,
+    getLocale: buyerLocale,
+    getCountry: buyerCountry,
+    storage: binding.storage,
+    t,
+  };
 }

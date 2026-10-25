@@ -33,6 +33,12 @@
     "editorAudience": "Questo sondaggio ha regole in \"Chi lo vede\", quindi alcuni ordini non lo vedranno.",
     "editorOncePerOrder": "Ogni ordine viene interrogato una volta. Dopo una risposta quell'ordine non mostra più il sondaggio, quindi prova con un nuovo ordine.",
     "editorWaking": "SourceTrac si sta avviando. Dopo un periodo di inattività può volerci fino a un minuto.",
-    "editorOtherPage": "Questo sondaggio non è impostato per apparire in questa pagina. Attiva questa pagina in \"Dove appare\" in SourceTrac."
+    "editorOtherPage": "Questo sondaggio non è impostato per apparire in questa pagina. Attiva questa pagina in \"Dove appare\" in SourceTrac.",
+    "selected": "selezionato",
+    "ratingLow": "Pessimo",
+    "ratingHigh": "Eccellente",
+    "npsLow": "Poco probabile",
+    "npsHigh": "Molto probabile",
+    "ratingAria": "{{n}} su 5"
   }
 }

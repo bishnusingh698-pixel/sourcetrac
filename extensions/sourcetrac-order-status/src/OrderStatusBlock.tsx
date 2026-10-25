@@ -50,12 +50,21 @@ function OrderStatusBlock() {
         // retry after a long cold start never sends a stale token.
         getSessionToken: () => shopify.sessionToken.get(),
         translate: (key) => shopify.i18n.translate(key),
+        // Keeps an answer that could not be sent, to send on the next load.
+        storage: shopify.storage,
         getLocale: () => shopify.localization?.language?.value?.isoCode,
         // Country targeting. The order-status surface exposes the order's
         // country on `localization`, not on the order object.
         getCountry: () => shopify.localization?.country?.value?.isoCode,
         // The order total as the page shows it, for the order-value rule.
         getOrderTotal: () => shopify.cost?.totalAmount?.value,
+        // F5: the order's products, for "only orders with these products".
+        getProductIds: () =>
+          (shopify.lines?.value ?? []).flatMap((line) => {
+            const merchandise = line.merchandise as { product?: { id?: string } } | undefined;
+            const id = merchandise?.product?.id?.split("/").pop();
+            return id && /^\d+$/.test(id) ? [id] : [];
+          }),
       }),
     [shopify],
   );
@@ -111,6 +120,7 @@ function OrderStatusBlock() {
       onSubmit={survey.submit}
       busy={survey.busy}
       t={survey.t}
+      design={survey.survey?.design}
     />
   );
 }

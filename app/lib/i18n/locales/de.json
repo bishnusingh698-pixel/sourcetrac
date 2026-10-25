@@ -18,7 +18,8 @@
     "channels": "Kanalbericht",
     "preferences": "Einstellungen",
     "current": "(aktuelle Seite)",
-    "templates": "Vorlagen"
+    "templates": "Vorlagen",
+    "analytics": "Analysen"
   },
   "common": {
     "cancel": "Abbrechen",
@@ -95,7 +96,8 @@
     "total_row": "Gesamt",
     "rate_line": "Antwortrate: {{rate}}. {{answered}} von {{total}} Bestellungen in diesem Zeitraum haben geantwortet.",
     "other_title": "In den Worten der Käufer",
-    "other_subtitle": "Was Käufer geschrieben haben, wenn keiner Ihrer Kanäle passte. Neueste zuerst."
+    "other_subtitle": "Was Käufer geschrieben haben, wenn keiner Ihrer Kanäle passte. Neueste zuerst.",
+    "last_365": "Letzte 12 Monate"
   },
   "settings": {
     "title": "Einstellungen",
@@ -141,7 +143,7 @@
     "language_step_skip": "Jetzt überspringen",
     "language_detected": "Aus Ihrer Shopify-Administration erkannt",
     "step4_title": "Ergebnisse ansehen",
-    "step4_body": "Ergebnisse gruppieren Antworten nach Frage und zeigen den Umsatz je Kanal.",
+    "step4_body": "Unter Analysen sehen Sie, woher Käufer kamen, den Umsatz je Kanal und die Antworten auf jede Frage.",
     "step4_action": "Ergebnisse ansehen",
     "step1_body_done": "Sie haben eine Live-Umfrage.",
     "step2_body_done": "Der SourceTrac-Block wurde auf Ihrer Danke-Seite geladen."
@@ -161,7 +163,7 @@
     "truncated": "Diese Datei enthält nur die neuesten {{limit}} Antworten. Ältere Antworten wurden weggelassen.",
     "choose_label": "Was möchten Sie herunterladen?",
     "choose_all": "Alle Umfragen",
-    "choose_channels": "Nur Kanalbericht (wie Käufer von Ihnen erfahren haben)",
+    "choose_channels": "Nur Kanäle (wie Käufer von Ihnen erfahren haben)",
     "shape_all": "Eine Zeile pro Antwort, mit Umfrage und Frage. Eine Bestellung mit mehreren Antworten hat mehrere Zeilen, addieren Sie order_total daher nicht.",
     "shape_survey": "Eine Zeile pro Käufer, mit einer Spalte pro Frage.",
     "shape_channels": "Eine Zeile pro Bestellung, mit dem Kanal, den der Käufer gewählt hat."
@@ -263,7 +265,7 @@
     "faq_title": "Häufige Fragen",
     "contact_tip": "Bevor Sie schreiben: Fehlt die Umfrage, hilft meist die Prüfung im Checkout-Editor aus den ersten beiden Antworten oben.",
     "q_create": "Wie erstelle ich meine Umfrage?",
-    "a_create": "Gehen Sie zu Umfragen und wählen Sie Neue Umfrage. Wählen Sie eine Vorlage oder beginnen Sie ohne, bearbeiten Sie die Fragen und klicken Sie auf Live schalten. Damit Käufer sie sehen, gehen Sie in Shopify zu Einstellungen › Checkout, klicken Sie auf Anpassen, wählen Sie oben im Seitenmenü „Danke“, fügen Sie den Block „SourceTrac survey“ hinzu und klicken Sie auf Speichern. Der Block wird nur einmal hinzugefügt.",
+    "a_create": "Am schnellsten geht es über Umfragen › Schnellstart: Wählen Sie, wo die meisten Käufer sind, prüfen Sie die Antworten und klicken Sie auf Live schalten. Sie können auch unter Umfragen › Vorlagen eine Vorlage wählen. Fügen Sie dann den Block hinzu: Gehen Sie im Shopify-Admin zu Einstellungen › Checkout, klicken Sie auf Anpassen, wählen Sie oben im Seitenmenü „Danke“, fügen Sie den Block „SourceTrac survey“ hinzu und klicken Sie auf Speichern. Den Block fügen Sie nur einmal hinzu.",
     "q_not_showing": "Warum erscheint die Frage nicht auf meiner Bestellbestätigungsseite?",
     "a_not_showing": "Prüfen Sie vier Dinge. Erstens muss die Umfrage in SourceTrac live sein. Zweitens muss der Block „SourceTrac survey“ im Checkout-Editor von Shopify auf der Danke-Seite sein (Einstellungen › Checkout › Anpassen, dann „Danke“ im Seitenmenü) und der Editor gespeichert sein. Drittens wird jede Bestellung nur einmal gefragt: Eine Bestellung, die schon geantwortet hat, zeigt die Umfrage nie wieder, testen Sie also mit einer neuen Bestellung. Viertens bietet Shopify den Block auf der Danke-Seite im Starter-Tarif nicht an.",
     "q_missing_revenue": "Warum fehlt bei einer meiner Antworten der Umsatz?",
@@ -287,7 +289,13 @@
     "q_once_per_order": "Ich habe einmal geantwortet und jetzt erscheint die Umfrage nicht mehr. Warum?",
     "a_once_per_order": "Jede Bestellung wird nur einmal gefragt. Nach einer Antwort zeigt SourceTrac dieser Bestellung die Umfrage nie wieder, auch nicht nach dem Neuladen der Seite, damit Käufer nie zweimal gefragt werden. Für einen neuen Test geben Sie eine neue Bestellung auf.",
     "q_order_status": "Kann die Umfrage auch auf der Bestellstatusseite erscheinen?",
-    "a_order_status": "Ja, als optionale Ergänzung. Auf der Bestellstatusseite landen Käufer, wenn sie in ihren Bestell-E-Mails „Bestellung ansehen“ öffnen. Aktivieren Sie sie in der Umfrage unter „Wo sie erscheint“, wählen Sie dann im Checkout-Editor im Seitenmenü „Bestellstatus“, fügen Sie den Block „SourceTrac survey“ hinzu und klicken Sie auf Speichern. Die Seite steht nur im Menü, wenn Ihr Shop die neuen Kundenkonten von Shopify nutzt (Einstellungen › Kundenkonten). Jede Bestellung wird weiterhin nur einmal gefragt."
+    "a_order_status": "Ja, als optionale Ergänzung. Auf der Bestellstatusseite landen Käufer, wenn sie in ihren Bestell-E-Mails „Bestellung ansehen“ öffnen. Aktivieren Sie sie in der Umfrage unter „Wo sie erscheint“, wählen Sie dann im Checkout-Editor im Seitenmenü „Bestellstatus“, fügen Sie den Block „SourceTrac survey“ hinzu und klicken Sie auf Speichern. Die Seite steht nur im Menü, wenn Ihr Shop die neuen Kundenkonten von Shopify nutzt (Einstellungen › Kundenkonten). Jede Bestellung wird weiterhin nur einmal gefragt.",
+    "q_countries": "Meine Käufer sind in mehreren Ländern. Können die Antworten unterschiedlich sein?",
+    "a_countries": "Ja. Im Umfrage-Editor lädt „Antworten für ein Land verwenden“ die Apps und Seiten, über die Käufer dort meist Shops finden. Mit der Globus-Schaltfläche neben einer Antwort zeigen Sie sie nur Käufern in den gewählten Ländern (Growth), so bietet eine Umfrage LINE in Japan und Snapchat am Golf. Für andere Fragen duplizieren Sie die Umfrage, beschränken sie unter „Wer sie sieht“ auf diese Länder und schieben sie auf der Seite „Umfragen“ nach oben.",
+    "q_look": "Kann ich Farben und Schriften der Umfrage ändern?",
+    "a_look": "Die Umfrage nutzt immer die Schriften und Farben Ihres Checkouts (Einstellungen › Checkout › Anpassen), weil Shopify Apps keine Änderung erlaubt. So wirkt sie immer wie ein Teil Ihres Shops. Unter „Aussehen und Texte“ ändern Sie Titel, Einleitung, Schaltfläche und Dankestext, zeigen Fragen einzeln, nutzen Sterne für Bewertungen, legen die Texte unter einer Skala fest und wählen Rahmen und Abstände.",
+    "q_languages": "Sehen Käufer die Umfrage in ihrer Sprache?",
+    "a_languages": "Vorlagen und der Schnellstart sind in zehn Sprachen übersetzt. Unter „Sprachen“ in der Umfrage können Sie Übersetzungen hinzufügen oder ändern, auch Arabisch, Hebräisch, Koreanisch, Polnisch, Türkisch und die nordischen Sprachen. Käufer sehen ihre Checkout-Sprache, wenn die Umfrage sie hat, sonst Ihren eigenen Text; die Schaltflächen sind in all diese Sprachen übersetzt."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac ist in Ihrem Tarif nicht verfügbar",
@@ -583,7 +591,9 @@
     "check_new_order": "Jede Bestellung wird nur einmal gefragt. Testen Sie mit einer neuen Bestellung und sehen Sie dann unten unter „Letzte Checkouts“, was passiert ist.",
     "check_block_never_order_status": "Bestellstatusseite: Der SourceTrac-Block wurde hier noch nicht geladen. Wählen Sie im Checkout-Editor im Seitenmenü „Bestellstatus“, fügen Sie den Block „SourceTrac survey“ hinzu und klicken Sie auf Speichern. Die Seite steht nur im Menü, wenn Ihr Shop die neuen Kundenkonten nutzt.",
     "validation_currency_unavailable": "Die Währung Ihres Shops konnte gerade nicht gelesen werden. Versuchen Sie es gleich noch einmal.",
-    "validation_order_value_range": "Der Höchstbestellwert muss mindestens so hoch sein wie der Mindestbestellwert."
+    "validation_order_value_range": "Der Höchstbestellwert muss mindestens so hoch sein wie der Mindestbestellwert.",
+    "reason_products": "„{{survey}}“ gilt nur für Bestellungen mit bestimmten Produkten, und diese Bestellung enthielt keines davon.",
+    "reason_products_unknown": "„{{survey}}“ gilt nur für Bestellungen mit bestimmten Produkten, und dieser Checkout hat die bestellten Produkte nicht übermittelt. Prüfen Sie, ob Ihre SourceTrac-Blöcke aktuell sind."
   },
   "templates": {
     "nps": {
@@ -683,7 +693,10 @@
     "status_total_unreadable": "Betrag nicht lesbar",
     "status_no_order": "Keine Bestellung",
     "survey_label": "Umfrage",
-    "export_cta": "CSV exportieren"
+    "export_cta": "CSV exportieren",
+    "col_buyer": "Käufer",
+    "first_order": "Erste Bestellung",
+    "returning": "Wiederkehrender Käufer"
   },
   "library": {
     "title": "Vorlagen",
@@ -781,7 +794,7 @@
     "view": "Ansehen",
     "reliable_ideas": "Ihre Ergebnisse für {{name}} sind aussagekräftig. Sehen Sie, was Käufer Ihnen gesagt haben.",
     "unpublished": "{{name}} hat unveröffentlichte Änderungen. Prüfen und veröffentlichen.",
-    "open_report": "Kanalbericht öffnen",
+    "open_report": "Alle Kanäle ansehen",
     "do_it": "Los geht's",
     "see_results": "Sehen Sie die neuesten Antworten auf {{name}}.",
     "subtitle": "Ihr Shop auf einen Blick: Umsatz nach Kanal, Kundenbewertungen und alle Umfragen.",
@@ -810,7 +823,7 @@
     "buyers_unknown_other": "Bei {{count}} Bestellungen ist unbekannt, ob es eine erste Bestellung war.",
     "surveys_subtitle": "Aktive Umfragen und alle anderen mit Antworten. {{range}}.",
     "col_key_result": "Wichtigstes Ergebnis",
-    "compare_surveys": "Umfragen in den Ergebnissen vergleichen",
+    "compare_surveys": "Umfragen unter Analysen vergleichen",
     "capped_note": "Bewertungen, Käufer und Umfragen beruhen auf den neuesten {{limit}} Antworten in diesem Zeitraum."
   },
   "support": {
@@ -840,7 +853,7 @@
     "questions_help": "Fassen Sie sich kurz. Ein bis drei Fragen erhalten die meisten Antworten.",
     "placement_thank_you": "Dankesseite",
     "who_title": "Wer sie sieht",
-    "more_rules": "Weitere Regeln (Bestellwert, Länder, Zeitraum)",
+    "more_rules": "Weitere Regeln (Bestellwert, Länder, Produkte, Daten)",
     "optional_title": "Optional",
     "wording_title": "Titel, Einleitung und Schaltflächen",
     "languages_title": "Sprachen",
@@ -989,8 +1002,8 @@
     "learn_stop_done": "Der automatische Stopp hat diese Umfrage bereits einmal pausiert. Er pausiert sie nicht erneut; schalten Sie ihn aus und wieder ein, um ihn neu zu aktivieren.",
     "status_auto_paused": "Automatisch pausiert: Die Ergebnisse sind zuverlässig. Käufer sehen diese Umfrage nicht. Sie können sie jederzeit wieder aktivieren; sie pausiert sich nicht erneut.",
     "other_label": "Text der Antwort „Sonstiges“",
-    "channel_question": "Im Kanalbericht zählen",
-    "channel_question_details": "Aktivieren Sie das für eine Frage wie „Wie sind Sie auf uns aufmerksam geworden?“. Die Antworten werden mit ihrem Umsatz zu Ihren Kanälen im Dashboard und im Kanalbericht.",
+    "channel_question": "Diese Antworten unter Analysen als Ihre Kanäle zählen",
+    "channel_question_details": "Für eine Frage „Wie haben Sie von uns erfahren?“ aktivieren. Ihre Antworten werden zu Ihren Kanälen mit Umsatz, auf der Startseite und unter Analysen › Kanäle.",
     "where_title": "Wo sie erscheint",
     "placement_order_status": "Bestellstatusseite",
     "audience_order_status_note": "Auf der Bestellstatusseite weiß SourceTrac nur dann, ob es eine Erstbestellung ist, wenn auch die Danke-Seite den SourceTrac-Block hat. Andere Bestellungen sehen diese Umfrage dort nicht.",
@@ -999,7 +1012,47 @@
     "placement_once": "Jede Bestellung wird nur einmal gefragt. Antwortet ein Käufer auf einer Seite, wird die Umfrage auf der anderen ausgeblendet.",
     "store_step_order_status": "Für die Bestellstatusseite: Wählen Sie im selben Seitenmenü „Bestellstatus“, fügen Sie dort den Block „SourceTrac survey“ hinzu und klicken Sie auf Speichern. Die Seite steht nur im Menü, wenn Ihr Shop die neuen Kundenkonten nutzt (Einstellungen › Kundenkonten).",
     "block_order_status_title": "Fügen Sie den SourceTrac-Block auch Ihrer Bestellstatusseite hinzu",
-    "block_missing_order_status_body": "Diese Umfrage soll auch auf der Bestellstatusseite erscheinen, aber der Block wurde dort noch nicht geladen. Wählen Sie im Checkout-Editor im Seitenmenü „Bestellstatus“, fügen Sie den Block „SourceTrac survey“ hinzu und klicken Sie auf Speichern. Fehlt „Bestellstatus“ im Menü, nutzt Ihr Shop die klassischen Kundenkonten: Wechseln Sie unter Einstellungen › Kundenkonten oder deaktivieren Sie die Seite unter „Wo sie erscheint“."
+    "block_missing_order_status_body": "Diese Umfrage soll auch auf der Bestellstatusseite erscheinen, aber der Block wurde dort noch nicht geladen. Wählen Sie im Checkout-Editor im Seitenmenü „Bestellstatus“, fügen Sie den Block „SourceTrac survey“ hinzu und klicken Sie auf Speichern. Fehlt „Bestellstatus“ im Menü, nutzt Ihr Shop die klassischen Kundenkonten: Wechseln Sie unter Einstellungen › Kundenkonten oder deaktivieren Sie die Seite unter „Wo sie erscheint“.",
+    "look_title": "Aussehen und Texte",
+    "look_help": "Schriften und Farben folgen immer Ihrem Checkout-Branding (Einstellungen › Checkout › Anpassen). Shopify erlaubt Apps nicht, sie zu ändern, deshalb passt die Umfrage immer zu Ihrem Shop.",
+    "layout_details": "„Einzeln“ zeigt zwischen den Fragen eine Weiter-Schaltfläche. „Alle auf einer Seite“ passt zu ein bis drei kurzen Fragen.",
+    "show_title_details": "Die kurze Überschrift über den Fragen.",
+    "show_progress": "Fortschritt anzeigen (zum Beispiel „1 von 3“)",
+    "title_details": "Wird über den Fragen angezeigt, wenn „Titel anzeigen“ aktiviert ist.",
+    "intro_details": "Eine Zeile unter dem Titel. Leer lassen, wenn Sie keine möchten.",
+    "button_details": "Die Schaltfläche, mit der Käufer ihre Antworten senden.",
+    "thanks_details": "Wird nach der Antwort einige Sekunden angezeigt, dann schließt sich der Block.",
+    "frame": "Rahmen",
+    "frame_border": "In einem Kasten mit Rahmen",
+    "frame_none": "Ohne Rahmen",
+    "frame_details": "Ein Kasten hebt die Umfrage von den Bestelldetails ab.",
+    "spacing": "Abstände",
+    "spacing_comfortable": "Großzügig",
+    "spacing_compact": "Kompakt",
+    "rating_style_details": "Sterne füllen sich bis zur Auswahl. Zahlen zeigen 1 bis 5.",
+    "scale_low": "Text am unteren Ende der Skala",
+    "scale_high": "Text am oberen Ende der Skala",
+    "scale_details": "Erscheint unter Bewertungs- und 0-bis-10-Fragen. Leer lassen für den Standardtext, für jeden Käufer übersetzt: „Sehr schlecht“ bis „Ausgezeichnet“ bei Bewertungen, „Unwahrscheinlich“ bis „Sehr wahrscheinlich“ bei 0 bis 10.",
+    "answer_type_details": "Wie Käufer antworten: eine Antwort tippen, mehrere ankreuzen, eine Bewertung wählen oder schreiben.",
+    "required_details": "Käufer können erst senden, wenn sie diese Frage beantwortet haben. Deaktiviert lassen, damit sie sie überspringen können.",
+    "placeholder_details": "Grauer Beispieltext im leeren Antwortfeld.",
+    "long_answer_details": "Ein höheres Feld für Antworten, die länger als ein paar Wörter sind.",
+    "answer_countries_button": "Länder für {{label}}",
+    "answer_countries_title": "„{{label}}“ nur in diesen Ländern anzeigen",
+    "answer_countries_details": "Käufer in anderen Ländern sehen diese Antwort nicht. Nichts auswählen, um sie überall zu zeigen. So zeigen Sie in einer Umfrage etwa LINE nur in Japan oder Snapchat nur am Golf.",
+    "answer_countries_summary": "Nur angezeigt in: {{list}}",
+    "answer_countries_locked": "Antworten nur in bestimmten Ländern anzuzeigen ist mit {{plan}} verfügbar.",
+    "products": "Nur Bestellungen mit diesen Produkten",
+    "products_details": "Zeigt die Umfrage nur, wenn die Bestellung mindestens eines dieser Produkte enthält. Leer lassen für alle Bestellungen.",
+    "products_none": "Kein Produkt gewählt: Jede Bestellung kann die Umfrage sehen.",
+    "products_choose": "Produkte auswählen",
+    "products_change": "Produkte ändern",
+    "products_remove": "{{name}} entfernen",
+    "products_missing": "Produkt {{id}} (nicht mehr im Shop gefunden)",
+    "products_unavailable": "Die Produktauswahl von Shopify konnte hier nicht geöffnet werden. Laden Sie die Seite neu und versuchen Sie es erneut.",
+    "countries_other_questions": "Andere Fragen für Käufer in einem Land? Duplizieren Sie die Umfrage, wählen Sie hier ihre Länder und schieben Sie sie auf der Seite „Umfragen“ über diese.",
+    "language_rtl": "Wird von rechts nach links geschrieben. Der Shopify-Checkout zeigt die Umfrage für diese Käufer von rechts nach links.",
+    "audience_details": "Shopify meldet auf der Danke-Seite, ob es die erste Bestellung des Käufers in Ihrem Shop ist."
   },
   "preview": {
     "title": "Vorschau",
@@ -1020,7 +1073,9 @@
     "next": "Weiter",
     "try_it": "Klicken Sie sich wie ein Käufer durch. Nichts wird gespeichert.",
     "other_label": "Sonstiges",
-    "other_placeholder": "Erzählen Sie uns mehr"
+    "other_placeholder": "Erzählen Sie uns mehr",
+    "rating_low": "Sehr schlecht",
+    "rating_high": "Ausgezeichnet"
   },
   "privacy": {
     "notice": "SourceTrac bewahrt Umfrageantworten und Bestelldaten {{months}} Monate lang auf. Namen, E-Mail-Adressen, Telefonnummern, Anschriften oder Zahlungsdaten von Käufern werden nie gespeichert.",
@@ -1050,5 +1105,64 @@
     "policy_text": "Nach dem Checkout bitten wir Sie eventuell um eine kurze, freiwillige Umfrage, etwa wie Sie auf uns aufmerksam geworden sind. Ihre Antworten werden zusammen mit Ihrer Bestellnummer von unserem Umfrageanbieter SourceTrac bis zu {{months}} Monate lang gespeichert und nur genutzt, um zu verstehen, über welche Kanäle Kunden zu uns finden. Sie werden niemals verkauft oder für Werbung verwendet.",
     "actions_notice": "Shopify-Aktionen kopieren Antworten als Bestell-Tags, Kunden-Tags oder Kunden-Metafelder in Ihren Shopify-Shop. Dort gelten dann die Regeln von Shopify für Ihre Shop-Daten, nicht der Löschplan von SourceTrac.",
     "export_notice": "Die Datei enthält Bestellnummern, Antworten, Bestellsummen und von Käufern eingegebenen Text. Bewahren Sie sie so sicher auf wie Ihre anderen Shop-Unterlagen."
+  },
+  "presets": {
+    "load_title": "Antworten für ein Land verwenden",
+    "load_help": "Wählen Sie, wo die meisten Ihrer Käufer sind. Sie erhalten die Apps und Seiten, über die Menschen dort meist Shops finden – zum Bearbeiten bereit.",
+    "country_label": "Land",
+    "search": "Länder suchen",
+    "no_match": "Kein Land passt zu dieser Suche.",
+    "preview": "Antworten für {{country}}: {{list}}",
+    "replace": "Meine Antworten ersetzen",
+    "add_one": "{{count}} fehlende Antwort hinzufügen",
+    "add_other": "{{count}} fehlende Antworten hinzufügen",
+    "replace_note": "Behaltene Antworten bleiben mit ihren Ergebnissen verknüpft. Auch die Ergebnisse entfernter Antworten bleiben erhalten.",
+    "full": "Diese Frage hat bereits die Höchstzahl an Antworten ({{max}}).",
+    "only_there": "Hinzugefügte Antworten nur Käufern in {{country}} und den zugehörigen Ländern zeigen",
+    "only_there_details": "Käufer anderswo sehen weiterhin Ihre übrigen Antworten. Ändern Sie die Liste mit der Globus-Schaltfläche neben jeder Antwort.",
+    "only_there_locked": "Antworten nur für bestimmte Länder sind mit {{plan}} verfügbar."
+  },
+  "quick": {
+    "title": "Schnellstart",
+    "subtitle": "Bringen Sie in etwa zwei Minuten eine Umfrage „Wie haben Sie von uns erfahren?“ live. Alles lässt sich später ändern.",
+    "templates_link": "Stattdessen Vorlagen ansehen",
+    "country_title": "1. Wo sind die meisten Ihrer Käufer?",
+    "country_help": "Wir laden die Apps und Seiten, über die Menschen dort meist Shops finden.",
+    "answers_title": "2. Wählen Sie die Antworten, die Käufer auswählen können",
+    "answers_help": "Übliche Antworten für {{country}}. Deaktivieren Sie, was nicht passt, und ergänzen Sie eigene.",
+    "add_label": "Eigene Antwort hinzufügen",
+    "add_button": "Hinzufügen",
+    "custom_remove": "{{label}} entfernen",
+    "other": "„Sonstiges“ mit Textfeld hinzufügen",
+    "other_details": "Käufer, deren Antwort fehlt, können sie eingeben. Sie sehen die Texte unter Analysen.",
+    "follow_up": "Nach einer Social-App oder einem Creator fragen, welcher Account es war",
+    "follow_up_details": "Eine zweite, freiwillige Frage. Ohne sie antworten Käufer mit einem einzigen Tippen.",
+    "launch_title": "3. Live schalten",
+    "launch_help": "Käufer sehen die Umfrage auf Ihrer Danke-Seite, sobald der SourceTrac-Block im Checkout-Editor von Shopify hinzugefügt ist. Wir öffnen ihn als Nächstes für Sie.",
+    "go_live": "Live schalten",
+    "create_draft": "Umfrage erstellen",
+    "limit_note_one": "Ihr Tarif umfasst {{count}} Live-Umfrage, die bereits genutzt wird. Diese Umfrage wird daher als Entwurf gespeichert. Pausieren Sie die andere oder wechseln Sie den Tarif, um beide zu nutzen.",
+    "limit_note_other": "Ihr Tarif umfasst {{count}} Live-Umfragen, die alle genutzt werden. Diese Umfrage wird daher als Entwurf gespeichert. Pausieren Sie eine oder wechseln Sie den Tarif, um mehr zu nutzen.",
+    "too_few": "Wählen Sie mindestens {{min}} Antworten.",
+    "failed": "Die Umfrage konnte nicht erstellt werden. Versuchen Sie es gleich noch einmal.",
+    "cta": "Schnellstart (2 Minuten)"
+  },
+  "tabs": {
+    "label": "Seiten in diesem Bereich",
+    "my_surveys": "Meine Umfragen",
+    "templates": "Vorlagen",
+    "quick_start": "Schnellstart",
+    "channels": "Kanäle",
+    "results": "Umfrageergebnisse",
+    "answers": "Antworten",
+    "export": "Export"
+  },
+  "analytics": {
+    "country_filter": "Käufer in",
+    "all_countries": "Alle Länder",
+    "country_option": "{{country}} ({{count}})",
+    "zone_note": "Tage folgen der Zeitzone Ihres Shops ({{zone}}).",
+    "country_note": "Nur Käufer, die in {{country}} bestellt haben.",
+    "rate_unavailable_country": "Die Antwortquote wird für ein einzelnes Land nicht angezeigt: Shopify-Bestellungen speichern nicht, wo der Käufer bestellt hat, also fehlt die Vergleichsgröße."
   }
 }

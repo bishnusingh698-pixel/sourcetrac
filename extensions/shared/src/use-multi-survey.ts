@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks"
 
 import {
   log,
+  optionsForCountry,
   orderOptionsForBuyer,
   OTHER_CHANNEL,
   type AnswerInput,
@@ -15,6 +16,47 @@ import {
 } from "./survey-logic";
 
 export type MultiPhase = "loading" | "asking" | "sending" | "done" | "hidden";
+
+/** The subset of Shopify's extension `storage` API the hook uses. */
+export type PendingStore = {
+  read: (key: string) => Promise<unknown>;
+  write: (key: string, value: unknown) => Promise<void>;
+  delete: (key: string) => Promise<void>;
+};
+
+/** An answer set that could not be sent, kept to be sent again. */
+export type PendingAnswer = {
+  surveyId: string;
+  surveyVersion?: number;
+  placement: Placement;
+  answers: AnswerInput[];
+  /** When it was kept (ms), so a stale one is dropped rather than sent. */
+  at: number;
+};
+
+/** A kept answer older than this is dropped: the order is long past. */
+const PENDING_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+export function pendingKey(orderId: string): string {
+  // The numeric tail, so the Thank-you page's OrderIdentity GID and a later
+  // load agree on the key.
+  return `pending:${orderId.match(/(\d+)$/)?.[1] ?? orderId}`;
+}
+
+/** Storage that never throws: a failing host must not break the survey. */
+async function safely<T>(run: () => Promise<T>): Promise<T | null> {
+  try {
+    return await run();
+  } catch {
+    return null;
+  }
+}
+
+function isPendingAnswer(value: unknown): value is PendingAnswer {
+  if (!value || typeof value !== "object") return false;
+  const v = value as Partial<PendingAnswer>;
+  return typeof v.surveyId === "string" && Array.isArray(v.answers) && typeof v.at === "number" && typeof v.placement === "string";
+}
 
 /** How long the confirmation stays visible before the block collapses. */
 const CONFIRMATION_MS = 2500;
@@ -37,6 +79,15 @@ export interface MultiSurveyApi {
   }) => Promise<SubmitResult | null>;
   /** The buyer's language (e.g. "de"), for language targeting and translation. */
   getLocale?: () => string | null;
+  /** The buyer's checkout country, for answers limited to some countries (F4). */
+  getCountry?: () => string | null;
+  /**
+   * The extension's own key-value storage (Shopify's `storage` API, kept for
+   * the checkout session). An answer that could not be sent is kept here and
+   * sent again the next time the block loads for that order. Optional: hosts
+   * without it simply do not keep a failed answer.
+   */
+  storage?: PendingStore;
   t: (key: string, fallback: string) => string;
 }
 
@@ -138,8 +189,20 @@ export function localizeSurvey(survey: CompiledSurvey, locale: string | null): C
 
   const legacyQuestions = (pack.questions as Record<string, Record<string, string>> | undefined) ?? {};
   const text = (value: unknown): string | null => (typeof value === "string" && value.length > 0 ? value : null);
+  // The merchant's own scale labels, translated like the rest of the frame.
+  const scaleLow = text(pack.scaleLowLabel);
+  const scaleHigh = text(pack.scaleHighLabel);
   return {
     ...survey,
+    ...(survey.design && (scaleLow || scaleHigh)
+      ? {
+          design: {
+            ...survey.design,
+            ...(scaleLow ? { scaleLowLabel: scaleLow } : {}),
+            ...(scaleHigh ? { scaleHighLabel: scaleHigh } : {}),
+          },
+        }
+      : {}),
     title: text(pack.title) ?? survey.title,
     intro: pack.intro != null ? String(pack.intro) : survey.intro,
     buttonLabel: text(pack.buttonLabel) ?? survey.buttonLabel,
@@ -259,10 +322,44 @@ export function useMultiSurvey(
     // never fire `?orderId=`, which the route would reject.
     if (!orderId) return;
 
-    apiRef.current.fetchSurvey(orderId, placement, locale, surveyId).then((result) => {
+    const store = apiRef.current.storage;
+    const key = pendingKey(orderId);
+
+    /**
+     * An answer this buyer gave earlier that never reached us (the server was
+     * down for the whole retry budget). Sent first; once it lands, the order
+     * has answered and the survey is not shown again.
+     */
+    const resendPending = async (): Promise<boolean> => {
+      if (!store) return false;
+      const kept = await safely(() => store.read(key));
+      if (!isPendingAnswer(kept)) return false;
+      if (Date.now() - kept.at > PENDING_MAX_AGE_MS) {
+        await safely(() => store.delete(key));
+        return false;
+      }
+      const result = await apiRef.current.submitAnswers({
+        surveyId: kept.surveyId,
+        surveyVersion: kept.surveyVersion,
+        orderId,
+        placement: kept.placement,
+        answers: kept.answers,
+      });
+      if (result === null) return false;
+      // Sent, or refused for good: either way it is not kept any longer.
+      await safely(() => store.delete(key));
+      if (result.rejected) return false;
+      log("survey_pending_sent", { placement });
+      return true;
+    };
+
+    const loadSurvey = () => apiRef.current.fetchSurvey(orderId, placement, locale, surveyId).then((result) => {
       if (cancelled || !mounted.current) return;
 
       const config = result;
+      // Answered already (on another page, or by a kept answer another load
+      // sent): nothing is left to send for this order.
+      if (config?.alreadyAnswered && store) void safely(() => store.delete(key));
       if (
         !config ||
         !config.enabled ||
@@ -287,14 +384,25 @@ export function useMultiSurvey(
       // (their GIDs differ: OrderIdentity on Thank-you, Order on Order status).
       const localized = localizeSurvey(config.survey, locale);
       const seed = orderId.match(/(\d+)$/)?.[1] ?? orderId;
+      // Answers the merchant limited to other countries are left out (F4).
+      const country = apiRef.current.getCountry?.() ?? null;
       setSurvey({
         ...localized,
         questions: localized.questions.map((question) => ({
           ...question,
-          options: orderOptionsForBuyer(question.options, question.randomizeOptions === true, seed),
+          options: orderOptionsForBuyer(optionsForCountry(question.options, country), question.randomizeOptions === true, seed),
         })),
       });
       setPhase("asking");
+    });
+
+    void resendPending().then((sent) => {
+      if (cancelled || !mounted.current) return;
+      if (sent) {
+        setPhase("hidden");
+        return;
+      }
+      loadSurvey();
     });
 
     return () => {
@@ -362,7 +470,29 @@ export function useMultiSurvey(
       if (!mounted.current) return;
 
       if (result === null) {
-        log("survey_submit_lost", { placement });
+        // Never lose the answer: keep it for the next time the block loads for
+        // this order (a reload, or a return to this page in the same checkout
+        // session) and send it then. The buyer is not shown an error.
+        const store = apiRef.current.storage;
+        if (store && orderId) {
+          const kept: PendingAnswer = {
+            surveyId: survey.id,
+            surveyVersion: survey.version,
+            placement,
+            answers: payload,
+            at: Date.now(),
+          };
+          await safely(() => store.write(pendingKey(orderId), kept));
+          log("survey_submit_kept", { placement });
+        } else {
+          log("survey_submit_lost", { placement });
+        }
+        if (mounted.current) setPhase("hidden");
+        return;
+      }
+      if (result.rejected) {
+        // The server refused this answer set; sending it again cannot help.
+        log("survey_submit_refused", { placement });
         setPhase("hidden");
         return;
       }

@@ -103,6 +103,42 @@ function dateIn(instant: Date, zone: string): string {
 }
 
 /**
+ * One date formatter per zone. Reports bucket thousands of answers by day, and
+ * building an `Intl.DateTimeFormat` per row is the slow part of `partsIn`.
+ */
+const dayFormatters = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * The store's calendar day (YYYY-MM-DD) for an instant, in `zone` (UTC when
+ * the zone is missing or unknown). Reports bucket answers with it, so a store
+ * in California counts an order placed at 21:00 on Monday as Monday, not as
+ * Tuesday the way a UTC bucket did.
+ */
+export function dayKeyInZone(instant: Date, zone: string | null | undefined): string {
+  const name = zoneOrUtc(zone);
+  if (name === "UTC") return instant.toISOString().slice(0, 10);
+  let formatter = dayFormatters.get(name);
+  if (!formatter) {
+    // en-CA formats as YYYY-MM-DD.
+    formatter = new Intl.DateTimeFormat("en-CA", { timeZone: name, year: "numeric", month: "2-digit", day: "2-digit" });
+    dayFormatters.set(name, formatter);
+  }
+  const parts = formatter.formatToParts(instant);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+/** A calendar day `days` after (or before, when negative) `ymd`. */
+export function addDaysToKey(ymd: string, days: number): string {
+  return addDays(ymd, days);
+}
+
+/** The instant 00:00 begins on `ymd` in `zone` (UTC when unknown). */
+export function startOfDayInZone(ymd: string, zone: string | null | undefined): Date {
+  return midnightIn(ymd, zoneOrUtc(zone)) ?? new Date(`${ymd}T00:00:00Z`);
+}
+
+/**
  * The date to show in a date field for a stored rule. A bare `YYYY-MM-DD` (an
  * older rule) is shown as it was typed.
  */

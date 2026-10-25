@@ -582,3 +582,132 @@ describe.each(ADMIN_SURFACES)("$name admin extension bundle", (surface) => {
   });
 });
 
+
+/** A compiled question with the defaults every test here shares. */
+function question(id: string, type: string, extra: Record<string, unknown> = {}) {
+  return {
+    id,
+    type,
+    text: `Question ${id}`,
+    textMultiline: false,
+    required: false,
+    randomizeOptions: false,
+    allowOther: false,
+    options: [],
+    ...extra,
+  };
+}
+
+const LOOK_SURFACE = SURFACES[0];
+
+describe("the merchant's look settings reach the buyer (B1, B2, B4)", () => {
+  it("applies show title, stars, the border and the merchant's own scale words", async () => {
+    const page = await mount(await bundle(LOOK_SURFACE), LOOK_SURFACE, false, {
+      design: {
+        layout: "all",
+        showTitle: false,
+        showProgress: true,
+        ratingStyle: "stars",
+        scaleLowLabel: "Meh",
+        scaleHighLabel: "Wow",
+        cardBorder: "no_border",
+        spacing: "compact",
+      },
+      questions: [question("q1", "rating_5"), question("q2", "text")],
+    });
+    page.setOrder(LOOK_SURFACE.value);
+    await waitFor(() => page.body().textContent?.includes("Question q1") === true);
+
+    // "Show the title" off: no heading at all.
+    expect(page.body().querySelector("s-heading")).toBeNull();
+    // No border: the survey is not wrapped in a bordered box.
+    expect(page.body().querySelector("s-box[border]")).toBeNull();
+    // Stars, not numbers, and the merchant's own words under the scale.
+    const buttons = [...page.body().querySelectorAll("s-button")].slice(0, 5);
+    expect(buttons.map((b) => b.textContent)).toEqual(["☆", "☆", "☆", "☆", "☆"]);
+    expect(page.body().textContent).toContain("Meh");
+    expect(page.body().textContent).toContain("Wow");
+
+    page.click(buttons[3] as unknown as Element);
+    await page.settle();
+    const after = [...page.body().querySelectorAll("s-button")].slice(0, 5).map((b) => b.textContent);
+    expect(after).toEqual(["★", "★", "★", "★", "☆"]);
+  });
+
+  it("uses the defaults when the design is the standard one: title, border, translated anchors", async () => {
+    const page = await mount(await bundle(LOOK_SURFACE), LOOK_SURFACE, false, {
+      design: {
+        layout: "all",
+        showTitle: true,
+        showProgress: true,
+        ratingStyle: "numbers",
+        // The English defaults as stored: never shown as such to a buyer.
+        scaleLowLabel: "Very poor",
+        scaleHighLabel: "Excellent",
+        cardBorder: "border",
+        spacing: "comfortable",
+      },
+      questions: [question("q1", "nps"), question("q2", "rating_5")],
+    });
+    page.setOrder(LOOK_SURFACE.value);
+    await waitFor(() => page.body().textContent?.includes("Question q1") === true);
+
+    expect(page.body().querySelector("s-heading")?.textContent).toBe("Quick question");
+    expect(page.body().querySelector("s-box[border]")).not.toBeNull();
+    const text = page.body().textContent ?? "";
+    // NPS gets "not likely / very likely", ratings "very poor / excellent",
+    // both through the block's translations rather than the stored English.
+    expect(text).toContain("t:sourcetrac.npsLow");
+    expect(text).toContain("t:sourcetrac.npsHigh");
+    expect(text).toContain("t:sourcetrac.ratingLow");
+    expect(text).toContain("t:sourcetrac.ratingHigh");
+    expect(text).not.toContain("Very poor");
+  });
+
+  it("marks the chosen answer, and draws a text question's wording once", async () => {
+    const page = await mount(await bundle(LOOK_SURFACE), LOOK_SURFACE, false, {
+      questions: [
+        question("q1", "single_choice", {
+          options: [
+            { id: "a", label: "Alpha", isOther: false },
+            { id: "b", label: "Beta", isOther: false },
+          ],
+        }),
+        question("q2", "text"),
+      ],
+    });
+    page.setOrder(LOOK_SURFACE.value);
+    await waitFor(() => page.body().querySelectorAll("s-clickable").length === 2);
+
+    const tiles = [...page.body().querySelectorAll("s-clickable")];
+    page.click(tiles[1] as unknown as Element);
+    await page.settle();
+    const chosen = [...page.body().querySelectorAll("s-clickable")][1];
+    expect(chosen?.querySelector("s-icon")?.getAttribute("type")).toBe("check-circle-filled");
+    expect(chosen?.getAttribute("accessibilityLabel") ?? chosen?.getAttribute("accessibilitylabel")).toContain("t:sourcetrac.selected");
+
+    // The text field's own label is for screen readers only; the bold line above is the visible one.
+    const field = page.body().querySelector("s-text-field");
+    expect(field?.getAttribute("labelAccessibilityVisibility") ?? field?.getAttribute("labelaccessibilityvisibility")).toBe("exclusive");
+  });
+});
+
+describe("answers limited to some countries reach only those buyers (F4)", () => {
+  it("hides an answer limited to Japan from a buyer checking out in the US", async () => {
+    const page = await mount(await bundle(LOOK_SURFACE), LOOK_SURFACE, false, {
+      questions: [
+        question("q1", "single_choice", {
+          options: [
+            { id: "a", label: "Instagram", isOther: false },
+            { id: "b", label: "Google", isOther: false },
+            { id: "c", label: "LINE", isOther: false, countries: ["JP"] },
+          ],
+        }),
+      ],
+    });
+    page.setOrder(LOOK_SURFACE.value);
+    await waitFor(() => page.body().querySelectorAll("s-clickable").length > 0);
+    const labels = [...page.body().querySelectorAll("s-clickable")].map((tile) => tile.textContent);
+    expect(labels).toEqual(["Instagram", "Google"]);
+  });
+});

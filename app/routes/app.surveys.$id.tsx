@@ -35,14 +35,15 @@ import {
   type EditorSurvey,
   type SurveyInput,
 } from "~/lib/surveys.server";
-import { getShopDisplay, getShopLocaleInfo } from "~/lib/studio.server";
+import { getProductTitles, getShopDisplay, getShopLocaleInfo } from "~/lib/studio.server";
 import { isValidTimeZone } from "@shared/zoned-date";
 import { grantedSyncScopes } from "~/lib/scopes.server";
+import { presetLabels } from "~/lib/channel-presets.server";
 import { getBlockSeen, markBlockAdded } from "~/lib/block-seen.server";
 import { BlockMissingBanner, postedPlacements } from "~/components/block-missing";
 import { checkoutEditorUrl, placementsMissingBlock } from "~/lib/checkout-editor";
 import { effectivePlan } from "~/lib/plans";
-import { LANGUAGES } from "~/lib/i18n";
+import { BUYER_LANGUAGES } from "@shared/buyer-languages";
 import { LIMITS } from "@shared/survey-rules";
 import { planTier } from "@shared/plan-features";
 import { getReadiness, readinessBlocksGoLive } from "@shared/templates/readiness";
@@ -88,7 +89,9 @@ export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) =>
     shopCurrency: display.currencyCode ?? null,
     // Start and end dates are the store's calendar days, in its own zone.
     shopTimeZone: isValidTimeZone(localeInfo.timeZone) ? localeInfo.timeZone : null,
-    languages: LANGUAGES.map((l) => ({ code: l.code, name: l.nativeName })),
+    // Every buyer language a survey can be translated into, not only the
+    // admin's ten (B11): Arabic, Hebrew, Korean, Polish and more.
+    languages: BUYER_LANGUAGES.map((l) => ({ code: l.code, name: l.name, rtl: l.rtl === true })),
     defaultLanguage: resolveAdminLanguage(request, shop.language, shop.adminLocale),
     limits: LIMITS,
     plan: planTier(effectivePlan(shop)),
@@ -99,6 +102,15 @@ export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) =>
     // Which pages have ever shown the SourceTrac block. "Live" is only claimed
     // for those; anywhere else the merchant is sent to add the block.
     blockSeen: await getBlockSeen(shop.id),
+    // "Use answers for a country": the generic answers' wording in the
+    // merchant's language and every buyer language, and the store's country.
+    presetLabels: presetLabels(resolveAdminLanguage(request, shop.language, shop.adminLocale)),
+    shopCountry: localeInfo.countryCode,
+    // Names for the products the survey's product rule picks (F5).
+    productTitles:
+      (survey.targeting.productIds?.length ?? 0) > 0
+        ? await getProductTitles(shop.id, shop.shopDomain, session.accessToken, survey.targeting.productIds ?? [])
+        : {},
   };
 });
 
@@ -457,7 +469,15 @@ export default function SurveyEditorPage() {
             <s-section heading={t("editor.questions_title")}>
               <s-stack gap="base">
                 <s-text color="subdued">{t("editor.questions_help")}</s-text>
-                <QuestionList draft={draft} update={update} t={t} limits={limits} errors={errors} plan={plan} />
+                <QuestionList
+                  draft={draft}
+                  update={update}
+                  t={t}
+                  limits={limits}
+                  errors={errors}
+                  plan={plan}
+                  presets={{ labels: data.presetLabels, shopCountry: data.shopCountry, language }}
+                />
               </s-stack>
             </s-section>
 
@@ -500,6 +520,7 @@ export default function SurveyEditorPage() {
                     errors={errors}
                     t={t}
                     plan={plan}
+                    productTitles={data.productTitles}
                   />
                 </details>
               </s-stack>
@@ -508,7 +529,7 @@ export default function SurveyEditorPage() {
             <s-section heading={t("editor.optional_title")}>
               <s-stack gap="small">
                 <details className="st-details">
-                  <summary>{t("editor.wording_title")}</summary>
+                  <summary>{t("editor.look_title")}</summary>
                   <FrameText draft={draft} update={update} t={t} limits={limits} />
                 </details>
                 <details className="st-details">

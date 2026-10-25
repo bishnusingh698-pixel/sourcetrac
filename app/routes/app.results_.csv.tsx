@@ -11,6 +11,7 @@ import { authenticate } from "~/shopify.server";
 import { createTranslator } from "~/lib/i18n";
 import { windowBounds } from "~/lib/analytics";
 import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
+import { parseCountryParam } from "@shared/countries";
 
 /** The Results page's ranges in days; anything else is all time. */
 const RANGE_DAYS: Record<string, number> = { "7": 7, "30": 30, "90": 90 };
@@ -33,7 +34,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const t = createTranslator(resolveAdminLanguage(request, shop.language, shop.adminLocale));
   // The same date range as the Results page the merchant downloaded from.
   const days = RANGE_DAYS[url.searchParams.get("range") ?? ""] ?? null;
-  const window = days === null ? null : windowBounds(days, new Date());
+  const window = days === null ? null : windowBounds(days, new Date(), resolveExportTimeZone(context.timeZone));
 
   const file = selectedId
     ? await buildSurveyExport({
@@ -43,6 +44,8 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
         t,
         surveyId: selectedId,
         ...(window ? { start: window.start, end: window.end } : {}),
+        // The same country filter as the page the merchant downloaded from.
+        country: parseCountryParam(url.searchParams.get("country")),
       })
     : { ...toSurveyTable([], []), truncated: false };
 

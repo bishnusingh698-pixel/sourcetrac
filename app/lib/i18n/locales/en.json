@@ -18,7 +18,8 @@
     "channels": "Channel report",
     "preferences": "Settings",
     "current": "(current page)",
-    "templates": "Templates"
+    "templates": "Templates",
+    "analytics": "Analytics"
   },
   "common": {
     "cancel": "Cancel",
@@ -95,7 +96,8 @@
     "total_row": "Total",
     "rate_line": "Response rate: {{rate}}. {{answered}} of {{total}} orders in this period answered.",
     "other_title": "In buyers' own words",
-    "other_subtitle": "What buyers wrote when none of your channels fit. Newest first."
+    "other_subtitle": "What buyers wrote when none of your channels fit. Newest first.",
+    "last_365": "Last 12 months"
   },
   "settings": {
     "title": "Settings",
@@ -141,7 +143,7 @@
     "language_step_skip": "Skip for now",
     "language_detected": "Detected from your Shopify admin",
     "step4_title": "Read your results",
-    "step4_body": "Results groups answers by question and shows the revenue behind each channel.",
+    "step4_body": "Analytics shows where buyers came from, the revenue behind each channel, and every question's answers.",
     "step4_action": "View results",
     "step1_body_done": "You have a live survey.",
     "step2_body_done": "The SourceTrac block has loaded on your Thank-you page."
@@ -161,7 +163,7 @@
     "truncated": "This file holds only the newest {{limit}} answers. Older answers were left out.",
     "choose_label": "What to download",
     "choose_all": "All surveys",
-    "choose_channels": "Channel report only (how buyers heard about you)",
+    "choose_channels": "Channels only (how buyers heard about you)",
     "shape_all": "One row per answer, with its survey and question. An order with several answers has several rows, so don't add up order_total.",
     "shape_survey": "One row per buyer, with one column per question.",
     "shape_channels": "One row per order, with the channel the buyer chose."
@@ -263,7 +265,7 @@
     "faq_title": "Frequently asked",
     "contact_tip": "Before writing, the fastest fix for a missing survey is usually the checkout editor check in the first two answers above.",
     "q_create": "How do I create my survey?",
-    "a_create": "Go to Surveys and choose New survey. Pick a template or start from scratch, edit the questions and press Go live. To show it to buyers, in Shopify admin go to Settings › Checkout, click Customize, choose Thank you from the page menu at the top, add the “SourceTrac survey” block and press Save. You only add the block once.",
+    "a_create": "The fastest way is Surveys › Quick start: pick where most of your buyers are, check the answers and press Go live. You can also pick a template under Surveys › Templates. Then add the block: in Shopify admin go to Settings › Checkout, click Customize, choose Thank you from the page menu at the top, add the “SourceTrac survey” block and press Save. You only add the block once.",
     "q_not_showing": "Why is the question not showing on my thank-you page?",
     "a_not_showing": "Four things are worth checking. First, the survey must be live in SourceTrac. Second, the “SourceTrac survey” block must be on the Thank you page in Shopify's checkout editor (Settings › Checkout › Customize, then Thank you in the page menu), and the editor saved. Third, each order is asked only once: an order that already answered never shows the survey again, so test with a new order. Fourth, Shopify does not offer the Thank you page block on the Starter plan.",
     "q_missing_revenue": "Why is one of my answers missing revenue?",
@@ -287,7 +289,13 @@
     "q_once_per_order": "I answered once and now the survey doesn't show. Why?",
     "a_once_per_order": "Each order is asked only once. After an answer, SourceTrac never shows that order the survey again, even if the page is reloaded, so buyers are never asked twice. To test again, place a new order.",
     "q_order_status": "Can the survey also show on the Order status page?",
-    "a_order_status": "Yes, as an optional extra. The Order status page is where buyers land when they open “View your order” from their order emails. Tick it under “Where it shows” in the survey, then in the checkout editor choose Order status from the page menu, add the “SourceTrac survey” block and press Save. It's in the menu only if your store uses Shopify's new customer accounts (Settings › Customer accounts). Each order is still asked only once."
+    "a_order_status": "Yes, as an optional extra. The Order status page is where buyers land when they open “View your order” from their order emails. Tick it under “Where it shows” in the survey, then in the checkout editor choose Order status from the page menu, add the “SourceTrac survey” block and press Save. It's in the menu only if your store uses Shopify's new customer accounts (Settings › Customer accounts). Each order is still asked only once.",
+    "q_countries": "My buyers are in several countries. Can the answers differ?",
+    "a_countries": "Yes. In the survey editor, “Use answers for a country” loads the apps and sites buyers in a country usually find shops on. The globe button next to an answer shows it only to buyers in the countries you pick (Growth), so one survey can offer LINE in Japan and Snapchat in the Gulf. For different questions, duplicate the survey, limit it to those countries under “Who sees it” and move it above the other on the Surveys page.",
+    "q_look": "Can I change the survey's colours and fonts?",
+    "a_look": "The survey always uses your checkout's own fonts and colours (Settings › Checkout › Customize), because Shopify doesn't let apps change them, so it always looks like part of your store. Under “Look and wording” in the survey you can change the title, intro, button and thank-you text, show questions one at a time, use stars for ratings, set the words under a scale, and choose a border and spacing.",
+    "q_languages": "Will buyers see the survey in their language?",
+    "a_languages": "Templates and the quick start come translated into ten languages. Under “Languages” in the survey you can add or change translations, including Arabic, Hebrew, Korean, Polish, Turkish and the Nordic languages. A buyer sees their checkout language when the survey has it, and your own wording otherwise; the buttons are translated for all of these languages."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac is not available on your plan",
@@ -576,7 +584,9 @@
     "check_new_order": "Each order is asked only once. Test with a new order, then see “Recent checkouts” below for what happened.",
     "check_block_never_order_status": "Order status page: the SourceTrac block hasn't loaded here yet. In the checkout editor, choose Order status from the page menu, add the “SourceTrac survey” block and press Save. The page is in the menu only if your store uses new customer accounts.",
     "validation_currency_unavailable": "Your store's currency could not be read just now. Try saving again in a moment.",
-    "validation_order_value_range": "The maximum order value must be at least the minimum."
+    "validation_order_value_range": "The maximum order value must be at least the minimum.",
+    "reason_products": "“{{survey}}” is limited to orders with some products, and this order had none of them.",
+    "reason_products_unknown": "“{{survey}}” is limited to orders with some products, and this checkout didn't say which products were ordered. Make sure your SourceTrac blocks are up to date."
   },
   "templates": {
     "nps": {
@@ -676,7 +686,10 @@
     "status_total_unreadable": "Total unreadable",
     "status_no_order": "No order",
     "survey_label": "Survey",
-    "export_cta": "Export CSV"
+    "export_cta": "Export CSV",
+    "col_buyer": "Buyer",
+    "first_order": "First order",
+    "returning": "Returning buyer"
   },
   "logic": {
     "title": "Logic map",
@@ -781,7 +794,7 @@
     "view": "View",
     "reliable_ideas": "Your {{name}} results are reliable. See what buyers told you.",
     "unpublished": "{{name}} has unpublished changes. Review and publish.",
-    "open_report": "Open channel report",
+    "open_report": "See all channels",
     "do_it": "Go",
     "see_results": "See the latest answers to {{name}}.",
     "subtitle": "Your store at a glance: revenue by channel, customer scores and every survey.",
@@ -810,7 +823,7 @@
     "buyers_unknown_other": "{{count}} orders did not say whether they were a first order.",
     "surveys_subtitle": "Live surveys, and any others that got answers. {{range}}.",
     "col_key_result": "Key result",
-    "compare_surveys": "Compare surveys in Results",
+    "compare_surveys": "Compare surveys in Analytics",
     "capped_note": "Scores, buyers and surveys are based on the newest {{limit}} answers in this period."
   },
   "support": {
@@ -840,7 +853,7 @@
     "questions_help": "Keep it short. One to three questions get the most answers.",
     "placement_thank_you": "Thank-you page",
     "who_title": "Who sees it",
-    "more_rules": "More rules (order value, countries, dates)",
+    "more_rules": "More rules (order value, countries, products, dates)",
     "optional_title": "Optional",
     "wording_title": "Title, intro and buttons",
     "languages_title": "Languages",
@@ -989,8 +1002,8 @@
     "learn_stop_done": "Auto-stop already paused this survey once. It won't pause it again; switch it off and on to arm it again.",
     "status_auto_paused": "Paused automatically: the results became reliable. Buyers don't see this survey. Turn it back on any time; it won't pause itself again.",
     "other_label": "Label for the “Other” answer",
-    "channel_question": "Count this in the Channel report",
-    "channel_question_details": "Tick this for a “How did you hear about us?” question. Its answers become your channels, with their revenue, on the Dashboard and the Channel report.",
+    "channel_question": "Count these answers as your channels in Analytics",
+    "channel_question_details": "Tick this for a “How did you hear about us?” question. Its answers become your channels, with their revenue, on Home and under Analytics › Channels.",
     "where_title": "Where it shows",
     "placement_order_status": "Order status page",
     "audience_order_status_note": "On the Order status page, SourceTrac knows whether it is a first order only when the Thank-you page also has the SourceTrac block. Other orders don't see this survey there.",
@@ -999,7 +1012,47 @@
     "placement_once": "Each order is asked once. If a buyer answers on one page, the survey is hidden on the other.",
     "store_step_order_status": "For the Order status page: in the same page menu choose Order status, add the “SourceTrac survey” block there and press Save. It's in the menu only if your store uses new customer accounts (Settings › Customer accounts).",
     "block_order_status_title": "Add the SourceTrac block to your Order status page too",
-    "block_missing_order_status_body": "This survey is also set to show on the Order status page, but the block hasn't loaded there yet. In the checkout editor, choose Order status from the page menu, add the “SourceTrac survey” block and press Save. If Order status isn't in the menu, your store uses classic customer accounts: switch under Settings › Customer accounts, or untick the page in “Where it shows”."
+    "block_missing_order_status_body": "This survey is also set to show on the Order status page, but the block hasn't loaded there yet. In the checkout editor, choose Order status from the page menu, add the “SourceTrac survey” block and press Save. If Order status isn't in the menu, your store uses classic customer accounts: switch under Settings › Customer accounts, or untick the page in “Where it shows”.",
+    "look_title": "Look and wording",
+    "look_help": "Fonts and colours always follow your checkout branding (Settings › Checkout › Customize). Shopify doesn't let apps change them, so the survey always matches your store.",
+    "layout_details": "One at a time shows a Next button between questions. All on one screen suits one to three short questions.",
+    "show_title_details": "The short heading above the questions.",
+    "show_progress": "Show progress (for example “1 of 3”)",
+    "title_details": "Shown above the questions when “Show the title” is on.",
+    "intro_details": "One line under the title. Leave empty for none.",
+    "button_details": "The button buyers press to send their answers.",
+    "thanks_details": "Shown for a few seconds after a buyer answers, then the block closes.",
+    "frame": "Frame",
+    "frame_border": "In a box with a border",
+    "frame_none": "No border",
+    "frame_details": "A box sets the survey apart from the order details around it.",
+    "spacing": "Spacing",
+    "spacing_comfortable": "Comfortable",
+    "spacing_compact": "Compact",
+    "rating_style_details": "Stars fill up to the buyer's choice. Numbers show 1 to 5.",
+    "scale_low": "Words at the low end of the scale",
+    "scale_high": "Words at the high end of the scale",
+    "scale_details": "Shown under rating and 0 to 10 questions. Leave empty for the standard words, translated for every buyer: “Very poor” to “Excellent” for ratings, “Not likely” to “Very likely” for 0 to 10.",
+    "answer_type_details": "How buyers answer: tap one, tick several, pick a score or write.",
+    "required_details": "Buyers can't send their answers until they answer this one. Leave it off to let them skip it.",
+    "placeholder_details": "Grey example text inside the empty answer box.",
+    "long_answer_details": "A taller box for answers longer than a few words.",
+    "answer_countries_button": "Countries for {{label}}",
+    "answer_countries_title": "Show “{{label}}” only in these countries",
+    "answer_countries_details": "Buyers checking out elsewhere don't see this answer. Leave all unticked to show it everywhere. Use it to list LINE only for Japan, or Snapchat only for the Gulf, in one survey.",
+    "answer_countries_summary": "Only shown in: {{list}}",
+    "answer_countries_locked": "Showing an answer only in some countries is available on {{plan}}.",
+    "products": "Only orders with these products",
+    "products_details": "Shows the survey only when the order includes at least one of these products. Leave empty for every order.",
+    "products_none": "No product chosen: every order can see the survey.",
+    "products_choose": "Choose products",
+    "products_change": "Change products",
+    "products_remove": "Remove {{name}}",
+    "products_missing": "Product {{id}} (no longer found in your store)",
+    "products_unavailable": "Shopify's product picker couldn't open here. Reload the page and try again.",
+    "countries_other_questions": "Want different questions for buyers in one country? Duplicate this survey, set its countries here and move it above this one on the Surveys page.",
+    "language_rtl": "Written right to left. Shopify's checkout lays the survey out right to left for these buyers.",
+    "audience_details": "Shopify tells us on the Thank-you page whether this is the buyer's first order with your store."
   },
   "preview": {
     "title": "Preview",
@@ -1020,7 +1073,9 @@
     "next": "Next",
     "try_it": "Click through it like a buyer. Nothing is saved.",
     "other_label": "Other",
-    "other_placeholder": "Tell us more"
+    "other_placeholder": "Tell us more",
+    "rating_low": "Very poor",
+    "rating_high": "Excellent"
   },
   "privacy": {
     "notice": "SourceTrac keeps survey answers and order details for {{months}} months. It never stores buyer names, emails, phone numbers, addresses or payment details.",
@@ -1050,5 +1105,64 @@
     "policy_text": "After checkout we may ask you a short optional survey, such as how you heard about us. Your answers are stored with your order number by our survey provider, SourceTrac, for up to {{months}} months, and are used only to understand which channels bring us customers. They are never sold or used for advertising.",
     "actions_notice": "Shopify actions copy answers into your Shopify store as order tags, customer tags or customer metafields. They then follow Shopify's rules for your store data, not SourceTrac's deletion schedule.",
     "export_notice": "The file contains order numbers, answers and order totals, and any text buyers typed. Keep it as safely as your other store records."
+  },
+  "presets": {
+    "load_title": "Use answers for a country",
+    "load_help": "Pick where most of your buyers are. You get the apps and sites people there usually find shops on, ready to edit.",
+    "country_label": "Country",
+    "search": "Search countries",
+    "no_match": "No country matches that search.",
+    "preview": "Answers for {{country}}: {{list}}",
+    "replace": "Replace my answers",
+    "add_one": "Add {{count}} missing answer",
+    "add_other": "Add {{count}} missing answers",
+    "replace_note": "Answers you keep stay linked to their results. Results for an answer you remove are kept too.",
+    "full": "This question already has the most answers it can hold ({{max}}).",
+    "only_there": "Show the added answers only to buyers in {{country}} and the countries grouped with it",
+    "only_there_details": "Buyers elsewhere keep seeing your other answers. Change the list with the globe button next to each answer.",
+    "only_there_locked": "Answers shown only in some countries are available on {{plan}}."
+  },
+  "quick": {
+    "title": "Quick start",
+    "subtitle": "Get a “How did you hear about us?” survey live in about two minutes. You can change everything later.",
+    "templates_link": "Browse templates instead",
+    "country_title": "1. Where are most of your buyers?",
+    "country_help": "We load the apps and sites people there usually find shops on.",
+    "answers_title": "2. Choose the answers buyers can pick",
+    "answers_help": "Usual answers for {{country}}. Untick any that don't apply and add your own.",
+    "add_label": "Add your own answer",
+    "add_button": "Add",
+    "custom_remove": "Remove {{label}}",
+    "other": "Add “Other” with a text box",
+    "other_details": "Buyers whose answer isn't listed can type it. You'll see what they wrote in Analytics.",
+    "follow_up": "Ask which creator or account, after a social app or a creator",
+    "follow_up_details": "A second, optional question. Without it, buyers answer with a single tap.",
+    "launch_title": "3. Go live",
+    "launch_help": "Buyers see the survey on your Thank-you page once the SourceTrac block is added in Shopify's checkout editor. We open it for you next.",
+    "go_live": "Go live",
+    "create_draft": "Create survey",
+    "limit_note_one": "Your plan includes {{count}} live survey and it is in use, so this survey is saved as a draft. Pause the other one or upgrade to run both.",
+    "limit_note_other": "Your plan includes {{count}} live surveys and they are all in use, so this survey is saved as a draft. Pause one or upgrade to run more.",
+    "too_few": "Pick at least {{min}} answers.",
+    "failed": "The survey couldn't be created. Try again in a moment.",
+    "cta": "Quick start (2 minutes)"
+  },
+  "tabs": {
+    "label": "Pages in this section",
+    "my_surveys": "My surveys",
+    "templates": "Templates",
+    "quick_start": "Quick start",
+    "channels": "Channels",
+    "results": "Survey results",
+    "answers": "Answers",
+    "export": "Export"
+  },
+  "analytics": {
+    "country_filter": "Buyers in",
+    "all_countries": "All countries",
+    "country_option": "{{country}} ({{count}})",
+    "zone_note": "Days follow your store's time zone ({{zone}}).",
+    "country_note": "Only buyers who checked out in {{country}}.",
+    "rate_unavailable_country": "The answer rate isn't shown for one country: Shopify orders don't record where the buyer checked out, so there is nothing to set the answers against."
   }
 }

@@ -2,9 +2,10 @@ import { useState } from "react";
 
 import { Banner } from "~/components/admin-ui";
 import { CountryPicker } from "~/components/country-picker";
+import { ProductPicker } from "~/components/product-picker";
 import { JustInTimeNotice } from "~/components/data-notice";
 import { LockedNote, checkboxChecked, fieldValue, numberOrNull, type TFn } from "~/components/survey-editor";
-import { LIMITS } from "@shared/survey-rules";
+import { LIMITS, customScaleLabel } from "@shared/survey-rules";
 import { planHas, usesAdvancedTargeting, type PlanTier } from "@shared/plan-features";
 import { SMART_ACTION_PRESETS } from "@shared/templates/smart-actions";
 import { normalizeTagTemplates, tagsForAnswer } from "@shared/sync-tags";
@@ -57,6 +58,9 @@ export function Audience({ draft, update, t }: { draft: EditorSurvey; update: Up
       <s-choice value="first_order">{t("editor.audience_first")}</s-choice>
       <s-choice value="returning">{t("editor.audience_returning")}</s-choice>
     </s-choice-list>
+    <s-text color="subdued" fontSize="small">
+      {t("editor.audience_details")}
+    </s-text>
     {orderStatusNote ? (
       <s-text color="subdued" fontSize="small">
         {t("editor.audience_order_status_note")}
@@ -76,9 +80,12 @@ export function AdvancedTargeting({
   errors,
   t,
   plan,
+  productTitles = {},
 }: {
   draft: EditorSurvey;
   update: Update;
+  /** Titles of the products the survey's product rule names (F5). */
+  productTitles?: Record<string, string>;
   /** The store's currency; null when Shopify could not be asked just now. */
   shopCurrency: string | null;
   /** The store's IANA zone; dates are the store's calendar days. */
@@ -150,6 +157,16 @@ export function AdvancedTargeting({
         onChange={(codes) => set({ countries: codes.length > 0 ? codes : undefined })}
         language={language}
         error={errors.get("targeting.countries")}
+        t={t}
+      />
+      <s-text color="subdued" fontSize="small">
+        {t("editor.countries_other_questions")}
+      </s-text>
+      <ProductPicker
+        value={targeting.productIds ?? []}
+        titles={productTitles}
+        max={LIMITS.MAX_TARGET_PRODUCTS}
+        onChange={(ids) => set({ productIds: ids.length > 0 ? ids : undefined })}
         t={t}
       />
       <s-stack gap="small-200">
@@ -369,7 +386,7 @@ export function Languages({
 }: {
   draft: EditorSurvey;
   update: Update;
-  languages: Array<{ code: string; name: string }>;
+  languages: Array<{ code: string; name: string; rtl?: boolean }>;
   defaultLanguage: string;
   t: TFn;
   limits: typeof LIMITS;
@@ -426,6 +443,11 @@ export function Languages({
           </s-option>
         ))}
       </s-select>
+      {others.find((language) => language.code === locale)?.rtl ? (
+        <s-text color="subdued" fontSize="small">
+          {t("editor.language_rtl")}
+        </s-text>
+      ) : null}
 
       {draft.questions.map((question, qi) => (
         <s-box key={question.id || qi} padding="small" border="base" borderRadius="base">
@@ -463,6 +485,14 @@ export function Languages({
           <s-text-field label={t("editor.intro")} placeholder={draft.intro ?? ""} maxLength={limits.MAX_INTRO_TEXT} value={String(current.intro ?? "")} onInput={(e: Event) => setFrame("intro", fieldValue(e))} />
           <s-text-field label={t("editor.button")} placeholder={draft.buttonLabel} maxLength={limits.MAX_BUTTON_LABEL} value={String(current.buttonLabel ?? "")} onInput={(e: Event) => setFrame("buttonLabel", fieldValue(e))} />
           <s-text-field label={t("editor.thanks")} placeholder={draft.thankYouText} maxLength={limits.MAX_THANK_YOU_TEXT} value={String(current.thankYouText ?? "")} onInput={(e: Event) => setFrame("thankYouText", fieldValue(e))} />
+          {/* Only the merchant's own scale words need translating: the
+              standard ones are already translated for every buyer. */}
+          {customScaleLabel(draft.design.scaleLowLabel) ? (
+            <s-text-field label={t("editor.scale_low")} placeholder={draft.design.scaleLowLabel} maxLength={limits.MAX_SCALE_LABEL} value={String(current.scaleLowLabel ?? "")} onInput={(e: Event) => setFrame("scaleLowLabel", fieldValue(e))} />
+          ) : null}
+          {customScaleLabel(draft.design.scaleHighLabel) ? (
+            <s-text-field label={t("editor.scale_high")} placeholder={draft.design.scaleHighLabel} maxLength={limits.MAX_SCALE_LABEL} value={String(current.scaleHighLabel ?? "")} onInput={(e: Event) => setFrame("scaleHighLabel", fieldValue(e))} />
+          ) : null}
         </s-stack>
       </details>
     </s-stack>

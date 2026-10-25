@@ -271,9 +271,10 @@ describe("the survey CSV files", () => {
 
   it("downloads exactly one survey, one row per buyer", async () => {
     const file = await buildSurveyExport({ ...base(), surveyId: channelSurvey.id });
-    expect(file.headers.at(-1)).toBe("Where did you find us?");
+    // The question columns, then the three buyer columns appended in this pass.
+    expect(file.headers.slice(-4)).toEqual(["Where did you find us?", "country", "buyer_language", "first_order"]);
     expect(file.rows).toHaveLength(4);
-    expect(file.rows.map((row) => row.at(-1)).sort()).toEqual(["Google", "Google", "Instagram", "Instagram"]);
+    expect(file.rows.map((row) => row.at(-4)).sort()).toEqual(["Google", "Google", "Instagram", "Instagram"]);
     expect(await countSurveyResponses(shopId, channelSurvey.id)).toBe(4);
     expect(tableToCsv(file).startsWith("﻿order,submitted_at")).toBe(true);
   });
