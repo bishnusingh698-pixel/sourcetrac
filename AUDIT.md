@@ -120,6 +120,37 @@ behind a rate limit would be the one part of the app that can be slow or down.
 8. B10/B11/F9 (languages), F10.
 9. Verification: full check, build, re-read of every changed file, tricky cases.
 
-## Verification log
+## Verification log (2026-10-25)
 
-See the end of this file once the work is done.
+- `npm run check` (typecheck, extension typecheck, `check:extensions`,
+  `check:build-deps`, full suite against Postgres 18): **110 files, 1,451 tests,
+  all green** (baseline was 104 files / 1,391). `npm run build` clean;
+  `grep process.env build/client/assets/*.js` empty; template wording is not in
+  the client bundle (the quick start chunk is 5 KB).
+- Checkout bundles built the way Shopify CLI builds them: 17.2 KB gzipped each
+  (16.4 KB before), far under the 64 KB limit.
+- Migration `20261025090000_option_countries` applied to a database at the
+  previous release's schema holding surveys and options: existing options read
+  `countries = '[]'` (every country), nothing else changed.
+- Built server smoke test: `/healthz` 200 without touching the database;
+  `/api/survey` without a token 401 with `Access-Control-Allow-Origin: *`; an
+  admin page without a session returns the App Bridge sign-in page, not an error.
+- Tricky cases covered by tests added in this pass:
+  - a store with zero answers (empty Analytics, country filter hidden);
+  - a store with thousands of answers (Results' 5,000 cap unchanged; 12-month
+    range bounded);
+  - missing translations (field-by-field fallback; Arabic/Hebrew; regional tags);
+  - a buyer skipping optional questions (Submit stays off until one answer);
+  - conditional follow-ups (editor repair; quick start's creator follow-up only
+    after a social app);
+  - date ranges across time zones (Los Angeles evening orders, Berlin's
+    25-hour day, unknown zone falls back to UTC);
+  - answers limited to countries (hidden elsewhere, never an empty question);
+  - product targeting (match, no match, empty, older block);
+  - the backend down for the whole retry budget (answer kept and sent on the
+    next load; a refused answer is not kept).
+- Not verifiable from this container: how Polaris renders the admin and the
+  checkout block on a real store (`cdn.shopify.com` is blocked), App Bridge's
+  product picker inside the admin, and Shopify's `storage` lifetime in a real
+  checkout. Each degrades safely (picker unavailable message; no storage means
+  the old behaviour).
