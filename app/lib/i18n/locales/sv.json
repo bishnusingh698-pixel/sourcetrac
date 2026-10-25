@@ -1079,5 +1079,43 @@
     "policy_text": "Efter köpet kan vi be dig svara på en kort, frivillig enkät, till exempel om hur du hörde talas om oss. Dina svar sparas tillsammans med ditt ordernummer av vår enkätleverantör, SourceTrac, i upp till {{months}} månader och används bara för att förstå vilka kanaler som ger oss kunder. De säljs aldrig och används aldrig för reklam.",
     "actions_notice": "Shopify-åtgärder kopierar svar till din Shopify-butik som ordertaggar, kundtaggar eller kundmetafält. Därefter gäller Shopifys regler för din butiksdata, inte SourceTracs raderingsschema.",
     "export_notice": "Filen innehåller ordernummer, svar, ordervärden och text som köpare har skrivit. Förvara den lika säkert som dina andra butiksuppgifter."
+  },
+  "presets": {
+    "load_title": "Använd svar för ett land",
+    "load_help": "Välj var de flesta av dina köpare finns. Du får de appar och sajter som människor där oftast hittar butiker på, redo att redigera.",
+    "country_label": "Land",
+    "search": "Sök länder",
+    "no_match": "Inget land matchar sökningen.",
+    "preview": "Svar för {{country}}: {{list}}",
+    "replace": "Ersätt mina svar",
+    "add_one": "Lägg till {{count}} saknat svar",
+    "add_other": "Lägg till {{count}} saknade svar",
+    "replace_note": "Svar du behåller förblir kopplade till sina resultat. Resultaten för ett borttaget svar sparas också.",
+    "full": "Frågan har redan det högsta antalet svar ({{max}})."
+  },
+  "quick": {
+    "title": "Snabbstart",
+    "subtitle": "Få en enkät ”Hur hittade du oss?” live på ungefär två minuter. Du kan ändra allt senare.",
+    "templates_link": "Bläddra bland mallar i stället",
+    "country_title": "1. Var finns de flesta av dina köpare?",
+    "country_help": "Vi laddar de appar och sajter som människor där oftast hittar butiker på.",
+    "answers_title": "2. Välj svaren köparna kan välja",
+    "answers_help": "Vanliga svar för {{country}}. Avmarkera det som inte passar och lägg till egna.",
+    "add_label": "Lägg till ett eget svar",
+    "add_button": "Lägg till",
+    "custom_remove": "Ta bort {{label}}",
+    "other": "Lägg till ”Annat” med en textruta",
+    "other_details": "Köpare vars svar inte finns med kan skriva det. Du ser vad de skrev under Analys.",
+    "follow_up": "Fråga vilken kreatör eller vilket konto, efter en social app eller en kreatör",
+    "follow_up_details": "En andra, frivillig fråga. Utan den svarar köparna med ett enda tryck.",
+    "launch_title": "3. Gå live",
+    "launch_help": "Köparna ser enkäten på din tacksida så snart SourceTrac-blocket har lagts till i Shopifys kassaredigerare. Vi öppnar den åt dig härnäst.",
+    "go_live": "Gå live",
+    "create_draft": "Skapa enkät",
+    "limit_note_one": "Din plan har {{count}} aktiv enkät och den används redan, så den här sparas som utkast. Pausa den andra eller uppgradera för att köra båda.",
+    "limit_note_other": "Din plan har {{count}} aktiva enkäter och alla används, så den här sparas som utkast. Pausa en eller uppgradera.",
+    "too_few": "Välj minst {{min}} svar.",
+    "failed": "Enkäten kunde inte skapas. Försök igen om en stund.",
+    "cta": "Snabbstart (2 minuter)"
   }
 }

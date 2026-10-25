@@ -1079,5 +1079,43 @@
     "policy_text": "Na het afrekenen kunnen we je een korte, vrijwillige enquête voorleggen, bijvoorbeeld over hoe je over ons hebt gehoord. Je antwoorden worden samen met je bestelnummer maximaal {{months}} maanden bewaard door onze enquêteprovider, SourceTrac, en alleen gebruikt om te begrijpen via welke kanalen klanten bij ons komen. Ze worden nooit verkocht of gebruikt voor advertenties.",
     "actions_notice": "Shopify-acties kopiëren antwoorden naar je Shopify-winkel als bestellingtags, klanttags of klantmetavelden. Daarna gelden de regels van Shopify voor je winkelgegevens, niet het verwijderschema van SourceTrac.",
     "export_notice": "Het bestand bevat bestelnummers, antwoorden, besteltotalen en tekst die kopers hebben getypt. Bewaar het net zo veilig als je andere winkelgegevens."
+  },
+  "presets": {
+    "load_title": "Antwoorden voor een land gebruiken",
+    "load_help": "Kies waar de meeste van je kopers zijn. Je krijgt de apps en sites waarop mensen daar meestal winkels vinden, klaar om aan te passen.",
+    "country_label": "Land",
+    "search": "Landen zoeken",
+    "no_match": "Geen land komt overeen met die zoekopdracht.",
+    "preview": "Antwoorden voor {{country}}: {{list}}",
+    "replace": "Mijn antwoorden vervangen",
+    "add_one": "{{count}} ontbrekend antwoord toevoegen",
+    "add_other": "{{count}} ontbrekende antwoorden toevoegen",
+    "replace_note": "Antwoorden die je houdt blijven aan hun resultaten gekoppeld. Ook de resultaten van een verwijderd antwoord blijven bewaard.",
+    "full": "Deze vraag heeft al het maximale aantal antwoorden ({{max}})."
+  },
+  "quick": {
+    "title": "Snel starten",
+    "subtitle": "Zet in ongeveer twee minuten een enquête ‘Hoe heb je ons gevonden?’ live. Je kunt later alles aanpassen.",
+    "templates_link": "Liever sjablonen bekijken",
+    "country_title": "1. Waar zijn de meeste van je kopers?",
+    "country_help": "We laden de apps en sites waarop mensen daar meestal winkels vinden.",
+    "answers_title": "2. Kies de antwoorden die kopers kunnen kiezen",
+    "answers_help": "Gebruikelijke antwoorden voor {{country}}. Vink uit wat niet past en voeg je eigen toe.",
+    "add_label": "Eigen antwoord toevoegen",
+    "add_button": "Toevoegen",
+    "custom_remove": "{{label}} verwijderen",
+    "other": "‘Anders’ met een tekstvak toevoegen",
+    "other_details": "Kopers van wie het antwoord er niet tussen staat, kunnen het typen. Je ziet wat ze schreven onder Analyse.",
+    "follow_up": "Na een sociale app of een creator vragen welk account het was",
+    "follow_up_details": "Een tweede, optionele vraag. Zonder die vraag antwoorden kopers met één tik.",
+    "launch_title": "3. Live zetten",
+    "launch_help": "Kopers zien de enquête op je bedankpagina zodra het SourceTrac-blok in de checkout-editor van Shopify is toegevoegd. Die openen we hierna voor je.",
+    "go_live": "Live zetten",
+    "create_draft": "Enquête maken",
+    "limit_note_one": "Je abonnement bevat {{count}} live enquête en die is in gebruik, dus deze wordt als concept opgeslagen. Pauzeer de andere of upgrade om beide te gebruiken.",
+    "limit_note_other": "Je abonnement bevat {{count}} live enquêtes en die zijn allemaal in gebruik, dus deze wordt als concept opgeslagen. Pauzeer er een of upgrade.",
+    "too_few": "Kies minstens {{min}} antwoorden.",
+    "failed": "De enquête kon niet worden gemaakt. Probeer het zo opnieuw.",
+    "cta": "Snel starten (2 minuten)"
   }
 }

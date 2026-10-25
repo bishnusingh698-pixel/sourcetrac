@@ -195,9 +195,14 @@ export default function Surveys() {
     : null;
 
   const createActions = (
-    <s-button href="/app/surveys/library" variant="primary" icon="plus">
-      {t("surveys.new_survey")}
-    </s-button>
+    <>
+      <s-button href="/app/surveys/quick-start" icon="wand">
+        {t("quick.cta")}
+      </s-button>
+      <s-button href="/app/surveys/library" variant="primary" icon="plus">
+        {t("surveys.new_survey")}
+      </s-button>
+    </>
   );
 
   return (

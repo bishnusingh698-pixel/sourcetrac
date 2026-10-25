@@ -1079,5 +1079,43 @@
     "policy_text": "Après le paiement, nous pouvons vous proposer un court sondage facultatif, par exemple pour savoir comment vous nous avez connus. Vos réponses sont conservées avec votre numéro de commande par notre prestataire de sondages, SourceTrac, pendant {{months}} mois au maximum, et servent uniquement à comprendre quels canaux nous amènent des clients. Elles ne sont jamais vendues ni utilisées à des fins publicitaires.",
     "actions_notice": "Les actions Shopify copient les réponses dans votre boutique Shopify sous forme de balises de commande, de balises client ou de champs méta client. Elles suivent alors les règles de Shopify pour les données de votre boutique, et non le calendrier de suppression de SourceTrac.",
     "export_notice": "Le fichier contient les numéros de commande, les réponses, les totaux des commandes et tout texte saisi par les acheteurs. Conservez-le avec autant de soin que vos autres documents de boutique."
+  },
+  "presets": {
+    "load_title": "Utiliser les réponses d'un pays",
+    "load_help": "Choisissez où se trouvent la plupart de vos acheteurs. Vous obtenez les apps et sites sur lesquels on y découvre habituellement les boutiques, prêts à être modifiés.",
+    "country_label": "Pays",
+    "search": "Rechercher un pays",
+    "no_match": "Aucun pays ne correspond à cette recherche.",
+    "preview": "Réponses pour {{country}} : {{list}}",
+    "replace": "Remplacer mes réponses",
+    "add_one": "Ajouter {{count}} réponse manquante",
+    "add_other": "Ajouter {{count}} réponses manquantes",
+    "replace_note": "Les réponses conservées restent liées à leurs résultats. Les résultats d'une réponse supprimée sont aussi conservés.",
+    "full": "Cette question a déjà le nombre maximal de réponses ({{max}})."
+  },
+  "quick": {
+    "title": "Démarrage rapide",
+    "subtitle": "Mettez en ligne une enquête « Comment nous avez-vous connus ? » en deux minutes environ. Tout reste modifiable ensuite.",
+    "templates_link": "Voir plutôt les modèles",
+    "country_title": "1. Où se trouvent la plupart de vos acheteurs ?",
+    "country_help": "Nous chargeons les apps et sites sur lesquels on y découvre habituellement les boutiques.",
+    "answers_title": "2. Choisissez les réponses proposées aux acheteurs",
+    "answers_help": "Réponses habituelles pour {{country}}. Décochez celles qui ne s'appliquent pas et ajoutez les vôtres.",
+    "add_label": "Ajouter votre propre réponse",
+    "add_button": "Ajouter",
+    "custom_remove": "Supprimer {{label}}",
+    "other": "Ajouter « Autre » avec un champ de texte",
+    "other_details": "Les acheteurs dont la réponse ne figure pas peuvent la saisir. Vous verrez ce qu'ils ont écrit dans Analyses.",
+    "follow_up": "Demander quel créateur ou compte, après une app sociale ou un créateur",
+    "follow_up_details": "Une deuxième question facultative. Sans elle, les acheteurs répondent d'un seul geste.",
+    "launch_title": "3. Mettre en ligne",
+    "launch_help": "Les acheteurs voient l'enquête sur votre page de remerciement dès que le bloc SourceTrac est ajouté dans l'éditeur de paiement de Shopify. Nous l'ouvrons pour vous juste après.",
+    "go_live": "Mettre en ligne",
+    "create_draft": "Créer l'enquête",
+    "limit_note_one": "Votre forfait comprend {{count}} enquête en ligne, déjà utilisée : celle-ci est donc enregistrée comme brouillon. Mettez l'autre en pause ou passez à un forfait supérieur pour utiliser les deux.",
+    "limit_note_other": "Votre forfait comprend {{count}} enquêtes en ligne, toutes utilisées : celle-ci est donc enregistrée comme brouillon. Mettez-en une en pause ou passez à un forfait supérieur.",
+    "too_few": "Choisissez au moins {{min}} réponses.",
+    "failed": "L'enquête n'a pas pu être créée. Réessayez dans un instant.",
+    "cta": "Démarrage rapide (2 minutes)"
   }
 }

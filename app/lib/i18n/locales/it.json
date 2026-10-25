@@ -1079,5 +1079,43 @@
     "policy_text": "Dopo il checkout potremmo chiederti di rispondere a un breve sondaggio facoltativo, ad esempio su come ci hai conosciuto. Le tue risposte vengono conservate insieme al numero d'ordine dal nostro fornitore di sondaggi, SourceTrac, per un massimo di {{months}} mesi, e vengono usate solo per capire quali canali ci portano clienti. Non vengono mai vendute né usate per la pubblicità.",
     "actions_notice": "Le azioni Shopify copiano le risposte nel tuo negozio Shopify come tag degli ordini, tag dei clienti o metacampi dei clienti. Da quel momento seguono le regole di Shopify per i dati del tuo negozio, non i tempi di eliminazione di SourceTrac.",
     "export_notice": "Il file contiene numeri d'ordine, risposte, totali degli ordini e il testo scritto dagli acquirenti. Conservalo con la stessa cura degli altri documenti del negozio."
+  },
+  "presets": {
+    "load_title": "Usa le risposte per un paese",
+    "load_help": "Scegli dove si trova la maggior parte dei tuoi acquirenti. Ottieni le app e i siti su cui lì si scoprono di solito i negozi, pronti da modificare.",
+    "country_label": "Paese",
+    "search": "Cerca paesi",
+    "no_match": "Nessun paese corrisponde alla ricerca.",
+    "preview": "Risposte per {{country}}: {{list}}",
+    "replace": "Sostituisci le mie risposte",
+    "add_one": "Aggiungi {{count}} risposta mancante",
+    "add_other": "Aggiungi {{count}} risposte mancanti",
+    "replace_note": "Le risposte che tieni restano collegate ai loro risultati. Anche i risultati di una risposta rimossa vengono conservati.",
+    "full": "Questa domanda ha già il numero massimo di risposte ({{max}})."
+  },
+  "quick": {
+    "title": "Avvio rapido",
+    "subtitle": "Pubblica un sondaggio «Come ci hai conosciuto?» in circa due minuti. Puoi cambiare tutto in seguito.",
+    "templates_link": "Sfoglia invece i modelli",
+    "country_title": "1. Dove si trova la maggior parte dei tuoi acquirenti?",
+    "country_help": "Carichiamo le app e i siti su cui lì si scoprono di solito i negozi.",
+    "answers_title": "2. Scegli le risposte che gli acquirenti possono selezionare",
+    "answers_help": "Risposte comuni per {{country}}. Togli la spunta a quelle che non servono e aggiungi le tue.",
+    "add_label": "Aggiungi una tua risposta",
+    "add_button": "Aggiungi",
+    "custom_remove": "Rimuovi {{label}}",
+    "other": "Aggiungi «Altro» con una casella di testo",
+    "other_details": "Gli acquirenti la cui risposta non è in elenco possono scriverla. Vedrai cosa hanno scritto in Analisi.",
+    "follow_up": "Chiedere quale creator o account, dopo un'app social o un creator",
+    "follow_up_details": "Una seconda domanda facoltativa. Senza, gli acquirenti rispondono con un solo tocco.",
+    "launch_title": "3. Pubblica",
+    "launch_help": "Gli acquirenti vedono il sondaggio nella pagina di ringraziamento non appena aggiungi il blocco SourceTrac nell'editor del checkout di Shopify. Lo apriamo noi subito dopo.",
+    "go_live": "Pubblica",
+    "create_draft": "Crea sondaggio",
+    "limit_note_one": "Il tuo piano include {{count}} sondaggio attivo ed è già in uso, quindi questo viene salvato come bozza. Metti in pausa l'altro o passa a un piano superiore per usarli entrambi.",
+    "limit_note_other": "Il tuo piano include {{count}} sondaggi attivi e sono tutti in uso, quindi questo viene salvato come bozza. Mettine uno in pausa o passa a un piano superiore.",
+    "too_few": "Scegli almeno {{min}} risposte.",
+    "failed": "Impossibile creare il sondaggio. Riprova tra un momento.",
+    "cta": "Avvio rapido (2 minuti)"
   }
 }

@@ -1079,5 +1079,43 @@
     "policy_text": "Depois do checkout, podemos pedir que você responda a uma pesquisa curta e opcional, como onde nos conheceu. Suas respostas são guardadas com o número do seu pedido pelo nosso provedor de pesquisas, o SourceTrac, por até {{months}} meses, e são usadas apenas para entender quais canais nos trazem clientes. Elas nunca são vendidas nem usadas para publicidade.",
     "actions_notice": "As Ações do Shopify copiam as respostas para a sua loja Shopify como tags de pedido, tags de cliente ou metacampos de cliente. A partir daí, elas seguem as regras da Shopify para os dados da sua loja, não o prazo de exclusão do SourceTrac.",
     "export_notice": "O arquivo contém números de pedido, respostas, totais dos pedidos e qualquer texto que os compradores digitaram. Guarde-o com o mesmo cuidado que os outros registros da sua loja."
+  },
+  "presets": {
+    "load_title": "Usar respostas de um país",
+    "load_help": "Escolha onde está a maioria dos seus compradores. Você recebe os apps e sites em que as pessoas de lá costumam descobrir lojas, prontos para editar.",
+    "country_label": "País",
+    "search": "Buscar países",
+    "no_match": "Nenhum país corresponde a essa busca.",
+    "preview": "Respostas para {{country}}: {{list}}",
+    "replace": "Substituir minhas respostas",
+    "add_one": "Adicionar {{count}} resposta que falta",
+    "add_other": "Adicionar {{count}} respostas que faltam",
+    "replace_note": "As respostas mantidas continuam ligadas aos resultados. Os resultados de uma resposta removida também são mantidos.",
+    "full": "Esta pergunta já tem o máximo de respostas ({{max}})."
+  },
+  "quick": {
+    "title": "Início rápido",
+    "subtitle": "Coloque no ar uma pesquisa “Como você nos conheceu?” em cerca de dois minutos. Dá para mudar tudo depois.",
+    "templates_link": "Ver modelos em vez disso",
+    "country_title": "1. Onde está a maioria dos seus compradores?",
+    "country_help": "Carregamos os apps e sites em que as pessoas de lá costumam descobrir lojas.",
+    "answers_title": "2. Escolha as respostas que os compradores podem selecionar",
+    "answers_help": "Respostas comuns para {{country}}. Desmarque as que não se aplicam e adicione as suas.",
+    "add_label": "Adicionar sua própria resposta",
+    "add_button": "Adicionar",
+    "custom_remove": "Remover {{label}}",
+    "other": "Adicionar “Outro” com uma caixa de texto",
+    "other_details": "Compradores cuja resposta não está na lista podem digitá-la. Você verá o que escreveram em Análises.",
+    "follow_up": "Perguntar qual criador ou perfil, depois de uma rede social ou um criador",
+    "follow_up_details": "Uma segunda pergunta opcional. Sem ela, os compradores respondem com um único toque.",
+    "launch_title": "3. Publicar",
+    "launch_help": "Os compradores veem a pesquisa na sua página de agradecimento assim que o bloco SourceTrac for adicionado no editor de checkout da Shopify. Nós o abrimos para você em seguida.",
+    "go_live": "Publicar",
+    "create_draft": "Criar pesquisa",
+    "limit_note_one": "Seu plano inclui {{count}} pesquisa ativa e ela já está em uso, então esta é salva como rascunho. Pause a outra ou faça upgrade para usar as duas.",
+    "limit_note_other": "Seu plano inclui {{count}} pesquisas ativas e todas estão em uso, então esta é salva como rascunho. Pause uma ou faça upgrade para usar mais.",
+    "too_few": "Escolha pelo menos {{min}} respostas.",
+    "failed": "Não foi possível criar a pesquisa. Tente novamente em instantes.",
+    "cta": "Início rápido (2 minutos)"
   }
 }

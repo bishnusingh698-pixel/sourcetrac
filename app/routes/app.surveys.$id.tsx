@@ -38,6 +38,7 @@ import {
 import { getShopDisplay, getShopLocaleInfo } from "~/lib/studio.server";
 import { isValidTimeZone } from "@shared/zoned-date";
 import { grantedSyncScopes } from "~/lib/scopes.server";
+import { presetLabels } from "~/lib/channel-presets.server";
 import { getBlockSeen, markBlockAdded } from "~/lib/block-seen.server";
 import { BlockMissingBanner, postedPlacements } from "~/components/block-missing";
 import { checkoutEditorUrl, placementsMissingBlock } from "~/lib/checkout-editor";
@@ -99,6 +100,10 @@ export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) =>
     // Which pages have ever shown the SourceTrac block. "Live" is only claimed
     // for those; anywhere else the merchant is sent to add the block.
     blockSeen: await getBlockSeen(shop.id),
+    // "Use answers for a country": the generic answers' wording in the
+    // merchant's language and every buyer language, and the store's country.
+    presetLabels: presetLabels(resolveAdminLanguage(request, shop.language, shop.adminLocale)),
+    shopCountry: localeInfo.countryCode,
   };
 });
 
@@ -457,7 +462,15 @@ export default function SurveyEditorPage() {
             <s-section heading={t("editor.questions_title")}>
               <s-stack gap="base">
                 <s-text color="subdued">{t("editor.questions_help")}</s-text>
-                <QuestionList draft={draft} update={update} t={t} limits={limits} errors={errors} plan={plan} />
+                <QuestionList
+                  draft={draft}
+                  update={update}
+                  t={t}
+                  limits={limits}
+                  errors={errors}
+                  plan={plan}
+                  presets={{ labels: data.presetLabels, shopCountry: data.shopCountry, language }}
+                />
               </s-stack>
             </s-section>
 

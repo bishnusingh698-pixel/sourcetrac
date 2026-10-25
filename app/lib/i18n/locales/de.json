@@ -1079,5 +1079,43 @@
     "policy_text": "Nach dem Checkout bitten wir Sie eventuell um eine kurze, freiwillige Umfrage, etwa wie Sie auf uns aufmerksam geworden sind. Ihre Antworten werden zusammen mit Ihrer Bestellnummer von unserem Umfrageanbieter SourceTrac bis zu {{months}} Monate lang gespeichert und nur genutzt, um zu verstehen, über welche Kanäle Kunden zu uns finden. Sie werden niemals verkauft oder für Werbung verwendet.",
     "actions_notice": "Shopify-Aktionen kopieren Antworten als Bestell-Tags, Kunden-Tags oder Kunden-Metafelder in Ihren Shopify-Shop. Dort gelten dann die Regeln von Shopify für Ihre Shop-Daten, nicht der Löschplan von SourceTrac.",
     "export_notice": "Die Datei enthält Bestellnummern, Antworten, Bestellsummen und von Käufern eingegebenen Text. Bewahren Sie sie so sicher auf wie Ihre anderen Shop-Unterlagen."
+  },
+  "presets": {
+    "load_title": "Antworten für ein Land verwenden",
+    "load_help": "Wählen Sie, wo die meisten Ihrer Käufer sind. Sie erhalten die Apps und Seiten, über die Menschen dort meist Shops finden – zum Bearbeiten bereit.",
+    "country_label": "Land",
+    "search": "Länder suchen",
+    "no_match": "Kein Land passt zu dieser Suche.",
+    "preview": "Antworten für {{country}}: {{list}}",
+    "replace": "Meine Antworten ersetzen",
+    "add_one": "{{count}} fehlende Antwort hinzufügen",
+    "add_other": "{{count}} fehlende Antworten hinzufügen",
+    "replace_note": "Behaltene Antworten bleiben mit ihren Ergebnissen verknüpft. Auch die Ergebnisse entfernter Antworten bleiben erhalten.",
+    "full": "Diese Frage hat bereits die Höchstzahl an Antworten ({{max}})."
+  },
+  "quick": {
+    "title": "Schnellstart",
+    "subtitle": "Bringen Sie in etwa zwei Minuten eine Umfrage „Wie haben Sie von uns erfahren?“ live. Alles lässt sich später ändern.",
+    "templates_link": "Stattdessen Vorlagen ansehen",
+    "country_title": "1. Wo sind die meisten Ihrer Käufer?",
+    "country_help": "Wir laden die Apps und Seiten, über die Menschen dort meist Shops finden.",
+    "answers_title": "2. Wählen Sie die Antworten, die Käufer auswählen können",
+    "answers_help": "Übliche Antworten für {{country}}. Deaktivieren Sie, was nicht passt, und ergänzen Sie eigene.",
+    "add_label": "Eigene Antwort hinzufügen",
+    "add_button": "Hinzufügen",
+    "custom_remove": "{{label}} entfernen",
+    "other": "„Sonstiges“ mit Textfeld hinzufügen",
+    "other_details": "Käufer, deren Antwort fehlt, können sie eingeben. Sie sehen die Texte unter Analysen.",
+    "follow_up": "Nach einer Social-App oder einem Creator fragen, welcher Account es war",
+    "follow_up_details": "Eine zweite, freiwillige Frage. Ohne sie antworten Käufer mit einem einzigen Tippen.",
+    "launch_title": "3. Live schalten",
+    "launch_help": "Käufer sehen die Umfrage auf Ihrer Danke-Seite, sobald der SourceTrac-Block im Checkout-Editor von Shopify hinzugefügt ist. Wir öffnen ihn als Nächstes für Sie.",
+    "go_live": "Live schalten",
+    "create_draft": "Umfrage erstellen",
+    "limit_note_one": "Ihr Tarif umfasst {{count}} Live-Umfrage, die bereits genutzt wird. Diese Umfrage wird daher als Entwurf gespeichert. Pausieren Sie die andere oder wechseln Sie den Tarif, um beide zu nutzen.",
+    "limit_note_other": "Ihr Tarif umfasst {{count}} Live-Umfragen, die alle genutzt werden. Diese Umfrage wird daher als Entwurf gespeichert. Pausieren Sie eine oder wechseln Sie den Tarif, um mehr zu nutzen.",
+    "too_few": "Wählen Sie mindestens {{min}} Antworten.",
+    "failed": "Die Umfrage konnte nicht erstellt werden. Versuchen Sie es gleich noch einmal.",
+    "cta": "Schnellstart (2 Minuten)"
   }
 }

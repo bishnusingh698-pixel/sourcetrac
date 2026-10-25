@@ -1079,5 +1079,43 @@
     "policy_text": "After checkout we may ask you a short optional survey, such as how you heard about us. Your answers are stored with your order number by our survey provider, SourceTrac, for up to {{months}} months, and are used only to understand which channels bring us customers. They are never sold or used for advertising.",
     "actions_notice": "Shopify actions copy answers into your Shopify store as order tags, customer tags or customer metafields. They then follow Shopify's rules for your store data, not SourceTrac's deletion schedule.",
     "export_notice": "The file contains order numbers, answers and order totals, and any text buyers typed. Keep it as safely as your other store records."
+  },
+  "presets": {
+    "load_title": "Use answers for a country",
+    "load_help": "Pick where most of your buyers are. You get the apps and sites people there usually find shops on, ready to edit.",
+    "country_label": "Country",
+    "search": "Search countries",
+    "no_match": "No country matches that search.",
+    "preview": "Answers for {{country}}: {{list}}",
+    "replace": "Replace my answers",
+    "add_one": "Add {{count}} missing answer",
+    "add_other": "Add {{count}} missing answers",
+    "replace_note": "Answers you keep stay linked to their results. Results for an answer you remove are kept too.",
+    "full": "This question already has the most answers it can hold ({{max}})."
+  },
+  "quick": {
+    "title": "Quick start",
+    "subtitle": "Get a “How did you hear about us?” survey live in about two minutes. You can change everything later.",
+    "templates_link": "Browse templates instead",
+    "country_title": "1. Where are most of your buyers?",
+    "country_help": "We load the apps and sites people there usually find shops on.",
+    "answers_title": "2. Choose the answers buyers can pick",
+    "answers_help": "Usual answers for {{country}}. Untick any that don't apply and add your own.",
+    "add_label": "Add your own answer",
+    "add_button": "Add",
+    "custom_remove": "Remove {{label}}",
+    "other": "Add “Other” with a text box",
+    "other_details": "Buyers whose answer isn't listed can type it. You'll see what they wrote in Analytics.",
+    "follow_up": "Ask which creator or account, after a social app or a creator",
+    "follow_up_details": "A second, optional question. Without it, buyers answer with a single tap.",
+    "launch_title": "3. Go live",
+    "launch_help": "Buyers see the survey on your Thank-you page once the SourceTrac block is added in Shopify's checkout editor. We open it for you next.",
+    "go_live": "Go live",
+    "create_draft": "Create survey",
+    "limit_note_one": "Your plan includes {{count}} live survey and it is in use, so this survey is saved as a draft. Pause the other one or upgrade to run both.",
+    "limit_note_other": "Your plan includes {{count}} live surveys and they are all in use, so this survey is saved as a draft. Pause one or upgrade to run more.",
+    "too_few": "Pick at least {{min}} answers.",
+    "failed": "The survey couldn't be created. Try again in a moment.",
+    "cta": "Quick start (2 minutes)"
   }
 }

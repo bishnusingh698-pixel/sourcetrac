@@ -12,7 +12,19 @@ import {
 } from "@shared/survey-rules";
 import { planHas, type PlanTier } from "@shared/plan-features";
 import type { EditorSurvey } from "~/lib/surveys.server";
+import type { PresetLabels } from "~/lib/channel-presets.server";
 import { JustInTimeNotice } from "~/components/data-notice";
+import { CountrySelect, countryName } from "~/components/country-select";
+import { mergePresetAnswers, presetAnswersForCountry, type PresetAnswer } from "~/lib/preset-options";
+
+/** What the editor needs to offer country presets (F2/F3). */
+export type PresetContext = {
+  labels: PresetLabels;
+  /** The store's own country, preselected. */
+  shopCountry: string | null;
+  /** The merchant's admin language, for country names. */
+  language: string;
+};
 
 /**
  * The question editor: one card per question, in the order buyers see them.
@@ -238,6 +250,7 @@ export function QuestionList({
   limits,
   errors,
   plan,
+  presets,
 }: {
   draft: EditorSurvey;
   update: (patch: Partial<EditorSurvey>) => void;
@@ -245,6 +258,8 @@ export function QuestionList({
   limits: typeof LIMITS;
   errors: Map<string, string>;
   plan: PlanTier;
+  /** Absent: the country presets are not offered. */
+  presets?: PresetContext;
 }) {
   const questions = draft.questions;
   // Every change to the questions goes through the follow-up repair.
@@ -345,6 +360,7 @@ export function QuestionList({
           limits={limits}
           errors={errors}
           plan={plan}
+          presets={presets}
         />
       ))}
 
@@ -391,6 +407,7 @@ function QuestionCard({
   limits,
   errors,
   plan,
+  presets,
 }: {
   question: Question;
   index: number;
@@ -406,6 +423,7 @@ function QuestionCard({
   limits: typeof LIMITS;
   errors: Map<string, string>;
   plan: PlanTier;
+  presets?: PresetContext;
 }) {
   const [confirmRemove, setConfirmRemove] = useState(false);
   const isFollowUp = Boolean(question.showIf?.questionId);
@@ -496,7 +514,16 @@ function QuestionCard({
         </s-select>
 
         {questionHasMerchantOptions(question.type) ? (
-          <AnswerList question={question} index={index} setQuestion={setQuestion} t={t} limits={limits} errors={errors} />
+          <AnswerList
+            question={question}
+            index={index}
+            setQuestion={setQuestion}
+            t={t}
+            limits={limits}
+            errors={errors}
+            presets={presets}
+            plan={plan}
+          />
         ) : null}
 
         <s-checkbox
@@ -588,6 +615,8 @@ function AnswerList({
   t,
   limits,
   errors,
+  presets,
+  plan,
 }: {
   question: Question;
   index: number;
@@ -595,6 +624,8 @@ function AnswerList({
   t: TFn;
   limits: typeof LIMITS;
   errors: Map<string, string>;
+  presets?: PresetContext;
+  plan: PlanTier;
 }) {
   const options = question.options.filter((o) => !o.isOther);
   const others = question.options.filter((o) => o.isOther);
@@ -649,6 +680,20 @@ function AnswerList({
           {t("editor.answer_count", { count, max: limits.MAX_OPTIONS })}
         </s-text>
       </s-stack>
+      {presets ? (
+        <details className="st-details">
+          <summary>{t("presets.load_title")}</summary>
+          <PresetLoader
+            question={question}
+            options={options}
+            presets={presets}
+            max={limits.MAX_OPTIONS}
+            plan={plan}
+            onApply={(next) => setOptions(next)}
+            t={t}
+          />
+        </details>
+      ) : null}
       {/* A template's "Other (please specify)" is a real option, not the
           `allowOther` flag, so the switch reads both and turning it off
           removes the option too. Before, that option was hidden here and the
@@ -960,6 +1005,77 @@ export function FrameText({
           </s-text>
         </s-stack>
       ) : null}
+    </s-stack>
+  );
+}
+
+/**
+ * "Use answers for a country" (F3): load the usual channels of the market a
+ * country belongs to into this question, replacing its answers or adding the
+ * missing ones. Answers the question already had keep their ids, so their
+ * results stay with them.
+ */
+function PresetLoader({
+  question,
+  options,
+  presets,
+  max,
+  plan,
+  onApply,
+  t,
+}: {
+  question: Question;
+  options: Option[];
+  presets: PresetContext;
+  max: number;
+  plan: PlanTier;
+  onApply: (next: Option[]) => void;
+  t: TFn;
+}) {
+  const [country, setCountry] = useState<string>(presets.shopCountry ?? "US");
+  const { answers } = presetAnswersForCountry(country, presets.labels, question.templateKey);
+  const build = (answer: PresetAnswer): Option => ({
+    id: newItemId(),
+    label: answer.label,
+    isOther: false,
+    exclusive: false,
+    archived: false,
+    translations: answer.translations,
+    templateKey: answer.templateKey,
+  });
+  const name = countryName(country, presets.language);
+  const missing = answers.filter((a) => !options.some((o) => o.label.trim().toLowerCase() === a.label.trim().toLowerCase()));
+  const full = options.length >= max;
+  void plan;
+
+  return (
+    <s-stack gap="small">
+      <s-text color="subdued">{t("presets.load_help")}</s-text>
+      <CountrySelect
+        value={country}
+        onChange={setCountry}
+        language={presets.language}
+        label={t("presets.country_label")}
+        searchLabel={t("presets.search")}
+        noMatch={t("presets.no_match")}
+      />
+      <s-text>{t("presets.preview", { country: name, list: answers.map((a) => a.label).join(", ") })}</s-text>
+      <s-stack direction="inline" gap="small">
+        <s-button type="button" onClick={() => onApply(mergePresetAnswers(options, answers, "replace", max, build))}>
+          {t("presets.replace")}
+        </s-button>
+        <s-button
+          type="button"
+          variant="tertiary"
+          disabled={full || missing.length === 0 || undefined}
+          onClick={() => onApply(mergePresetAnswers(options, answers, "add", max, build))}
+        >
+          {t("presets.add", { count: Math.min(missing.length, Math.max(0, max - options.length)) })}
+        </s-button>
+      </s-stack>
+      <s-text color="subdued" fontSize="small">
+        {full ? t("presets.full", { max }) : t("presets.replace_note")}
+      </s-text>
     </s-stack>
   );
 }

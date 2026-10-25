@@ -145,7 +145,9 @@ function SetupGuide({ setup, t, language }: { setup: Setup; t: TFunction; langua
       title: t("onboarding.step1_title"),
       body: setup.hasLiveSurvey ? t("onboarding.step1_body_done") : t("onboarding.step1_body"),
       done: setup.hasLiveSurvey,
-      action: setup.hasLiveSurvey ? undefined : { label: t("onboarding.step1_action"), href: "/app/surveys/library" },
+      // The quick start gets a first survey live in about two minutes; the
+      // template library is one link away from it.
+      action: setup.hasLiveSurvey ? undefined : { label: t("quick.cta"), href: "/app/surveys/quick-start" },
     },
     {
       title: t("onboarding.step2_title"),

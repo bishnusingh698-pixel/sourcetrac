@@ -270,6 +270,25 @@ export default function TemplateLibrary() {
         </s-section>
       ) : (
         <>
+          {/* The fastest way to a first live survey, ahead of the 50 cards. */}
+          <s-section>
+            <s-query-container>
+              <s-grid
+                gridTemplateColumns="@container (inline-size > 560px) auto minmax(0, 1fr) auto, auto minmax(0, 1fr)"
+                gap="base"
+                alignItems="center"
+              >
+                <s-icon type="wand" tone="info" />
+                <s-stack gap="small-200">
+                  <s-text type="strong">{t("quick.title")}</s-text>
+                  <s-text color="subdued">{t("quick.subtitle")}</s-text>
+                </s-stack>
+                <s-button href="/app/surveys/quick-start">
+                  {t("quick.cta")}
+                </s-button>
+              </s-grid>
+            </s-query-container>
+          </s-section>
           {recommended ? (
             <s-section>
               <s-stack gap="small">

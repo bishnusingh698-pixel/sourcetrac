@@ -1079,5 +1079,43 @@
     "policy_text": "Después de la compra, es posible que te pidamos responder una breve encuesta opcional, por ejemplo cómo nos conociste. Tus respuestas se guardan junto con tu número de pedido en nuestro proveedor de encuestas, SourceTrac, durante un máximo de {{months}} meses, y solo se usan para entender qué canales nos traen clientes. Nunca se venden ni se usan con fines publicitarios.",
     "actions_notice": "Las acciones de Shopify copian las respuestas en tu tienda de Shopify como etiquetas de pedido, etiquetas de cliente o metacampos de cliente. A partir de ahí siguen las reglas de Shopify para los datos de tu tienda, no el calendario de eliminación de SourceTrac.",
     "export_notice": "El archivo contiene números de pedido, respuestas, totales de pedidos y cualquier texto que hayan escrito los compradores. Guárdalo con el mismo cuidado que el resto de registros de tu tienda."
+  },
+  "presets": {
+    "load_title": "Usar respuestas para un país",
+    "load_help": "Elige dónde están la mayoría de tus compradores. Obtienes las apps y sitios donde la gente de allí suele descubrir tiendas, listos para editar.",
+    "country_label": "País",
+    "search": "Buscar países",
+    "no_match": "Ningún país coincide con esa búsqueda.",
+    "preview": "Respuestas para {{country}}: {{list}}",
+    "replace": "Reemplazar mis respuestas",
+    "add_one": "Añadir {{count}} respuesta que falta",
+    "add_other": "Añadir {{count}} respuestas que faltan",
+    "replace_note": "Las respuestas que mantienes siguen vinculadas a sus resultados. También se conservan los resultados de las que quitas.",
+    "full": "Esta pregunta ya tiene el máximo de respuestas ({{max}})."
+  },
+  "quick": {
+    "title": "Inicio rápido",
+    "subtitle": "Publica una encuesta «¿Cómo nos conociste?» en unos dos minutos. Puedes cambiarlo todo después.",
+    "templates_link": "Ver plantillas en su lugar",
+    "country_title": "1. ¿Dónde están la mayoría de tus compradores?",
+    "country_help": "Cargamos las apps y sitios donde la gente de allí suele descubrir tiendas.",
+    "answers_title": "2. Elige las respuestas que pueden escoger los compradores",
+    "answers_help": "Respuestas habituales para {{country}}. Desmarca las que no apliquen y añade las tuyas.",
+    "add_label": "Añadir tu propia respuesta",
+    "add_button": "Añadir",
+    "custom_remove": "Quitar {{label}}",
+    "other": "Añadir «Otro» con un cuadro de texto",
+    "other_details": "Los compradores cuya respuesta no está en la lista pueden escribirla. Verás lo que escribieron en Análisis.",
+    "follow_up": "Preguntar qué creador o cuenta, después de una red social o un creador",
+    "follow_up_details": "Una segunda pregunta opcional. Sin ella, los compradores responden con un solo toque.",
+    "launch_title": "3. Publicar",
+    "launch_help": "Los compradores ven la encuesta en tu página de agradecimiento cuando añades el bloque de SourceTrac en el editor de la pantalla de pago de Shopify. Lo abrimos por ti a continuación.",
+    "go_live": "Publicar",
+    "create_draft": "Crear encuesta",
+    "limit_note_one": "Tu plan incluye {{count}} encuesta activa y ya está en uso, así que esta se guarda como borrador. Pausa la otra o mejora tu plan para usar ambas.",
+    "limit_note_other": "Tu plan incluye {{count}} encuestas activas y todas están en uso, así que esta se guarda como borrador. Pausa una o mejora tu plan para usar más.",
+    "too_few": "Elige al menos {{min}} respuestas.",
+    "failed": "No se pudo crear la encuesta. Inténtalo de nuevo en un momento.",
+    "cta": "Inicio rápido (2 minutos)"
   }
 }
