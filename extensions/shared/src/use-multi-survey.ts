@@ -137,6 +137,22 @@ export function visibleQuestionsFor(questions: readonly CompiledQuestion[], answ
   return visible;
 }
 
+/**
+ * The answers a buyer in `country` sees for one question (F4). Hiding answers
+ * limited to other countries must never make the question impossible: when a
+ * multiple-choice "pick at least N" rule would be left with fewer than N
+ * answers to pick (an exclusive "None of these" does not count, an "Other"
+ * does), every answer is shown instead, as `optionsForCountry` does for a
+ * question left empty.
+ */
+export function countryOptionsFor(question: CompiledQuestion, country: string | null): CompiledOption[] {
+  const shown = optionsForCountry(question.options, country);
+  if (question.type !== "multi_choice" || typeof question.minSelections !== "number") return shown;
+  const syntheticOther = question.allowOther && !shown.some((o) => o.isOther || o.id === OTHER_CHANNEL) ? 1 : 0;
+  const pickable = shown.filter((o) => !o.exclusive).length + syntheticOther;
+  return pickable >= question.minSelections ? shown : [...question.options];
+}
+
 /** Question types answered by a single tap, which a one-question survey submits at once. */
 const SINGLE_TAP_TYPES = new Set(["single_choice", "dropdown", "yes_no", "rating_5", "nps", "satisfaction_5"]);
 
@@ -390,7 +406,7 @@ export function useMultiSurvey(
         ...localized,
         questions: localized.questions.map((question) => ({
           ...question,
-          options: orderOptionsForBuyer(optionsForCountry(question.options, country), question.randomizeOptions === true, seed),
+          options: orderOptionsForBuyer(countryOptionsFor(question, country), question.randomizeOptions === true, seed),
         })),
       });
       setPhase("asking");
