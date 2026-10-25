@@ -42,6 +42,9 @@ const RANGES = [
   { days: 7, labelKey: "dashboard.last_7" },
   { days: 30, labelKey: "dashboard.last_30" },
   { days: 90, labelKey: "dashboard.last_90" },
+  // A year, for seasonal comparisons; still a bounded read for a store of
+  // the target size (a few thousand answers a month).
+  { days: 365, labelKey: "dashboard.last_365" },
 ] as const;
 
 function parseRange(value: string | null): (typeof RANGES)[number] {

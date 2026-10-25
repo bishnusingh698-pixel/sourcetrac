@@ -96,7 +96,8 @@
     "total_row": "Totaal",
     "rate_line": "Responspercentage: {{rate}}. {{answered}} van {{total}} bestellingen in deze periode gaven antwoord.",
     "other_title": "In de woorden van kopers",
-    "other_subtitle": "Wat kopers schreven toen geen van je kanalen paste. Nieuwste eerst."
+    "other_subtitle": "Wat kopers schreven toen geen van je kanalen paste. Nieuwste eerst.",
+    "last_365": "Afgelopen 12 maanden"
   },
   "settings": {
     "title": "Instellingen",

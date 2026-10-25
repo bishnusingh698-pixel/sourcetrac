@@ -96,7 +96,8 @@
     "total_row": "Total",
     "rate_line": "Taux de réponse : {{rate}}. {{answered}} commandes sur {{total}} de cette période ont répondu.",
     "other_title": "Dans les mots des acheteurs",
-    "other_subtitle": "Ce que les acheteurs ont écrit quand aucun de vos canaux ne convenait. Les plus récents d’abord."
+    "other_subtitle": "Ce que les acheteurs ont écrit quand aucun de vos canaux ne convenait. Les plus récents d’abord.",
+    "last_365": "12 derniers mois"
   },
   "settings": {
     "title": "Paramètres",

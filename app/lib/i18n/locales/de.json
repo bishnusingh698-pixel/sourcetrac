@@ -96,7 +96,8 @@
     "total_row": "Gesamt",
     "rate_line": "Antwortrate: {{rate}}. {{answered}} von {{total}} Bestellungen in diesem Zeitraum haben geantwortet.",
     "other_title": "In den Worten der Käufer",
-    "other_subtitle": "Was Käufer geschrieben haben, wenn keiner Ihrer Kanäle passte. Neueste zuerst."
+    "other_subtitle": "Was Käufer geschrieben haben, wenn keiner Ihrer Kanäle passte. Neueste zuerst.",
+    "last_365": "Letzte 12 Monate"
   },
   "settings": {
     "title": "Einstellungen",

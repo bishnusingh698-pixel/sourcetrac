@@ -96,7 +96,8 @@
     "total_row": "Totalt",
     "rate_line": "Svarsfrekvens: {{rate}}. {{answered}} av {{total}} ordrar under perioden svarade.",
     "other_title": "Med köparnas egna ord",
-    "other_subtitle": "Vad köpare skrev när ingen av dina kanaler passade. Senaste först."
+    "other_subtitle": "Vad köpare skrev när ingen av dina kanaler passade. Senaste först.",
+    "last_365": "Senaste 12 månaderna"
   },
   "settings": {
     "title": "Inställningar",

@@ -96,7 +96,8 @@
     "total_row": "合計",
     "rate_line": "回答率：{{rate}}。この期間の注文 {{total}} 件のうち {{answered}} 件が回答しました。",
     "other_title": "購入者自身の言葉",
-    "other_subtitle": "どのチャネルにも当てはまらなかったときに購入者が書いた内容。新しい順。"
+    "other_subtitle": "どのチャネルにも当てはまらなかったときに購入者が書いた内容。新しい順。",
+    "last_365": "過去12か月"
   },
   "settings": {
     "title": "設定",

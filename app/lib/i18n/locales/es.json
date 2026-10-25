@@ -96,7 +96,8 @@
     "total_row": "Total",
     "rate_line": "Tasa de respuesta: {{rate}}. Respondieron {{answered}} de {{total}} pedidos de este periodo.",
     "other_title": "En palabras de los compradores",
-    "other_subtitle": "Lo que escribieron los compradores cuando ninguno de tus canales encajaba. Lo más reciente primero."
+    "other_subtitle": "Lo que escribieron los compradores cuando ninguno de tus canales encajaba. Lo más reciente primero.",
+    "last_365": "Últimos 12 meses"
   },
   "settings": {
     "title": "Configuración",

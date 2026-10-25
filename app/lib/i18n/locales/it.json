@@ -96,7 +96,8 @@
     "total_row": "Totale",
     "rate_line": "Tasso di risposta: {{rate}}. Hanno risposto {{answered}} ordini su {{total}} di questo periodo.",
     "other_title": "Con le parole degli acquirenti",
-    "other_subtitle": "Cosa hanno scritto gli acquirenti quando nessuno dei tuoi canali andava bene. Prima i più recenti."
+    "other_subtitle": "Cosa hanno scritto gli acquirenti quando nessuno dei tuoi canali andava bene. Prima i più recenti.",
+    "last_365": "Ultimi 12 mesi"
   },
   "settings": {
     "title": "Impostazioni",

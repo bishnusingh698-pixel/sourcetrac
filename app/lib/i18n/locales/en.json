@@ -96,7 +96,8 @@
     "total_row": "Total",
     "rate_line": "Response rate: {{rate}}. {{answered}} of {{total}} orders in this period answered.",
     "other_title": "In buyers' own words",
-    "other_subtitle": "What buyers wrote when none of your channels fit. Newest first."
+    "other_subtitle": "What buyers wrote when none of your channels fit. Newest first.",
+    "last_365": "Last 12 months"
   },
   "settings": {
     "title": "Settings",

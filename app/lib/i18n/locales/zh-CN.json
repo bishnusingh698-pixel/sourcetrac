@@ -96,7 +96,8 @@
     "total_row": "合计",
     "rate_line": "回答率：{{rate}}。此期间 {{total}} 个订单中有 {{answered}} 个作答。",
     "other_title": "买家的原话",
-    "other_subtitle": "当你列出的渠道都不符合时，买家写下的内容。最新的在前。"
+    "other_subtitle": "当你列出的渠道都不符合时，买家写下的内容。最新的在前。",
+    "last_365": "过去 12 个月"
   },
   "settings": {
     "title": "设置",
