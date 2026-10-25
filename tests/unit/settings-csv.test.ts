@@ -14,160 +14,11 @@ import {
   toCsv,
   type CsvRow,
 } from "~/lib/csv";
-import { ValidationError } from "~/lib/errors";
 import { formatDecimalForCurrency } from "~/lib/money";
-import {
-  MAX_OPTIONS,
-  MAX_OPTION_LABEL_LENGTH,
-  MAX_QUESTION_LENGTH,
-  MIN_OPTIONS,
-  OTHER_CHANNEL_VALUE,
-  parseSurveySettings,
-  readIndexedOptions,
-  slugifyChannel,
-  validateSurveySettings,
-} from "~/lib/settings";
-
-/**
- * Settings validation is the merchant-facing contract: it must refuse bad input
- * with a message that tells them how to fix it, and must never silently
- * collapse two channels into one.
- */
-
-const options = (labels: string[]) => labels.map((label) => ({ label, emoji: "" }));
+import { OTHER_CHANNEL_VALUE, parseSurveySettings, slugifyChannel } from "~/lib/settings";
 
 const six = ["Instagram", "Google", "TikTok", "Friend", "Podcast", "Email"];
-
-describe("validateSurveySettings", () => {
-  it("never gives a new option a channel key an existing option still holds", () => {
-    // The default "Google search" is stored as `google`, not `google-search`.
-    // A new "Google" option slugs to `google` as well, and both options used
-    // to save with that value, merging their answers into one channel.
-    const existing = [
-      { value: "google", label: "Google search", emoji: null },
-      { value: "instagram", label: "Instagram", emoji: null },
-    ];
-    const labels = ["Google", "Google search", "Instagram", "TikTok", "Podcast", "Email"];
-    const result = validateSurveySettings(
-      { questionText: "How did you hear about us?", options: options(labels), allowOther: false },
-      existing,
-    );
-    const values = result.options.map((option) => option.value);
-    expect(new Set(values).size).toBe(values.length);
-    // The existing option keeps its key, so its history still lines up.
-    expect(result.options.find((option) => option.label === "Google search")?.value).toBe("google");
-    expect(result.options.find((option) => option.label === "Google")?.value).toBe("google-2");
-  });
-
-  it("accepts exactly the minimum option count", () => {
-    const result = validateSurveySettings(
-      { questionText: "How did you hear about us?", options: options(six.slice(0, MIN_OPTIONS)), allowOther: false },
-      [],
-    );
-    expect(result.options).toHaveLength(MIN_OPTIONS);
-    expect(MIN_OPTIONS).toBe(2);
-  });
-
-  it("rejects fewer than the minimum and says how many to add", () => {
-    try {
-      validateSurveySettings(
-        { questionText: "How?", options: options(six.slice(0, 1)), allowOther: false },
-        [],
-      );
-      throw new Error("expected a ValidationError");
-    } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError);
-      expect((error as ValidationError).hint).toContain(`Add ${MIN_OPTIONS - 1} more`);
-      expect((error as ValidationError).fields.field).toBe("options");
-    }
-  });
-
-  it("rejects more than the maximum and says how many to remove", () => {
-    const tooMany = Array.from({ length: MAX_OPTIONS + 2 }, (_, i) => `Channel ${i}`);
-    try {
-      validateSurveySettings({ questionText: "How?", options: options(tooMany), allowOther: false }, []);
-      throw new Error("expected a ValidationError");
-    } catch (error) {
-      expect((error as ValidationError).fields.field).toBe("options");
-      expect((error as ValidationError).hint).toContain("Remove 2");
-    }
-  });
-
-  it("rejects two options that slug to the same channel", () => {
-    try {
-      validateSurveySettings(
-        { questionText: "How?", options: options(["Instagram", "instagram", "Google", "Friend", "Podcast", "Email"]), allowOther: false },
-        [],
-      );
-      throw new Error("expected a ValidationError");
-    } catch (error) {
-      expect(error).toBeInstanceOf(ValidationError);
-      expect((error as ValidationError).fields.field).toMatch(/^options\.\d+\.label$/);
-    }
-  });
-
-  it("rejects an empty question", () => {
-    try {
-      validateSurveySettings({ questionText: "   ", options: options(six), allowOther: false }, []);
-      throw new Error("expected a ValidationError");
-    } catch (error) {
-      expect((error as ValidationError).fields.field).toBe("questionText");
-    }
-  });
-
-  it("rejects a question longer than the limit", () => {
-    try {
-      validateSurveySettings({
-        questionText: "x".repeat(MAX_QUESTION_LENGTH + 1),
-        options: options(six),
-        allowOther: false,
-      }, []);
-      throw new Error("expected a ValidationError");
-    } catch (error) {
-      expect((error as ValidationError).fields.field).toBe("questionText");
-    }
-  });
-
-  it("rejects an over-long option label", () => {
-    const long = [...six];
-    long[2] = "y".repeat(MAX_OPTION_LABEL_LENGTH + 1);
-    try {
-      validateSurveySettings({ questionText: "How?", options: options(long), allowOther: false }, []);
-      throw new Error("expected a ValidationError");
-    } catch (error) {
-      expect((error as ValidationError).fields.field).toBe("options.2.label");
-    }
-  });
-
-  it("rejects a non-array options payload", () => {
-    expect(() =>
-      validateSurveySettings({ questionText: "How?", options: "nope", allowOther: false }, []),
-    ).toThrow(ValidationError);
-  });
-
-  it("preserves an existing channel value when the label is unchanged", () => {
-    // Renaming must not orphan historical responses.
-    const existing = validateSurveySettings(
-      { questionText: "How?", options: options(six), allowOther: false },
-      [],
-    ).options;
-
-    const unchanged = validateSurveySettings(
-      { questionText: "How did you find us?", options: options(six), allowOther: false },
-      existing,
-    ).options;
-
-    expect(unchanged.map((o) => o.value)).toEqual(existing.map((o) => o.value));
-  });
-
-  it("only treats allowOther as true for a real boolean", () => {
-    const result = validateSurveySettings(
-      { questionText: "How?", options: options(six), allowOther: "true" },
-      [],
-    );
-    expect(result.allowOther).toBe(false);
-  });
-});
+const stored = () => six.map((label, i) => ({ value: `v${i}`, label, emoji: null }));
 
 describe("formatDecimalForCurrency", () => {
   // The export path must not re-round to a fixed two places. These three cases
@@ -235,23 +86,11 @@ describe("slugifyChannel", () => {
   });
 });
 
-describe("survey in a non-Latin language", () => {
-  it("accepts several options written in Chinese", () => {
-    const labels = ["搜索引擎", "朋友或家人", "实体店", "小红书", "微信", "抖音"];
-    const result = validateSurveySettings({
-      questionText: "您是如何了解到我们的？",
-      options: labels.map((label) => ({ label, emoji: "" })),
-      allowOther: false,
-    });
-    expect(new Set(result.options.map((o) => o.value)).size).toBe(labels.length);
-  });
-});
-
 describe("parseSurveySettings", () => {
   it("falls back safely on corrupt stored JSON rather than throwing", () => {
     const fallback = {
       questionText: "How?",
-      options: options(six).map((o, i) => ({ value: `v${i}`, label: o.label, emoji: "" })),
+      options: stored(),
       allowOther: false,
     };
     const result = parseSurveySettings("{not json", fallback);
@@ -261,7 +100,7 @@ describe("parseSurveySettings", () => {
   it("falls back on null", () => {
     const fallback = {
       questionText: "How?",
-      options: options(six).map((o, i) => ({ value: `v${i}`, label: o.label, emoji: "" })),
+      options: stored(),
       allowOther: false,
     };
     expect(parseSurveySettings(null, fallback)).toEqual(fallback);
@@ -434,29 +273,5 @@ describe("Settings form limits match the server limits", () => {
     // A bare numeric literal is the drift itself.
     expect(editor).not.toMatch(/maxLength=\{\d+\}/);
     expect(route).not.toMatch(/maxLength=\{\d+\}/);
-  });
-
-  it("exports the emoji limit so the legacy form can bind to it", () => {
-    expect(read("app/lib/settings.ts")).toMatch(/export const EMOJI_MAX_LENGTH = \d+;/);
-  });
-});
-
-describe("readIndexedOptions", () => {
-  it("pairs each emoji with its own option even when an emoji field is missing", () => {
-    const form = new FormData();
-    form.append("label.0", "Instagram");
-    // emoji.0 absent, as a browser may omit an empty field.
-    form.append("label.1", "Google");
-    form.append("emoji.1", "🔍");
-    form.append("label.10", "TikTok");
-    form.append("emoji.10", "🎵");
-    form.append("label.2", "Email");
-
-    expect(readIndexedOptions(form)).toEqual([
-      { label: "Instagram", emoji: "" },
-      { label: "Google", emoji: "🔍" },
-      { label: "Email", emoji: "" },
-      { label: "TikTok", emoji: "🎵" },
-    ]);
   });
 });

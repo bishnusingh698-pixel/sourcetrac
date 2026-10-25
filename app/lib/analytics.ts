@@ -11,13 +11,6 @@ import { addDaysToKey, dayKeyInZone, startOfDayInZone } from "@shared/zoned-date
 import { averageOrderValue, percentChange, type CurrencyCode } from "./money";
 import { rollupByCurrency } from "./revenue";
 
-export const TREND_WINDOWS = [7, 30, 90] as const;
-export type TrendWindow = (typeof TREND_WINDOWS)[number];
-
-export function isTrendWindow(value: unknown): value is TrendWindow {
-  return typeof value === "number" && (TREND_WINDOWS as readonly number[]).includes(value);
-}
-
 /**
  * Half-open window `[start, now)` covering `days` calendar days in the store's
  * zone: today so far plus the `days - 1` whole days before it.
@@ -261,11 +254,6 @@ export function buildTrend(params: {
     responses: responsesByDay.get(date) ?? 0,
     revenueByCurrency: rollupByCurrency(revenueByDay.get(date) ?? []),
   }));
-}
-
-/** UTC date key, for the stores whose zone is not known. */
-export function toUtcDateKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
 }
 
 /**

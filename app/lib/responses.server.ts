@@ -2,33 +2,16 @@ import { db, isRetryableDbError } from "~/db.server";
 import { serialiseError } from "~/lib/errors";
 import { logger } from "~/lib/logger";
 import { minorToDecimalString, parseMoneyToMinor } from "~/lib/money";
-import { claimUsageSlotWith, markUnverifiedFailedResponses } from "~/lib/answers.server";
-import { isRedactedOrder } from "~/lib/compliance.server";
-import { currentUtcPeriod, planFor, type PlanKey } from "~/lib/plans";
+import { markUnverifiedFailedResponses } from "~/lib/answers.server";
+import { currentUtcPeriod } from "~/lib/plans";
 import { withRetry } from "~/lib/retry.server";
 
 /**
- * Response ingestion and reconciliation.
- *
- * This module implements docs/03 FLOW 1 (duplicate submission), FLOW 2
- * (response before webhook), and FLOW 9 (free cap reached). It is the only
- * place that writes survey_responses.
+ * Answers from the original single-question survey (`SurveyResponse`):
+ * reconciling them with their orders and ageing out the ones whose order
+ * never arrived, plus the Free cap's usage count. Nothing writes new rows
+ * here any more: every block answers through `answers.server.ts`.
  */
-
-export type SubmitResult =
-  | { outcome: "created"; id: string; isLocked: boolean }
-  | { outcome: "duplicate"; id: string; isLocked: boolean };
-
-export type SubmitInput = {
-  shopId: string;
-  orderId: string;
-  channel: string;
-  otherText: string | null;
-  locale: string | null;
-  plan: PlanKey;
-};
-
-const MAX_OTHER_LENGTH = 140;
 
 function retryDb<T>(operation: () => Promise<T>): Promise<T> {
   return withRetry(operation, { attempts: 3, baseDelayMs: 250, shouldRetry: isRetryableDbError });
@@ -43,119 +26,6 @@ export async function getUsageCount(shopId: string): Promise<number> {
     }),
   );
   return row?.responsesCount ?? 0;
-}
-
-/**
- * Record a survey response.
- *
- * Duplicate submissions are a success, not an error: the unique constraint on
- * (shopId, orderId) makes a double-tap, a refresh, or a retry after a cold
- * start resolve to the original row. The buyer sees the same confirmation
- * either way.
- */
-export async function submitResponse(input: SubmitInput): Promise<SubmitResult> {
-  const otherText = input.otherText ? input.otherText.trim().slice(0, MAX_OTHER_LENGTH) : null;
-
-  // An order a customer asked to have redacted is never stored again.
-  if (await isRedactedOrder(input.shopId, input.orderId)) {
-    logger.info("response_redacted_order_ignored", { shop_id: input.shopId });
-    return { outcome: "duplicate", id: "", isLocked: false };
-  }
-
-  // One transaction under the same per-order lock as the multi-question path:
-  // the "already answered there" check, the usage claim and the insert land
-  // together. Checked outside the lock, a concurrent v2 and legacy submission
-  // both wrote; with the count outside the transaction, a failed increment
-  // left the answer stored but never counted against the cap.
-  const written = await retryDb(() =>
-    db.$transaction(async (tx) => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`answer:${input.shopId}:${input.orderId}`}))`;
-      // The multi-question blocks answer into `Response`. An order already
-      // answered there must not be answered again (and counted twice) by a
-      // stale single-question client.
-      const v2 = await tx.response.findFirst({
-        where: { shopId: input.shopId, orderId: input.orderId },
-        select: { id: true, flagged: true },
-      });
-      if (v2) return { kind: "duplicate_v2" as const, id: v2.id, isLocked: v2.flagged };
-      const existing = await tx.surveyResponse.findUnique({
-        where: { shopId_orderId: { shopId: input.shopId, orderId: input.orderId } },
-        select: { id: true, isLocked: true },
-      });
-      if (existing) return { kind: "duplicate" as const, ...existing };
-      // At cap we still store the answer (losing a buyer's answer to a billing
-      // state would be worse than free overage) but flag it for the merchant.
-      const claimed = await claimUsageSlotWith(tx, input.shopId, planFor(input.plan).responseCap);
-      const created = await tx.surveyResponse.create({
-        data: {
-          shopId: input.shopId,
-          orderId: input.orderId,
-          channel: input.channel,
-          otherText,
-          locale: input.locale,
-          isLocked: !claimed.withinCap,
-        },
-        select: { id: true, isLocked: true },
-      });
-      return { kind: "created" as const, ...created };
-    }),
-  );
-
-  if (written.kind !== "created") {
-    logger.info(written.kind === "duplicate_v2" ? "response_duplicate_v2_ignored" : "response_duplicate_ignored", {
-      shop_id: input.shopId,
-      response_id: written.id,
-      channel: input.channel,
-    });
-    return { outcome: "duplicate", id: written.id, isLocked: written.isLocked };
-  }
-
-  const created = written;
-  const isLocked = created.isLocked;
-
-  // The order webhook usually lands BEFORE the buyer answers, so there is no
-  // later orders/create to reconcile this row. Attach the cached order now;
-  // otherwise the answer would stay Pending and, after 24h, be marked
-  // unreconcilable even though its revenue is known.
-  try {
-    await reconcileFromOrderCache(input.shopId, input.orderId);
-  } catch (reconcileError) {
-    logger.warn("submit_reconcile_failed", {
-      shop_id: input.shopId,
-      response_id: created.id,
-      error_message: reconcileError instanceof Error ? reconcileError.message : String(reconcileError),
-    });
-  }
-
-  logger.info("response_created", {
-    shop_id: input.shopId,
-    response_id: created.id,
-    channel: input.channel,
-    is_locked: isLocked,
-  });
-
-  return { outcome: "created", id: created.id, isLocked };
-}
-
-/**
- * Reconcile one answer against an order that is already cached. A no-op when the
- * order has not arrived, or arrived with a total we could not parse.
- */
-export async function reconcileFromOrderCache(shopId: string, orderId: string): Promise<void> {
-  const order = await retryDb(() =>
-    db.orderCache.findUnique({
-      where: { shopId_orderId: { shopId, orderId } },
-      select: { currency: true, totalPrice: true },
-    }),
-  );
-  if (!order || order.totalPrice === null) return;
-
-  await reconcileResponsesForOrder({
-    shopId,
-    orderId,
-    currency: order.currency,
-    totalPrice: order.totalPrice.toString(),
-  });
 }
 
 export function isUniqueViolation(error: unknown): boolean {

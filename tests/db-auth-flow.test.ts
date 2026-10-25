@@ -6,7 +6,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "~/db.server";
 import { hasAnyAnswerForOrder } from "~/lib/answers.server";
 import { safeEqual } from "~/lib/crypto.server";
-import { submitResponse } from "~/lib/responses.server";
 import { upsertShop } from "~/lib/shop.server";
 import { sessionStorage } from "~/session-storage.server";
 
@@ -36,13 +35,11 @@ describe("auth flow", () => {
     expect(safeEqual("", "x")).toBe(false);
   });
 
-  it("treats an order answered on either path as answered on both (I17)", async () => {
+  it("treats an order answered in either store as answered (I17)", async () => {
     const shop = await upsertShop({ shopDomain: SHOP, shopId: "gid://shopify/Shop/970000" });
     const survey = await db.survey.create({ data: { shopId: shop.id, name: "S", placements: "[]" } });
     await db.response.create({ data: { shopId: shop.id, surveyId: survey.id, surveyVersion: 1, orderId: "970001", placement: "thank_you" } });
-    const legacy = await submitResponse({ shopId: shop.id, orderId: "970001", channel: "google", otherText: null, locale: null, plan: "growth" });
-    expect(legacy.outcome).toBe("duplicate");
-    expect(await db.surveyResponse.count({ where: { shopId: shop.id } })).toBe(0);
+    expect(await hasAnyAnswerForOrder(shop.id, "970001")).toBe(true);
 
     await db.surveyResponse.create({ data: { shopId: shop.id, orderId: "970002", channel: "google" } });
     expect(await hasAnyAnswerForOrder(shop.id, "970002")).toBe(true);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildTrend, computeStats, pickTopChannel, previousWindowBounds, toUtcDateKey, windowBounds } from "~/lib/analytics";
+import { buildTrend, computeStats, pickTopChannel, previousWindowBounds, windowBounds } from "~/lib/analytics";
 import { CAP_WARNING_RATIO, currentUtcPeriod, evaluateCap, isPlanKey, planFor } from "~/lib/plans";
 
 /**
@@ -292,13 +292,6 @@ describe("buildTrend", () => {
     });
     const day = trend.find((p) => p.date === "2026-10-10");
     expect(day?.revenueByCurrency).toHaveLength(2);
-  });
-});
-
-describe("toUtcDateKey", () => {
-  it("uses UTC, so a merchant timezone cannot shift the bucket", () => {
-    // 23:30 UTC is already the next day in Tokyo. Bucketing must stay on UTC.
-    expect(toUtcDateKey(new Date("2026-10-10T23:30:00.000Z"))).toBe("2026-10-10");
   });
 });
 

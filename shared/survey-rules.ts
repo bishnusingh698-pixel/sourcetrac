@@ -378,7 +378,7 @@ export function orderOptions<T>(
  * option was tapped, so the tapped option is the id in `next` that was not in
  * `previous`. Tapping an exclusive option ("None of these") leaves just it;
  * tapping any other drops the exclusive ones. Without this a buyer could hold an
- * exclusive option *and* another, which `/api/responses` rejects as
+ * exclusive option *and* another, which `/api/survey-responses` rejects as
  * `exclusive_with_others` — the whole answer would be lost.
  *
  * Pure, so the admin preview, the checkout extension and the tests share one

@@ -89,3 +89,30 @@ build` clean.
 - Country names come from `Intl.DisplayNames`; the server's ICU and a
   browser's may name a few countries differently, which React reports as a
   hydration text mismatch in the console. It does not affect what is stored.
+
+## Follow-up: test suite and dead code (2026-10-25)
+
+Asked whether the suite is too large. Measured: about 1 line of test per 2
+lines of app code, ~75 s for everything, against real Postgres with no mocks.
+Most tests pin a failure that actually shipped or was caught (see `AGENTS.md`,
+`BUGS.md`), so the size follows the size of the app. Thinning live coverage
+would make the program look simpler without making it simpler.
+
+What was genuinely surplus was dead code that still carried tests, now removed:
+
+- The original single-question survey: its checkout client
+  (`SurveyView.tsx`, `use-survey.ts`), both public routes (`/api/survey-config`,
+  `/api/responses`, which no block called), the legacy submit, its settings
+  validation and the `validation.*` strings in all ten locales.
+- Helpers referenced nowhere: `sumByCurrency`, `toUtcDateKey`,
+  `requiredScopes`, `classifyPlan`, `countSurveys`, `hasResponseFor`,
+  `updateSettings`, `fetchChannelsWithResponseCount`, `surveyWindowBounds`,
+  `isTrendWindow`, plus two thin aliases whose tests now call the real functions.
+- Tests that existed only for those, and two source-text checks already
+  covered by behavioural tests in `extension-bundle.test.ts`. The retry-engine
+  tests were ported to the live API instead of dropped.
+
+Old `SurveyResponse` rows stay readable: reconciliation, redaction and
+analytics for them are unchanged and still tested.
+
+Result: 110 files / 1,409 tests, `npm run check` green, build clean.

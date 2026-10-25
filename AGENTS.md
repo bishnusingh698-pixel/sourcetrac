@@ -177,7 +177,7 @@ regression tests rather than assertions that merely pass:
   with a fabricated `$0.00` order total and silently stops counting as revenue.
 - `resources: RESOURCES` in `createI18n` — removing it renders the admin keys
   literally (`nav.dashboard`). The failure is silent, so it needs this test.
-- `if (!orderId) return;` in `use-survey.ts` — removing it fires
+- `if (!orderId) return;` in `use-multi-survey.ts` — removing it fires
   `?orderId=`, a request the route 422s permanently.
 - The dashboard query — dropping its `shopId` filter, or turning its `LEFT JOIN`
   into an inner join, both fail. An inner join hides every unreconciled answer.
@@ -238,7 +238,7 @@ empty.
 `respondToBotRequest()` first. If the `User-Agent` matches `isbot`, it throws
 **410 Gone** and session-token validation never executes.
 
-`curl` counts as a bot, so `curl localhost:3000/api/responses` returns 410 and
+`curl` counts as a bot, so `curl localhost:3000/api/survey` returns 410 and
 looks like a routing bug. Always send a browser User-Agent when testing auth.
 
 410 = bot-blocked (auth not attempted). 401 = auth actually ran and rejected.
@@ -307,22 +307,25 @@ is the wrong fix and bloats the runtime image.
 ### The extension↔backend wire contract (check this before renaming anything)
 
 Extensions and routes do not share a type, so nothing but discipline keeps them
-aligned. Verified fields:
+aligned. Verified fields (the single-question `/api/survey-config` and
+`/api/responses` routes and their client were removed on 2026-10-25: no block
+called them):
 
-- `SurveyOption` is `{ value, label, emoji }`. **`value` is the channel key**, not
-  `id`. The submit route allowlists it against the merchant's options.
-- Submit body is `{ orderId, channel, otherText }`. Sending `optionId` 422s.
-- Config response is `{ enabled, questionText, options, allowOther, orderId,
-  alreadyAnswered }`. `alreadyAnswered` is what makes the two pages mutually
-  exclusive — it must hide the block, not just be logged.
-- `OTHER_CHANNEL` (`"other"`) must equal `OTHER_CHANNEL_VALUE` in
-  `app/lib/settings.ts`.
+- Config: `GET /api/survey?placement=&orderId=&locale=&surveyId=&products=...`
+  returns `{ enabled, orderId, placement, alreadyAnswered, survey }`.
+  `alreadyAnswered` is what makes the two pages mutually exclusive — it must
+  hide the block, not just be logged.
+- Submit: `POST /api/survey-responses` with `{ surveyId, surveyVersion,
+  orderId, placement, locale, answers: [{ questionId, optionIds, numberValue,
+  textValue, otherText }] }`.
+- The built-in "Other" choice's id `OTHER_CHANNEL` (`"other"`) must equal
+  `OTHER_CHANNEL_VALUE` in `shared/survey-rules.ts`.
 - Submit returns `{ ok, counted }` for **both** a fresh write and a duplicate,
-  because a buyer who answered always sees confirmation. There is no
-  `stored`/`locked`/`duplicate` flag on the wire; `counted: false` is the
-  over-cap signal and only the merchant is prompted.
+  because a buyer who answered always sees confirmation. `counted: false` is
+  the over-cap signal and only the merchant is prompted.
 
-`api.survey-config.tsx` and `api.responses.tsx` are the reference for this.
+`api.survey.tsx` and `api.survey-responses.tsx` are the reference for this;
+`tests/integration/extension-backend.test.ts` pins the client side.
 
 Things that will bite if written from memory:
 
@@ -332,10 +335,10 @@ Things that will bite if written from memory:
   is `gid://shopify/Order/<n>`. `orderIdSchema` strips both to the numeric id
   `orders/create` stores. Do not make it reject GIDs, and do not store them raw.
 - **Inside the checkout editor there is no real order.** Both blocks check
-  `shopify.extension.editor` and render `SurveyPreview` (sample answers, nothing
-  wired to submit) instead of returning null.
-- The id arrives asynchronously, so blocks call `useSurvey(orderId ?? "", ...)`
-  and `useSurvey` early-returns on an empty id; otherwise every load fires
+  `shopify.extension.editor` and render `EditorPreview` (nothing wired to
+  submit) instead of returning null.
+- The id arrives asynchronously, so blocks call `useMultiSurvey(orderId ?? "", ...)`
+  and it early-returns on an empty id; otherwise every load fires
   `?orderId=`, which the route rejects.
 - `shopify.sessionToken.get()` re-mints an expired token; call it per request,
   which keeps cold-start retries valid.
@@ -420,7 +423,7 @@ dependencies. Every re-render refetched the config, burned a
 `BUCKETS.surveyConfig` token and hit the database.
 
 Fixed on both sides: `useMemo` in `ThankYouBlock.tsx` and
-`OrderStatusBlock.tsx`, and an `apiRef` in `use-survey.ts` so the effect keys
+`OrderStatusBlock.tsx`, and an `apiRef` in `use-multi-survey.ts` so the effect keys
 on `[orderId, surface]` alone. Changing either without the other leaves the
 storm in place.
 
@@ -444,8 +447,8 @@ explicit: *never hide the merchant's own data to create urgency*. So the copy
 was wrong, not the totals, and the copy was corrected in `app.tsx` and
 `app._index.tsx`. Do not "fix" this by excluding locked rows from analytics.
 
-Revenue is never summed across currencies. `rollupByCurrency` and
-`sumByCurrency` exist specifically so no caller can flatten them into one number.
+Revenue is never summed across currencies. `rollupByCurrency` exists
+specifically so no caller can flatten it into one number.
 
 ## Admin i18n gotchas
 
@@ -1784,3 +1787,15 @@ once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
 - **"Replace my answers" asks first** when it would remove merchant answers.
 - The 16 KB submit cap is enough: at most 5 questions, ~7.5 KB fully in CJK.
   Do not re-raise it.
+
+### Test suite scope (2026-10-25)
+
+The suite is about 1:2 test lines to app lines and runs in ~75 s; that is the
+size of the app (50 templates, 10 admin + 18 buyer languages, billing, GDPR,
+two checkout surfaces), not padding. Most tests pin a real failure listed in
+this file or `BUGS.md`. What was removed: the dead single-question survey
+(client, both routes, its settings validation and `validation.*` strings) and
+helpers nothing called (`sumByCurrency`, `toUtcDateKey`, `requiredScopes`, ...),
+with the tests that existed only for them. Rule kept: delete code first, its
+tests follow; do not delete a test that guards live behaviour.
+

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { questionColumnHeader, toSurveyCsv, type SurveyCsvRow } from "~/lib/csv";
+import { questionColumnHeader, tableToCsv, toSurveyTable, type SurveyCsvRow } from "~/lib/csv";
+
+/** The wide survey file as downloaded: the table the Export preview shows, as CSV. */
+const toSurveyCsv = (...args: Parameters<typeof toSurveyTable>) => tableToCsv(toSurveyTable(...args));
 
 function row(overrides: Partial<SurveyCsvRow> = {}): SurveyCsvRow {
   return {

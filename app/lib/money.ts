@@ -116,29 +116,6 @@ export function minorToDecimalString(minor: number, currency: CurrencyCode): str
 export type Sum = { currency: CurrencyCode; minor: number };
 
 /**
- * Sum a set of amounts, grouped by currency. This function deliberately has no
- * way to return a single total: grouping is the only correct output shape.
- */
-export function sumByCurrency(
-  amounts: ReadonlyArray<{ amount: string | number; currency: CurrencyCode }>,
-): Sum[] {
-  const totals = new Map<CurrencyCode, number>();
-
-  for (const { amount, currency } of amounts) {
-    const parsed = parseMoneyToMinor(amount, currency);
-    if (!parsed.ok) continue; // unparseable rows are excluded, not summed as zero
-    const current = totals.get(currency) ?? 0;
-    const next = current + parsed.minor;
-    if (!Number.isSafeInteger(next)) continue;
-    totals.set(currency, next);
-  }
-
-  return [...totals.entries()]
-    .map(([currency, minor]) => ({ currency, minor }))
-    .sort((a, b) => a.currency.localeCompare(b.currency));
-}
-
-/**
  * Average order value in minor units for a single currency.
  * Returns null for zero or negative counts so callers render an em dash rather
  * than dividing by zero (docs/03 FLOW 14).

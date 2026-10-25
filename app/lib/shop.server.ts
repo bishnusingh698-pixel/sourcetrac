@@ -294,22 +294,6 @@ export async function clearAccessToken(internalShopId: string): Promise<void> {
   await invalidateConfig(internalShopId);
 }
 
-export async function updateSettings(
-  internalShopId: string,
-  data: { questionText: string; optionsJson: string; allowOther: boolean },
-): Promise<void> {
-  await retryDb(() =>
-    db.shop.update({
-      where: { id: internalShopId },
-      data: {
-        questionText: data.questionText,
-        optionsJson: data.optionsJson,
-        allowOther: data.allowOther,
-      },
-    }),
-  );
-}
-
 /**
  * Record the merchant's language choice.
  *
@@ -410,24 +394,6 @@ async function unlockAnswers(internalShopId: string): Promise<void> {
   await retryDb(() =>
     db.surveyResponse.updateMany({ where: { shopId: internalShopId, isLocked: true }, data: { isLocked: false } }),
   );
-}
-
-/**
- * Whether this order already has a response.
- *
- * The extension renders on both the Thank-you and Order-status pages, so this
- * is what stops a buyer being asked the same question twice. It is a separate
- * function rather than a call into responses.server.ts to keep the shop module
- * free of survey-response dependencies.
- */
-export async function hasResponseFor(internalShopId: string, orderId: string): Promise<boolean> {
-  // Both stores: the multi-question blocks write `Response`, so an order
-  // answered there must also hide the single-question survey.
-  const [legacy, v2] = await Promise.all([
-    retryDb(() => db.surveyResponse.count({ where: { shopId: internalShopId, orderId } })),
-    retryDb(() => db.response.count({ where: { shopId: internalShopId, orderId } })),
-  ]);
-  return legacy + v2 > 0;
 }
 
 /**

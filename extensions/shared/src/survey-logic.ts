@@ -173,37 +173,11 @@ export function cleanSurveyId(value: unknown): string | null {
 }
 
 /**
- * Sentinel channel for the free-text answer. Must match
- * `OTHER_CHANNEL_VALUE` in app/lib/settings.ts, which the submit route
- * allowlists against.
+ * Option id of the built-in "Other" choice (`optionsFor`). Must match
+ * `OTHER_CHANNEL_VALUE` in shared/survey-rules.ts, which the submit route
+ * validates against.
  */
 export const OTHER_CHANNEL = "other";
-
-export interface SurveyOption {
-  /** Merchant-defined channel key, e.g. "google". Sent verbatim on submit. */
-  value: string;
-  label: string;
-  emoji: string | null;
-}
-
-/**
- * The choices to render: the merchant's options, plus an "Other" choice when
- * free-text answers are on.
- *
- * The config lists only the merchant's own options. Without this the buyer had
- * nothing to tap that reveals the free-text field, so the merchant's "Allow a
- * free-text answer" switch silently did nothing. Skipped when the merchant
- * already named an option "Other", whose slug is the same value, so the
- * buyer never sees two.
- */
-export function surveyChoices(
-  options: SurveyOption[],
-  allowOther: boolean,
-  otherLabel: string,
-): SurveyOption[] {
-  if (!allowOther || options.some((option) => option.value === OTHER_CHANNEL)) return options;
-  return [...options, { value: OTHER_CHANNEL, label: otherLabel, emoji: null }];
-}
 
 /**
  * T6 for a multi-choice control: reconcile the selection the host reports after
@@ -236,19 +210,8 @@ export function applyExclusiveToggle(
   return [...next];
 }
 
-export interface SurveyConfig {
-  enabled: boolean;
-  questionText: string;
-  options: SurveyOption[];
-  allowOther: boolean;
-  orderId?: string;
-  /** True when this order already answered on the other surface. */
-  alreadyAnswered?: boolean;
-  reason?: "not_installed" | "plan_unsupported" | "not_found";
-}
-
 /**
- * Shape returned by POST /api/responses.
+ * Shape returned by POST /api/survey-responses.
  *
  * The route does not expose per-outcome detail: it returns `ok: true` for both a
  * fresh write and a duplicate, because a buyer who has answered should always
@@ -558,16 +521,6 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
     }
   }
 
-  function fetchSurveyConfig(orderId: string, surface: SurveySurface) {
-    return withRetries("survey_config", surface, (timeoutMs) =>
-      attempt<SurveyConfig>(
-        `/api/survey-config?orderId=${encodeURIComponent(orderId)}`,
-        { method: "GET" },
-        { timeoutMs },
-      ),
-    );
-  }
-
   /**
    * The v2 multi-question config. One active survey for this order and
    * placement, already compiled server-side.
@@ -620,27 +573,6 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
         `/api/survey-preview?${query.toString()}`,
         { method: "GET" },
         { tokenFailureIsFinal: true, timeoutMs },
-      ),
-    );
-  }
-
-  function submitResponse(
-    orderId: string,
-    channel: string,
-    otherText: string | null,
-    surface: SurveySurface,
-  ) {
-    return withRetries("survey_submit", surface, (timeoutMs) =>
-      attempt<SubmitResult>(
-        "/api/responses",
-        {
-          method: "POST",
-          // Field names must match app/routes/api.responses.tsx exactly. The route
-          // allowlists `channel` against the merchant's configured options, so
-          // renaming this silently breaks every submission with a 422.
-          body: JSON.stringify({ orderId, channel, otherText, locale: buyerLocale() }),
-        },
-        { timeoutMs },
       ),
     );
   }
@@ -727,10 +659,8 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
   }
 
   return {
-    fetchSurveyConfig,
     fetchSurvey,
     fetchPreview,
-    submitResponse,
     submitAnswers,
     getLocale: buyerLocale,
     getCountry: buyerCountry,

@@ -5,7 +5,6 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaClient } from "@prisma/client";
 
 import { handleCustomerRedact, handleDataRequest, REDACT_BATCH_SIZE } from "~/lib/compliance.server";
-import { submitResponse } from "~/lib/responses.server";
 import { runRetentionPurge } from "~/lib/retention.server";
 import { upsertShop } from "~/lib/shop.server";
 import { processWebhook, upsertOrderCache } from "~/lib/webhooks.server";
@@ -87,10 +86,6 @@ describe("customers/redact", () => {
     const again = await upsertOrderCache(shopId, order(950010), false);
     expect(again?.applied).toBe(false);
     expect(await prisma.orderCache.count({ where: { shopId, orderId: "950010" } })).toBe(0);
-    // Nor through the legacy single-question path.
-    const legacy = await submitResponse({ shopId, orderId: "950010", channel: "google", otherText: null, locale: null, plan: "growth" });
-    expect(legacy.outcome).toBe("duplicate");
-    expect(await prisma.surveyResponse.count({ where: { shopId } })).toBe(0);
   });
 
   it("drains a large redact without anyone opening the app, and queues it once (H19, L26)", async () => {

@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { hasSyncWork, MAX_FLOW_PAYLOAD_BYTES, parseSyncOptions, requiredScopes, sanitizeTag, truncateForPayload } from "~/lib/sync.server";
+import { hasSyncWork, MAX_FLOW_PAYLOAD_BYTES, parseSyncOptions, sanitizeTag, truncateForPayload } from "~/lib/sync.server";
 
 describe("sanitizeTag", () => {
   it("strips commas so a buyer cannot create extra tags", () => {
@@ -43,29 +43,15 @@ describe("parseSyncOptions", () => {
   });
 });
 
-describe("hasSyncWork + requiredScopes with T13 presets", () => {
+describe("hasSyncWork with T13 presets", () => {
   it("reports work for a preset-only survey", () => {
     // Without this a template survey whose only write-back is a preset would
     // enqueue nothing, and the tag would never appear.
     expect(hasSyncWork({ presets: ["delivery_status_order_tag"] })).toBe(true);
   });
 
-  it("asks for write_orders for an order-tag preset", () => {
-    expect(requiredScopes({ presets: ["delivery_status_order_tag"] })).toEqual(["write_orders"]);
-  });
-
-  it("asks for write_customers for a customer preset", () => {
-    expect(requiredScopes({ presets: ["nps_customer_tag"] })).toEqual(["write_customers"]);
-  });
-
-  it("asks for write_customers for a customer metafield preset", () => {
-    // The field belongs to the customer, so the order scope must not be enough.
-    expect(requiredScopes({ presets: ["profile_customer_metafield"] })).toEqual(["write_customers"]);
-  });
-
   it("ignores an unknown preset id", () => {
     expect(hasSyncWork({ presets: ["no_such_preset"] })).toBe(false);
-    expect(requiredScopes({ presets: ["no_such_preset"] })).toEqual([]);
   });
 });
 

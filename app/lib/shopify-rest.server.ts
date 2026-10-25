@@ -66,24 +66,6 @@ export const PLAN_DISPLAY_NAMES = [
  */
 export const UNSUPPORTED_PLANS = new Set(["Starter", "Inactive", "Paused", "Shop Component"]);
 
-export function classifyPlan(publicDisplayName: string | null | undefined): ShopPlan {
-  const raw = (publicDisplayName ?? "").trim();
-  if (raw.length === 0) {
-    // Unknown plan: do not claim support we cannot verify. Surfacing the
-    // "can't confirm" state is more honest than silently allowing setup.
-    return { displayName: "Unknown", isStarter: false };
-  }
-
-  // Case-insensitive match against the documented closed set, so a casing
-  // change by Shopify does not silently flip support to "unknown".
-  const match = PLAN_DISPLAY_NAMES.find((p) => p.toLowerCase() === raw.toLowerCase());
-
-  return {
-    displayName: match ?? raw,
-    isStarter: match === "Starter",
-  };
-}
-
 /**
  * Whether the Thank-you / Order-status surfaces can host the survey.
  *

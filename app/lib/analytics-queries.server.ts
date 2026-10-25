@@ -399,21 +399,6 @@ async function askableFrom(shopId: string, start: Date): Promise<Date> {
   return shop && shop.createdAt > start ? shop.createdAt : start;
 }
 
-/** Channels the merchant actually has responses for, plus their labels. */
-export async function fetchChannelsWithResponseCount(shopId: string): Promise<Array<{ channel: string; count: number }>> {
-  const grouped = await retryDb(() =>
-    db.surveyResponse.groupBy({
-      by: ["channel"],
-      where: { shopId },
-      _count: { channel: true },
-    }),
-  );
-
-  return grouped
-    .map((row) => ({ channel: row.channel, count: row._count.channel }))
-    .sort((a, b) => b.count - a.count);
-}
-
 /**
  * THE revenue decision for one answer. The dashboard, the analytics rollups and
  * the CSV export all go through this function, so the numbers cannot diverge.

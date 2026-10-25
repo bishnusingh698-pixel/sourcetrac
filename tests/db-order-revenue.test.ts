@@ -20,7 +20,7 @@ import {
 import { handleShopRedact } from "~/lib/compliance.server";
 import { minorToDecimalString } from "~/lib/money";
 import { currentUtcPeriod, planFor } from "~/lib/plans";
-import { markUnreconcilable, submitResponse } from "~/lib/responses.server";
+import { markUnreconcilable } from "~/lib/responses.server";
 import { upsertShop } from "~/lib/shop.server";
 import { claimWebhook, processWebhook } from "~/lib/webhooks.server";
 
@@ -265,40 +265,10 @@ describe("net revenue through the real webhook path", () => {
     expect(await decided()).toEqual([]);
   });
 
-  it("two answers arriving together at cap-1 lock exactly one", async () => {
-    const cap = planFor("free").responseCap ?? 0;
-    const { periodStart, periodEnd } = currentUtcPeriod();
-    await prisma.billingUsage.create({ data: { shopId: shopRowId, periodStart, periodEnd, responsesCount: cap - 1 } });
-
-    const submit = (orderId: string) =>
-      submitResponse({ shopId: shopRowId, orderId, channel: "instagram", otherText: null, locale: null, plan: "free" });
-    const results = await Promise.all([submit("940001"), submit("940002")]);
-
-    expect(results.filter((r) => r.isLocked)).toHaveLength(1);
-    expect(await prisma.surveyResponse.count({ where: { shopId: shopRowId, isLocked: true } })).toBe(1);
-  });
-
   it("stores a zero-decimal order of a billion or more instead of overflowing", async () => {
     await answer();
     await send("orders/create", { currency: "VND", current_total_price: "1500000000" });
     expect(await decided()).toEqual([expect.objectContaining({ currency: "VND", minor: 1_500_000_000 })]);
-  });
-
-  it("an answer submitted AFTER orders/create is reconciled at submit time", async () => {
-    await send("orders/create", { current_total_price: "64.00" });
-
-    await submitResponse({
-      shopId: shopRowId,
-      orderId: "910001",
-      channel: "instagram",
-      otherText: null,
-      locale: null,
-      plan: "growth",
-    });
-
-    const all = await rows();
-    expect(all[0]?.reconciled).toBe(true);
-    expect(toDecidedAmounts(all)).toEqual([expect.objectContaining({ minor: 6400 })]);
   });
 
   it("CSV rows carry exactly the dashboard's decision, row by row", async () => {

@@ -474,14 +474,6 @@ export async function getActiveSurveys(shopId: string): Promise<SurveyWithQuesti
   });
 }
 
-export async function countSurveys(shopId: string): Promise<{ total: number; active: number }> {
-  const [total, active] = await Promise.all([
-    db.survey.count({ where: { shopId } }),
-    db.survey.count({ where: { shopId, status: "active" } }),
-  ]);
-  return { total, active };
-}
-
 // ---------------------------------------------------------------------------
 // Writes
 // ---------------------------------------------------------------------------

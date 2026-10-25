@@ -3,7 +3,8 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { OTHER_CHANNEL, surveyChoices } from "../../extensions/shared/src/survey-logic";
+import { OTHER_CHANNEL, type CompiledOption, type CompiledQuestion } from "../../extensions/shared/src/survey-logic";
+import { optionsFor } from "../../extensions/shared/src/use-multi-survey";
 import { LANGUAGES } from "~/lib/i18n";
 import { BUYER_LANGUAGES } from "@shared/buyer-languages";
 
@@ -81,25 +82,35 @@ describe("checkout extension locales", () => {
 });
 
 describe("survey choices", () => {
-  const options = [
-    { value: "google", label: "Google", emoji: null },
-    { value: "instagram", label: "Instagram", emoji: null },
-  ];
+  const question = (allowOther: boolean, extra: CompiledOption[] = []): CompiledQuestion => ({
+    id: "q1",
+    type: "single_choice",
+    text: "How did you hear about us?",
+    textMultiline: false,
+    required: true,
+    randomizeOptions: false,
+    allowOther,
+    options: [
+      { id: "google", label: "Google", isOther: false },
+      { id: "instagram", label: "Instagram", isOther: false },
+      ...extra,
+    ],
+  });
 
   it("adds an Other choice when free-text answers are on", () => {
     // Without it the buyer had nothing to tap that reveals the text field, so
     // the merchant's "Allow a free-text answer" switch did nothing.
-    const choices = surveyChoices(options, true, "Autre");
-    expect(choices.at(-1)).toEqual({ value: OTHER_CHANNEL, label: "Autre", emoji: null });
+    const choices = optionsFor(question(true), "Autre");
+    expect(choices.at(-1)).toEqual({ id: OTHER_CHANNEL, label: "Autre", isOther: true });
     expect(choices).toHaveLength(3);
   });
 
   it("adds nothing when free-text answers are off", () => {
-    expect(surveyChoices(options, false, "Other")).toEqual(options);
+    expect(optionsFor(question(false), "Other")).toHaveLength(2);
   });
 
   it("never shows two Other choices", () => {
-    const withOther = [...options, { value: OTHER_CHANNEL, label: "Something else", emoji: null }];
-    expect(surveyChoices(withOther, true, "Other")).toEqual(withOther);
+    const own = { id: "other-option", label: "Something else", isOther: true };
+    expect(optionsFor(question(true, [own]), "Other")).toHaveLength(3);
   });
 });
