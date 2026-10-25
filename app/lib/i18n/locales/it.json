@@ -999,7 +999,31 @@
     "placement_once": "Ogni ordine viene interrogato una sola volta. Se l'acquirente risponde su una pagina, il sondaggio è nascosto sull'altra.",
     "store_step_order_status": "Per la pagina di stato dell'ordine: nello stesso menu delle pagine scegli Stato dell'ordine, aggiungi lì il blocco «SourceTrac survey» e premi Salva. È nel menu solo se il tuo negozio usa i nuovi account cliente (Impostazioni › Account cliente).",
     "block_order_status_title": "Aggiungi il blocco SourceTrac anche alla pagina di stato dell'ordine",
-    "block_missing_order_status_body": "Questo sondaggio è impostato anche per la pagina di stato dell'ordine, ma il blocco non si è ancora caricato lì. Nell'editor del checkout scegli Stato dell'ordine dal menu delle pagine, aggiungi il blocco «SourceTrac survey» e premi Salva. Se Stato dell'ordine non è nel menu, il tuo negozio usa gli account cliente classici: cambiali in Impostazioni › Account cliente oppure deseleziona la pagina in «Dove appare»."
+    "block_missing_order_status_body": "Questo sondaggio è impostato anche per la pagina di stato dell'ordine, ma il blocco non si è ancora caricato lì. Nell'editor del checkout scegli Stato dell'ordine dal menu delle pagine, aggiungi il blocco «SourceTrac survey» e premi Salva. Se Stato dell'ordine non è nel menu, il tuo negozio usa gli account cliente classici: cambiali in Impostazioni › Account cliente oppure deseleziona la pagina in «Dove appare».",
+    "look_title": "Aspetto e testi",
+    "look_help": "Caratteri e colori seguono sempre il branding del checkout (Impostazioni › Checkout › Personalizza). Shopify non consente alle app di modificarli, quindi il sondaggio si abbina sempre al tuo negozio.",
+    "layout_details": "«Una alla volta» mostra un pulsante Avanti tra le domande. «Tutte in una schermata» è adatto a una-tre domande brevi.",
+    "show_title_details": "Il breve titolo sopra le domande.",
+    "show_progress": "Mostra l'avanzamento (ad esempio «1 di 3»)",
+    "title_details": "Mostrato sopra le domande quando «Mostra il titolo» è attivo.",
+    "intro_details": "Una riga sotto il titolo. Lascia vuoto per non mostrarla.",
+    "button_details": "Il pulsante che gli acquirenti premono per inviare le risposte.",
+    "thanks_details": "Mostrato per qualche secondo dopo la risposta, poi il blocco si chiude.",
+    "frame": "Cornice",
+    "frame_border": "In un riquadro con bordo",
+    "frame_none": "Senza bordo",
+    "frame_details": "Un riquadro distingue il sondaggio dai dettagli dell'ordine intorno.",
+    "spacing": "Spaziatura",
+    "spacing_comfortable": "Ampia",
+    "spacing_compact": "Compatta",
+    "rating_style_details": "Le stelle si riempiono fino alla scelta. I numeri vanno da 1 a 5.",
+    "scale_low": "Testo all'estremo basso della scala",
+    "scale_high": "Testo all'estremo alto della scala",
+    "scale_details": "Mostrato sotto le domande di valutazione e da 0 a 10. Lascia vuoto per il testo standard, tradotto per ogni acquirente: «Pessimo» – «Eccellente» per le valutazioni, «Poco probabile» – «Molto probabile» da 0 a 10.",
+    "answer_type_details": "Come rispondono gli acquirenti: toccare una risposta, sceglierne diverse, dare un punteggio o scrivere.",
+    "required_details": "Gli acquirenti non possono inviare finché non rispondono a questa. Lascia disattivato per permettere di saltarla.",
+    "placeholder_details": "Testo di esempio grigio nella casella di risposta vuota.",
+    "long_answer_details": "Una casella più alta per risposte di più di qualche parola."
   },
   "preview": {
     "title": "Anteprima",
@@ -1020,7 +1044,9 @@
     "next": "Avanti",
     "try_it": "Provalo come un acquirente. Non viene salvato nulla.",
     "other_label": "Altro",
-    "other_placeholder": "Raccontaci di più"
+    "other_placeholder": "Raccontaci di più",
+    "rating_low": "Pessimo",
+    "rating_high": "Eccellente"
   },
   "privacy": {
     "notice": "SourceTrac conserva le risposte ai sondaggi e i dati degli ordini per {{months}} mesi. Non conserva mai nomi, email, numeri di telefono, indirizzi o dati di pagamento degli acquirenti.",

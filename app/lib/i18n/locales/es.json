@@ -999,7 +999,31 @@
     "placement_once": "Cada pedido se pregunta una sola vez. Si el comprador responde en una página, la encuesta se oculta en la otra.",
     "store_step_order_status": "Para la página de estado del pedido: en el mismo menú de páginas elige Estado del pedido, añade allí el bloque «SourceTrac survey» y pulsa Guardar. Solo aparece en el menú si tu tienda usa las nuevas cuentas de cliente (Configuración › Cuentas de cliente).",
     "block_order_status_title": "Añade también el bloque de SourceTrac a tu página de estado del pedido",
-    "block_missing_order_status_body": "Esta encuesta también está configurada para la página de estado del pedido, pero el bloque aún no se ha cargado allí. En el editor de checkout, elige Estado del pedido en el menú de páginas, añade el bloque «SourceTrac survey» y pulsa Guardar. Si Estado del pedido no está en el menú, tu tienda usa las cuentas de cliente clásicas: cámbialas en Configuración › Cuentas de cliente o desmarca la página en «Dónde se muestra»."
+    "block_missing_order_status_body": "Esta encuesta también está configurada para la página de estado del pedido, pero el bloque aún no se ha cargado allí. En el editor de checkout, elige Estado del pedido en el menú de páginas, añade el bloque «SourceTrac survey» y pulsa Guardar. Si Estado del pedido no está en el menú, tu tienda usa las cuentas de cliente clásicas: cámbialas en Configuración › Cuentas de cliente o desmarca la página en «Dónde se muestra».",
+    "look_title": "Aspecto y textos",
+    "look_help": "Las fuentes y los colores siguen siempre la marca de tu pantalla de pago (Configuración › Pantalla de pago › Personalizar). Shopify no permite que las apps los cambien, así que la encuesta siempre combina con tu tienda.",
+    "layout_details": "«Una a la vez» muestra un botón Siguiente entre preguntas. «Todas en una pantalla» va bien para una a tres preguntas cortas.",
+    "show_title_details": "El título corto encima de las preguntas.",
+    "show_progress": "Mostrar el progreso (por ejemplo «1 de 3»)",
+    "title_details": "Se muestra encima de las preguntas cuando «Mostrar el título» está activado.",
+    "intro_details": "Una línea bajo el título. Déjalo vacío para no mostrar ninguna.",
+    "button_details": "El botón que pulsan los compradores para enviar sus respuestas.",
+    "thanks_details": "Se muestra unos segundos después de que el comprador responde y luego el bloque se cierra.",
+    "frame": "Marco",
+    "frame_border": "En un recuadro con borde",
+    "frame_none": "Sin borde",
+    "frame_details": "Un recuadro separa la encuesta de los detalles del pedido que la rodean.",
+    "spacing": "Espaciado",
+    "spacing_comfortable": "Amplio",
+    "spacing_compact": "Compacto",
+    "rating_style_details": "Las estrellas se rellenan hasta la elección del comprador. Los números van del 1 al 5.",
+    "scale_low": "Texto en el extremo bajo de la escala",
+    "scale_high": "Texto en el extremo alto de la escala",
+    "scale_details": "Aparece bajo las preguntas de valoración y de 0 a 10. Déjalo vacío para usar el texto estándar, traducido para cada comprador: «Muy malo» a «Excelente» en valoraciones, «Poco probable» a «Muy probable» de 0 a 10.",
+    "answer_type_details": "Cómo responden los compradores: tocar una opción, marcar varias, elegir una puntuación o escribir.",
+    "required_details": "Los compradores no pueden enviar sus respuestas hasta contestar esta. Déjalo desactivado para que puedan saltarla.",
+    "placeholder_details": "Texto de ejemplo en gris dentro del cuadro de respuesta vacío.",
+    "long_answer_details": "Un cuadro más alto para respuestas de más de unas pocas palabras."
   },
   "preview": {
     "title": "Vista previa",
@@ -1020,7 +1044,9 @@
     "next": "Siguiente",
     "try_it": "Recórrela como un comprador. No se guarda nada.",
     "other_label": "Otro",
-    "other_placeholder": "Cuéntanos más"
+    "other_placeholder": "Cuéntanos más",
+    "rating_low": "Muy malo",
+    "rating_high": "Excelente"
   },
   "privacy": {
     "notice": "SourceTrac guarda las respuestas de las encuestas y los datos de los pedidos durante {{months}} meses. Nunca guarda nombres, correos, teléfonos, direcciones ni datos de pago de los compradores.",

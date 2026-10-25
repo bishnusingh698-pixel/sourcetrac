@@ -999,7 +999,31 @@
     "placement_once": "Elke bestelling wordt maar één keer gevraagd. Antwoordt een koper op de ene pagina, dan wordt de enquête op de andere verborgen.",
     "store_step_order_status": "Voor de bestelstatuspagina: kies in hetzelfde paginamenu Bestelstatus, voeg daar het blok ‘SourceTrac survey’ toe en klik op Opslaan. Die staat alleen in het menu als je winkel de nieuwe klantaccounts gebruikt (Instellingen › Klantaccounts).",
     "block_order_status_title": "Voeg het SourceTrac-blok ook toe aan je bestelstatuspagina",
-    "block_missing_order_status_body": "Deze enquête staat ook ingesteld voor de bestelstatuspagina, maar het blok is daar nog niet geladen. Kies in de checkout-editor in het paginamenu Bestelstatus, voeg het blok ‘SourceTrac survey’ toe en klik op Opslaan. Staat Bestelstatus niet in het menu, dan gebruikt je winkel klassieke klantaccounts: schakel over via Instellingen › Klantaccounts of vink de pagina uit bij ‘Waar hij verschijnt’."
+    "block_missing_order_status_body": "Deze enquête staat ook ingesteld voor de bestelstatuspagina, maar het blok is daar nog niet geladen. Kies in de checkout-editor in het paginamenu Bestelstatus, voeg het blok ‘SourceTrac survey’ toe en klik op Opslaan. Staat Bestelstatus niet in het menu, dan gebruikt je winkel klassieke klantaccounts: schakel over via Instellingen › Klantaccounts of vink de pagina uit bij ‘Waar hij verschijnt’.",
+    "look_title": "Uiterlijk en teksten",
+    "look_help": "Lettertypen en kleuren volgen altijd je checkout-branding (Instellingen › Checkout › Aanpassen). Shopify laat apps die niet wijzigen, dus de enquête past altijd bij je winkel.",
+    "layout_details": "‘Eén tegelijk’ toont een knop Volgende tussen de vragen. ‘Alles op één scherm’ past bij één tot drie korte vragen.",
+    "show_title_details": "De korte kop boven de vragen.",
+    "show_progress": "Voortgang tonen (bijvoorbeeld ‘1 van 3’)",
+    "title_details": "Staat boven de vragen als ‘Titel tonen’ aan staat.",
+    "intro_details": "Eén regel onder de titel. Laat leeg voor geen regel.",
+    "button_details": "De knop waarmee kopers hun antwoorden versturen.",
+    "thanks_details": "Wordt een paar seconden getoond nadat een koper heeft geantwoord; daarna sluit het blok.",
+    "frame": "Kader",
+    "frame_border": "In een kader met rand",
+    "frame_none": "Zonder rand",
+    "frame_details": "Een kader zet de enquête apart van de bestelgegevens eromheen.",
+    "spacing": "Ruimte",
+    "spacing_comfortable": "Ruim",
+    "spacing_compact": "Compact",
+    "rating_style_details": "Sterren vullen zich tot de keuze van de koper. Cijfers tonen 1 tot 5.",
+    "scale_low": "Tekst aan de lage kant van de schaal",
+    "scale_high": "Tekst aan de hoge kant van de schaal",
+    "scale_details": "Staat onder beoordelings- en 0-tot-10-vragen. Laat leeg voor de standaardtekst, vertaald voor elke koper: ‘Zeer slecht’ tot ‘Uitstekend’ bij beoordelingen, ‘Niet waarschijnlijk’ tot ‘Zeer waarschijnlijk’ bij 0 tot 10.",
+    "answer_type_details": "Hoe kopers antwoorden: één aantikken, meerdere aanvinken, een score kiezen of schrijven.",
+    "required_details": "Kopers kunnen pas versturen als ze deze vraag hebben beantwoord. Laat uit om overslaan toe te staan.",
+    "placeholder_details": "Grijze voorbeeldtekst in het lege antwoordvak.",
+    "long_answer_details": "Een hoger vak voor antwoorden van meer dan een paar woorden."
   },
   "preview": {
     "title": "Voorbeeld",
@@ -1020,7 +1044,9 @@
     "next": "Volgende",
     "try_it": "Klik er doorheen zoals een koper. Er wordt niets opgeslagen.",
     "other_label": "Anders",
-    "other_placeholder": "Vertel ons meer"
+    "other_placeholder": "Vertel ons meer",
+    "rating_low": "Zeer slecht",
+    "rating_high": "Uitstekend"
   },
   "privacy": {
     "notice": "SourceTrac bewaart enquêteantwoorden en bestelgegevens {{months}} maanden. Namen, e-mailadressen, telefoonnummers, adressen en betaalgegevens van kopers worden nooit opgeslagen.",

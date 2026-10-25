@@ -1,5 +1,11 @@
 /** @jsxImportSource preact */
-import { OTHER_CHANNEL, applyExclusiveToggle, type CompiledQuestion } from "./survey-logic";
+import {
+  OTHER_CHANNEL,
+  applyExclusiveToggle,
+  scaleAnchors,
+  type CompiledQuestion,
+  type SurveyDesign,
+} from "./survey-logic";
 import { optionsFor, type AnswerState } from "./use-multi-survey";
 
 /**
@@ -12,6 +18,12 @@ import { optionsFor, type AnswerState } from "./use-multi-survey";
  * Per question type it renders the matching control: choice tiles, a dropdown,
  * Yes / No, a 1–5 rating, five satisfaction levels, 0–10 NPS, or a text field.
  * Nothing here submits; the hook decides when the set is complete.
+ *
+ * The merchant's look settings (`design`) decide the title, the "1 of 3" line,
+ * stars or numbers for ratings, the words under a scale, the card border and
+ * the spacing. Colours and fonts are never ours to set: every component takes
+ * them from the store's checkout branding. Layout is logical (inline/block), so
+ * a right-to-left checkout mirrors the block with no extra code.
  */
 
 export interface MultiSurveyViewProps {
@@ -34,6 +46,8 @@ export interface MultiSurveyViewProps {
   onSubmit: () => void;
   busy: boolean;
   t: (key: string, fallback: string) => string;
+  /** The merchant's look settings; absent from older configs (defaults apply). */
+  design?: SurveyDesign;
 }
 
 /** `currentTarget.value` of a field event, without trusting its shape. */
@@ -67,9 +81,26 @@ export function MultiSurveyView(props: MultiSurveyViewProps) {
     onSubmit,
     busy,
     t,
+    design,
   } = props;
 
   if (phase === "hidden") return null;
+
+  // Defaults match DEFAULT_DESIGN in shared/survey-rules.ts.
+  const showTitle = design?.showTitle !== false;
+  const showProgress = design?.showProgress !== false;
+  const bordered = design?.cardBorder !== "no_border";
+  const gap = design?.spacing === "compact" ? "small" : "base";
+  // The border is the merchant's choice; without one the block sits flat on
+  // the page like the checkout's own sections.
+  const frame = (content: preact.ComponentChildren) =>
+    bordered ? (
+      <s-box border="base" borderRadius="base" padding="base">
+        {content}
+      </s-box>
+    ) : (
+      content
+    );
 
   if (phase === "loading") {
     return (
@@ -80,19 +111,24 @@ export function MultiSurveyView(props: MultiSurveyViewProps) {
   }
 
   if (phase === "done") {
-    return <s-text tone="success">{thankYouText || t("sourcetrac.thanks", "Thanks!")}</s-text>;
+    return frame(
+      <s-stack direction="inline" gap="small-200" alignItems="center">
+        <s-icon type="check-circle" tone="success" />
+        <s-text tone="success">{thankYouText || t("sourcetrac.thanks", "Thanks!")}</s-text>
+      </s-stack>,
+    );
   }
 
-  return (
-    <s-stack gap="base">
-      {title ? <s-heading>{title}</s-heading> : null}
+  return frame(
+    <s-stack gap={gap}>
+      {title && showTitle ? <s-heading>{title}</s-heading> : null}
       {intro ? (
         <s-text color="subdued" type="small">
           {intro}
         </s-text>
       ) : null}
 
-      {oneByOne && total > 1 ? (
+      {oneByOne && total > 1 && showProgress ? (
         <s-text color="subdued" type="small">
           {t("sourcetrac.progress", "{{current}} of {{total}}")
             .replace("{{current}}", String(Math.min(step + 1, total)))
@@ -101,7 +137,14 @@ export function MultiSurveyView(props: MultiSurveyViewProps) {
       ) : null}
 
       {questions.map((question) => (
-        <QuestionField key={question.id} question={question} answer={answers[question.id]} onAnswer={onAnswer} t={t} />
+        <QuestionField
+          key={question.id}
+          question={question}
+          answer={answers[question.id]}
+          onAnswer={onAnswer}
+          t={t}
+          design={design}
+        />
       ))}
 
       <s-stack direction="inline" gap="small">
@@ -120,6 +163,53 @@ export function MultiSurveyView(props: MultiSurveyViewProps) {
           </s-button>
         )}
       </s-stack>
+    </s-stack>,
+  );
+}
+
+/**
+ * One tappable answer row. The chosen one carries a filled check, so the
+ * choice is visible at a glance and announced to screen readers, not only a
+ * slightly darker background.
+ */
+function ChoiceTile({
+  label,
+  selected,
+  onSelect,
+  selectedLabel,
+}: {
+  label: string;
+  selected: boolean;
+  onSelect: () => void;
+  selectedLabel: string;
+}) {
+  return (
+    <s-clickable
+      onClick={onSelect}
+      accessibilityLabel={selected ? `${label}, ${selectedLabel}` : label}
+      border="base"
+      borderRadius="base"
+      background={selected ? "subdued" : "transparent"}
+      padding="base"
+    >
+      <s-stack direction="inline" gap="small-200" alignItems="center">
+        <s-icon type={selected ? "check-circle-filled" : "circle"} tone={selected ? "auto" : "neutral"} />
+        <s-text type={selected ? "strong" : "generic"}>{label}</s-text>
+      </s-stack>
+    </s-clickable>
+  );
+}
+
+/** The two words under a scale: what the low end and the high end mean. */
+function ScaleAnchors({ low, high }: { low: string; high: string }) {
+  return (
+    <s-stack direction="inline" justifyContent="space-between" gap="small">
+      <s-text color="subdued" type="small">
+        {low}
+      </s-text>
+      <s-text color="subdued" type="small">
+        {high}
+      </s-text>
     </s-stack>
   );
 }
@@ -129,12 +219,15 @@ function QuestionField({
   answer,
   onAnswer,
   t,
+  design,
 }: {
   question: CompiledQuestion;
   answer: import("./survey-logic").AnswerInput | undefined;
   onAnswer: (questionId: string, patch: Partial<import("./survey-logic").AnswerInput>) => void;
   t: (key: string, fallback: string) => string;
+  design?: SurveyDesign;
 }) {
+  const selectedLabel = t("sourcetrac.selected", "selected");
   const set = (patch: Partial<import("./survey-logic").AnswerInput>) => onAnswer(question.id, patch);
   const otherLabel = t("sourcetrac.other", "Other");
   const options = optionsFor(question, otherLabel);
@@ -155,30 +248,22 @@ function QuestionField({
 
       {(question.type === "single_choice" || question.type === "dropdown") && (
         <s-stack gap="small-200">
-          {options.map((option) => {
-            const isSelected = answer?.optionIds?.[0] === option.id;
-            return (
-              <s-clickable
-                key={option.id}
-                disabled={false}
-                onClick={() =>
-                  set({
-                    optionIds: [option.id],
-                    numberValue: null,
-                    // Text typed into "Other" belongs to "Other" only.
-                    otherText: option.isOther || option.id === OTHER_CHANNEL ? (answer?.otherText ?? null) : null,
-                  })
-                }
-                accessibilityLabel={option.label}
-                border="base"
-                borderRadius="base"
-                background={isSelected ? "subdued" : "transparent"}
-                padding="base"
-              >
-                <s-text type={isSelected ? "strong" : "generic"}>{option.label}</s-text>
-              </s-clickable>
-            );
-          })}
+          {options.map((option) => (
+            <ChoiceTile
+              key={option.id}
+              label={option.label}
+              selected={answer?.optionIds?.[0] === option.id}
+              selectedLabel={selectedLabel}
+              onSelect={() =>
+                set({
+                  optionIds: [option.id],
+                  numberValue: null,
+                  // Text typed into "Other" belongs to "Other" only.
+                  otherText: option.isOther || option.id === OTHER_CHANNEL ? (answer?.otherText ?? null) : null,
+                })
+              }
+            />
+          ))}
         </s-stack>
       )}
 
@@ -222,17 +307,26 @@ function QuestionField({
       )}
 
       {question.type === "rating_5" && (
-        <s-stack direction="inline" gap="small-200">
-          {[1, 2, 3, 4, 5].map((n) => (
-            <s-button
-              key={n}
-              variant={answer?.numberValue === n ? "primary" : "secondary"}
-              onClick={() => set({ numberValue: n, optionIds: [] })}
-              accessibilityLabel={String(n)}
-            >
-              {String(n)}
-            </s-button>
-          ))}
+        <s-stack gap="small-200">
+          <s-stack direction="inline" gap="small-200">
+            {[1, 2, 3, 4, 5].map((n) => {
+              const value = answer?.numberValue;
+              const stars = design?.ratingStyle === "stars";
+              // Stars fill up to the chosen one; numbers mark only the chosen one.
+              const on = typeof value === "number" && (stars ? n <= value : n === value);
+              return (
+                <s-button
+                  key={n}
+                  variant={on ? "primary" : "secondary"}
+                  onClick={() => set({ numberValue: n, optionIds: [] })}
+                  accessibilityLabel={t("sourcetrac.ratingAria", "{{n}} out of 5").replace("{{n}}", String(n))}
+                >
+                  {stars ? (on ? "★" : "☆") : String(n)}
+                </s-button>
+              );
+            })}
+          </s-stack>
+          <ScaleAnchors {...scaleAnchors("rating_5", design, t)} />
         </s-stack>
       )}
 
@@ -244,38 +338,33 @@ function QuestionField({
             "neutral",
             "satisfied",
             "very_satisfied",
-          ].map((id) => {
-            const isSelected = answer?.optionIds?.[0] === id;
-            const label = t(`sourcetrac.satisfaction_${id}`, id);
-            return (
-              <s-clickable
-                key={id}
-                onClick={() => set({ optionIds: [id], numberValue: null })}
-                accessibilityLabel={label}
-                border="base"
-                borderRadius="base"
-                background={isSelected ? "subdued" : "transparent"}
-                padding="base"
-              >
-                <s-text type={isSelected ? "strong" : "generic"}>{label}</s-text>
-              </s-clickable>
-            );
-          })}
+          ].map((id) => (
+            <ChoiceTile
+              key={id}
+              label={t(`sourcetrac.satisfaction_${id}`, id)}
+              selected={answer?.optionIds?.[0] === id}
+              selectedLabel={selectedLabel}
+              onSelect={() => set({ optionIds: [id], numberValue: null })}
+            />
+          ))}
         </s-stack>
       )}
 
       {question.type === "nps" && (
-        <s-stack direction="inline" gap="small-200">
-          {Array.from({ length: 11 }, (_, n) => (
-            <s-button
-              key={n}
-              variant={answer?.numberValue === n ? "primary" : "secondary"}
-              onClick={() => set({ numberValue: n, optionIds: [] })}
-              accessibilityLabel={String(n)}
-            >
-              {String(n)}
-            </s-button>
-          ))}
+        <s-stack gap="small-200">
+          <s-stack direction="inline" gap="small-200">
+            {Array.from({ length: 11 }, (_, n) => (
+              <s-button
+                key={n}
+                variant={answer?.numberValue === n ? "primary" : "secondary"}
+                onClick={() => set({ numberValue: n, optionIds: [] })}
+                accessibilityLabel={String(n)}
+              >
+                {String(n)}
+              </s-button>
+            ))}
+          </s-stack>
+          <ScaleAnchors {...scaleAnchors("nps", design, t)} />
         </s-stack>
       )}
 
@@ -283,6 +372,7 @@ function QuestionField({
         (question.textMultiline ? (
           <s-text-area
             label={question.text}
+            labelAccessibilityVisibility="exclusive"
             defaultValue={answer?.textValue ?? ""}
             placeholder={question.placeholder ?? undefined}
             maxLength={500}
@@ -292,6 +382,7 @@ function QuestionField({
         ) : (
           <s-text-field
             label={question.text}
+            labelAccessibilityVisibility="exclusive"
             defaultValue={answer?.textValue ?? ""}
             placeholder={question.placeholder ?? undefined}
             maxLength={500}

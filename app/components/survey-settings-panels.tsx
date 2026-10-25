@@ -4,7 +4,7 @@ import { Banner } from "~/components/admin-ui";
 import { CountryPicker } from "~/components/country-picker";
 import { JustInTimeNotice } from "~/components/data-notice";
 import { LockedNote, checkboxChecked, fieldValue, numberOrNull, type TFn } from "~/components/survey-editor";
-import { LIMITS } from "@shared/survey-rules";
+import { LIMITS, customScaleLabel } from "@shared/survey-rules";
 import { planHas, usesAdvancedTargeting, type PlanTier } from "@shared/plan-features";
 import { SMART_ACTION_PRESETS } from "@shared/templates/smart-actions";
 import { normalizeTagTemplates, tagsForAnswer } from "@shared/sync-tags";
@@ -463,6 +463,14 @@ export function Languages({
           <s-text-field label={t("editor.intro")} placeholder={draft.intro ?? ""} maxLength={limits.MAX_INTRO_TEXT} value={String(current.intro ?? "")} onInput={(e: Event) => setFrame("intro", fieldValue(e))} />
           <s-text-field label={t("editor.button")} placeholder={draft.buttonLabel} maxLength={limits.MAX_BUTTON_LABEL} value={String(current.buttonLabel ?? "")} onInput={(e: Event) => setFrame("buttonLabel", fieldValue(e))} />
           <s-text-field label={t("editor.thanks")} placeholder={draft.thankYouText} maxLength={limits.MAX_THANK_YOU_TEXT} value={String(current.thankYouText ?? "")} onInput={(e: Event) => setFrame("thankYouText", fieldValue(e))} />
+          {/* Only the merchant's own scale words need translating: the
+              standard ones are already translated for every buyer. */}
+          {customScaleLabel(draft.design.scaleLowLabel) ? (
+            <s-text-field label={t("editor.scale_low")} placeholder={draft.design.scaleLowLabel} maxLength={limits.MAX_SCALE_LABEL} value={String(current.scaleLowLabel ?? "")} onInput={(e: Event) => setFrame("scaleLowLabel", fieldValue(e))} />
+          ) : null}
+          {customScaleLabel(draft.design.scaleHighLabel) ? (
+            <s-text-field label={t("editor.scale_high")} placeholder={draft.design.scaleHighLabel} maxLength={limits.MAX_SCALE_LABEL} value={String(current.scaleHighLabel ?? "")} onInput={(e: Event) => setFrame("scaleHighLabel", fieldValue(e))} />
+          ) : null}
         </s-stack>
       </details>
     </s-stack>

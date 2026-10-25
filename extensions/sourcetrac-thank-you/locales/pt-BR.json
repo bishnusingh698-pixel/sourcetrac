@@ -33,6 +33,12 @@
     "editorAudience": "Esta pesquisa tem regras em \"Quem a vê\", então alguns pedidos não vão vê-la.",
     "editorOncePerOrder": "Cada pedido é perguntado uma vez. Depois de uma resposta, aquele pedido não mostra mais a pesquisa, então teste com um pedido novo.",
     "editorWaking": "O SourceTrac está iniciando. Depois de um tempo sem uso, isso pode levar até um minuto.",
-    "editorOtherPage": "Esta pesquisa não está configurada para aparecer nesta página. Ative esta página em \"Onde aparece\" no SourceTrac."
+    "editorOtherPage": "Esta pesquisa não está configurada para aparecer nesta página. Ative esta página em \"Onde aparece\" no SourceTrac.",
+    "selected": "selecionado",
+    "ratingLow": "Muito ruim",
+    "ratingHigh": "Excelente",
+    "npsLow": "Pouco provável",
+    "npsHigh": "Muito provável",
+    "ratingAria": "{{n}} de 5"
   }
 }

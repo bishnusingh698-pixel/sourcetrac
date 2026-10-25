@@ -33,6 +33,12 @@
     "editorPlanHidden": "Ihr Tarif zeigt weniger Live-Umfragen, als Sie haben, und diese gehört nicht dazu. Käufer sehen sie daher nicht. Wechseln Sie in SourceTrac den Tarif oder pausieren Sie eine Umfrage mit höherer Priorität.",
     "editorAudience": "Für diese Umfrage gibt es Regeln unter „Wer sie sieht“, daher sehen manche Bestellungen sie nicht.",
     "editorOncePerOrder": "Jede Bestellung wird einmal gefragt. Nach einer Antwort zeigt diese Bestellung keine Umfrage mehr, teste also mit einer neuen Bestellung.",
-    "editorWaking": "SourceTrac startet. Nach einer ruhigen Phase kann das bis zu einer Minute dauern."
+    "editorWaking": "SourceTrac startet. Nach einer ruhigen Phase kann das bis zu einer Minute dauern.",
+    "selected": "ausgewählt",
+    "ratingLow": "Sehr schlecht",
+    "ratingHigh": "Ausgezeichnet",
+    "npsLow": "Unwahrscheinlich",
+    "npsHigh": "Sehr wahrscheinlich",
+    "ratingAria": "{{n}} von 5"
   }
 }

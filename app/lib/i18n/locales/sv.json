@@ -999,7 +999,31 @@
     "placement_once": "Varje beställning tillfrågas bara en gång. Svarar köparen på en sida döljs enkäten på den andra.",
     "store_step_order_status": "För orderstatussidan: välj Orderstatus i samma sidmeny, lägg till blocket ”SourceTrac survey” där och klicka på Spara. Den finns bara i menyn om din butik använder de nya kundkontona (Inställningar › Kundkonton).",
     "block_order_status_title": "Lägg till SourceTrac-blocket på orderstatussidan också",
-    "block_missing_order_status_body": "Enkäten ska också visas på orderstatussidan, men blocket har inte laddats där ännu. Välj Orderstatus i sidmenyn i kassaredigeraren, lägg till blocket ”SourceTrac survey” och klicka på Spara. Om Orderstatus inte finns i menyn använder din butik klassiska kundkonton: byt under Inställningar › Kundkonton eller avmarkera sidan under ”Var den visas”."
+    "block_missing_order_status_body": "Enkäten ska också visas på orderstatussidan, men blocket har inte laddats där ännu. Välj Orderstatus i sidmenyn i kassaredigeraren, lägg till blocket ”SourceTrac survey” och klicka på Spara. Om Orderstatus inte finns i menyn använder din butik klassiska kundkonton: byt under Inställningar › Kundkonton eller avmarkera sidan under ”Var den visas”.",
+    "look_title": "Utseende och texter",
+    "look_help": "Typsnitt och färger följer alltid kassans varumärkesprofil (Inställningar › Kassa › Anpassa). Shopify låter inte appar ändra dem, så enkäten passar alltid din butik.",
+    "layout_details": "”En i taget” visar en Nästa-knapp mellan frågorna. ”Alla på en sida” passar för en till tre korta frågor.",
+    "show_title_details": "Den korta rubriken ovanför frågorna.",
+    "show_progress": "Visa förlopp (till exempel ”1 av 3”)",
+    "title_details": "Visas ovanför frågorna när ”Visa rubriken” är på.",
+    "intro_details": "En rad under rubriken. Lämna tomt om du inte vill ha någon.",
+    "button_details": "Knappen som köparna trycker på för att skicka sina svar.",
+    "thanks_details": "Visas några sekunder efter att köparen svarat, sedan stängs blocket.",
+    "frame": "Ram",
+    "frame_border": "I en ruta med kant",
+    "frame_none": "Utan kant",
+    "frame_details": "En ruta skiljer enkäten från orderuppgifterna runt omkring.",
+    "spacing": "Avstånd",
+    "spacing_comfortable": "Luftigt",
+    "spacing_compact": "Kompakt",
+    "rating_style_details": "Stjärnorna fylls upp till köparens val. Siffror visar 1 till 5.",
+    "scale_low": "Text vid skalans låga ände",
+    "scale_high": "Text vid skalans höga ände",
+    "scale_details": "Visas under betygsfrågor och frågor från 0 till 10. Lämna tomt för standardtexten, översatt för varje köpare: ”Mycket dåligt” till ”Utmärkt” för betyg, ”Inte troligt” till ”Mycket troligt” för 0 till 10.",
+    "answer_type_details": "Hur köparna svarar: tryck på ett svar, bocka för flera, välj ett betyg eller skriv.",
+    "required_details": "Köparna kan inte skicka förrän de har svarat på den här. Låt den vara av så att de kan hoppa över den.",
+    "placeholder_details": "Grå exempeltext i den tomma svarsrutan.",
+    "long_answer_details": "En högre ruta för svar som är längre än några ord."
   },
   "preview": {
     "title": "Förhandsvisning",
@@ -1020,7 +1044,9 @@
     "next": "Nästa",
     "try_it": "Klicka dig igenom den som en köpare. Inget sparas.",
     "other_label": "Annat",
-    "other_placeholder": "Berätta mer"
+    "other_placeholder": "Berätta mer",
+    "rating_low": "Mycket dåligt",
+    "rating_high": "Utmärkt"
   },
   "privacy": {
     "notice": "SourceTrac sparar enkätsvar och orderuppgifter i {{months}} månader. Köparens namn, e-post, telefonnummer, adress eller betalningsuppgifter sparas aldrig.",

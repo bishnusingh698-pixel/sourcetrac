@@ -138,8 +138,20 @@ export function localizeSurvey(survey: CompiledSurvey, locale: string | null): C
 
   const legacyQuestions = (pack.questions as Record<string, Record<string, string>> | undefined) ?? {};
   const text = (value: unknown): string | null => (typeof value === "string" && value.length > 0 ? value : null);
+  // The merchant's own scale labels, translated like the rest of the frame.
+  const scaleLow = text(pack.scaleLowLabel);
+  const scaleHigh = text(pack.scaleHighLabel);
   return {
     ...survey,
+    ...(survey.design && (scaleLow || scaleHigh)
+      ? {
+          design: {
+            ...survey.design,
+            ...(scaleLow ? { scaleLowLabel: scaleLow } : {}),
+            ...(scaleHigh ? { scaleHighLabel: scaleHigh } : {}),
+          },
+        }
+      : {}),
     title: text(pack.title) ?? survey.title,
     intro: pack.intro != null ? String(pack.intro) : survey.intro,
     buttonLabel: text(pack.buttonLabel) ?? survey.buttonLabel,

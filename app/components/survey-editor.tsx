@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import {
   LIMITS,
+  customScaleLabel,
   fixedOptions,
   isChoiceType,
   isNumericType,
@@ -185,9 +186,54 @@ export function LockedNote({ t, plan, children }: { t: TFn; plan: PlanTier; chil
   );
 }
 
+/**
+ * Keep every follow-up condition one the server accepts, after any edit.
+ *
+ * The editor used to let a merchant build states that every save refused:
+ * remove the answer a follow-up waits for, change the parent question to a
+ * type with other answers, or move the follow-up above its parent. The save
+ * then failed with `show_if_option_unknown` / `show_if_unknown` and the
+ * merchant had to work out why. Now an answer that no longer exists is dropped
+ * from the condition, and a condition that can no longer work (its parent is
+ * gone, after it, or of the wrong kind) is removed, which makes the follow-up
+ * an ordinary question, the same thing removing its parent always did.
+ * A condition still being set up (parent picked, no answer ticked yet) is left
+ * alone.
+ */
+export function repairFollowUps<Q extends Pick<Question, "id" | "type" | "showIf" | "options">>(questions: Q[]): Q[] {
+  let changed = false;
+  const next = questions.map((question, index) => {
+    const condition = question.showIf;
+    if (!condition?.questionId) return question;
+    const parentIndex = questions.findIndex((q) => q.id === condition.questionId);
+    const parent = parentIndex >= 0 ? questions[parentIndex] : undefined;
+    const drop = () => {
+      changed = true;
+      return { ...question, showIf: null };
+    };
+    if (!parent || parentIndex >= index) return drop();
+    if (condition.optionIds && condition.optionIds.length > 0) {
+      if (!isChoiceType(parent.type)) return drop();
+      const allowed = questionHasMerchantOptions(parent.type)
+        ? new Set(parent.options.map((o) => o.id))
+        : new Set(fixedOptions(parent as unknown as SurveyQuestionDef).map((o) => o.id));
+      const kept = condition.optionIds.filter((id) => allowed.has(id));
+      if (kept.length === condition.optionIds.length) return question;
+      if (kept.length === 0) return drop();
+      changed = true;
+      return { ...question, showIf: { ...condition, optionIds: kept } };
+    }
+    if ((typeof condition.min === "number" || typeof condition.max === "number") && !isNumericType(parent.type)) {
+      return drop();
+    }
+    return question;
+  });
+  return changed ? next : questions;
+}
+
 export function QuestionList({
   draft,
-  update,
+  update: updateSurvey,
   t,
   limits,
   errors,
@@ -201,6 +247,9 @@ export function QuestionList({
   plan: PlanTier;
 }) {
   const questions = draft.questions;
+  // Every change to the questions goes through the follow-up repair.
+  const update = (patch: Partial<EditorSurvey>) =>
+    updateSurvey(patch.questions ? { ...patch, questions: repairFollowUps(patch.questions) } : patch);
 
   const setQuestion = (index: number, patch: Partial<Question>) => {
     const current = questions[index];
@@ -375,7 +424,8 @@ function QuestionCard({
               variant="tertiary"
               icon="arrow-up"
               accessibilityLabel={t("editor.move_up")}
-              disabled={index === 0 || undefined}
+              // A follow-up never moves above the question it depends on.
+              disabled={index === 0 || questions[index - 1]?.id === question.showIf?.questionId || undefined}
               onClick={() => onMove(index, index - 1)}
             />
             <s-button
@@ -383,7 +433,7 @@ function QuestionCard({
               variant="tertiary"
               icon="arrow-down"
               accessibilityLabel={t("editor.move_down")}
-              disabled={index === questions.length - 1 || undefined}
+              disabled={index === questions.length - 1 || questions[index + 1]?.showIf?.questionId === question.id || undefined}
               onClick={() => onMove(index, index + 1)}
             />
             <s-button
@@ -433,6 +483,7 @@ function QuestionCard({
 
         <s-select
           label={t("editor.answer_type")}
+          details={t("editor.answer_type_details")}
           value={question.type}
           error={errors.get(`questions[${index}].type`)}
           onChange={(e: Event) => setQuestion(index, { type: fieldValue(e) as QuestionType })}
@@ -450,6 +501,7 @@ function QuestionCard({
 
         <s-checkbox
           label={t("editor.required")}
+          details={t("editor.required_details")}
           checked={question.required || undefined}
           onChange={(e: Event) => setQuestion(index, { required: checkboxChecked(e) })}
         />
@@ -506,11 +558,13 @@ function QuestionCard({
               <>
                 <s-switch
                   label={t("editor.long_answer")}
+                  details={t("editor.long_answer_details")}
                   checked={question.textMultiline || undefined}
                   onChange={(e: Event) => setQuestion(index, { textMultiline: checkboxChecked(e) })}
                 />
                 <TextField
                   label={t("editor.placeholder")}
+                  details={t("editor.placeholder_details")}
                   value={question.placeholder ?? ""}
                   maxLength={limits.MAX_HELP_TEXT}
                   onInput={(v) => setQuestion(index, { placeholder: v || null })}
@@ -764,9 +818,13 @@ function FollowUpEditor({
 }
 
 /**
- * The words around the questions (title, intro, button, thank-you) and how the
- * questions are laid out. Rewording one drops its translations, as for
- * questions.
+ * How the survey looks and the words around the questions (title, intro,
+ * button, thank-you). Rewording one drops its translations, as for questions.
+ *
+ * Every setting here is applied by the checkout block and by the preview.
+ * Colours and fonts are not here on purpose: checkout UI extensions cannot set
+ * them, they always follow the store's checkout branding, and the section says
+ * so instead of offering a picker that would do nothing.
  */
 export function FrameText({
   draft,
@@ -786,11 +844,21 @@ export function FrameText({
     update({ [field]: next, translations: withoutTranslatedField(draft.translations, field) } as Partial<EditorSurvey>);
   };
   const design = draft.design;
+  const setDesign = (patch: Partial<EditorSurvey["design"]>) => update({ design: { ...design, ...patch } });
+  const setScale = (field: "scaleLowLabel" | "scaleHighLabel", value: string) =>
+    update({
+      design: { ...design, [field]: value },
+      translations: withoutTranslatedField(draft.translations, field),
+    });
+  const hasRating = draft.questions.some((q) => q.type === "rating_5");
+  const hasScale = hasRating || draft.questions.some((q) => q.type === "nps");
 
   return (
     <s-stack gap="base">
+      <s-banner tone="info">{t("editor.look_help")}</s-banner>
       <s-select
         label={t("editor.layout")}
+        details={t("editor.layout_details")}
         value={draft.layout}
         onChange={(e: Event) => {
           const layout = fieldValue(e) as "all" | "one_by_one";
@@ -800,44 +868,97 @@ export function FrameText({
         <s-option value="all">{t("editor.layout_all")}</s-option>
         <s-option value="one_by_one">{t("editor.layout_one")}</s-option>
       </s-select>
+      {draft.layout === "one_by_one" ? (
+        <s-switch
+          label={t("editor.show_progress")}
+          checked={design.showProgress || undefined}
+          onChange={(e: Event) => setDesign({ showProgress: checkboxChecked(e) })}
+        />
+      ) : null}
       <s-switch
         label={t("editor.show_title")}
+        details={t("editor.show_title_details")}
         checked={design.showTitle || undefined}
-        onChange={(e: Event) => update({ design: { ...design, showTitle: checkboxChecked(e) } })}
+        onChange={(e: Event) => setDesign({ showTitle: checkboxChecked(e) })}
       />
       <TextField
         label={t("editor.title")}
+        details={t("editor.title_details")}
         value={draft.title}
         maxLength={limits.MAX_SURVEY_TITLE}
         onInput={(v) => setText("title", v)}
       />
       <TextField
         label={t("editor.intro")}
+        details={t("editor.intro_details")}
         value={draft.intro ?? ""}
         maxLength={limits.MAX_INTRO_TEXT}
         onInput={(v) => setText("intro", v)}
       />
       <TextField
         label={t("editor.button")}
+        details={t("editor.button_details")}
         value={draft.buttonLabel}
         maxLength={limits.MAX_BUTTON_LABEL}
         onInput={(v) => setText("buttonLabel", v)}
       />
       <TextField
         label={t("editor.thanks")}
+        details={t("editor.thanks_details")}
         value={draft.thankYouText}
         maxLength={limits.MAX_THANK_YOU_TEXT}
         onInput={(v) => setText("thankYouText", v)}
       />
-      {draft.questions.some((q) => q.type === "rating_5") ? (
+      <s-grid gridTemplateColumns="repeat(auto-fit, minmax(min(100%, 12rem), 1fr))" gap="small">
+        <s-select
+          label={t("editor.frame")}
+          details={t("editor.frame_details")}
+          value={design.cardBorder}
+          onChange={(e: Event) => setDesign({ cardBorder: fieldValue(e) === "no_border" ? "no_border" : "border" })}
+        >
+          <s-option value="border">{t("editor.frame_border")}</s-option>
+          <s-option value="no_border">{t("editor.frame_none")}</s-option>
+        </s-select>
+        <s-select
+          label={t("editor.spacing")}
+          value={design.spacing}
+          onChange={(e: Event) => setDesign({ spacing: fieldValue(e) === "compact" ? "compact" : "comfortable" })}
+        >
+          <s-option value="comfortable">{t("editor.spacing_comfortable")}</s-option>
+          <s-option value="compact">{t("editor.spacing_compact")}</s-option>
+        </s-select>
+      </s-grid>
+      {hasRating ? (
         <s-select
           label={t("editor.rating_style")}
+          details={t("editor.rating_style_details")}
           value={design.ratingStyle}
-          onChange={(e: Event) => update({ design: { ...design, ratingStyle: fieldValue(e) as "numbers" | "stars" } })}
+          onChange={(e: Event) => setDesign({ ratingStyle: fieldValue(e) === "stars" ? "stars" : "numbers" })}
         >
           <s-option value="numbers">{t("editor.rating_numbers")}</s-option>
           <s-option value="stars">{t("editor.rating_stars")}</s-option>
         </s-select>
+      ) : null}
+      {hasScale ? (
+        <s-stack gap="small-200">
+          <s-grid gridTemplateColumns="repeat(auto-fit, minmax(min(100%, 12rem), 1fr))" gap="small">
+            <TextField
+              label={t("editor.scale_low")}
+              value={customScaleLabel(design.scaleLowLabel) ?? ""}
+              maxLength={limits.MAX_SCALE_LABEL}
+              onInput={(v) => setScale("scaleLowLabel", v)}
+            />
+            <TextField
+              label={t("editor.scale_high")}
+              value={customScaleLabel(design.scaleHighLabel) ?? ""}
+              maxLength={limits.MAX_SCALE_LABEL}
+              onInput={(v) => setScale("scaleHighLabel", v)}
+            />
+          </s-grid>
+          <s-text color="subdued" fontSize="small">
+            {t("editor.scale_details")}
+          </s-text>
+        </s-stack>
       ) : null}
     </s-stack>
   );

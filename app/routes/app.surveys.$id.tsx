@@ -508,7 +508,7 @@ export default function SurveyEditorPage() {
             <s-section heading={t("editor.optional_title")}>
               <s-stack gap="small">
                 <details className="st-details">
-                  <summary>{t("editor.wording_title")}</summary>
+                  <summary>{t("editor.look_title")}</summary>
                   <FrameText draft={draft} update={update} t={t} limits={limits} />
                 </details>
                 <details className="st-details">

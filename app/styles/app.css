@@ -381,6 +381,11 @@
   overflow-wrap: anywhere;
 }
 
+/* "No border" in the survey's look settings: the block sits flat on the page. */
+.st-preview--flat {
+  border-color: transparent;
+}
+
 .st-preview-q {
   display: block;
 }

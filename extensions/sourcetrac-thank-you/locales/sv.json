@@ -33,6 +33,12 @@
     "editorAudience": "Den här enkäten har regler under \"Vem som ser den\", så vissa beställningar ser den inte.",
     "editorOncePerOrder": "Varje beställning tillfrågas en gång. Efter ett svar visar den beställningen ingen enkät igen, så testa med en ny beställning.",
     "editorWaking": "SourceTrac startar. Efter en lugn period kan det ta upp till en minut.",
-    "editorOtherPage": "Den här enkäten är inte inställd att visas på den här sidan. Slå på sidan under ”Var den visas” i SourceTrac."
+    "editorOtherPage": "Den här enkäten är inte inställd att visas på den här sidan. Slå på sidan under ”Var den visas” i SourceTrac.",
+    "selected": "vald",
+    "ratingLow": "Mycket dåligt",
+    "ratingHigh": "Utmärkt",
+    "npsLow": "Inte troligt",
+    "npsHigh": "Mycket troligt",
+    "ratingAria": "{{n}} av 5"
   }
 }

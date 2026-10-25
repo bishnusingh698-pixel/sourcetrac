@@ -999,7 +999,31 @@
     "placement_once": "Chaque commande n'est interrogée qu'une fois. Si l'acheteur répond sur une page, le sondage est masqué sur l'autre.",
     "store_step_order_status": "Pour la page de statut de commande : dans le même menu des pages, choisissez Statut de la commande, ajoutez-y le bloc « SourceTrac survey » et cliquez sur Enregistrer. Elle n'apparaît dans le menu que si votre boutique utilise les nouveaux comptes clients (Paramètres › Comptes clients).",
     "block_order_status_title": "Ajoutez aussi le bloc SourceTrac à votre page de statut de commande",
-    "block_missing_order_status_body": "Ce sondage doit aussi s'afficher sur la page de statut de commande, mais le bloc ne s'y est pas encore chargé. Dans l'éditeur de checkout, choisissez Statut de la commande dans le menu des pages, ajoutez le bloc « SourceTrac survey » et cliquez sur Enregistrer. Si Statut de la commande n'est pas dans le menu, votre boutique utilise les comptes clients classiques : changez-les dans Paramètres › Comptes clients ou décochez la page dans « Où il s'affiche »."
+    "block_missing_order_status_body": "Ce sondage doit aussi s'afficher sur la page de statut de commande, mais le bloc ne s'y est pas encore chargé. Dans l'éditeur de checkout, choisissez Statut de la commande dans le menu des pages, ajoutez le bloc « SourceTrac survey » et cliquez sur Enregistrer. Si Statut de la commande n'est pas dans le menu, votre boutique utilise les comptes clients classiques : changez-les dans Paramètres › Comptes clients ou décochez la page dans « Où il s'affiche ».",
+    "look_title": "Apparence et textes",
+    "look_help": "Les polices et les couleurs suivent toujours l'image de marque de votre paiement (Paramètres › Paiement › Personnaliser). Shopify ne permet pas aux apps de les modifier : l'enquête s'accorde donc toujours à votre boutique.",
+    "layout_details": "« Une à la fois » affiche un bouton Suivant entre les questions. « Toutes sur un écran » convient à une à trois questions courtes.",
+    "show_title_details": "Le court titre au-dessus des questions.",
+    "show_progress": "Afficher la progression (par exemple « 1 sur 3 »)",
+    "title_details": "Affiché au-dessus des questions lorsque « Afficher le titre » est activé.",
+    "intro_details": "Une ligne sous le titre. Laissez vide pour n'en afficher aucune.",
+    "button_details": "Le bouton sur lequel les acheteurs appuient pour envoyer leurs réponses.",
+    "thanks_details": "Affiché quelques secondes après la réponse de l'acheteur, puis le bloc se ferme.",
+    "frame": "Cadre",
+    "frame_border": "Dans un encadré avec bordure",
+    "frame_none": "Sans bordure",
+    "frame_details": "Un encadré distingue l'enquête des détails de la commande autour.",
+    "spacing": "Espacement",
+    "spacing_comfortable": "Aéré",
+    "spacing_compact": "Compact",
+    "rating_style_details": "Les étoiles se remplissent jusqu'au choix de l'acheteur. Les chiffres vont de 1 à 5.",
+    "scale_low": "Texte au bas de l'échelle",
+    "scale_high": "Texte en haut de l'échelle",
+    "scale_details": "Affiché sous les questions de note et de 0 à 10. Laissez vide pour le texte standard, traduit pour chaque acheteur : « Très mauvais » à « Excellent » pour les notes, « Peu probable » à « Très probable » pour 0 à 10.",
+    "answer_type_details": "Comment les acheteurs répondent : toucher une réponse, en cocher plusieurs, choisir une note ou écrire.",
+    "required_details": "Les acheteurs ne peuvent pas envoyer leurs réponses avant d'avoir répondu à celle-ci. Laissez désactivé pour qu'ils puissent la passer.",
+    "placeholder_details": "Texte d'exemple grisé dans le champ de réponse vide.",
+    "long_answer_details": "Un champ plus haut pour les réponses de plus de quelques mots."
   },
   "preview": {
     "title": "Aperçu",
@@ -1020,7 +1044,9 @@
     "next": "Suivant",
     "try_it": "Parcourez-la comme un acheteur. Rien n'est enregistré.",
     "other_label": "Autre",
-    "other_placeholder": "Dites-nous en plus"
+    "other_placeholder": "Dites-nous en plus",
+    "rating_low": "Très mauvais",
+    "rating_high": "Excellent"
   },
   "privacy": {
     "notice": "SourceTrac conserve les réponses aux sondages et les détails des commandes pendant {{months}} mois. Il ne conserve jamais les noms, e-mails, numéros de téléphone, adresses ou données de paiement des acheteurs.",

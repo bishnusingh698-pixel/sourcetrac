@@ -89,6 +89,27 @@ export const DEFAULT_DESIGN: DesignSettings = {
 /** Default scale labels for an NPS question (unlike rating_5's poor/excellent). */
 export const DEFAULT_NPS_SCALE = { low: "Not likely", high: "Very likely" } as const;
 
+/**
+ * The merchant's own scale label, or null when the stored value is empty or one
+ * of the English defaults above. A default is never shown as stored: the
+ * checkout block and the preview use their own translated words instead, so a
+ * buyer in Germany never reads "Very poor". The checkout block mirrors this
+ * rule in `scaleAnchors` (extensions/shared/src/survey-logic.ts).
+ */
+export function customScaleLabel(value: string | null | undefined): string | null {
+  const trimmed = (value ?? "").trim();
+  if (
+    trimmed === "" ||
+    trimmed === DEFAULT_DESIGN.scaleLowLabel ||
+    trimmed === DEFAULT_DESIGN.scaleHighLabel ||
+    trimmed === DEFAULT_NPS_SCALE.low ||
+    trimmed === DEFAULT_NPS_SCALE.high
+  ) {
+    return null;
+  }
+  return trimmed;
+}
+
 /** Fill a partial design with every default, so a stored design is always complete. */
 export function resolveDesign(partial?: Partial<DesignSettings> | null): DesignSettings {
   return { ...DEFAULT_DESIGN, ...(partial ?? {}) };

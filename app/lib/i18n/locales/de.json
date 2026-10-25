@@ -999,7 +999,31 @@
     "placement_once": "Jede Bestellung wird nur einmal gefragt. Antwortet ein Käufer auf einer Seite, wird die Umfrage auf der anderen ausgeblendet.",
     "store_step_order_status": "Für die Bestellstatusseite: Wählen Sie im selben Seitenmenü „Bestellstatus“, fügen Sie dort den Block „SourceTrac survey“ hinzu und klicken Sie auf Speichern. Die Seite steht nur im Menü, wenn Ihr Shop die neuen Kundenkonten nutzt (Einstellungen › Kundenkonten).",
     "block_order_status_title": "Fügen Sie den SourceTrac-Block auch Ihrer Bestellstatusseite hinzu",
-    "block_missing_order_status_body": "Diese Umfrage soll auch auf der Bestellstatusseite erscheinen, aber der Block wurde dort noch nicht geladen. Wählen Sie im Checkout-Editor im Seitenmenü „Bestellstatus“, fügen Sie den Block „SourceTrac survey“ hinzu und klicken Sie auf Speichern. Fehlt „Bestellstatus“ im Menü, nutzt Ihr Shop die klassischen Kundenkonten: Wechseln Sie unter Einstellungen › Kundenkonten oder deaktivieren Sie die Seite unter „Wo sie erscheint“."
+    "block_missing_order_status_body": "Diese Umfrage soll auch auf der Bestellstatusseite erscheinen, aber der Block wurde dort noch nicht geladen. Wählen Sie im Checkout-Editor im Seitenmenü „Bestellstatus“, fügen Sie den Block „SourceTrac survey“ hinzu und klicken Sie auf Speichern. Fehlt „Bestellstatus“ im Menü, nutzt Ihr Shop die klassischen Kundenkonten: Wechseln Sie unter Einstellungen › Kundenkonten oder deaktivieren Sie die Seite unter „Wo sie erscheint“.",
+    "look_title": "Aussehen und Texte",
+    "look_help": "Schriften und Farben folgen immer Ihrem Checkout-Branding (Einstellungen › Checkout › Anpassen). Shopify erlaubt Apps nicht, sie zu ändern, deshalb passt die Umfrage immer zu Ihrem Shop.",
+    "layout_details": "„Einzeln“ zeigt zwischen den Fragen eine Weiter-Schaltfläche. „Alle auf einer Seite“ passt zu ein bis drei kurzen Fragen.",
+    "show_title_details": "Die kurze Überschrift über den Fragen.",
+    "show_progress": "Fortschritt anzeigen (zum Beispiel „1 von 3“)",
+    "title_details": "Wird über den Fragen angezeigt, wenn „Titel anzeigen“ aktiviert ist.",
+    "intro_details": "Eine Zeile unter dem Titel. Leer lassen, wenn Sie keine möchten.",
+    "button_details": "Die Schaltfläche, mit der Käufer ihre Antworten senden.",
+    "thanks_details": "Wird nach der Antwort einige Sekunden angezeigt, dann schließt sich der Block.",
+    "frame": "Rahmen",
+    "frame_border": "In einem Kasten mit Rahmen",
+    "frame_none": "Ohne Rahmen",
+    "frame_details": "Ein Kasten hebt die Umfrage von den Bestelldetails ab.",
+    "spacing": "Abstände",
+    "spacing_comfortable": "Großzügig",
+    "spacing_compact": "Kompakt",
+    "rating_style_details": "Sterne füllen sich bis zur Auswahl. Zahlen zeigen 1 bis 5.",
+    "scale_low": "Text am unteren Ende der Skala",
+    "scale_high": "Text am oberen Ende der Skala",
+    "scale_details": "Erscheint unter Bewertungs- und 0-bis-10-Fragen. Leer lassen für den Standardtext, für jeden Käufer übersetzt: „Sehr schlecht“ bis „Ausgezeichnet“ bei Bewertungen, „Unwahrscheinlich“ bis „Sehr wahrscheinlich“ bei 0 bis 10.",
+    "answer_type_details": "Wie Käufer antworten: eine Antwort tippen, mehrere ankreuzen, eine Bewertung wählen oder schreiben.",
+    "required_details": "Käufer können erst senden, wenn sie diese Frage beantwortet haben. Deaktiviert lassen, damit sie sie überspringen können.",
+    "placeholder_details": "Grauer Beispieltext im leeren Antwortfeld.",
+    "long_answer_details": "Ein höheres Feld für Antworten, die länger als ein paar Wörter sind."
   },
   "preview": {
     "title": "Vorschau",
@@ -1020,7 +1044,9 @@
     "next": "Weiter",
     "try_it": "Klicken Sie sich wie ein Käufer durch. Nichts wird gespeichert.",
     "other_label": "Sonstiges",
-    "other_placeholder": "Erzählen Sie uns mehr"
+    "other_placeholder": "Erzählen Sie uns mehr",
+    "rating_low": "Sehr schlecht",
+    "rating_high": "Ausgezeichnet"
   },
   "privacy": {
     "notice": "SourceTrac bewahrt Umfrageantworten und Bestelldaten {{months}} Monate lang auf. Namen, E-Mail-Adressen, Telefonnummern, Anschriften oder Zahlungsdaten von Käufern werden nie gespeichert.",

@@ -111,6 +111,7 @@ function OrderStatusBlock() {
       onSubmit={survey.submit}
       busy={survey.busy}
       t={survey.t}
+      design={survey.survey?.design}
     />
   );
 }

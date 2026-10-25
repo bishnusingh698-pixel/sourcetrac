@@ -67,7 +67,55 @@ export type CompiledSurvey = {
   targeting?: Record<string, unknown>;
   questions: CompiledQuestion[];
   translations?: Record<string, unknown>;
+  /** The merchant's look settings. Absent from configs compiled by older servers. */
+  design?: SurveyDesign;
 };
+
+/**
+ * The look settings the merchant picked in the survey editor. Mirrors
+ * `CompiledDesign` in shared/survey-config.ts (this bundle cannot import it).
+ * Fonts and colours are never here: they come from the store's checkout.
+ */
+export type SurveyDesign = {
+  layout?: "all" | "one_by_one";
+  showProgress?: boolean;
+  showTitle?: boolean;
+  ratingStyle?: "numbers" | "stars";
+  scaleLowLabel?: string;
+  scaleHighLabel?: string;
+  cardBorder?: "border" | "no_border";
+  spacing?: "compact" | "comfortable";
+};
+
+/**
+ * The editor's default scale labels, as stored in English. A label equal to one
+ * of these (or empty) is "not customised": the block shows its own translated
+ * default instead, so a German buyer never reads "Very poor". Mirrors
+ * `DEFAULT_DESIGN` and `DEFAULT_NPS_SCALE` in shared/survey-rules.ts.
+ */
+const DEFAULT_SCALE_LABELS = new Set(["", "Very poor", "Excellent", "Not likely", "Very likely"]);
+
+/**
+ * The words under a rating or 0–10 scale: the merchant's own when they wrote
+ * some, otherwise the block's translated defaults for that kind of scale.
+ */
+export function scaleAnchors(
+  type: "rating_5" | "nps",
+  design: SurveyDesign | undefined,
+  t: (key: string, fallback: string) => string,
+): { low: string; high: string } {
+  const own = (value: string | undefined) => {
+    const trimmed = (value ?? "").trim();
+    return DEFAULT_SCALE_LABELS.has(trimmed) ? null : trimmed;
+  };
+  const low =
+    own(design?.scaleLowLabel) ??
+    (type === "nps" ? t("sourcetrac.npsLow", "Not likely") : t("sourcetrac.ratingLow", "Very poor"));
+  const high =
+    own(design?.scaleHighLabel) ??
+    (type === "nps" ? t("sourcetrac.npsHigh", "Very likely") : t("sourcetrac.ratingHigh", "Excellent"));
+  return { low, high };
+}
 
 /** Shape returned by GET /api/survey. */
 export type SurveyConfigV2 = {

@@ -999,7 +999,31 @@
     "placement_once": "每个订单只询问一次。买家在一个页面回答后，另一个页面就不会再显示问卷。",
     "store_step_order_status": "订单状态页面：在同一页面菜单中选择“订单状态”，在那里添加“SourceTrac survey”区块并保存。只有店铺使用新版客户账户时菜单中才会出现该页面（设置 › 客户账户）。",
     "block_order_status_title": "也请将 SourceTrac 区块添加到订单状态页面",
-    "block_missing_order_status_body": "此问卷也设置为在订单状态页面显示，但该页面尚未加载区块。请在结账编辑器的页面菜单中选择“订单状态”，添加“SourceTrac survey”区块并保存。如果菜单中没有“订单状态”，说明店铺使用的是经典客户账户：请在“设置 › 客户账户”中切换，或在“显示位置”中取消勾选该页面。"
+    "block_missing_order_status_body": "此问卷也设置为在订单状态页面显示，但该页面尚未加载区块。请在结账编辑器的页面菜单中选择“订单状态”，添加“SourceTrac survey”区块并保存。如果菜单中没有“订单状态”，说明店铺使用的是经典客户账户：请在“设置 › 客户账户”中切换，或在“显示位置”中取消勾选该页面。",
+    "look_title": "外观和文字",
+    "look_help": "字体和颜色始终沿用您的结账品牌设置（设置 › 结账 › 自定义）。Shopify 不允许应用更改它们，因此问卷总是与您的商店风格一致。",
+    "layout_details": "“一次一个”会在问题之间显示“下一步”按钮。“全部在一页”适合一到三个简短问题。",
+    "show_title_details": "问题上方的简短标题。",
+    "show_progress": "显示进度（例如“第 1 题，共 3 题”）",
+    "title_details": "开启“显示标题”时显示在问题上方。",
+    "intro_details": "标题下方的一行文字。留空则不显示。",
+    "button_details": "买家点击以提交答案的按钮。",
+    "thanks_details": "买家回答后显示几秒钟，然后区块会关闭。",
+    "frame": "边框",
+    "frame_border": "带边框的方框",
+    "frame_none": "无边框",
+    "frame_details": "方框能让问卷与周围的订单信息区分开。",
+    "spacing": "间距",
+    "spacing_comfortable": "宽松",
+    "spacing_compact": "紧凑",
+    "rating_style_details": "星星会填充到买家选择的位置。数字显示 1 到 5。",
+    "scale_low": "量表低端的文字",
+    "scale_high": "量表高端的文字",
+    "scale_details": "显示在评分题和 0 到 10 分题目下方。留空则使用标准文字，并为每位买家翻译：评分题为“非常差”到“非常好”，0 到 10 分为“不太可能”到“非常可能”。",
+    "answer_type_details": "买家的回答方式：点选一个、勾选多个、选择分数或填写文字。",
+    "required_details": "买家必须回答此题后才能提交。不勾选则可以跳过。",
+    "placeholder_details": "空白答案框中的灰色示例文字。",
+    "long_answer_details": "更高的输入框，适合较长的回答。"
   },
   "preview": {
     "title": "预览",
@@ -1020,7 +1044,9 @@
     "next": "下一步",
     "try_it": "像买家一样点击作答。不会保存任何内容。",
     "other_label": "其他",
-    "other_placeholder": "请告诉我们更多"
+    "other_placeholder": "请告诉我们更多",
+    "rating_low": "非常差",
+    "rating_high": "非常好"
   },
   "privacy": {
     "notice": "SourceTrac 会将问卷回答和订单信息保留 {{months}} 个月。它从不存储买家的姓名、电子邮件、电话、地址或付款信息。",
