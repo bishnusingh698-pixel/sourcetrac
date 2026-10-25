@@ -50,6 +50,8 @@ function OrderStatusBlock() {
         // retry after a long cold start never sends a stale token.
         getSessionToken: () => shopify.sessionToken.get(),
         translate: (key) => shopify.i18n.translate(key),
+        // Keeps an answer that could not be sent, to send on the next load.
+        storage: shopify.storage,
         getLocale: () => shopify.localization?.language?.value?.isoCode,
         // Country targeting. The order-status surface exposes the order's
         // country on `localization`, not on the order object.

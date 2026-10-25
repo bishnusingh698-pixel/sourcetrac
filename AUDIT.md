@@ -48,6 +48,7 @@ brief asks for.
 | B9 | minor | `app/lib/csv.ts` | Exports omit the buyer's country, language and first-order flag, all of which are stored, so a merchant cannot analyse by them in a spreadsheet. | [x] |
 | B10 | minor | `extensions/*/locales` | Only 10 buyer languages. An Arabic, Hebrew, Korean, Polish, Turkish, Danish, Finnish or Norwegian checkout shows the block's buttons ("Submit", "Other", "Thanks") in English. | [x] |
 | B11 | minor | `app/components/survey-settings-panels.tsx` (`Languages`) | Survey wording can only be translated into the 10 *admin* languages, so a merchant selling to Arabic- or Hebrew-speaking buyers cannot translate their survey at all. | [x] |
+| B13 | major | `extensions/shared/src/use-multi-survey.ts` | When the backend stayed unreachable for the whole 60 s retry budget, the buyer's answer was dropped (`survey_submit_lost`), against the "never lose the answer" rule. It is now kept in the extension's `storage` (Shopify keeps it for the checkout session) and sent first the next time the block loads for that order; an answer the server refused outright is not kept. | [x] |
 | B12 | minor | `app/components/survey-editor.tsx` (`FrameText`) | The look section offered only three of the eight stored design settings; the rest were unreachable. | [x] |
 
 Checked and found sound (no change): duplicate submission handling (unique

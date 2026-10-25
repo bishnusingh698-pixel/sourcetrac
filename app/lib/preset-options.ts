@@ -45,13 +45,6 @@ export function presetAnswersForCountry(
   return { market, answers: presetAnswers(market, labels, questionTemplateKey) };
 }
 
-/** The channel key an existing answer stands for, to match it against a preset. */
-export function answerKeyOf(option: { label: string; templateKey?: string | null }): string {
-  const key = option.templateKey ?? "";
-  const tail = key.includes(":") ? key.slice(key.lastIndexOf(":") + 1) : key.includes("_") ? null : key;
-  return tail || option.label.trim().toLowerCase();
-}
-
 /**
  * Merge preset answers into a question's answers.
  *

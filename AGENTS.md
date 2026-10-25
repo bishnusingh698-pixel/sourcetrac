@@ -38,7 +38,9 @@ Read `docs/01-verification-report.md` before writing any code — it contains th
 - Extension retry: 8 attempts, exponential + jitter, ~60s budget, then hide and log. **Never block the page. Never lose the answer.**
 - Free cap reached → **still collect**, set `is_locked=true`, prompt in admin. Never lose buyer data, never hide the merchant's own data to create urgency.
 - **Never sum revenue across currencies.** `GROUP BY currency`. No conversion.
-- All period boundaries are **UTC**. Half-open intervals `[start, end)`.
+- Billing periods (the Free cap) are **UTC**. Report ranges and trend days are the
+  **store's own calendar days** (its IANA zone, UTC when unknown) since 2026-10-25.
+  Half-open intervals `[start, end)` everywhere.
 - Refunded/cancelled/test orders excluded from revenue at **read time**; refunded = net of refunds.
 - Retention: responses/orders 24 months, webhook payloads 30 days, access token nulled on `app/uninstalled`, full cascade delete on `shop/redact`.
 
@@ -855,7 +857,8 @@ Each fix has a test that fails on the old code.
   order name (`#1001`) and the id lives in `order_link`.
 - **`submitted_at` is `YYYY-MM-DD HH:mm:ss` in the shop's `ianaTimezone`**,
   fetched per export (`loadExportContext`), falling back to UTC. The `timezone`
-  column names the zone actually used. Dashboard buckets stay UTC (rule above).
+  column names the zone actually used. Report buckets use the store's zone too
+  (changed 2026-10-25; see the rule at the top).
 - **`order_total` is shown whenever the order is known**, test/cancelled/refunded
   included; `revenue_status` (`counted`, `test order`, ...) carries the
   dashboard's decision. Blank total = order not received. The old "blank unless
@@ -1593,7 +1596,7 @@ once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
 - **Dates are the store's calendar days** (`shared/zoned-date.ts`): start =
   00:00 local, end = 00:00 the day after the end date (inclusive), stored as ISO
   instants. Older bare `YYYY-MM-DD` rules still read, the end now inclusive.
-  Dashboard/Results buckets stay UTC (rule above).
+  Report buckets use the store's zone since 2026-10-25 (rule at the top).
 - **Countries are picked from a list** (`shared/countries.ts`,
   `country-picker.tsx`); the server refuses unknown codes (`invalid_country`).
   "USA" or "UK" used to save and match nobody.
@@ -1716,3 +1719,57 @@ once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
   `life-moment`, with 16 outcome tags and six presets (`first_heard_order_tag`,
   `social_app_order_tag`, `referral_ready_customer_tag`, `buy_again_customer_tag`,
   `eco_customer_tag`, `life_moment_customer_tag`).
+
+
+## Pass of 2026-10-25 (AUDIT.md is the record)
+
+- **The checkout block applies `survey.design`.** Show title, progress, stars,
+  scale words, border and spacing were stored and compiled but never read by
+  the block. `MultiSurveyView` takes `design`; the admin preview mirrors it.
+  The stored English scale defaults ("Very poor", "Not likely") are never shown
+  as written: `customScaleLabel` (shared) and `scaleAnchors` (extension) treat
+  them as "not customised" and use translated words. Keep both rules in step.
+- **Follow-up repair in the editor.** Every change to the questions goes through
+  `repairFollowUps` in `QuestionList`'s `update` wrapper; the move buttons refuse
+  to put a follow-up above its parent. Do not call the survey's `update` directly
+  from a question control, or the repair is skipped.
+- **Report time zone.** `windowBounds(days, now, timeZone)` and
+  `buildTrend({..., timeZone})`; loaders get the zone from `getReportTimeZone`
+  (studio.server, cached an hour). `dayKeyInZone` caches one formatter per zone:
+  per-row `Intl.DateTimeFormat` construction was the slow part.
+- **Regional formats.** `resolveFormatLocale(request, language, adminLocale)` picks a
+  region of the admin language from `Accept-Language` or Shopify's locale; the shell
+  sends it as `formatLocale` and `useAdminI18n().locale` uses it.
+- **Navigation is seven sections** (`NAV` in `app/lib/nav.ts`): Home, Surveys,
+  Analytics, Responses, Plans, Settings, Help. Sub-pages are tabs
+  (`SECTION_TABS`, `SectionTabs`) and are matched to their section through
+  `also`. URLs did not change. The top grid is 4 columns on a phone, 7 from 48rem;
+  `top-nav.test.ts` fails on a lone tile.
+- **Market presets** (`shared/templates/channel-presets.ts`): 23 markets, at most
+  nine answers each. Generic answers name template locale keys; their wording is
+  resolved on the server (`presetLabels`) because template text is not in the
+  browser bundle. A preset answer is saved with `templateKey` `preset:<key>`
+  (or `<questionTemplateKey>_<key>` inside a template question), and
+  `readableChannelKey` reads it back, so one channel is one report row.
+- **Quick start** (`app.surveys.quick-start.tsx`, `app/lib/quick-start.ts`): one
+  screen, created live when the plan has a free slot, otherwise as a draft.
+- **Answers by country (F4).** `Option.countries` (JSON, `'[]'` = everyone,
+  migration `20261025090000_option_countries`). Compiled only on limited answers.
+  The block's `optionsForCountry` shows every answer when the buyer's country is
+  unknown or when filtering would leave nothing to pick. Growth, grandfathered
+  (kept or narrowed) after a downgrade (`addsAnswerCountries`).
+- **Product targeting (F5)** replaces the old "drop product rules" decision.
+  Both blocks send `products=` (even empty) with the config request; absent
+  means an older block and reads as `products_unknown` (survey hidden, reason
+  shown in Recent checkouts). Collections are still dropped.
+- **Analytics country filter (F6).** `channelAnswersSql` carries `country`
+  (NULL for legacy rows); `fetchResponsesInWindow`, `fetchSurveyResponses` and the
+  Results CSV take `country`. Orders carry no country, so the answer rate is not
+  computed for one country (`rateAvailable: false`), never faked.
+- **Buyer languages** (`shared/buyer-languages.ts`): 18, including ar/he (RTL),
+  ko, pl, tr, da, fi, nb. Both checkout extensions ship a locale file for each;
+  `extension-i18n.test.ts` checks. Shopify mirrors RTL checkouts itself.
+- **`scripts/i18n-merge.mjs`** merges `{ "dotted.key": { lang: text } }` into all
+  admin (or `--target templates`) locales and refuses a file missing a language.
+- **Survey CSVs** end with `country, buyer_language, first_order` (appended, so
+  older spreadsheets keep their column positions).

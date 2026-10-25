@@ -258,6 +258,12 @@ export interface SurveyConfig {
 export interface SubmitResult {
   ok: boolean;
   counted: boolean;
+  /**
+   * Set by the block itself (never by the server) when the server refused the
+   * answer outright (400, 401...). Sending it again cannot help, so it is not
+   * kept for a later load.
+   */
+  rejected?: boolean;
 }
 
 /**
@@ -345,6 +351,15 @@ export interface ApiBinding {
   getOrderTotal?: () => { amount: number; currencyCode: string } | null | undefined;
   /** Numeric product ids on the order, for results by product and product targeting. */
   getProductIds?: () => readonly string[];
+  /**
+   * The extension's `storage` API, where an answer that could not be sent is
+   * kept for the next load (see `useMultiSurvey`). Optional.
+   */
+  storage?: {
+    read: (key: string) => Promise<unknown>;
+    write: (key: string, value: unknown) => Promise<void>;
+    delete: (key: string) => Promise<void>;
+  };
 }
 
 /** The log label for a placement; only Order-status is not the Thank-you page. */
@@ -487,6 +502,7 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
     label: string,
     surface: SurveySurface,
     run: (timeoutMs: number) => Promise<T>,
+    onGiveUp?: (retryable: boolean) => void,
   ): Promise<T | null> {
     const deadline = Date.now() + SUBMIT_BUDGET_MS;
     let backoff = INITIAL_BACKOFF_MS;
@@ -504,6 +520,7 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
         const remaining = deadline - Date.now();
 
         if (!retryable || remaining <= 0 || attemptNumber >= MAX_ATTEMPTS) {
+          onGiveUp?.(retryable);
           log(`${label}_gave_up`, {
             surface,
             attempts: attemptNumber,
@@ -629,14 +646,15 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
   }
 
   /** Submit a full multi-question answer set. */
-  function submitAnswers(params: {
+  async function submitAnswers(params: {
     surveyId: string;
     surveyVersion?: number;
     orderId: string | null;
     placement: Placement;
     answers: AnswerInput[];
-  }) {
-    return withRetries("survey_answers", surfaceOf(params.placement), (timeoutMs) =>
+  }): Promise<SubmitResult | null> {
+    let refused = false;
+    const result = await withRetries("survey_answers", surfaceOf(params.placement), (timeoutMs) =>
       attempt<SubmitResult>("/api/survey-responses", {
         method: "POST",
         // Field names must match app/routes/api.survey-responses.tsx exactly.
@@ -652,7 +670,13 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
           ...submitFacts(),
         }),
       }, { timeoutMs }),
+      (retryable) => {
+        refused = !retryable;
+      },
     );
+    // Null still means "could not be sent"; a refusal is told apart so the
+    // block does not keep an answer the server will never take.
+    return result ?? (refused ? { ok: false, counted: false, rejected: true } : null);
   }
 
   function submitFacts(): { isFirstOrder?: boolean; country?: string; productIds?: string[] } {
@@ -710,6 +734,7 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
     submitAnswers,
     getLocale: buyerLocale,
     getCountry: buyerCountry,
+    storage: binding.storage,
     t,
   };
 }

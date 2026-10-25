@@ -48,6 +48,8 @@ function ThankYouBlock() {
         // retry after a long cold start never sends a stale token.
         getSessionToken: () => shopify.sessionToken.get(),
         translate: (key) => shopify.i18n.translate(key),
+        // Keeps an answer that could not be sent, to send on the next load.
+        storage: shopify.storage,
         getLocale: () => shopify.localization?.language?.value?.isoCode,
         // T7: read the buyer's selected payment method types so the server can
         // apply the "only orders paid on delivery" rule. Read lazily, not
