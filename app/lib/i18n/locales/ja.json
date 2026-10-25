@@ -1120,7 +1120,10 @@
     "full": "この質問はすでに回答の上限（{{max}} 件）に達しています。",
     "only_there": "追加した回答を {{country}} と同じグループの国の購入者だけに表示",
     "only_there_details": "他の国の購入者には引き続きほかの回答が表示されます。各回答の横の地球ボタンでリストを変更できます。",
-    "only_there_locked": "一部の国だけに表示する回答は {{plan}} で利用できます。"
+    "only_there_locked": "一部の国だけに表示する回答は {{plan}} で利用できます。",
+    "replace_confirm": "この質問から回答「{{list}}」が削除されます。これまでの集計結果は残ります。",
+    "replace_confirm_yes": "置き換える",
+    "replace_cancel": "今の回答を残す"
   },
   "quick": {
     "title": "クイックスタート",

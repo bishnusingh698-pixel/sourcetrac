@@ -93,11 +93,6 @@ export function languageSwitchHref(
   return `${url.pathname}${url.search}`;
 }
 /**
- * The language for an admin request, from the same inputs in the same order as
- * the shell loader. For loaders that format text on the server (money, dates)
- * and so cannot wait for the shell's data, which loads in parallel.
- */
-/**
  * The locale for dates and numbers: the admin language, in the merchant's own
  * region when their browser (`Accept-Language`) or Shopify's admin locale
  * names one for that language. `en-GB` formats 25/10/2026, `en-US` 10/25/2026.
@@ -122,6 +117,11 @@ export function resolveFormatLocale(
   return intlLocaleFor(language);
 }
 
+/**
+ * The language for an admin request, from the same inputs in the same order as
+ * the shell loader. For loaders that format text on the server (money, dates)
+ * and so cannot wait for the shell's data, which loads in parallel.
+ */
 export function resolveAdminLanguage(
   request: Request,
   saved: string | null | undefined,

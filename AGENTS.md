@@ -1773,3 +1773,14 @@ once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
   admin (or `--target templates`) locales and refuses a file missing a language.
 - **Survey CSVs** end with `country, buyer_language, first_order` (appended, so
   older spreadsheets keep their column positions).
+
+## QA review of the 2026-10-25 pass (REVIEW.md is the record)
+
+- **An "Other (please specify)" option counts toward `MAX_OPTIONS`.** The
+  validator counts every option; the editor's add button, counter and country
+  presets use `MAX_OPTIONS - others.length`. `tests/unit/answer-limit.test.tsx`.
+- **The country filter (F4) must leave a multiple-choice minimum reachable**
+  (`countryOptionsFor` in `use-multi-survey.ts`); otherwise every answer shows.
+- **"Replace my answers" asks first** when it would remove merchant answers.
+- The 16 KB submit cap is enough: at most 5 questions, ~7.5 KB fully in CJK.
+  Do not re-raise it.

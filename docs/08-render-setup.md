@@ -134,8 +134,13 @@ APP_URL=https://<service>.onrender.com
 # REQUIRED. 64 hex chars. Encrypts stored access tokens.
 TOKEN_ENCRYPTION_KEY=<output of: openssl rand -hex 32>
 
-SUPPORT_EMAIL=you@yourdomain.com
+# Required in production: POST /jobs/retention refuses to run without it.
+RETENTION_JOB_SECRET=<output of: openssl rand -hex 32>
 ```
+
+> The support address is not configuration: it is the `SUPPORT_EMAIL` constant in
+> `shared/support.ts` (sourcetracsupport@gmail.com). A `SUPPORT_EMAIL` variable is
+> ignored.
 
 > **`TOKEN_ENCRYPTION_KEY` is required, not optional.** `app/lib/env.ts` validates it
 > as exactly 64 hex characters — a short or non-hex value fails the whole boot, not
@@ -144,10 +149,11 @@ SUPPORT_EMAIL=you@yourdomain.com
 > in Render's secret storage, never in a commit.
 
 ### Required vs optional
-`app/lib/env.ts` hard-requires all seven of: `DATABASE_URL`, `SHOPIFY_API_KEY`,
-`SHOPIFY_API_SECRET`, `SHOPIFY_API_VERSION`, `SCOPES`, `APP_URL`,
-`TOKEN_ENCRYPTION_KEY`. Optional: `SUPPORT_EMAIL`, `LOG_LEVEL`, `NODE_ENV`
-(defaults to `development`).
+`app/lib/env.ts` hard-requires all six of: `DATABASE_URL`, `SHOPIFY_API_KEY`,
+`SHOPIFY_API_SECRET`, `SCOPES`, `APP_URL`, `TOKEN_ENCRYPTION_KEY`. Optional:
+`SHOPIFY_API_VERSION` (pinned in code; any value other than `2026-07` refuses to
+boot), `RETENTION_JOB_SECRET` (needed for `/jobs/retention`), `READYZ_SECRET`,
+`LOG_LEVEL`, `KEEP_AWAKE`, `NODE_ENV` (defaults to `development`).
 
 If any required one is missing the app **fails at boot** rather than crashing later —
 you'll see it immediately on `/healthz`.

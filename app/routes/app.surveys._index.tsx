@@ -1,7 +1,7 @@
+import { useState } from "react";
 import { Form, redirect, useActionData, useLoaderData, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 
-import { SectionTabs } from "~/components/section-tabs";import { useState } from "react";
-
+import { SectionTabs } from "~/components/section-tabs";
 import { Panel, type BadgeTone, PageIntro } from "~/components/admin-ui";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import { ensureShop } from "~/lib/provision.server";

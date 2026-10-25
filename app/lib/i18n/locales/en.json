@@ -1120,7 +1120,10 @@
     "full": "This question already has the most answers it can hold ({{max}}).",
     "only_there": "Show the added answers only to buyers in {{country}} and the countries grouped with it",
     "only_there_details": "Buyers elsewhere keep seeing your other answers. Change the list with the globe button next to each answer.",
-    "only_there_locked": "Answers shown only in some countries are available on {{plan}}."
+    "only_there_locked": "Answers shown only in some countries are available on {{plan}}.",
+    "replace_confirm": "This removes your answers {{list}} from this question. Results already given for them are kept.",
+    "replace_confirm_yes": "Replace anyway",
+    "replace_cancel": "Keep my answers"
   },
   "quick": {
     "title": "Quick start",

@@ -110,4 +110,42 @@ describe("Analytics for one country (F6)", () => {
     expect(france[0]?.country).toBe("FR");
     expect(await fetchSurveyResponses({ shopId, surveyId })).toHaveLength(4);
   });
+
+  it("lists only the chosen survey's countries and counts on Survey results (R6)", async () => {
+    const other = await createSurvey(shopId, {
+      name: "Second survey",
+      status: "active",
+      placements: ["thank_you"],
+      layout: "all",
+      title: "Quick question",
+      intro: null,
+      buttonLabel: "Submit",
+      thankYouText: "Thanks!",
+      questions: [{ type: "yes_no", text: "First time?", required: true }],
+    });
+    const now = new Date();
+    await prisma.orderCache.create({
+      data: { shopId, orderId: "8100000009", currency: "EUR", totalPrice: "5.00", financialStatus: "paid", isTest: false, isCancelled: false, createdAtShop: now, updatedAtShop: now },
+    });
+    await submitAnswers({
+      shopId,
+      surveyId: other.id,
+      surveyVersion: 1,
+      orderId: "8100000009",
+      placement: "thank_you",
+      locale: null,
+      country: "JP",
+      answers: [{ questionId: other.questions[0]!.id, numberValue: 1 }],
+      plan: "scale",
+      definition: { questions: [{ id: other.questions[0]!.id, type: "yes_no", text: "First time?" }] },
+    } as Parameters<typeof submitAnswers>[0]);
+
+    // Shop-wide (the Channels tab) includes Japan; the first survey never had a Japanese buyer.
+    expect((await answerCountries(shopId)).map((c) => c.code)).toEqual(["DE", "FR", "JP"]);
+    expect(await answerCountries(shopId, surveyId)).toEqual([
+      { code: "DE", count: 2 },
+      { code: "FR", count: 1 },
+    ]);
+    expect(await answerCountries(shopId, other.id)).toEqual([{ code: "JP", count: 1 }]);
+  });
 });

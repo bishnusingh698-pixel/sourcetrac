@@ -1120,7 +1120,10 @@
     "full": "此问题的答案数已达上限（{{max}} 个）。",
     "only_there": "仅向 {{country}} 及同组国家/地区的买家显示新增答案",
     "only_there_details": "其他地区的买家仍会看到您的其他答案。可用每个答案旁的地球按钮修改列表。",
-    "only_there_locked": "仅在部分国家/地区显示的答案在 {{plan}} 中提供。"
+    "only_there_locked": "仅在部分国家/地区显示的答案在 {{plan}} 中提供。",
+    "replace_confirm": "这会从此问题中删除你的答案：{{list}}。已收到的相关结果会保留。",
+    "replace_confirm_yes": "仍然替换",
+    "replace_cancel": "保留我的答案"
   },
   "quick": {
     "title": "快速开始",
