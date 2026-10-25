@@ -683,7 +683,10 @@
     "status_total_unreadable": "Totaal onleesbaar",
     "status_no_order": "Geen bestelling",
     "survey_label": "Enquête",
-    "export_cta": "CSV exporteren"
+    "export_cta": "CSV exporteren",
+    "col_buyer": "Koper",
+    "first_order": "Eerste bestelling",
+    "returning": "Terugkerende koper"
   },
   "library": {
     "title": "Sjablonen",

@@ -92,8 +92,30 @@ export function createTranslator(language: LanguageCode): TFunction {
 }
 
 /** The BCP 47 tag to hand to `Intl` for a language code. */
-export function intlLocaleFor(language: LanguageCode): string {
-  return languageFor(language).intlLocale;
+export function intlLocaleFor(language: LanguageCode, regional?: string | null): string {
+  const base = languageFor(language).intlLocale;
+  const preferred = regionalLocale(language, regional);
+  return preferred ?? base;
+}
+
+/**
+ * A regional variant of the admin language for dates and numbers, when the
+ * merchant's own locale names one: an English-speaking merchant in the UK gets
+ * day/month order and a Swiss German merchant Swiss separators, while the words
+ * stay in the admin language. Null when `regional` is not a region of the same
+ * language (a French browser never changes an English admin's formats).
+ */
+export function regionalLocale(language: LanguageCode, regional: string | null | undefined): string | null {
+  if (!regional) return null;
+  let canonical: string | undefined;
+  try {
+    [canonical] = Intl.getCanonicalLocales(regional.trim().replace(/_/g, "-"));
+  } catch {
+    return null;
+  }
+  if (!canonical || !canonical.includes("-")) return null;
+  const base = languageFor(language).intlLocale.split("-")[0]!.toLowerCase();
+  return canonical.split("-")[0]!.toLowerCase() === base ? canonical : null;
 }
 
 export {

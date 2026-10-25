@@ -683,7 +683,10 @@
     "status_total_unreadable": "Total ilegible",
     "status_no_order": "Sin pedido",
     "survey_label": "Encuesta",
-    "export_cta": "Exportar CSV"
+    "export_cta": "Exportar CSV",
+    "col_buyer": "Comprador",
+    "first_order": "Primer pedido",
+    "returning": "Comprador recurrente"
   },
   "library": {
     "title": "Plantillas",

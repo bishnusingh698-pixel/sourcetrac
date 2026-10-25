@@ -4,8 +4,7 @@ import { useState } from "react";
 import { Banner, MoneyList, Panel, PageIntro, Metric, BigNumber } from "~/components/admin-ui";
 import { SurveyPicker } from "~/components/survey-picker";
 import { ScoreBlock, scoreValueText } from "~/components/scores";
-import { intlLocaleFor } from "~/lib/i18n";
-import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
+import { resolveAdminLanguage, resolveFormatLocale } from "~/lib/i18n/resolve.server";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import {
   answerRatePercent,
@@ -25,6 +24,7 @@ import { formatMoney } from "~/lib/money";
 import { ensureShop } from "~/lib/provision.server";
 import { startOrderBackfill } from "~/lib/order-backfill.server";
 import { guarded } from "~/lib/admin-errors.server";
+import { getReportTimeZone } from "~/lib/studio.server";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -74,7 +74,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const requestedId = url.searchParams.get("survey");
   const selectedId = surveys.find((s) => s.id === requestedId)?.id ?? surveys[0]?.id ?? null;
 
-  const locale = intlLocaleFor(resolveAdminLanguage(request, shop.language, shop.adminLocale));
+  const locale = resolveFormatLocale(request, resolveAdminLanguage(request, shop.language, shop.adminLocale), shop.adminLocale);
   const amount = (minor: number, currency: string) => formatMoney(minor, currency, locale);
   // Formatted here: a function in loader data never reaches the browser.
   const money = (totals: ReadonlyArray<CurrencyTotal>) =>
@@ -104,7 +104,9 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   }
 
   const now = new Date();
-  const window = range.days === null ? { start: null, end: now } : windowBounds(range.days, now);
+  // The range is the store's calendar days, as on the Channels tab.
+  const timeZone = await getReportTimeZone(shop.id, shop.shopDomain, session.accessToken);
+  const window = range.days === null ? { start: null, end: now } : windowBounds(range.days, now, timeZone);
   const inWindow = { ...(window.start ? { start: window.start } : {}), end: window.end };
 
   const row = await getSurveyRow(shop.id, selectedId);

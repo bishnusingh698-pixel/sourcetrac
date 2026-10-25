@@ -42,8 +42,7 @@ import { clearPendingSubscription, getAccessToken, recordPendingSubscription, se
 import { matchPlanByDisplayName } from "~/lib/webhooks.server";
 import { ensureShop } from "~/lib/provision.server";
 import { guarded } from "~/lib/admin-errors.server";
-import { intlLocaleFor } from "~/lib/i18n";
-import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
+import { resolveAdminLanguage, resolveFormatLocale } from "~/lib/i18n/resolve.server";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import type { I18nText } from "~/lib/settings";
 import type { PlanStatus } from "@prisma/client";
@@ -80,7 +79,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const shop = await ensureShop(session);
 
   const used = await getUsageCount(shop.id);
-  const locale = intlLocaleFor(resolveAdminLanguage(request, shop.language, shop.adminLocale));
+  const locale = resolveFormatLocale(request, resolveAdminLanguage(request, shop.language, shop.adminLocale), shop.adminLocale);
   const requestedCycle = new URL(request.url).searchParams.get("cycle");
 
   // Reconcile from Shopify rather than trusting our own column, so a charge

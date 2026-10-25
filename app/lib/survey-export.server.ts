@@ -96,6 +96,9 @@ function orderColumns(response: SurveyResponseRow, shopDomain: string, timeZone:
     currency: total?.currency ?? null,
     revenueStatus: surveyRevenueStatus(response),
     orderLink: response.orderId ? orderAdminLink(shopDomain, response.orderId) : "",
+    country: response.country ?? null,
+    buyerLanguage: response.locale ?? null,
+    firstOrder: response.isFirstOrder === null ? null : response.isFirstOrder ? ("yes" as const) : ("no" as const),
   };
 }
 

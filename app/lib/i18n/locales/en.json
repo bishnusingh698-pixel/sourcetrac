@@ -676,7 +676,10 @@
     "status_total_unreadable": "Total unreadable",
     "status_no_order": "No order",
     "survey_label": "Survey",
-    "export_cta": "Export CSV"
+    "export_cta": "Export CSV",
+    "col_buyer": "Buyer",
+    "first_order": "First order",
+    "returning": "Returning buyer"
   },
   "logic": {
     "title": "Logic map",

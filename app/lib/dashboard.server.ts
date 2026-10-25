@@ -280,14 +280,16 @@ export async function loadDashboard(params: {
   days: DashboardRange;
   locale: string;
   now?: Date;
+  /** The store's IANA zone: every section uses its calendar days. */
+  timeZone?: string | null;
 }) {
-  const { shop, days, locale } = params;
+  const { shop, days, locale, timeZone } = params;
   // One clock for every query, so no section can straddle midnight.
   const now = params.now ?? new Date();
-  const { start, end } = windowBounds(days, now);
+  const { start, end } = windowBounds(days, now, timeZone);
 
   const [report, surveys, fetched, questionRows, drafts] = await Promise.all([
-    loadChannelReport({ shop, days, locale, now }),
+    loadChannelReport({ shop, days, locale, now, timeZone }),
     listSurveys(shop.id),
     fetchSurveyResponses({ shopId: shop.id, start, end, limit: DASHBOARD_RESPONSE_LIMIT + 1 }),
     db.question.findMany({

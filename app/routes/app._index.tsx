@@ -2,8 +2,7 @@ import { useLoaderData, type LoaderFunctionArgs, type MetaFunction } from "react
 
 import type { TFunction } from "~/lib/i18n";
 import { checkoutEditorUrl } from "~/lib/checkout-editor";
-import { intlLocaleFor } from "~/lib/i18n";
-import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
+import { resolveAdminLanguage, resolveFormatLocale } from "~/lib/i18n/resolve.server";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 
 import { Panel, PageIntro, RangeSwitcher } from "~/components/admin-ui";
@@ -27,6 +26,7 @@ import { templateText } from "@shared/templates/locales";
 import { regionPackFor } from "@shared/templates/packs";
 import { currentSpotlight } from "@shared/templates/catalog";
 import { getShopLocaleInfo } from "~/lib/studio.server";
+import { isValidTimeZone } from "@shared/zoned-date";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -68,18 +68,21 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   void maybeMarkUnreconcilable();
   void maybeRunPendingDeletions(shop.id);
 
-  const locale = intlLocaleFor(resolveAdminLanguage(request, shop.language, shop.adminLocale));
+  const locale = resolveFormatLocale(request, resolveAdminLanguage(request, shop.language, shop.adminLocale), shop.adminLocale);
 
-  const [anyResponse, liveSurveys, blockSeen] = await Promise.all([
+  const [anyResponse, liveSurveys, blockSeen, localeInfo] = await Promise.all([
     // Ever, not in a window: a quiet week must not send an established
     // merchant back to the setup guide.
     hasAnyResponse(shop.id),
     db.survey.count({ where: { shopId: shop.id, status: "active" } }),
     getBlockSeen(shop.id),
+    getShopLocaleInfo(shop.id, shop.shopDomain, session.accessToken),
   ]);
+  // Days and ranges are the store's own calendar days.
+  const timeZone = isValidTimeZone(localeInfo.timeZone) ? localeInfo.timeZone : "UTC";
 
   const days = parseDashboardRange(new URL(request.url).searchParams.get("range"));
-  const dashboard = anyResponse ? await loadDashboard({ shop, days, locale }) : null;
+  const dashboard = anyResponse ? await loadDashboard({ shop, days, locale, timeZone }) : null;
   const surveys = dashboard?.surveys ?? [];
 
   // The seasonal spotlight (T15) is the fallback next step when nothing more
@@ -88,12 +91,11 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const templateLocale = shop.language ?? "en";
   let spotlightTemplateName: string | null = null;
   if (surveys.length > 0) {
-    const { countryCode, timeZone } = await getShopLocaleInfo(shop.id, shop.shopDomain, session.accessToken);
     const spotlight = currentSpotlight({
       locale: templateLocale,
-      region: regionPackFor(countryCode),
+      region: regionPackFor(localeInfo.countryCode),
       now: new Date(),
-      timeZone: timeZone ?? "UTC",
+      timeZone,
     });
     spotlightTemplateName = spotlight
       ? templateText(templateLocale, templateById(spotlight.templateId)?.nameKey ?? "")

@@ -683,7 +683,10 @@
     "status_total_unreadable": "合計を読み取れません",
     "status_no_order": "注文なし",
     "survey_label": "アンケート",
-    "export_cta": "CSV をエクスポート"
+    "export_cta": "CSV をエクスポート",
+    "col_buyer": "購入者",
+    "first_order": "初回注文",
+    "returning": "リピーター"
   },
   "library": {
     "title": "テンプレート",

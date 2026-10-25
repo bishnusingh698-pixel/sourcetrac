@@ -37,7 +37,7 @@ import {
   languageStrings,
 } from "~/lib/i18n";
 import { shellTranslator } from "~/lib/i18n/use-admin-i18n";
-import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
+import { resolveAdminLanguage, resolveFormatLocale } from "~/lib/i18n/resolve.server";
 import { rememberAdminLocale } from "~/lib/shop.server";
 import { effectivePlan, evaluateCap, planFor } from "~/lib/plans";
 import { getUsageCount } from "~/lib/responses.server";
@@ -116,6 +116,8 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     plan: planFor(enforcedPlan),
     cap: evaluateCap(enforcedPlan, used),
     language,
+    /** Dates and numbers: the admin language in the merchant's own region. */
+    formatLocale: resolveFormatLocale(request, language, shopifyLocale ?? shop.adminLocale),
     /**
      * This language's strings. The browser bundle carries English only, so
      * the merchant's language travels here, once per document load (see

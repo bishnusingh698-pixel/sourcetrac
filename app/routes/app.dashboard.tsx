@@ -1,7 +1,6 @@
 import { useLoaderData, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 
-import { intlLocaleFor } from "~/lib/i18n";
-import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
+import { resolveAdminLanguage, resolveFormatLocale } from "~/lib/i18n/resolve.server";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 
 import { Panel, PageIntro, RangeSwitcher } from "~/components/admin-ui";
@@ -13,6 +12,7 @@ import { maybeMarkUnreconcilable } from "~/lib/responses.server";
 import { maybeRunPendingSync } from "~/lib/sync.server";
 import { maybeRunPendingDeletions } from "~/lib/compliance.server";
 import { guarded } from "~/lib/admin-errors.server";
+import { getReportTimeZone } from "~/lib/studio.server";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -66,10 +66,11 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const range = parseRange(new URL(request.url).searchParams.get("range"));
   // Money is formatted here, so the loader needs the language itself: the
   // shell's loader runs in parallel and its data is not available yet.
-  const locale = intlLocaleFor(resolveAdminLanguage(request, shop.language, shop.adminLocale));
-  const report = await loadChannelReport({ shop, days: range.days, locale });
+  const locale = resolveFormatLocale(request, resolveAdminLanguage(request, shop.language, shop.adminLocale), shop.adminLocale);
+  const timeZone = await getReportTimeZone(shop.id, shop.shopDomain, session.accessToken);
+  const report = await loadChannelReport({ shop, days: range.days, locale, timeZone });
 
-  return { range, ...report };
+  return { range, timeZone, ...report };
 });
 
 export default function ChannelReportPage() {

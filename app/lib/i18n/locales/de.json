@@ -683,7 +683,10 @@
     "status_total_unreadable": "Betrag nicht lesbar",
     "status_no_order": "Keine Bestellung",
     "survey_label": "Umfrage",
-    "export_cta": "CSV exportieren"
+    "export_cta": "CSV exportieren",
+    "col_buyer": "Käufer",
+    "first_order": "Erste Bestellung",
+    "returning": "Wiederkehrender Käufer"
   },
   "library": {
     "title": "Vorlagen",

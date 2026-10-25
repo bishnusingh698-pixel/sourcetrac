@@ -42,10 +42,10 @@ brief asks for.
 | B3 | minor | `MultiSurveyView.tsx` (text questions) | The question is drawn twice: once as the bold question line and again as the text field's visible label. | [x] |
 | B4 | minor | `MultiSurveyView.tsx` (single choice tiles) | The chosen tile is only a slightly darker background; nothing says it is selected, for sighted buyers or screen readers. | [x] |
 | B5 | major | `app/components/survey-editor.tsx` | The editor can build states the server always refuses: removing an answer that a follow-up depends on, changing the parent question's type, or moving a follow-up above its parent. Save then fails with `show_if_option_unknown` / `show_if_unknown` and the merchant has to find the cause. | [x] |
-| B6 | major | `app/lib/analytics.ts`, `dashboard.server.ts`, `channel-report.server.ts`, `app.results.tsx` | Date ranges and the daily trend are cut at UTC midnight. A store in California sees yesterday-evening orders as "today", and "last 7 days" starts at 16:00 local. The brief requires the store's time zone. (Billing periods stay UTC: they are a counter, not a report.) | [ ] |
-| B7 | minor | `app/lib/i18n/index.ts` (`intlLocaleFor`) | Dates and numbers follow the *language*, not the merchant's region: an English-speaking UK or Australian merchant gets US month/day order; a Swiss German merchant gets German separators. Shopify tells us the admin locale (`en-GB`, `de-CH`) and it is stored but unused for formatting. | [ ] |
-| B8 | minor | `app/routes/app.responses.tsx` | Order totals are printed raw (`42.50 USD`) instead of locale-formatted money, unlike every other page. | [ ] |
-| B9 | minor | `app/lib/csv.ts` | Exports omit the buyer's country, language and first-order flag, all of which are stored, so a merchant cannot analyse by them in a spreadsheet. | [ ] |
+| B6 | major | `app/lib/analytics.ts`, `dashboard.server.ts`, `channel-report.server.ts`, `app.results.tsx` | Date ranges and the daily trend are cut at UTC midnight. A store in California sees yesterday-evening orders as "today", and "last 7 days" starts at 16:00 local. The brief requires the store's time zone. (Billing periods stay UTC: they are a counter, not a report.) | [x] |
+| B7 | minor | `app/lib/i18n/index.ts` (`intlLocaleFor`) | Dates and numbers follow the *language*, not the merchant's region: an English-speaking UK or Australian merchant gets US month/day order; a Swiss German merchant gets German separators. Shopify tells us the admin locale (`en-GB`, `de-CH`) and it is stored but unused for formatting. | [x] |
+| B8 | minor | `app/routes/app.responses.tsx` | Order totals are printed raw (`42.50 USD`) instead of locale-formatted money, unlike every other page. | [x] |
+| B9 | minor | `app/lib/csv.ts` | Exports omit the buyer's country, language and first-order flag, all of which are stored, so a merchant cannot analyse by them in a spreadsheet. | [x] |
 | B10 | minor | `extensions/*/locales` | Only 10 buyer languages. An Arabic, Hebrew, Korean, Polish, Turkish, Danish, Finnish or Norwegian checkout shows the block's buttons ("Submit", "Other", "Thanks") in English. | [ ] |
 | B11 | minor | `app/components/survey-settings-panels.tsx` (`Languages`) | Survey wording can only be translated into the 10 *admin* languages, so a merchant selling to Arabic- or Hebrew-speaking buyers cannot translate their survey at all. | [ ] |
 | B12 | minor | `app/components/survey-editor.tsx` (`FrameText`) | The look section offered only three of the eight stored design settings; the rest were unreachable. | [x] |
@@ -81,11 +81,11 @@ support address (only `sourcetracsupport@gmail.com` exists in the code).
 | F4 | Answers shown only in some countries | Per-answer "Only show in" list (Growth, like other country rules). Compiled into the config; the block hides those answers for buyers elsewhere. Additive migration `Option.countries`. "Add answers for another country" appends a market's own answers limited to that country. | [ ] |
 | F5 | Product targeting | "Only orders with these products", picked with Shopify's product picker (App Bridge `resourcePicker`), stored as product ids, evaluated on the server from the order lines both blocks now send. Growth. Replaces the earlier decision to drop product rules (L7 in DECISIONS.md), which was right only while nothing evaluated them. | [ ] |
 | F6 | Analytics country filter | Both Analytics tabs filter by the buyer's country (stored on every v2 answer). | [ ] |
-| F7 | Analytics in the store's time zone | B6. Range edges and trend days are the store's calendar days. | [ ] |
+| F7 | Analytics in the store's time zone | B6. Range edges and trend days are the store's calendar days. | [x] |
 | F8 | Look settings that work | B1/B12: show title, progress, star or number rating, scale labels, border, spacing, button and thank-you text, all applied in checkout and in the admin preview. | [x] |
 | F9 | More buyer languages, RTL | B10/B11: checkout UI strings in Arabic, Hebrew, Korean, Polish, Turkish, Danish, Finnish and Norwegian (Shopify renders right-to-left checkouts itself; our block uses logical layout only). Survey wording translatable into those too. | [ ] |
 | F10 | Easier new admin languages | `scripts/i18n-merge.mjs` merges a key file into every locale; the language list documents the three steps. | [ ] |
-| F11 | Export columns | B9: `country`, `buyer_language`, `first_order` appended (existing columns keep their positions). | [ ] |
+| F11 | Export columns | B9: `country`, `buyer_language`, `first_order` appended (existing columns keep their positions). | [x] |
 
 Existing features verified rather than rebuilt: multiple question types
 (single, multiple, dropdown, yes/no, rating, satisfaction, NPS, text),

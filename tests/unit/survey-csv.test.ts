@@ -19,12 +19,16 @@ function row(overrides: Partial<SurveyCsvRow> = {}): SurveyCsvRow {
 }
 
 describe("toSurveyCsv", () => {
-  it("writes fixed columns then one per question, in order", () => {
-    const csv = toSurveyCsv([row()], [{ id: "q1", header: "How did you hear?" }]);
+  it("writes fixed columns, one per question in order, then the buyer's country, language and first-order flag", () => {
+    const csv = toSurveyCsv(
+      [row({ country: "DE", buyerLanguage: "de-DE", firstOrder: "yes" })],
+      [{ id: "q1", header: "How did you hear?" }],
+    );
     const [header, line] = csv.replace("\ufeff", "").split("\r\n");
     expect(header).toBe(
-      "order,submitted_at,timezone,where,order_total,currency,revenue_status,order_link,How did you hear?",
+      "order,submitted_at,timezone,where,order_total,currency,revenue_status,order_link,How did you hear?,country,buyer_language,first_order",
     );
+    expect(line?.endsWith("Instagram,DE,de-DE,yes")).toBe(true);
     expect(line).toContain("#1001,2026-10-12 09:00:00,UTC,thank_you,42.50,USD,counted");
     expect(line).toContain("Instagram");
   });

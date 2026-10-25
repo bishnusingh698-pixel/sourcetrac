@@ -510,10 +510,16 @@ export function toExportRows(rows: ReadonlyArray<ResponseWithOrder>, context: Ex
   });
 }
 
-export async function fetchDashboardData(params: { shopId: string; days: number; now?: Date }) {
+export async function fetchDashboardData(params: {
+  shopId: string;
+  days: number;
+  now?: Date;
+  /** The store's IANA zone: range edges are its midnights. */
+  timeZone?: string | null;
+}) {
   const now = params.now ?? new Date();
-  const { start, end } = windowBounds(params.days, now);
-  const previous = previousWindowBounds(params.days, now);
+  const { start, end } = windowBounds(params.days, now, params.timeZone);
+  const previous = previousWindowBounds(params.days, now, params.timeZone);
 
   const [responses, ordersInWindow, previousCount, rateResponses, anyAnswer] = await Promise.all([
     fetchResponsesInWindow({ shopId: params.shopId, start, end }),

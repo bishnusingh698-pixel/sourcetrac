@@ -683,7 +683,10 @@
     "status_total_unreadable": "Totalen kan inte läsas",
     "status_no_order": "Ingen order",
     "survey_label": "Enkät",
-    "export_cta": "Exportera CSV"
+    "export_cta": "Exportera CSV",
+    "col_buyer": "Köpare",
+    "first_order": "Första beställningen",
+    "returning": "Återkommande köpare"
   },
   "library": {
     "title": "Mallar",

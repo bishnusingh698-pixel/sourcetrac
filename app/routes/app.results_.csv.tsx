@@ -33,7 +33,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   const t = createTranslator(resolveAdminLanguage(request, shop.language, shop.adminLocale));
   // The same date range as the Results page the merchant downloaded from.
   const days = RANGE_DAYS[url.searchParams.get("range") ?? ""] ?? null;
-  const window = days === null ? null : windowBounds(days, new Date());
+  const window = days === null ? null : windowBounds(days, new Date(), resolveExportTimeZone(context.timeZone));
 
   const file = selectedId
     ? await buildSurveyExport({

@@ -683,7 +683,10 @@
     "status_total_unreadable": "Totale illeggibile",
     "status_no_order": "Nessun ordine",
     "survey_label": "Sondaggio",
-    "export_cta": "Esporta CSV"
+    "export_cta": "Esporta CSV",
+    "col_buyer": "Acquirente",
+    "first_order": "Primo ordine",
+    "returning": "Cliente abituale"
   },
   "library": {
     "title": "Modelli",

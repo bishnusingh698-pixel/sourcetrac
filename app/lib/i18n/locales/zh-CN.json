@@ -683,7 +683,10 @@
     "status_total_unreadable": "总额无法读取",
     "status_no_order": "无订单",
     "survey_label": "问卷",
-    "export_cta": "导出 CSV"
+    "export_cta": "导出 CSV",
+    "col_buyer": "买家",
+    "first_order": "首次下单",
+    "returning": "回头客"
   },
   "library": {
     "title": "模板",

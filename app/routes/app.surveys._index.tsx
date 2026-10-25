@@ -25,8 +25,7 @@ import { CheckoutCheck, type CheckoutCheckView } from "~/components/checkout-che
 import { runCheckoutCheck } from "~/lib/checkout-check.server";
 import { recentServes } from "~/lib/serve-log.server";
 import { getShopLocaleInfo } from "~/lib/studio.server";
-import { intlLocaleFor } from "~/lib/i18n";
-import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
+import { resolveAdminLanguage, resolveFormatLocale } from "~/lib/i18n/resolve.server";
 import { isValidTimeZone } from "@shared/zoned-date";
 import { db } from "~/db.server";
 
@@ -59,7 +58,7 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     getShopLocaleInfo(shop.id, shop.shopDomain, session.accessToken),
   ]);
   // Times read in the store's own zone and the merchant's language.
-  const format = new Intl.DateTimeFormat(intlLocaleFor(resolveAdminLanguage(request, shop.language, shop.adminLocale)), {
+  const format = new Intl.DateTimeFormat(resolveFormatLocale(request, resolveAdminLanguage(request, shop.language, shop.adminLocale), shop.adminLocale), {
     timeZone: isValidTimeZone(localeInfo.timeZone) ? localeInfo.timeZone : "UTC",
     dateStyle: "medium",
     timeStyle: "short",

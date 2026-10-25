@@ -125,3 +125,23 @@ describe("i18n", () => {
     }
   });
 });
+describe("regional date and number formats (B7)", () => {
+  it("uses the merchant's region for the admin language, and only for that language", async () => {
+    const { regionalLocale, intlLocaleFor } = await import("~/lib/i18n");
+    const { resolveFormatLocale } = await import("~/lib/i18n/resolve.server");
+    expect(regionalLocale("en", "en-GB")).toBe("en-GB");
+    expect(regionalLocale("de", "de_CH")).toBe("de-CH");
+    expect(regionalLocale("en", "fr-FR")).toBeNull();
+    expect(regionalLocale("en", "en")).toBeNull();
+    expect(regionalLocale("en", "not a locale!")).toBeNull();
+    expect(intlLocaleFor("en")).toBe("en-US");
+
+    const request = (acceptLanguage: string) =>
+      new Request("https://app.example/app", { headers: { "accept-language": acceptLanguage } });
+    expect(resolveFormatLocale(request("fr-FR,en-GB;q=0.8,en;q=0.5"), "en")).toBe("en-GB");
+    expect(resolveFormatLocale(request("fr-FR"), "en")).toBe("en-US");
+    // 25/10/2026 in the UK, 10/25/2026 in the US.
+    const day = new Date("2026-10-25T12:00:00Z");
+    expect(new Intl.DateTimeFormat(resolveFormatLocale(request("en-GB"), "en"), { timeZone: "UTC" }).format(day)).toBe("25/10/2026");
+  });
+});

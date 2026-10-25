@@ -198,6 +198,15 @@ export type SurveyCsvRow = {
   currency: string | null;
   revenueStatus: RevenueStatus;
   orderLink: string;
+  /**
+   * The buyer's checkout country (ISO code), language, and whether it was their
+   * first order ("yes" / "no", blank when the checkout did not say). Appended
+   * after the existing columns so a spreadsheet built on the old layout keeps
+   * reading the same positions.
+   */
+  country?: string | null;
+  buyerLanguage?: string | null;
+  firstOrder?: "yes" | "no" | null;
   /** Answer text per question id. Missing questions render blank. */
   answers: Record<string, string>;
 };
@@ -233,6 +242,7 @@ export function toSurveyTable(
       "revenue_status",
       "order_link",
       ...questionColumns.map((q) => q.header),
+      ...BUYER_HEADERS,
     ],
     rows: rows.map((row) => [
       row.orderName,
@@ -244,8 +254,16 @@ export function toSurveyTable(
       row.revenueStatus,
       row.orderLink,
       ...questionColumns.map((q) => row.answers[q.id] ?? ""),
+      ...buyerCells(row),
     ]),
   };
+}
+
+/** The buyer facts every multi-question file ends with (B9). */
+export const BUYER_HEADERS = ["country", "buyer_language", "first_order"] as const;
+
+function buyerCells(row: Pick<SurveyCsvRow, "country" | "buyerLanguage" | "firstOrder">): Array<string | null> {
+  return [row.country ?? "", row.buyerLanguage ?? "", row.firstOrder ?? ""];
 }
 
 /**
@@ -272,6 +290,7 @@ export const ALL_SURVEYS_HEADERS = [
   "currency",
   "revenue_status",
   "order_link",
+  ...BUYER_HEADERS,
 ] as const;
 
 export function toAllSurveysTable(rows: ReadonlyArray<AllSurveysCsvRow>): CsvTable {
@@ -289,6 +308,7 @@ export function toAllSurveysTable(rows: ReadonlyArray<AllSurveysCsvRow>): CsvTab
       row.currency,
       row.revenueStatus,
       row.orderLink,
+      ...buyerCells(row),
     ]),
   };
 }
