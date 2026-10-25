@@ -215,12 +215,17 @@ export async function channelCountsForShop(shopId: string): Promise<Array<{ chan
 /**
  * The countries buyers answered from (v2 answers only; the single-question
  * survey never recorded one), busiest first, for the Analytics country filter.
+ * With `surveyId`, only that survey's answers, so the counts beside each
+ * country match the page that lists one survey.
  */
-export async function answerCountries(shopId: string): Promise<Array<{ code: string; count: number }>> {
+export async function answerCountries(
+  shopId: string,
+  surveyId?: string | null,
+): Promise<Array<{ code: string; count: number }>> {
   const rows = await retryDb(() =>
     db.response.groupBy({
       by: ["country"],
-      where: { shopId, country: { not: null } },
+      where: { shopId, ...(surveyId ? { surveyId } : {}), country: { not: null } },
       _count: { _all: true },
     }),
   );

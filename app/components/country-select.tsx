@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 
 import { COUNTRY_CODES } from "@shared/countries";
 
@@ -26,6 +26,9 @@ export function CountrySelect({
   noMatch: string;
 }) {
   const [query, setQuery] = useState("");
+  // One radio group per list: the editor shows one list per choice question,
+  // and a shared name made a pick in one list untick the radio in another.
+  const group = useId();
   const names = useMemo(() => countryNames(language), [language]);
   const needle = query.trim().toLowerCase();
   const shown = names
@@ -49,7 +52,7 @@ export function CountrySelect({
             <label key={country.code} className="st-country-row">
               <input
                 type="radio"
-                name="st-country-select"
+                name={group}
                 checked={country.code === value}
                 onChange={() => onChange(country.code)}
               />

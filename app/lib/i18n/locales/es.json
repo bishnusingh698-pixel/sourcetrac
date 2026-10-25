@@ -1120,7 +1120,10 @@
     "full": "Esta pregunta ya tiene el máximo de respuestas ({{max}}).",
     "only_there": "Mostrar las respuestas añadidas solo a compradores en {{country}} y los países de su grupo",
     "only_there_details": "Los compradores de otros lugares siguen viendo tus demás respuestas. Cambia la lista con el botón del globo junto a cada respuesta.",
-    "only_there_locked": "Las respuestas solo para algunos países están disponibles con {{plan}}."
+    "only_there_locked": "Las respuestas solo para algunos países están disponibles con {{plan}}.",
+    "replace_confirm": "Esto quita tus respuestas {{list}} de esta pregunta. Los resultados que ya tienen se conservan.",
+    "replace_confirm_yes": "Reemplazar de todos modos",
+    "replace_cancel": "Mantener mis respuestas"
   },
   "quick": {
     "title": "Inicio rápido",

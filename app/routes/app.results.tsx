@@ -1,7 +1,7 @@
+import { useState } from "react";
 import { useLoaderData, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 
-import { SectionTabs } from "~/components/section-tabs";import { useState } from "react";
-
+import { SectionTabs } from "~/components/section-tabs";
 import { Banner, MoneyList, Panel, PageIntro, Metric, BigNumber } from "~/components/admin-ui";
 import { SurveyPicker } from "~/components/survey-picker";
 import { ScoreBlock, scoreValueText } from "~/components/scores";
@@ -135,7 +135,8 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
           start: window.start,
           end: window.end,
         }),
-    answerCountries(shop.id),
+    // The selected survey's countries, with its own answer counts.
+    answerCountries(shop.id, selectedId),
   ]);
   const capped = responses.length > RESULTS_RESPONSE_LIMIT ? RESULTS_RESPONSE_LIMIT : null;
   if (capped !== null) responses.length = RESULTS_RESPONSE_LIMIT;

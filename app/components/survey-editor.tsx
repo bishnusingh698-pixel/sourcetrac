@@ -1089,13 +1089,25 @@ function PresetLoader({
   const name = countryName(country, presets.language);
   const missing = answers.filter((a) => !options.some((o) => o.label.trim().toLowerCase() === a.label.trim().toLowerCase()));
   const full = options.length >= max;
+  // Replacing drops the merchant's own answers the preset does not have, so it
+  // asks first, naming them. Nothing to drop: it applies at once.
+  const replaced = mergePresetAnswers(options, answers, "replace", max, build);
+  const dropped = options.filter((option) => !replaced.includes(option));
+  const [confirmReplace, setConfirmReplace] = useState(false);
+  const replace = () => {
+    setConfirmReplace(false);
+    onApply(replaced);
+  };
 
   return (
     <s-stack gap="small">
       <s-text color="subdued">{t("presets.load_help")}</s-text>
       <CountrySelect
         value={country}
-        onChange={setCountry}
+        onChange={(code) => {
+          setCountry(code);
+          setConfirmReplace(false);
+        }}
         language={presets.language}
         label={t("presets.country_label")}
         searchLabel={t("presets.search")}
@@ -1103,7 +1115,7 @@ function PresetLoader({
       />
       <s-text>{t("presets.preview", { country: name, list: answers.map((a) => a.label).join(", ") })}</s-text>
       <s-stack direction="inline" gap="small">
-        <s-button type="button" onClick={() => onApply(mergePresetAnswers(options, answers, "replace", max, build))}>
+        <s-button type="button" onClick={() => (dropped.length > 0 ? setConfirmReplace(true) : replace())}>
           {t("presets.replace")}
         </s-button>
         <s-button
@@ -1121,6 +1133,21 @@ function PresetLoader({
           {t("presets.add", { count: Math.min(missing.length, Math.max(0, max - options.length)) })}
         </s-button>
       </s-stack>
+      {confirmReplace && dropped.length > 0 ? (
+        <s-banner tone="warning">
+          <s-stack gap="small">
+            <s-text>{t("presets.replace_confirm", { list: dropped.map((option) => option.label).join(", ") })}</s-text>
+            <s-stack direction="inline" gap="small">
+              <s-button type="button" variant="primary" onClick={replace}>
+                {t("presets.replace_confirm_yes")}
+              </s-button>
+              <s-button type="button" variant="tertiary" onClick={() => setConfirmReplace(false)}>
+                {t("presets.replace_cancel")}
+              </s-button>
+            </s-stack>
+          </s-stack>
+        </s-banner>
+      ) : null}
       {market.countries.length > 0 ? (
         planHas(plan, "advanced_targeting") ? (
           <s-checkbox

@@ -1120,7 +1120,10 @@
     "full": "Diese Frage hat bereits die Höchstzahl an Antworten ({{max}}).",
     "only_there": "Hinzugefügte Antworten nur Käufern in {{country}} und den zugehörigen Ländern zeigen",
     "only_there_details": "Käufer anderswo sehen weiterhin Ihre übrigen Antworten. Ändern Sie die Liste mit der Globus-Schaltfläche neben jeder Antwort.",
-    "only_there_locked": "Antworten nur für bestimmte Länder sind mit {{plan}} verfügbar."
+    "only_there_locked": "Antworten nur für bestimmte Länder sind mit {{plan}} verfügbar.",
+    "replace_confirm": "Dadurch werden Ihre Antworten {{list}} aus dieser Frage entfernt. Bereits erhaltene Ergebnisse dazu bleiben erhalten.",
+    "replace_confirm_yes": "Trotzdem ersetzen",
+    "replace_cancel": "Meine Antworten behalten"
   },
   "quick": {
     "title": "Schnellstart",

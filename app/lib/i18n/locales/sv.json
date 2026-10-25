@@ -1120,7 +1120,10 @@
     "full": "Frågan har redan det högsta antalet svar ({{max}}).",
     "only_there": "Visa de tillagda svaren bara för köpare i {{country}} och länderna i samma grupp",
     "only_there_details": "Köpare på andra håll ser fortfarande dina andra svar. Ändra listan med jordglobsknappen bredvid varje svar.",
-    "only_there_locked": "Svar som bara visas i vissa länder ingår i {{plan}}."
+    "only_there_locked": "Svar som bara visas i vissa länder ingår i {{plan}}.",
+    "replace_confirm": "Det här tar bort dina svar {{list}} från frågan. Resultat som redan finns för dem sparas.",
+    "replace_confirm_yes": "Ersätt ändå",
+    "replace_cancel": "Behåll mina svar"
   },
   "quick": {
     "title": "Snabbstart",

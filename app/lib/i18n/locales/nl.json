@@ -1120,7 +1120,10 @@
     "full": "Deze vraag heeft al het maximale aantal antwoorden ({{max}}).",
     "only_there": "Toegevoegde antwoorden alleen tonen aan kopers in {{country}} en de landen in dezelfde groep",
     "only_there_details": "Kopers elders zien je andere antwoorden gewoon. Wijzig de lijst met de wereldbolknop naast elk antwoord.",
-    "only_there_locked": "Antwoorden die alleen in sommige landen worden getoond, zijn beschikbaar met {{plan}}."
+    "only_there_locked": "Antwoorden die alleen in sommige landen worden getoond, zijn beschikbaar met {{plan}}.",
+    "replace_confirm": "Hiermee verwijder je je antwoorden {{list}} uit deze vraag. Resultaten die je er al voor hebt, blijven bewaard.",
+    "replace_confirm_yes": "Toch vervangen",
+    "replace_cancel": "Mijn antwoorden houden"
   },
   "quick": {
     "title": "Snel starten",
