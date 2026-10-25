@@ -62,6 +62,8 @@ const querySchema = z.object({
   totalCurrency: z.string().regex(/^[A-Za-z]{3}$/).optional(),
   /** The survey this block is pinned to, from the block's "Survey ID" setting. */
   surveyId: surveyIdSchema,
+  /** Comma-separated numeric product ids on the order's lines (F5). */
+  products: z.string().max(600).regex(/^(\d{1,20}(,\d{1,20})*)?$/).optional(),
 });
 
 type Candidate = CompiledConfig["surveys"][number];
@@ -85,6 +87,10 @@ export const loader = async ({ request }: { request: Request }) => {
       total: read("total"),
       totalCurrency: read("totalCurrency"),
       surveyId: read("surveyId"),
+      // Kept even when empty: "the order has no products we know" is not the
+      // same as "the block did not say" (an older block), which hides a
+      // product-targeted survey.
+      products: url.searchParams.has("products") ? (url.searchParams.get("products") ?? "") : undefined,
     });
 
     if (!parsed.success) {
@@ -167,6 +173,8 @@ export const loader = async ({ request }: { request: Request }) => {
       ? parsed.data.paymentTypes.split(",").map((s) => s.trim()).filter(Boolean)
       : [];
     const country = parsed.data.country?.toUpperCase() ?? null;
+    const productIds =
+      parsed.data.products === undefined ? null : parsed.data.products.split(",").filter(Boolean).slice(0, 50);
 
     /** Why this survey cannot be shown on this order, or null when it can. */
     const miss = (candidate: Candidate): ServeReason | null => {
@@ -186,6 +194,7 @@ export const loader = async ({ request }: { request: Request }) => {
         now,
         // The survey's own collected count, so `maxResponses` can fire.
         responseCount: liveCounts.get(candidate.id) ?? candidate.responseCount,
+        productIds,
       });
     };
     const matches = (candidate: Candidate) => miss(candidate) === null;

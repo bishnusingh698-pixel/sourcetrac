@@ -576,7 +576,9 @@
     "check_new_order": "Each order is asked only once. Test with a new order, then see “Recent checkouts” below for what happened.",
     "check_block_never_order_status": "Order status page: the SourceTrac block hasn't loaded here yet. In the checkout editor, choose Order status from the page menu, add the “SourceTrac survey” block and press Save. The page is in the menu only if your store uses new customer accounts.",
     "validation_currency_unavailable": "Your store's currency could not be read just now. Try saving again in a moment.",
-    "validation_order_value_range": "The maximum order value must be at least the minimum."
+    "validation_order_value_range": "The maximum order value must be at least the minimum.",
+    "reason_products": "“{{survey}}” is limited to orders with some products, and this order had none of them.",
+    "reason_products_unknown": "“{{survey}}” is limited to orders with some products, and this checkout didn't say which products were ordered. Make sure your SourceTrac blocks are up to date."
   },
   "templates": {
     "nps": {
@@ -843,7 +845,7 @@
     "questions_help": "Keep it short. One to three questions get the most answers.",
     "placement_thank_you": "Thank-you page",
     "who_title": "Who sees it",
-    "more_rules": "More rules (order value, countries, dates)",
+    "more_rules": "More rules (order value, countries, products, dates)",
     "optional_title": "Optional",
     "wording_title": "Title, intro and buttons",
     "languages_title": "Languages",
@@ -1031,7 +1033,16 @@
     "answer_countries_title": "Show “{{label}}” only in these countries",
     "answer_countries_details": "Buyers checking out elsewhere don't see this answer. Leave all unticked to show it everywhere. Use it to list LINE only for Japan, or Snapchat only for the Gulf, in one survey.",
     "answer_countries_summary": "Only shown in: {{list}}",
-    "answer_countries_locked": "Showing an answer only in some countries is available on {{plan}}."
+    "answer_countries_locked": "Showing an answer only in some countries is available on {{plan}}.",
+    "products": "Only orders with these products",
+    "products_details": "Shows the survey only when the order includes at least one of these products. Leave empty for every order.",
+    "products_none": "No product chosen: every order can see the survey.",
+    "products_choose": "Choose products",
+    "products_change": "Change products",
+    "products_remove": "Remove {{name}}",
+    "products_missing": "Product {{id}} (no longer found in your store)",
+    "products_unavailable": "Shopify's product picker couldn't open here. Reload the page and try again.",
+    "countries_other_questions": "Want different questions for buyers in one country? Duplicate this survey, set its countries here and move it above this one on the Surveys page."
   },
   "preview": {
     "title": "Preview",

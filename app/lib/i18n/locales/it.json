@@ -583,7 +583,9 @@
     "check_new_order": "Ogni ordine viene interrogato una sola volta. Prova con un nuovo ordine, poi guarda «Checkout recenti» qui sotto per vedere cosa è successo.",
     "check_block_never_order_status": "Pagina di stato dell'ordine: il blocco SourceTrac non si è ancora caricato qui. Nell'editor del checkout scegli Stato dell'ordine dal menu delle pagine, aggiungi il blocco «SourceTrac survey» e premi Salva. È nel menu solo se il tuo negozio usa i nuovi account cliente.",
     "validation_currency_unavailable": "Non è stato possibile leggere la valuta del negozio. Riprova a salvare tra poco.",
-    "validation_order_value_range": "Il valore massimo dell'ordine deve essere almeno pari al minimo."
+    "validation_order_value_range": "Il valore massimo dell'ordine deve essere almeno pari al minimo.",
+    "reason_products": "«{{survey}}» è limitato agli ordini con alcuni prodotti, e questo ordine non ne conteneva nessuno.",
+    "reason_products_unknown": "«{{survey}}» è limitato agli ordini con alcuni prodotti, e questo checkout non ha indicato i prodotti ordinati. Verifica che i blocchi SourceTrac siano aggiornati."
   },
   "templates": {
     "nps": {
@@ -843,7 +845,7 @@
     "questions_help": "Sii breve. Da una a tre domande ottengono più risposte.",
     "placement_thank_you": "Pagina di ringraziamento",
     "who_title": "Chi lo vede",
-    "more_rules": "Altre regole (valore dell'ordine, paesi, date)",
+    "more_rules": "Altre regole (valore dell'ordine, paesi, prodotti, date)",
     "optional_title": "Facoltativo",
     "wording_title": "Titolo, introduzione e pulsanti",
     "languages_title": "Lingue",
@@ -1031,7 +1033,16 @@
     "answer_countries_title": "Mostra «{{label}}» solo in questi paesi",
     "answer_countries_details": "Chi acquista altrove non vede questa risposta. Lascia tutto deselezionato per mostrarla ovunque. Utile per mostrare LINE solo in Giappone o Snapchat solo nel Golfo, in un unico sondaggio.",
     "answer_countries_summary": "Mostrato solo in: {{list}}",
-    "answer_countries_locked": "Mostrare una risposta solo in alcuni paesi è disponibile con {{plan}}."
+    "answer_countries_locked": "Mostrare una risposta solo in alcuni paesi è disponibile con {{plan}}.",
+    "products": "Solo ordini con questi prodotti",
+    "products_details": "Mostra il sondaggio solo se l'ordine include almeno uno di questi prodotti. Lascia vuoto per tutti gli ordini.",
+    "products_none": "Nessun prodotto scelto: tutti gli ordini possono vedere il sondaggio.",
+    "products_choose": "Scegli prodotti",
+    "products_change": "Modifica prodotti",
+    "products_remove": "Rimuovi {{name}}",
+    "products_missing": "Prodotto {{id}} (non più presente nel negozio)",
+    "products_unavailable": "Non è stato possibile aprire il selettore prodotti di Shopify. Ricarica la pagina e riprova.",
+    "countries_other_questions": "Domande diverse per gli acquirenti di un paese? Duplica questo sondaggio, scegli qui i suoi paesi e spostalo sopra questo nella pagina Sondaggi."
   },
   "preview": {
     "title": "Anteprima",

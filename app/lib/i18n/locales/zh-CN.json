@@ -583,7 +583,9 @@
     "check_new_order": "每个订单只会被询问一次。请用新订单测试，然后在下方“最近的结账”中查看结果。",
     "check_block_never_order_status": "订单状态页面：SourceTrac 区块尚未在此加载。请在结账编辑器的页面菜单中选择“订单状态”，添加“SourceTrac survey”区块并保存。只有店铺使用新版客户账户时菜单中才会出现该页面。",
     "validation_currency_unavailable": "暂时无法读取商店的货币。请稍后再保存一次。",
-    "validation_order_value_range": "最高订单金额不能低于最低订单金额。"
+    "validation_order_value_range": "最高订单金额不能低于最低订单金额。",
+    "reason_products": "“{{survey}}”仅限包含特定产品的订单，而此订单不含这些产品。",
+    "reason_products_unknown": "“{{survey}}”仅限包含特定产品的订单，但此次结账未提供所订购的产品。请确认您的 SourceTrac 区块为最新版本。"
   },
   "templates": {
     "nps": {
@@ -843,7 +845,7 @@
     "questions_help": "尽量简短。一到三个问题能收到最多回答。",
     "placement_thank_you": "感谢页",
     "who_title": "显示对象",
-    "more_rules": "更多规则（订单金额、国家/地区、日期）",
+    "more_rules": "更多规则（订单金额、国家/地区、产品、日期）",
     "optional_title": "可选",
     "wording_title": "标题、简介和按钮",
     "languages_title": "语言",
@@ -1031,7 +1033,16 @@
     "answer_countries_title": "仅在这些国家/地区显示“{{label}}”",
     "answer_countries_details": "在其他国家/地区结账的买家看不到此答案。全部不勾选则在所有地区显示。例如可在同一份问卷中只对日本显示 LINE，或只对海湾地区显示 Snapchat。",
     "answer_countries_summary": "仅在以下地区显示：{{list}}",
-    "answer_countries_locked": "仅在部分国家/地区显示答案的功能在 {{plan}} 中提供。"
+    "answer_countries_locked": "仅在部分国家/地区显示答案的功能在 {{plan}} 中提供。",
+    "products": "仅限包含这些产品的订单",
+    "products_details": "仅当订单至少包含其中一个产品时才显示问卷。留空则对所有订单显示。",
+    "products_none": "未选择产品：所有订单都能看到问卷。",
+    "products_choose": "选择产品",
+    "products_change": "更改产品",
+    "products_remove": "删除 {{name}}",
+    "products_missing": "产品 {{id}}（商店中已找不到）",
+    "products_unavailable": "无法打开 Shopify 产品选择器。请刷新页面后重试。",
+    "countries_other_questions": "想为某个国家/地区的买家设置不同的问题？复制此问卷，在此选择国家/地区，并在“问卷”页面将其移到此问卷上方。"
   },
   "preview": {
     "title": "预览",

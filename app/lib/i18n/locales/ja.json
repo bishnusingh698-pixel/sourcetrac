@@ -583,7 +583,9 @@
     "check_new_order": "各注文への質問は1回だけです。新しい注文でテストし、結果は下の「最近のチェックアウト」で確認してください。",
     "check_block_never_order_status": "注文ステータスページ：ここではまだSourceTracブロックが読み込まれていません。チェックアウトエディタのページメニューで「注文ステータス」を選び、「SourceTrac survey」ブロックを追加して保存してください。ストアが新しい顧客アカウントを使っている場合のみメニューに表示されます。",
     "validation_currency_unavailable": "ストアの通貨を読み込めませんでした。少し待ってからもう一度保存してください。",
-    "validation_order_value_range": "最大注文金額は最小注文金額以上にしてください。"
+    "validation_order_value_range": "最大注文金額は最小注文金額以上にしてください。",
+    "reason_products": "「{{survey}}」は特定の商品を含む注文に限定されており、この注文には含まれていませんでした。",
+    "reason_products_unknown": "「{{survey}}」は特定の商品を含む注文に限定されていますが、このチェックアウトでは注文商品が伝えられませんでした。SourceTrac ブロックが最新か確認してください。"
   },
   "templates": {
     "nps": {
@@ -843,7 +845,7 @@
     "questions_help": "短くまとめましょう。質問が1〜3問のときに最も多くの回答が集まります。",
     "placement_thank_you": "サンクスページ",
     "who_title": "表示する相手",
-    "more_rules": "その他のルール（注文金額、国、日付）",
+    "more_rules": "その他のルール（注文金額、国、商品、日付）",
     "optional_title": "任意",
     "wording_title": "タイトル、導入文、ボタン",
     "languages_title": "言語",
@@ -1031,7 +1033,16 @@
     "answer_countries_title": "「{{label}}」をこれらの国でのみ表示",
     "answer_countries_details": "他の国で購入する人にはこの回答は表示されません。すべて未選択ならどこでも表示されます。1つのアンケートで、LINEは日本だけ、Snapchatは湾岸地域だけ、といった使い方ができます。",
     "answer_countries_summary": "表示する国：{{list}}",
-    "answer_countries_locked": "回答を一部の国だけに表示する機能は {{plan}} で利用できます。"
+    "answer_countries_locked": "回答を一部の国だけに表示する機能は {{plan}} で利用できます。",
+    "products": "これらの商品を含む注文のみ",
+    "products_details": "注文にこれらの商品が1つ以上含まれる場合のみアンケートを表示します。空欄ならすべての注文に表示します。",
+    "products_none": "商品が選ばれていません。すべての注文でアンケートが表示されます。",
+    "products_choose": "商品を選ぶ",
+    "products_change": "商品を変更",
+    "products_remove": "{{name}} を削除",
+    "products_missing": "商品 {{id}}（ストアに見つかりません）",
+    "products_unavailable": "Shopify の商品選択を開けませんでした。ページを再読み込みして、もう一度お試しください。",
+    "countries_other_questions": "特定の国の購入者に別の質問をしたい場合は、このアンケートを複製し、ここで対象国を選び、「アンケート」ページでこのアンケートより上に移動します。"
   },
   "preview": {
     "title": "プレビュー",

@@ -35,7 +35,7 @@ import {
   type EditorSurvey,
   type SurveyInput,
 } from "~/lib/surveys.server";
-import { getShopDisplay, getShopLocaleInfo } from "~/lib/studio.server";
+import { getProductTitles, getShopDisplay, getShopLocaleInfo } from "~/lib/studio.server";
 import { isValidTimeZone } from "@shared/zoned-date";
 import { grantedSyncScopes } from "~/lib/scopes.server";
 import { presetLabels } from "~/lib/channel-presets.server";
@@ -104,6 +104,11 @@ export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) =>
     // merchant's language and every buyer language, and the store's country.
     presetLabels: presetLabels(resolveAdminLanguage(request, shop.language, shop.adminLocale)),
     shopCountry: localeInfo.countryCode,
+    // Names for the products the survey's product rule picks (F5).
+    productTitles:
+      (survey.targeting.productIds?.length ?? 0) > 0
+        ? await getProductTitles(shop.id, shop.shopDomain, session.accessToken, survey.targeting.productIds ?? [])
+        : {},
   };
 });
 
@@ -513,6 +518,7 @@ export default function SurveyEditorPage() {
                     errors={errors}
                     t={t}
                     plan={plan}
+                    productTitles={data.productTitles}
                   />
                 </details>
               </s-stack>

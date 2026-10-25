@@ -843,16 +843,23 @@ function sanitizeSurveyInput(input: SurveyInput): SurveyInput {
     fail("syncOptions", "invalid_sync_options", "The sync settings could not be read.");
   }
 
-  // Product and collection rules were accepted, plan-gated and stored, but the
-  // checkout never sends what they need and nothing evaluates them, so a
-  // "products only" survey showed on every order. No editor offers them; a
-  // crafted or old save is stored without them rather than pretending.
+  // Product rules (F5) are evaluated on the server from the order lines both
+  // blocks send, so they are kept; ids are Shopify's numeric product ids.
+  // Collection rules are still dropped: nothing resolves a collection to its
+  // products, so a "collection only" survey would have shown on every order.
+  if ((targeting.productIds ?? []).some((id) => !/^\d{1,20}$/.test(id))) {
+    fail("targeting.productIds", "invalid_targeting", "A product could not be read. Choose the products again.");
+  }
   const {
-    productIds: _productIds,
+    productIds,
     collectionIds: _collectionIds,
     resolvedProductIds: _resolvedProductIds,
-    ...appliedTargeting
+    ...rest
   } = targeting;
+  const appliedTargeting: Targeting = {
+    ...rest,
+    ...(productIds && productIds.length > 0 ? { productIds: [...new Set(productIds)] } : {}),
+  };
 
   return { ...input, placements, targeting: appliedTargeting, ...(design ? { design } : {}) };
 }

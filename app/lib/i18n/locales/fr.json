@@ -583,7 +583,9 @@
     "check_new_order": "Chaque commande n'est interrogée qu'une fois. Testez avec une nouvelle commande, puis consultez « Paiements récents » ci-dessous pour voir ce qui s'est passé.",
     "check_block_never_order_status": "Page de statut de commande : le bloc SourceTrac ne s'y est pas encore chargé. Dans l'éditeur de checkout, choisissez Statut de la commande dans le menu des pages, ajoutez le bloc « SourceTrac survey » et cliquez sur Enregistrer. Elle n'apparaît dans le menu que si votre boutique utilise les nouveaux comptes clients.",
     "validation_currency_unavailable": "La devise de votre boutique n'a pas pu être lue pour le moment. Réessayez d'enregistrer dans un instant.",
-    "validation_order_value_range": "La valeur de commande maximale doit être au moins égale à la valeur minimale."
+    "validation_order_value_range": "La valeur de commande maximale doit être au moins égale à la valeur minimale.",
+    "reason_products": "« {{survey}} » est limitée aux commandes de certains produits, et cette commande n'en contenait aucun.",
+    "reason_products_unknown": "« {{survey}} » est limitée aux commandes de certains produits, et ce paiement n'a pas indiqué les produits commandés. Vérifiez que vos blocs SourceTrac sont à jour."
   },
   "templates": {
     "nps": {
@@ -843,7 +845,7 @@
     "questions_help": "Faites court. Une à trois questions obtiennent le plus de réponses.",
     "placement_thank_you": "Page de remerciement",
     "who_title": "Qui le voit",
-    "more_rules": "Plus de règles (valeur de commande, pays, dates)",
+    "more_rules": "Plus de règles (valeur de commande, pays, produits, dates)",
     "optional_title": "Facultatif",
     "wording_title": "Titre, introduction et boutons",
     "languages_title": "Langues",
@@ -1031,7 +1033,16 @@
     "answer_countries_title": "Afficher « {{label}} » uniquement dans ces pays",
     "answer_countries_details": "Les acheteurs ailleurs ne voient pas cette réponse. Ne cochez rien pour l'afficher partout. Pratique pour proposer LINE seulement au Japon, ou Snapchat seulement dans le Golfe, dans une seule enquête.",
     "answer_countries_summary": "Affiché uniquement en : {{list}}",
-    "answer_countries_locked": "Afficher une réponse dans certains pays seulement est disponible avec {{plan}}."
+    "answer_countries_locked": "Afficher une réponse dans certains pays seulement est disponible avec {{plan}}.",
+    "products": "Uniquement les commandes avec ces produits",
+    "products_details": "Affiche l'enquête seulement si la commande contient au moins un de ces produits. Laissez vide pour toutes les commandes.",
+    "products_none": "Aucun produit choisi : toutes les commandes peuvent voir l'enquête.",
+    "products_choose": "Choisir des produits",
+    "products_change": "Modifier les produits",
+    "products_remove": "Supprimer {{name}}",
+    "products_missing": "Produit {{id}} (introuvable dans votre boutique)",
+    "products_unavailable": "Le sélecteur de produits de Shopify n'a pas pu s'ouvrir. Rechargez la page et réessayez.",
+    "countries_other_questions": "Des questions différentes pour les acheteurs d'un pays ? Dupliquez cette enquête, choisissez ses pays ici et placez-la au-dessus de celle-ci sur la page Enquêtes."
   },
   "preview": {
     "title": "Aperçu",

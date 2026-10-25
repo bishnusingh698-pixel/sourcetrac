@@ -583,7 +583,9 @@
     "check_new_order": "Elke bestelling wordt maar één keer gevraagd. Test met een nieuwe bestelling en kijk daarna hieronder bij ‘Recente checkouts’ wat er gebeurde.",
     "check_block_never_order_status": "Bestelstatuspagina: het SourceTrac-blok is hier nog niet geladen. Kies in de checkout-editor in het paginamenu Bestelstatus, voeg het blok ‘SourceTrac survey’ toe en klik op Opslaan. De pagina staat alleen in het menu als je winkel de nieuwe klantaccounts gebruikt.",
     "validation_currency_unavailable": "De valuta van je winkel kon nu niet worden gelezen. Probeer het zo opnieuw op te slaan.",
-    "validation_order_value_range": "De maximale orderwaarde moet minstens de minimale zijn."
+    "validation_order_value_range": "De maximale orderwaarde moet minstens de minimale zijn.",
+    "reason_products": "‘{{survey}}’ geldt alleen voor bestellingen met bepaalde producten, en deze bestelling had er geen van.",
+    "reason_products_unknown": "‘{{survey}}’ geldt alleen voor bestellingen met bepaalde producten, en deze checkout gaf niet door welke producten zijn besteld. Controleer of je SourceTrac-blokken up-to-date zijn."
   },
   "templates": {
     "nps": {
@@ -843,7 +845,7 @@
     "questions_help": "Houd het kort. Eén tot drie vragen leveren de meeste antwoorden op.",
     "placement_thank_you": "Bedankpagina",
     "who_title": "Wie hem ziet",
-    "more_rules": "Meer regels (orderwaarde, landen, data)",
+    "more_rules": "Meer regels (orderwaarde, landen, producten, datums)",
     "optional_title": "Optioneel",
     "wording_title": "Titel, intro en knoppen",
     "languages_title": "Talen",
@@ -1031,7 +1033,16 @@
     "answer_countries_title": "‘{{label}}’ alleen in deze landen tonen",
     "answer_countries_details": "Kopers elders zien dit antwoord niet. Vink niets aan om het overal te tonen. Handig om in één enquête LINE alleen voor Japan of Snapchat alleen voor de Golfregio te tonen.",
     "answer_countries_summary": "Alleen getoond in: {{list}}",
-    "answer_countries_locked": "Een antwoord alleen in sommige landen tonen is beschikbaar met {{plan}}."
+    "answer_countries_locked": "Een antwoord alleen in sommige landen tonen is beschikbaar met {{plan}}.",
+    "products": "Alleen bestellingen met deze producten",
+    "products_details": "Toont de enquête alleen als de bestelling minstens één van deze producten bevat. Laat leeg voor alle bestellingen.",
+    "products_none": "Geen product gekozen: elke bestelling kan de enquête zien.",
+    "products_choose": "Producten kiezen",
+    "products_change": "Producten wijzigen",
+    "products_remove": "{{name}} verwijderen",
+    "products_missing": "Product {{id}} (niet meer gevonden in je winkel)",
+    "products_unavailable": "De productkiezer van Shopify kon niet worden geopend. Laad de pagina opnieuw en probeer het nog eens.",
+    "countries_other_questions": "Andere vragen voor kopers in één land? Dupliceer deze enquête, kies hier de landen en zet hem op de pagina Enquêtes boven deze."
   },
   "preview": {
     "title": "Voorbeeld",

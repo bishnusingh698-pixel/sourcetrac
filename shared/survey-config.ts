@@ -165,6 +165,12 @@ export type TargetingFacts = {
   language: string | null;
   now: Date;
   responseCount: number;
+  /**
+   * Numeric product ids on the order's lines, as the checkout reports them.
+   * Null or absent: the checkout did not say (an older block, a host without
+   * lines), which a product rule treats as not met.
+   */
+  productIds?: readonly string[] | null;
 };
 
 /**
@@ -184,6 +190,8 @@ export type TargetingMiss =
   | "country"
   | "country_unknown"
   | "language"
+  | "products"
+  | "products_unknown"
   | "order_value";
 
 /**
@@ -257,6 +265,13 @@ export function explainTargeting(targeting: Targeting | undefined, facts: Target
     if (!facts.language || !languageMatches(facts.language, targeting.languages)) return "language";
   }
 
+  // "Only orders with these products": any one of them on the order is enough.
+  if (targeting.productIds && targeting.productIds.length > 0) {
+    if (!facts.productIds) return "products_unknown";
+    const wanted = new Set(targeting.productIds);
+    if (!facts.productIds.some((id) => wanted.has(id))) return "products";
+  }
+
   if (
     (targeting.minValue != null || targeting.maxValue != null) &&
     targeting.valueCurrency &&
@@ -295,6 +310,7 @@ export function hasAudienceRules(targeting: Targeting | undefined, paymentManual
       targeting.customerType === "returning" ||
       (targeting.countries?.length ?? 0) > 0 ||
       (targeting.languages?.length ?? 0) > 0 ||
+      (targeting.productIds?.length ?? 0) > 0 ||
       ((targeting.minValue != null || targeting.maxValue != null) && targeting.valueCurrency),
   );
 }

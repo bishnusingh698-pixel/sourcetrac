@@ -583,7 +583,9 @@
     "check_new_order": "Jede Bestellung wird nur einmal gefragt. Testen Sie mit einer neuen Bestellung und sehen Sie dann unten unter „Letzte Checkouts“, was passiert ist.",
     "check_block_never_order_status": "Bestellstatusseite: Der SourceTrac-Block wurde hier noch nicht geladen. Wählen Sie im Checkout-Editor im Seitenmenü „Bestellstatus“, fügen Sie den Block „SourceTrac survey“ hinzu und klicken Sie auf Speichern. Die Seite steht nur im Menü, wenn Ihr Shop die neuen Kundenkonten nutzt.",
     "validation_currency_unavailable": "Die Währung Ihres Shops konnte gerade nicht gelesen werden. Versuchen Sie es gleich noch einmal.",
-    "validation_order_value_range": "Der Höchstbestellwert muss mindestens so hoch sein wie der Mindestbestellwert."
+    "validation_order_value_range": "Der Höchstbestellwert muss mindestens so hoch sein wie der Mindestbestellwert.",
+    "reason_products": "„{{survey}}“ gilt nur für Bestellungen mit bestimmten Produkten, und diese Bestellung enthielt keines davon.",
+    "reason_products_unknown": "„{{survey}}“ gilt nur für Bestellungen mit bestimmten Produkten, und dieser Checkout hat die bestellten Produkte nicht übermittelt. Prüfen Sie, ob Ihre SourceTrac-Blöcke aktuell sind."
   },
   "templates": {
     "nps": {
@@ -843,7 +845,7 @@
     "questions_help": "Fassen Sie sich kurz. Ein bis drei Fragen erhalten die meisten Antworten.",
     "placement_thank_you": "Dankesseite",
     "who_title": "Wer sie sieht",
-    "more_rules": "Weitere Regeln (Bestellwert, Länder, Zeitraum)",
+    "more_rules": "Weitere Regeln (Bestellwert, Länder, Produkte, Daten)",
     "optional_title": "Optional",
     "wording_title": "Titel, Einleitung und Schaltflächen",
     "languages_title": "Sprachen",
@@ -1031,7 +1033,16 @@
     "answer_countries_title": "„{{label}}“ nur in diesen Ländern anzeigen",
     "answer_countries_details": "Käufer in anderen Ländern sehen diese Antwort nicht. Nichts auswählen, um sie überall zu zeigen. So zeigen Sie in einer Umfrage etwa LINE nur in Japan oder Snapchat nur am Golf.",
     "answer_countries_summary": "Nur angezeigt in: {{list}}",
-    "answer_countries_locked": "Antworten nur in bestimmten Ländern anzuzeigen ist mit {{plan}} verfügbar."
+    "answer_countries_locked": "Antworten nur in bestimmten Ländern anzuzeigen ist mit {{plan}} verfügbar.",
+    "products": "Nur Bestellungen mit diesen Produkten",
+    "products_details": "Zeigt die Umfrage nur, wenn die Bestellung mindestens eines dieser Produkte enthält. Leer lassen für alle Bestellungen.",
+    "products_none": "Kein Produkt gewählt: Jede Bestellung kann die Umfrage sehen.",
+    "products_choose": "Produkte auswählen",
+    "products_change": "Produkte ändern",
+    "products_remove": "{{name}} entfernen",
+    "products_missing": "Produkt {{id}} (nicht mehr im Shop gefunden)",
+    "products_unavailable": "Die Produktauswahl von Shopify konnte hier nicht geöffnet werden. Laden Sie die Seite neu und versuchen Sie es erneut.",
+    "countries_other_questions": "Andere Fragen für Käufer in einem Land? Duplizieren Sie die Umfrage, wählen Sie hier ihre Länder und schieben Sie sie auf der Seite „Umfragen“ über diese."
   },
   "preview": {
     "title": "Vorschau",

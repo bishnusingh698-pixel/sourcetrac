@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { Banner } from "~/components/admin-ui";
 import { CountryPicker } from "~/components/country-picker";
+import { ProductPicker } from "~/components/product-picker";
 import { JustInTimeNotice } from "~/components/data-notice";
 import { LockedNote, checkboxChecked, fieldValue, numberOrNull, type TFn } from "~/components/survey-editor";
 import { LIMITS, customScaleLabel } from "@shared/survey-rules";
@@ -76,9 +77,12 @@ export function AdvancedTargeting({
   errors,
   t,
   plan,
+  productTitles = {},
 }: {
   draft: EditorSurvey;
   update: Update;
+  /** Titles of the products the survey's product rule names (F5). */
+  productTitles?: Record<string, string>;
   /** The store's currency; null when Shopify could not be asked just now. */
   shopCurrency: string | null;
   /** The store's IANA zone; dates are the store's calendar days. */
@@ -150,6 +154,16 @@ export function AdvancedTargeting({
         onChange={(codes) => set({ countries: codes.length > 0 ? codes : undefined })}
         language={language}
         error={errors.get("targeting.countries")}
+        t={t}
+      />
+      <s-text color="subdued" fontSize="small">
+        {t("editor.countries_other_questions")}
+      </s-text>
+      <ProductPicker
+        value={targeting.productIds ?? []}
+        titles={productTitles}
+        max={LIMITS.MAX_TARGET_PRODUCTS}
+        onChange={(ids) => set({ productIds: ids.length > 0 ? ids : undefined })}
         t={t}
       />
       <s-stack gap="small-200">

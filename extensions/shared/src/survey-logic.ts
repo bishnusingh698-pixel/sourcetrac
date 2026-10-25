@@ -343,7 +343,7 @@ export interface ApiBinding {
    * be skipped, showing the survey on every order.
    */
   getOrderTotal?: () => { amount: number; currencyCode: string } | null | undefined;
-  /** Numeric product ids on the order (Thank-you only), for results by product. */
+  /** Numeric product ids on the order, for results by product and product targeting. */
   getProductIds?: () => readonly string[];
 }
 
@@ -573,6 +573,14 @@ export function createSurveyApi(apiUrl: string, binding: ApiBinding) {
     if (typeof isFirstOrder === "boolean") query.set("isFirstOrder", isFirstOrder ? "1" : "0");
     const country = safeRead(() => binding.getCountry?.());
     if (typeof country === "string" && country.length > 0) query.set("country", country.slice(0, 2).toUpperCase());
+    // F5: the order's products, for "only orders with these products". Sent
+    // whenever the host exposes lines, even with none we can read, so the
+    // server can tell "no matching product" from "an older block".
+    const products = binding.getProductIds ? safeRead(() => binding.getProductIds?.()) : undefined;
+    if (Array.isArray(products)) {
+      const ids = [...new Set(products)].filter((id) => /^\d{1,20}$/.test(id)).slice(0, 25);
+      query.set("products", ids.join(","));
+    }
     const total = safeRead(() => binding.getOrderTotal?.());
     if (total && Number.isFinite(total.amount) && total.amount >= 0 && /^[A-Za-z]{3}$/.test(total.currencyCode)) {
       query.set("total", String(total.amount));

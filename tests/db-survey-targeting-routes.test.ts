@@ -259,3 +259,41 @@ describe("nothing to show", () => {
     expect(await lastServe()).toMatchObject({ reason: "pinned_not_live", surveyId: paused.id, pinned: true });
   });
 });
+
+describe("only orders with these products (F5)", () => {
+  it("shows the survey only when the order has one of the products, and says why otherwise", async () => {
+    const survey = await createSurvey(shopId, input("Product survey", { targeting: { productIds: ["111", "222"] } }));
+    expect(survey.targeting.productIds).toEqual(["111", "222"]);
+
+    const match = await config(`placement=thank_you&orderId=${nextOrder()}&products=999,222`);
+    expect(match.enabled).toBe(true);
+
+    expect((await config(`placement=thank_you&orderId=${nextOrder()}&products=999`)).enabled).toBe(false);
+    expect(await lastServe()).toMatchObject({ reason: "products", surveyId: survey.id });
+
+    // Sent but empty (no readable products) is "no match", not "unknown".
+    expect((await config(`placement=thank_you&orderId=${nextOrder()}&products=`)).enabled).toBe(false);
+    expect(await lastServe()).toMatchObject({ reason: "products" });
+
+    // An older block that never sends products: hidden, and the merchant is told why.
+    expect((await config(`placement=thank_you&orderId=${nextOrder()}`)).enabled).toBe(false);
+    expect(await lastServe()).toMatchObject({ reason: "products_unknown" });
+  });
+
+  it("refuses a product id that is not Shopify's numeric id", async () => {
+    await expect(
+      createSurvey(shopId, input("Bad products", { targeting: { productIds: ["gid://shopify/Product/1"] } })),
+    ).rejects.toMatchObject({ fields: { code: "invalid_targeting" } });
+  });
+
+  it("is a Growth rule", async () => {
+    await prisma.shop.update({ where: { id: shopId }, data: { plan: "free" } });
+    try {
+      await expect(
+        createSurvey(shopId, input("Free products", { status: "draft", targeting: { productIds: ["111"] } })),
+      ).rejects.toMatchObject({ fields: { code: "plan_advanced_targeting" } });
+    } finally {
+      await prisma.shop.update({ where: { id: shopId }, data: { plan: "scale" } });
+    }
+  });
+});

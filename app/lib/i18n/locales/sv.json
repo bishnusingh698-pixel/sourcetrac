@@ -583,7 +583,9 @@
     "check_new_order": "Varje beställning tillfrågas bara en gång. Testa med en ny beställning och se sedan ”Senaste kassor” nedan för vad som hände.",
     "check_block_never_order_status": "Orderstatussidan: SourceTrac-blocket har inte laddats här ännu. Välj Orderstatus i sidmenyn i kassaredigeraren, lägg till blocket ”SourceTrac survey” och klicka på Spara. Sidan finns bara i menyn om din butik använder de nya kundkontona.",
     "validation_currency_unavailable": "Butikens valuta kunde inte läsas just nu. Försök spara igen om en stund.",
-    "validation_order_value_range": "Det högsta ordervärdet måste vara minst lika högt som det lägsta."
+    "validation_order_value_range": "Det högsta ordervärdet måste vara minst lika högt som det lägsta.",
+    "reason_products": "”{{survey}}” gäller bara beställningar med vissa produkter, och den här beställningen hade ingen av dem.",
+    "reason_products_unknown": "”{{survey}}” gäller bara beställningar med vissa produkter, och den här kassan angav inte vilka produkter som beställdes. Kontrollera att dina SourceTrac-block är uppdaterade."
   },
   "templates": {
     "nps": {
@@ -843,7 +845,7 @@
     "questions_help": "Håll det kort. En till tre frågor ger flest svar.",
     "placement_thank_you": "Tacksidan",
     "who_title": "Vem som ser den",
-    "more_rules": "Fler regler (ordervärde, länder, datum)",
+    "more_rules": "Fler regler (ordervärde, länder, produkter, datum)",
     "optional_title": "Valfritt",
     "wording_title": "Rubrik, inledning och knappar",
     "languages_title": "Språk",
@@ -1031,7 +1033,16 @@
     "answer_countries_title": "Visa ”{{label}}” bara i dessa länder",
     "answer_countries_details": "Köpare i andra länder ser inte det här svaret. Lämna allt omarkerat för att visa det överallt. Bra för att visa LINE bara i Japan eller Snapchat bara i Gulfen, i en och samma enkät.",
     "answer_countries_summary": "Visas bara i: {{list}}",
-    "answer_countries_locked": "Att visa ett svar bara i vissa länder ingår i {{plan}}."
+    "answer_countries_locked": "Att visa ett svar bara i vissa länder ingår i {{plan}}.",
+    "products": "Bara beställningar med dessa produkter",
+    "products_details": "Visar enkäten bara när beställningen innehåller minst en av dessa produkter. Lämna tomt för alla beställningar.",
+    "products_none": "Ingen produkt vald: alla beställningar kan se enkäten.",
+    "products_choose": "Välj produkter",
+    "products_change": "Ändra produkter",
+    "products_remove": "Ta bort {{name}}",
+    "products_missing": "Produkt {{id}} (finns inte längre i butiken)",
+    "products_unavailable": "Shopifys produktväljare kunde inte öppnas. Ladda om sidan och försök igen.",
+    "countries_other_questions": "Vill du ställa andra frågor till köpare i ett land? Duplicera enkäten, välj länderna här och flytta den ovanför den här på sidan Enkäter."
   },
   "preview": {
     "title": "Förhandsvisning",
