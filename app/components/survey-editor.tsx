@@ -631,6 +631,9 @@ function AnswerList({
   const options = question.options.filter((o) => !o.isOther);
   const others = question.options.filter((o) => o.isOther);
   const count = options.length;
+  // An "Other (please specify)" option is an answer too: the server counts
+  // every option against the limit, so the merchant's own answers get the rest.
+  const max = Math.max(limits.MIN_OPTIONS, limits.MAX_OPTIONS - others.length);
   // The answer whose country list is open (F4), if any.
   const [countriesFor, setCountriesFor] = useState<string | null>(null);
   const language = presets?.language ?? "en";
@@ -707,13 +710,13 @@ function AnswerList({
           type="button"
           variant="tertiary"
           icon="plus"
-          disabled={count >= limits.MAX_OPTIONS || undefined}
+          disabled={count >= max || undefined}
           onClick={() => setOptions([...options, newOption(t("editor.new_answer", { n: count + 1 }))])}
         >
           {t("editor.add_answer")}
         </s-button>
         <s-text color="subdued" fontSize="small">
-          {t("editor.answer_count", { count, max: limits.MAX_OPTIONS })}
+          {t("editor.answer_count", { count, max })}
         </s-text>
       </s-stack>
       {presets ? (
@@ -723,7 +726,7 @@ function AnswerList({
             question={question}
             options={options}
             presets={presets}
-            max={limits.MAX_OPTIONS}
+            max={max}
             plan={plan}
             onApply={(next) => setOptions(next)}
             t={t}
