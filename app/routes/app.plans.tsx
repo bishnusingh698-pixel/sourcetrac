@@ -116,9 +116,8 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
         //
         // `expired` is the same default `normaliseSubscriptionStatus` uses when
         // a status is unrecognised, so this agrees with the webhook path.
-        // Collecting behaviour is unaffected either way: `api.responses`
-        // resolves the effective plan as `planStatusIsCollecting(planStatus) ?
-        // plan : "free"`, and `plan` is now free.
+        // Collecting behaviour is unaffected either way: answers are
+        // stored under `effectivePlan(shop)`, and `plan` is now free.
         //
         // A status that already records why the charge is not live (frozen,
         // cancelled, declined) is kept; only "active" becomes "expired".

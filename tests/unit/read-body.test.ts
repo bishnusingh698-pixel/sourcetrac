@@ -1,6 +1,7 @@
+import { data } from "react-router";
 import { describe, expect, it } from "vitest";
 
-import { readBodyText } from "../../app/lib/http.server";
+import { readBodyText, toResponse } from "../../app/lib/http.server";
 
 /** A body with no Content-Length, the way a chunked upload arrives. */
 function streamed(text: string): Request {
@@ -30,5 +31,16 @@ describe("readBodyText", () => {
       headers: { "content-length": "999999" },
     });
     expect(await readBodyText(request, 4096)).toBeNull();
+  });
+});
+
+describe("toResponse", () => {
+  // Every extension response once went out as {"type":"DataWithResponseInit",...},
+  // so the block read `enabled` as undefined and hid the survey on every order.
+  it("unwraps data() and keeps its status and headers", async () => {
+    const res = toResponse(data({ a: 1 }, { status: 201, headers: { "X-Test": "1" } }));
+    expect(res.status).toBe(201);
+    expect(res.headers.get("X-Test")).toBe("1");
+    expect(await res.json()).toEqual({ a: 1 });
   });
 });

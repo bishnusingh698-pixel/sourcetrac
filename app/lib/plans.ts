@@ -25,8 +25,6 @@ export const CAP_WARNING_RATIO = 0.8;
  */
 export type BillingCycle = "monthly" | "yearly";
 
-export const BILLING_CYCLES: readonly BillingCycle[] = ["monthly", "yearly"];
-
 export function isBillingCycle(value: unknown): value is BillingCycle {
   return value === "monthly" || value === "yearly";
 }

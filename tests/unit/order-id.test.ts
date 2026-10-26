@@ -46,7 +46,7 @@ describe("orderId format invariant", () => {
   });
 
   it("rejects an empty id, which is what an unloaded extension sends", () => {
-    // The `if (!orderId)` guard in use-survey.ts is the primary defence; this
+    // The `if (!orderId)` guard in use-multi-survey.ts is the primary defence; this
     // is the backstop that keeps "" out of the database if it is ever bypassed.
     expect(orderIdSchema.safeParse("").success).toBe(false);
   });
@@ -58,7 +58,7 @@ describe("orderId format invariant", () => {
   it("is the validator both extension routes actually use", () => {
     // Drift guard: the assertions above only mean something if the routes
     // import this schema instead of keeping their own copy of the regex.
-    for (const route of ["api.responses", "api.survey-config"]) {
+    for (const route of ["api.survey", "api.survey-responses"]) {
       const source = readFileSync(
         join(import.meta.dirname, "..", "..", "app", "routes", `${route}.tsx`),
         "utf8",

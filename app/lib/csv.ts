@@ -211,18 +211,6 @@ export type SurveyCsvRow = {
   answers: Record<string, string>;
 };
 
-/**
- * Wide export: fixed columns followed by one column per question, in the order
- * the questions appear in the survey. A question's column header is its short
- * id-less text, which the caller supplies so no column name collides.
- */
-export function toSurveyCsv(
-  rows: ReadonlyArray<SurveyCsvRow>,
-  questionColumns: ReadonlyArray<{ id: string; header: string }>,
-): string {
-  return tableToCsv(toSurveyTable(rows, questionColumns));
-}
-
 /** A CSV as headers and cells, so the Export page can preview the exact file. */
 export type CsvTable = { headers: string[]; rows: Array<Array<string | null>> };
 

@@ -38,9 +38,6 @@ import { db } from "~/db.server";
  * Authentication, session-token verification and CORS come from
  * `authenticate.public.checkout` — shop identity is the token's `dest` claim,
  * never anything in the query string.
- *
- * This is the v2 config route. The old `/api/survey-config` stays untouched for
- * the already-deployed single-question extension until it is retired.
  */
 
 const querySchema = z.object({

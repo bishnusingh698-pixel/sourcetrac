@@ -8,7 +8,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
-  consumeTokenSubmission,
+  reserveTokenSubmission,
   MAX_SUBMISSIONS_PER_TOKEN,
   resetBuckets,
 } from "~/lib/rate-limit.server";
@@ -16,34 +16,34 @@ import { RateLimitError } from "~/lib/errors";
 
 afterEach(() => resetBuckets());
 
-describe("consumeTokenSubmission", () => {
+describe("reserveTokenSubmission", () => {
   it("allows up to the ceiling for one token", () => {
     const exp = Date.now() + 300_000;
     for (let i = 0; i < MAX_SUBMISSIONS_PER_TOKEN; i += 1) {
-      expect(() => consumeTokenSubmission("tok-a", exp)).not.toThrow();
+      expect(() => reserveTokenSubmission("tok-a", exp)).not.toThrow();
     }
   });
 
   it("refuses the submission past the ceiling", () => {
     const exp = Date.now() + 300_000;
-    for (let i = 0; i < MAX_SUBMISSIONS_PER_TOKEN; i += 1) consumeTokenSubmission("tok-b", exp);
-    expect(() => consumeTokenSubmission("tok-b", exp)).toThrow(RateLimitError);
+    for (let i = 0; i < MAX_SUBMISSIONS_PER_TOKEN; i += 1) reserveTokenSubmission("tok-b", exp);
+    expect(() => reserveTokenSubmission("tok-b", exp)).toThrow(RateLimitError);
   });
 
   it("does not count another token against the first", () => {
     const exp = Date.now() + 300_000;
-    consumeTokenSubmission("tok-c", exp);
-    consumeTokenSubmission("tok-c", exp);
-    expect(() => consumeTokenSubmission("tok-c", exp)).toThrow();
+    reserveTokenSubmission("tok-c", exp);
+    reserveTokenSubmission("tok-c", exp);
+    expect(() => reserveTokenSubmission("tok-c", exp)).toThrow();
     // A different jti starts fresh.
-    expect(() => consumeTokenSubmission("tok-d", exp)).not.toThrow();
+    expect(() => reserveTokenSubmission("tok-d", exp)).not.toThrow();
   });
 
   it("forgets an expired token so a re-mint starts fresh", () => {
     const expired = Date.now() - 1000;
-    consumeTokenSubmission("tok-e", expired, Date.now() - 2000);
-    consumeTokenSubmission("tok-e", expired, Date.now() - 2000);
+    reserveTokenSubmission("tok-e", expired, Date.now() - 2000);
+    reserveTokenSubmission("tok-e", expired, Date.now() - 2000);
     // Past the token's exp, the entry is evicted and the allowance resets.
-    expect(() => consumeTokenSubmission("tok-e", Date.now() + 300_000)).not.toThrow();
+    expect(() => reserveTokenSubmission("tok-e", Date.now() + 300_000)).not.toThrow();
   });
 });

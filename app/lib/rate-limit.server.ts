@@ -178,28 +178,16 @@ function evictExpiredTokenSubs(nowMs: number): void {
 }
 
 /**
- * Count a submission against a session token, refusing past the ceiling.
- *
- * Keyed on the token's `jti` (a per-token UUID, present on every Shopify session
- * token) and expiring at the token's own `exp`, so the map cannot grow without
- * bound and a re-minted token gets a fresh allowance. In-memory like the rest of
- * this module: correct for the single Render instance, and a deliberate,
- * documented trade for any future scale-out.
- */
-export function consumeTokenSubmission(
-  tokenKey: string,
-  expiresAtMs: number,
-  now = Date.now(),
-): void {
-  reserveTokenSubmission(tokenKey, expiresAtMs, now);
-}
-
-/**
  * Reserve one of the token's submissions, synchronously, before any await: a
  * check now and a count later let fifty parallel requests on one token all pass
  * the check. The reservation is released (`releaseTokenSubmission`) when the
  * attempt did not store an answer, so failed attempts (a 5xx while the
  * database wakes, a backstop 429 before the order lands) never burn the cap.
+ *
+ * Keyed on the token's `jti` (a per-token UUID on every Shopify session token)
+ * and expiring at the token's own `exp`, so the map cannot grow without bound
+ * and a re-minted token gets a fresh allowance. In-memory like the rest of this
+ * module: correct for the single Render instance.
  */
 export function reserveTokenSubmission(tokenKey: string, expiresAtMs: number, now = Date.now()): void {
   evictExpiredTokenSubs(now);

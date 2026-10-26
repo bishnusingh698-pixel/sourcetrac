@@ -39,13 +39,10 @@ function mainQuestionId(definition: SurveyDefinition): string | null {
 /**
  * POST /api/survey-responses
  *
- * Records a full set of answers to a multi-question survey. Like the old
- * `/api/responses`, this is a public surface, so the route carries the
- * defensive load: session-token auth, strict validation, rate limiting, and
- * validation of every answer against the survey's own rules.
- *
- * The old single-question route is deliberately untouched, so the deployed
- * extension keeps working through the transition.
+ * Records a full set of answers to a multi-question survey. This is a public
+ * surface, so the route carries the defensive load: session-token auth, strict
+ * validation, rate limiting, and validation of every answer against the
+ * survey's own rules.
  */
 
 const MAX_BODY_BYTES = 16_384;

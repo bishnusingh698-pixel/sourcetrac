@@ -13,7 +13,6 @@
 import { Prisma } from "@prisma/client";
 
 import { db, isRetryableDbError } from "~/db.server";
-import { previousWindowBounds, windowBounds } from "~/lib/analytics";
 import type { RevenueStatus } from "~/lib/csv";
 import { formatDecimalForCurrency } from "~/lib/money";
 import { evaluateResponseRevenue, type RevenueDecision } from "~/lib/revenue";
@@ -639,8 +638,4 @@ export async function surveyAnswerRates(params: {
 export function answerRatePercent(rate: { answered: number; orders: number } | undefined): number | null {
   if (!rate || rate.orders <= 0) return null;
   return Math.min(100, Math.round((rate.answered / rate.orders) * 100));
-}
-
-export function surveyWindowBounds(days: number, now = new Date(), timeZone?: string | null) {
-  return { ...windowBounds(days, now, timeZone), previous: previousWindowBounds(days, now, timeZone) };
 }

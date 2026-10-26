@@ -9,7 +9,7 @@ import { flatRoutes } from "@react-router/fs-routes";
  *   app/routes/healthz.tsx          -> /healthz
  *   app/routes/readyz.tsx           -> /readyz
  *   app/routes/webhooks.tsx         -> /webhooks
- *   app/routes/api.survey-config.tsx-> /api/survey-config
- *   app/routes/api.responses.tsx    -> /api/responses
+ *   app/routes/api.survey.tsx       -> /api/survey
+ *   app/routes/api.survey-responses.tsx -> /api/survey-responses
  */
 export default flatRoutes({ ignoredRouteFiles: ["**/.*"] });

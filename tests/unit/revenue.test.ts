@@ -8,7 +8,6 @@ import {
   minorToDecimalString,
   parseMoneyToMinor,
   percentChange,
-  sumByCurrency,
 } from "~/lib/money";
 
 /**
@@ -250,32 +249,6 @@ describe("percentChange", () => {
 
   it("reports a decline as negative", () => {
     expect(percentChange(90, 100)).toBeCloseTo(-10);
-  });
-});
-
-describe("sumByCurrency", () => {
-  it("keeps currencies separate and never adds them together", () => {
-    const result = sumByCurrency([
-      { amount: "10.00", currency: "USD" },
-      { amount: "10.00", currency: "GBP" },
-    ]);
-    expect(result).toHaveLength(2);
-    expect(result).toEqual([
-      { currency: "GBP", minor: 1000 },
-      { currency: "USD", minor: 1000 },
-    ]);
-  });
-
-  it("sums within one currency", () => {
-    expect(sumByCurrency([{ amount: "10.00", currency: "USD" }, { amount: "5.50", currency: "USD" }])).toEqual([
-      { currency: "USD", minor: 1550 },
-    ]);
-  });
-
-  it("excludes an unparseable amount instead of counting it as zero", () => {
-    expect(sumByCurrency([{ amount: "oops", currency: "USD" }, { amount: "10.00", currency: "USD" }])).toEqual([
-      { currency: "USD", minor: 1000 },
-    ]);
   });
 });
 

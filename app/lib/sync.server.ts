@@ -825,23 +825,6 @@ export async function maybeRunPendingSync(shopId: string): Promise<void> {
   }
 }
 
-/** The write scopes needed to fully run a survey's sync options. */
-export function requiredScopes(options: SurveySyncOptions): SyncScope[] {
-  const scopes: SyncScope[] = [];
-  const presets = (options.presets ?? []).map((id) => SMART_ACTION_PRESETS[id]).filter(Boolean);
-  const wantsOrders =
-    (options.orderTags?.length ?? 0) > 0 ||
-    (options.metafields?.some((m) => m.owner !== "customer") ?? false) ||
-    presets.some((p) => p!.kind === "order_tag");
-  const wantsCustomers =
-    (options.customerTags?.length ?? 0) > 0 ||
-    (options.metafields?.some((m) => m.owner === "customer") ?? false) ||
-    presets.some((p) => p!.kind === "customer_tag" || p!.kind === "customer_metafield");
-  if (wantsOrders) scopes.push("write_orders");
-  if (wantsCustomers) scopes.push("write_customers");
-  return scopes;
-}
-
 /**
  * Run the sync work waiting on one order, in the background, as soon as the
  * order arrives. Flow and the customer lookup need the order to exist, and the
