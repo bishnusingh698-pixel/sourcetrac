@@ -743,9 +743,13 @@ export default function Plans() {
       <Panel title={t("plans.billing_title")}>
         <s-stack gap="small">
           <s-text>{t("plans.billing_body")}</s-text>
-          <s-text>
-            {t("plans.trial_note", { days: data.trial.fullDays, growth: t("plans.growth"), scale: t("plans.scale") })}
-          </s-text>
+          {/* Only while a trial is on offer or running: a store that used its
+              trial would read it as a fresh one. */}
+          {data.trial.offerDays > 0 || data.trial.endsOn ? (
+            <s-text>
+              {t("plans.trial_note", { days: data.trial.fullDays, growth: t("plans.growth"), scale: t("plans.scale") })}
+            </s-text>
+          ) : null}
           <s-text color="subdued">{t("plans.yearly_note", { percent: data.discountPercent })}</s-text>
         </s-stack>
       </Panel>
