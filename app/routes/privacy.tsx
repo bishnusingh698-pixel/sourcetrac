@@ -74,6 +74,13 @@ export default function PrivacyPolicy() {
         your shop&apos;s stored data when it arrives.
       </p>
       <p>
+        One record outlives that deletion: if a store ever had a paid plan, we keep
+        a note that it used its free trial (a one-way SHA-256 code made from the
+        store&apos;s myshopify address and shop ID, plus the trial&apos;s start and
+        end dates), so the free trial is given once per store. It holds no
+        readable store, buyer or order details.
+      </p>
+      <p>
         A buyer can ask for their data to be removed through you, the merchant. We
         act on that request through Shopify's mandatory compliance webhooks. When
         Shopify sends a redaction request naming a buyer's orders, we delete the

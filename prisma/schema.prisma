@@ -102,6 +102,10 @@ model Shop {
   pendingSubscriptionGid  String?
   pendingSubscriptionName String?
   planDisplayName        String?
+  /// When the free trial of the subscription now live ends (its Shopify
+  /// `createdAt` plus its `trialDays`); null when it has none. Display and the
+  /// switch rule only: the plan itself still follows the subscription status.
+  trialEndsAt            DateTime?
   checkoutSupported      Boolean?
   checkoutCheckedAt      DateTime?
   /// When a SourceTrac checkout block last asked us for a survey on each page,
@@ -628,4 +632,26 @@ model CheckoutLoad {
   shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
   @@index([shopId, at])
+}
+
+/// One row per store that has ever had a paid SourceTrac subscription: the
+/// record that it used its one free trial. Deliberately not linked to `Shop`,
+/// so neither an uninstall nor `shop/redact` (which deletes the shop row)
+/// resets it, and a reinstall cannot start a second trial. Holds no store
+/// data in readable form: the keys are SHA-256 hashes of the myshopify
+/// domain and of the shop's GID (see `app/lib/trial.server.ts`). Written once,
+/// never moved, so switching plans during the trial can never extend it.
+model TrialLedger {
+  id        String   @id @default(cuid())
+  /// SHA-256 of "sourcetrac-trial:" + the lower-cased myshopify domain.
+  domainKey String   @unique
+  /// SHA-256 of "sourcetrac-trial:" + the shop GID, when it was known.
+  shopKey   String?  @unique
+  /// The first paid subscription's Shopify `createdAt`.
+  startedAt DateTime
+  /// startedAt + its trialDays. Equal to startedAt when it had no trial.
+  endsAt    DateTime
+  /// The plan that subscription was for ("growth" | "scale").
+  plan      String
+  createdAt DateTime @default(now())
 }

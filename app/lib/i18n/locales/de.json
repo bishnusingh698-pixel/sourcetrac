@@ -254,7 +254,18 @@
     "choose_plan_monthly_instead": "Oder monatlich zahlen: {{price}} pro Monat",
     "msg_already_scheduled": "Sie haben diese Änderung bereits genehmigt. Sie beginnt mit dem Ende Ihres aktuellen Abrechnungszeitraums.",
     "scheduled_change": "Ihr Wechsel zu {{plan}} ist genehmigt und beginnt am {{date}}, wenn Ihr aktueller Abrechnungszeitraum endet.",
-    "scheduled_change_no_date": "Ihr Wechsel zu {{plan}} ist genehmigt und beginnt, wenn Ihr aktueller Abrechnungszeitraum endet."
+    "scheduled_change_no_date": "Ihr Wechsel zu {{plan}} ist genehmigt und beginnt, wenn Ihr aktueller Abrechnungszeitraum endet.",
+    "trial_badge": "{{days}} Tage kostenlos testen",
+    "trial_then_monthly": "Kostenlos bis {{date}}, danach {{price}} pro Monat.",
+    "trial_then_yearly": "Kostenlos bis {{date}}, danach {{price}} pro Jahr.",
+    "trial_left_one": "Ihr kostenloser Testzeitraum läuft weiter: noch {{count}} Tag.",
+    "trial_left_other": "Ihr kostenloser Testzeitraum läuft weiter: noch {{count}} Tage.",
+    "start_trial": "{{plan}} kostenlos testen",
+    "trial_active_title": "Ihr kostenloser Testzeitraum endet am {{date}}",
+    "trial_active_body_monthly": "Danach kostet {{plan}} {{price}} pro Monat, abgerechnet über Ihre Shopify-Rechnung. Wenn Sie vor dem {{date}} kündigen, entstehen Ihnen keine Kosten.",
+    "trial_active_body_yearly": "Danach kostet {{plan}} {{price}} pro Jahr, abgerechnet über Ihre Shopify-Rechnung. Wenn Sie vor dem {{date}} kündigen, entstehen Ihnen keine Kosten.",
+    "cancel_body_trial": "Sie sind im kostenlosen Testzeitraum, eine Kündigung kostet Sie also nichts. Ihre Antworten bleiben gespeichert. Im Tarif Kostenlos sehen Käufer nur noch Ihre oberste Live-Umfrage, Shopify-Tags, Metafelder und Flow werden beendet, und Antworten über {{cap}} in diesem Monat bleiben gespeichert, werden aber als über dem Limit markiert.",
+    "trial_note": "{{growth}} und {{scale}} beginnen mit einem kostenlosen Testzeitraum von {{days}} Tagen, einmal pro Shop. Shopify zeigt den Testzeitraum und den Preis auf der Bestätigungsseite an, und Sie zahlen nur, wenn der Tarif am Ende des Testzeitraums noch aktiv ist. Wenn Sie während des Testzeitraums den Tarif oder die Abrechnungsperiode wechseln, behalten Sie die verbleibenden Tage; ein neuer Testzeitraum beginnt nicht."
   },
   "help": {
     "title": "Hilfe",
@@ -295,7 +306,9 @@
     "q_look": "Kann ich Farben und Schriften der Umfrage ändern?",
     "a_look": "Die Umfrage nutzt immer die Schriften und Farben Ihres Checkouts (Einstellungen › Checkout › Anpassen), weil Shopify Apps keine Änderung erlaubt. So wirkt sie immer wie ein Teil Ihres Shops. Unter „Aussehen und Texte“ ändern Sie Titel, Einleitung, Schaltfläche und Dankestext, zeigen Fragen einzeln, nutzen Sterne für Bewertungen, legen die Texte unter einer Skala fest und wählen Rahmen und Abstände.",
     "q_languages": "Sehen Käufer die Umfrage in ihrer Sprache?",
-    "a_languages": "Vorlagen und der Schnellstart sind in zehn Sprachen übersetzt. Unter „Sprachen“ in der Umfrage können Sie Übersetzungen hinzufügen oder ändern, auch Arabisch, Hebräisch, Koreanisch, Polnisch, Türkisch und die nordischen Sprachen. Käufer sehen ihre Checkout-Sprache, wenn die Umfrage sie hat, sonst Ihren eigenen Text; die Schaltflächen sind in all diese Sprachen übersetzt."
+    "a_languages": "Vorlagen und der Schnellstart sind in zehn Sprachen übersetzt. Unter „Sprachen“ in der Umfrage können Sie Übersetzungen hinzufügen oder ändern, auch Arabisch, Hebräisch, Koreanisch, Polnisch, Türkisch und die nordischen Sprachen. Käufer sehen ihre Checkout-Sprache, wenn die Umfrage sie hat, sonst Ihren eigenen Text; die Schaltflächen sind in all diese Sprachen übersetzt.",
+    "q_trial": "Gibt es einen kostenlosen Testzeitraum?",
+    "a_trial": "Ja. {{growth}} und {{scale}} beginnen mit einem kostenlosen Testzeitraum von {{days}} Tagen, einmal pro Shop. Sie zahlen nur, wenn der Tarif am Ende des Testzeitraums noch aktiv ist: Wenn Sie vorher auf der Seite Tarife kündigen, wird nichts berechnet. Ein Tarifwechsel während des Testzeitraums behält die verbleibenden Tage bei, und eine Neuinstallation der App startet keinen neuen Testzeitraum. Der Tarif Kostenlos braucht keinen Testzeitraum."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac ist in Ihrem Tarif nicht verfügbar",
@@ -1081,7 +1094,8 @@
     "role_body": "Sie entscheiden, was Ihre Umfrage fragt. Für die Daten Ihrer Käufer sind daher Sie der Verantwortliche, und SourceTrac verarbeitet sie in Ihrem Auftrag. Erwähnen Sie die Umfrage in der Datenschutzerklärung Ihres Shops. Sie können diesen Text anpassen:",
     "policy_text": "Nach dem Checkout bitten wir Sie eventuell um eine kurze, freiwillige Umfrage, etwa wie Sie auf uns aufmerksam geworden sind. Ihre Antworten werden zusammen mit Ihrer Bestellnummer von unserem Umfrageanbieter SourceTrac bis zu {{months}} Monate lang gespeichert und nur genutzt, um zu verstehen, über welche Kanäle Kunden zu uns finden. Sie werden niemals verkauft oder für Werbung verwendet.",
     "actions_notice": "Shopify-Aktionen kopieren Antworten als Bestell-Tags, Kunden-Tags oder Kunden-Metafelder in Ihren Shopify-Shop. Dort gelten dann die Regeln von Shopify für Ihre Shop-Daten, nicht der Löschplan von SourceTrac.",
-    "export_notice": "Die Datei enthält Bestellnummern, Antworten, Bestellsummen und von Käufern eingegebenen Text. Bewahren Sie sie so sicher auf wie Ihre anderen Shop-Unterlagen."
+    "export_notice": "Die Datei enthält Bestellnummern, Antworten, Bestellsummen und von Käufern eingegebenen Text. Bewahren Sie sie so sicher auf wie Ihre anderen Shop-Unterlagen.",
+    "keep_trial": "Ein Eintrag bleibt nach dieser Löschung bestehen: Wenn Ihr Shop jemals einen kostenpflichtigen Tarif hatte, speichern wir, dass er seinen kostenlosen Testzeitraum genutzt hat (ein Einweg-Code aus der myshopify-Adresse und der Shop-ID Ihres Shops sowie die Daten des Testzeitraums), damit der Testzeitraum nur einmal pro Shop gewährt wird. Er enthält keine lesbaren Shop-, Käufer- oder Bestelldaten."
   },
   "presets": {
     "load_title": "Antworten für ein Land verwenden",

@@ -254,7 +254,18 @@
     "choose_plan_monthly_instead": "Oppure paga mensilmente: {{price}} al mese",
     "msg_already_scheduled": "Hai già approvato questa modifica. Inizia alla fine del periodo di fatturazione attuale.",
     "scheduled_change": "Il passaggio a {{plan}} è approvato e inizia il {{date}}, alla fine del periodo di fatturazione attuale.",
-    "scheduled_change_no_date": "Il passaggio a {{plan}} è approvato e inizia alla fine del periodo di fatturazione attuale."
+    "scheduled_change_no_date": "Il passaggio a {{plan}} è approvato e inizia alla fine del periodo di fatturazione attuale.",
+    "trial_badge": "Prova gratuita di {{days}} giorni",
+    "trial_then_monthly": "Gratis fino al {{date}}, poi {{price}} al mese.",
+    "trial_then_yearly": "Gratis fino al {{date}}, poi {{price}} all'anno.",
+    "trial_left_one": "La prova gratuita continua: resta {{count}} giorno.",
+    "trial_left_other": "La prova gratuita continua: restano {{count}} giorni.",
+    "start_trial": "Prova {{plan}} gratis",
+    "trial_active_title": "La prova gratuita termina il {{date}}",
+    "trial_active_body_monthly": "Dopo, {{plan}} costa {{price}} al mese, addebitato sulla fattura Shopify. Se annulli prima del {{date}}, non paghi nulla.",
+    "trial_active_body_yearly": "Dopo, {{plan}} costa {{price}} all'anno, addebitato sulla fattura Shopify. Se annulli prima del {{date}}, non paghi nulla.",
+    "cancel_body_trial": "Sei nella prova gratuita, quindi annullare ora non costa nulla. Le risposte restano salvate. Con Gratis viene mostrato agli acquirenti solo il sondaggio attivo principale, tag, metacampi e Flow di Shopify si fermano e le risposte oltre {{cap}} questo mese vengono conservate ma segnate oltre il limite.",
+    "trial_note": "{{growth}} e {{scale}} iniziano con una prova gratuita di {{days}} giorni, una volta per negozio. Shopify mostra la prova e il prezzo nella pagina di approvazione e paghi solo se il piano è ancora attivo alla fine della prova. Se cambi piano o ciclo di fatturazione durante la prova, mantieni i giorni rimasti; non inizia una nuova prova."
   },
   "help": {
     "title": "Assistenza",
@@ -295,7 +306,9 @@
     "q_look": "Posso cambiare colori e caratteri del sondaggio?",
     "a_look": "Il sondaggio usa sempre caratteri e colori del checkout (Impostazioni › Checkout › Personalizza), perché Shopify non consente alle app di cambiarli: così sembra sempre parte del negozio. In «Aspetto e testi» puoi cambiare titolo, introduzione, pulsante e messaggio di ringraziamento, mostrare una domanda alla volta, usare le stelle per le valutazioni, impostare le parole sotto una scala e scegliere bordo e spaziatura.",
     "q_languages": "Gli acquirenti vedranno il sondaggio nella loro lingua?",
-    "a_languages": "I modelli e l'avvio rapido sono tradotti in dieci lingue. In «Lingue» nel sondaggio puoi aggiungere o modificare le traduzioni, anche in arabo, ebraico, coreano, polacco, turco e nelle lingue nordiche. L'acquirente vede la lingua del suo checkout se il sondaggio la prevede, altrimenti il tuo testo; i pulsanti sono tradotti in tutte queste lingue."
+    "a_languages": "I modelli e l'avvio rapido sono tradotti in dieci lingue. In «Lingue» nel sondaggio puoi aggiungere o modificare le traduzioni, anche in arabo, ebraico, coreano, polacco, turco e nelle lingue nordiche. L'acquirente vede la lingua del suo checkout se il sondaggio la prevede, altrimenti il tuo testo; i pulsanti sono tradotti in tutte queste lingue.",
+    "q_trial": "C'è una prova gratuita?",
+    "a_trial": "Sì. {{growth}} e {{scale}} iniziano con una prova gratuita di {{days}} giorni, una volta per negozio. Paghi solo se il piano è ancora attivo alla fine della prova: se annulli prima dalla pagina Piani, non viene addebitato nulla. Cambiare piano durante la prova mantiene i giorni rimasti e reinstallare l'app non avvia una nuova prova. Il piano Gratuito non ha bisogno di prova."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac non è disponibile con il tuo piano",
@@ -1081,7 +1094,8 @@
     "role_body": "Sei tu a decidere cosa chiede il sondaggio, quindi per i dati dei tuoi acquirenti sei il titolare del trattamento e SourceTrac li tratta per conto tuo. Cita il sondaggio nell'informativa sulla privacy del tuo negozio. Puoi adattare questo testo:",
     "policy_text": "Dopo il checkout potremmo chiederti di rispondere a un breve sondaggio facoltativo, ad esempio su come ci hai conosciuto. Le tue risposte vengono conservate insieme al numero d'ordine dal nostro fornitore di sondaggi, SourceTrac, per un massimo di {{months}} mesi, e vengono usate solo per capire quali canali ci portano clienti. Non vengono mai vendute né usate per la pubblicità.",
     "actions_notice": "Le azioni Shopify copiano le risposte nel tuo negozio Shopify come tag degli ordini, tag dei clienti o metacampi dei clienti. Da quel momento seguono le regole di Shopify per i dati del tuo negozio, non i tempi di eliminazione di SourceTrac.",
-    "export_notice": "Il file contiene numeri d'ordine, risposte, totali degli ordini e il testo scritto dagli acquirenti. Conservalo con la stessa cura degli altri documenti del negozio."
+    "export_notice": "Il file contiene numeri d'ordine, risposte, totali degli ordini e il testo scritto dagli acquirenti. Conservalo con la stessa cura degli altri documenti del negozio.",
+    "keep_trial": "Un dato resta dopo questa eliminazione: se il tuo negozio ha mai avuto un piano a pagamento, conserviamo l'informazione che ha usato la prova gratuita (un codice non reversibile ricavato dall'indirizzo myshopify e dall'ID del negozio, più le date della prova), così la prova viene concessa una sola volta per negozio. Non contiene dati leggibili su negozio, acquirenti o ordini."
   },
   "presets": {
     "load_title": "Usa le risposte per un paese",

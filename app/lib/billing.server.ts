@@ -26,11 +26,20 @@ import { fetchIsDevelopmentStore } from "./shopify-rest.server";
  */
 
 const CREATE_MUTATION = `#graphql
-  mutation SourceTracCreateSubscription($name: String!, $lineItems: [AppSubscriptionLineItemInput!]!, $returnUrl: URL!, $test: Boolean!) {
+  mutation SourceTracCreateSubscription(
+    $name: String!,
+    $lineItems: [AppSubscriptionLineItemInput!]!,
+    $returnUrl: URL!,
+    $test: Boolean!,
+    $trialDays: Int,
+    $replacementBehavior: AppSubscriptionReplacementBehavior
+  ) {
     appSubscriptionCreate(
       name: $name,
       returnUrl: $returnUrl,
       test: $test,
+      trialDays: $trialDays,
+      replacementBehavior: $replacementBehavior,
       lineItems: $lineItems,
     ) {
       appSubscription {
@@ -38,6 +47,7 @@ const CREATE_MUTATION = `#graphql
         status
         name
         test
+        trialDays
       }
       confirmationUrl
       userErrors {
@@ -72,6 +82,8 @@ const SUBSCRIPTION_QUERY = `#graphql
         status
         test
         currentPeriodEnd
+        trialDays
+        createdAt
       }
     }
   }
@@ -85,6 +97,10 @@ export type SubscriptionState = {
   status: string;
   test: boolean;
   currentPeriodEnd: string | null;
+  /** The free trial it was created with, in days (0 for none). */
+  trialDays: number;
+  /** When the charge was created: where its trial is counted from. */
+  createdAt: string | null;
 };
 
 /**
@@ -111,6 +127,8 @@ export async function fetchSubscription(params: {
     status: node.status,
     test: node.test === true,
     currentPeriodEnd: node.currentPeriodEnd ?? null,
+    trialDays: typeof node.trialDays === "number" ? node.trialDays : 0,
+    createdAt: node.createdAt ?? null,
   };
 }
 
@@ -159,6 +177,17 @@ export async function createSubscription(params: {
   /** Monthly unless the merchant chose yearly billing. */
   cycle?: BillingCycle;
   test?: boolean;
+  /**
+   * Free days before the first charge (`remainingTrialDays`). 0 or absent
+   * sends none, so Shopify bills at approval as before.
+   */
+  trialDays?: number;
+  /**
+   * Shopify's `AppSubscriptionReplacementBehavior`. Left to Shopify's default
+   * (`STANDARD`) except during a trial, where the switch applies at once:
+   * nothing has been paid, so there is no period to wait out.
+   */
+  replacementBehavior?: "APPLY_IMMEDIATELY";
 }): Promise<SubscriptionResult> {
   const definition = PLANS[params.plan];
   const cycle = params.cycle ?? "monthly";
@@ -177,6 +206,10 @@ export async function createSubscription(params: {
       // A test charge outside production, and on a development store (the only
       // kind of charge such a store can approve; App Store review uses one).
       test: params.test ?? env().NODE_ENV !== "production",
+      // Null, not 0, when there is no trial: the field is optional and absent
+      // means "no trial" to Shopify.
+      trialDays: params.trialDays && params.trialDays > 0 ? Math.floor(params.trialDays) : null,
+      replacementBehavior: params.replacementBehavior ?? null,
       lineItems: [
         {
           plan: {
@@ -266,6 +299,10 @@ export type ActiveSubscription = {
   currentPeriodEnd: string | null;
   /** Billing cycle of the recurring line item; null when Shopify sent none. */
   cycle?: BillingCycle | null;
+  /** Free trial days it was created with. */
+  trialDays?: number | null;
+  /** When it was created (its trial runs from here). */
+  createdAt?: string | null;
   /** Price per cycle as Shopify reports it (major units, e.g. "19.0"). */
   priceAmount?: string | null;
   currencyCode?: string | null;
@@ -298,6 +335,8 @@ export async function fetchActiveSubscriptions(params: {
           status: string;
           test: boolean;
           currentPeriodEnd: string | null;
+          trialDays?: number | null;
+          createdAt?: string | null;
           lineItems?: RawLineItem[] | null;
         }>;
       } | null;

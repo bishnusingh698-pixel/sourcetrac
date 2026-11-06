@@ -254,7 +254,18 @@
     "choose_plan_monthly_instead": "Ou payez au mois : {{price}} par mois",
     "msg_already_scheduled": "Vous avez déjà approuvé ce changement. Il commence à la fin de votre période de facturation actuelle.",
     "scheduled_change": "Votre passage à {{plan}} est approuvé et commence le {{date}}, à la fin de votre période de facturation actuelle.",
-    "scheduled_change_no_date": "Votre passage à {{plan}} est approuvé et commence à la fin de votre période de facturation actuelle."
+    "scheduled_change_no_date": "Votre passage à {{plan}} est approuvé et commence à la fin de votre période de facturation actuelle.",
+    "trial_badge": "Essai gratuit de {{days}} jours",
+    "trial_then_monthly": "Gratuit jusqu'au {{date}}, puis {{price}} par mois.",
+    "trial_then_yearly": "Gratuit jusqu'au {{date}}, puis {{price}} par an.",
+    "trial_left_one": "Votre essai gratuit continue : il reste {{count}} jour.",
+    "trial_left_other": "Votre essai gratuit continue : il reste {{count}} jours.",
+    "start_trial": "Essayer {{plan}} gratuitement",
+    "trial_active_title": "Votre essai gratuit se termine le {{date}}",
+    "trial_active_body_monthly": "Ensuite, {{plan}} coûte {{price}} par mois, facturé sur votre facture Shopify. Annulez avant le {{date}} et vous ne serez pas facturé.",
+    "trial_active_body_yearly": "Ensuite, {{plan}} coûte {{price}} par an, facturé sur votre facture Shopify. Annulez avant le {{date}} et vous ne serez pas facturé.",
+    "cancel_body_trial": "Vous êtes en période d'essai gratuit : annuler maintenant ne coûte rien. Vos réponses restent enregistrées. Avec le forfait Gratuit, seul votre sondage en ligne prioritaire reste affiché aux acheteurs, les balises, métachamps et Flow Shopify s'arrêtent, et les réponses au-delà de {{cap}} ce mois-ci sont conservées mais marquées hors limite.",
+    "trial_note": "{{growth}} et {{scale}} commencent par un essai gratuit de {{days}} jours, une fois par boutique. Shopify affiche l'essai et le prix sur sa page d'approbation, et vous n'êtes facturé que si le forfait est encore actif à la fin de l'essai. Changer de forfait ou de cycle de facturation pendant l'essai conserve les jours restants ; cela ne relance pas d'essai."
   },
   "help": {
     "title": "Aide",
@@ -295,7 +306,9 @@
     "q_look": "Puis-je changer les couleurs et les polices de l'enquête ?",
     "a_look": "L'enquête utilise toujours les polices et couleurs de votre paiement (Paramètres › Paiement › Personnaliser), car Shopify ne permet pas aux apps de les modifier : elle ressemble ainsi toujours à votre boutique. Dans « Apparence et textes », vous pouvez changer le titre, l'introduction, le bouton et le message de remerciement, afficher une question à la fois, utiliser des étoiles pour les notes, définir les mots sous une échelle et choisir bordure et espacement.",
     "q_languages": "Les acheteurs verront-ils l'enquête dans leur langue ?",
-    "a_languages": "Les modèles et le démarrage rapide sont traduits en dix langues. Sous « Langues » dans l'enquête, vous pouvez ajouter ou modifier des traductions, y compris en arabe, hébreu, coréen, polonais, turc et dans les langues nordiques. L'acheteur voit la langue de son paiement si l'enquête la propose, sinon votre propre texte ; les boutons sont traduits dans toutes ces langues."
+    "a_languages": "Les modèles et le démarrage rapide sont traduits en dix langues. Sous « Langues » dans l'enquête, vous pouvez ajouter ou modifier des traductions, y compris en arabe, hébreu, coréen, polonais, turc et dans les langues nordiques. L'acheteur voit la langue de son paiement si l'enquête la propose, sinon votre propre texte ; les boutons sont traduits dans toutes ces langues.",
+    "q_trial": "Y a-t-il un essai gratuit ?",
+    "a_trial": "Oui. {{growth}} et {{scale}} commencent par un essai gratuit de {{days}} jours, une fois par boutique. Vous n'êtes facturé que si le forfait est encore actif à la fin de l'essai : annulez avant sur la page Forfaits et rien n'est facturé. Changer de forfait pendant l'essai conserve les jours restants, et réinstaller l'application ne relance pas d'essai. Le forfait Gratuit n'a pas besoin d'essai."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac n'est pas disponible avec votre forfait",
@@ -1081,7 +1094,8 @@
     "role_body": "C’est vous qui décidez des questions de votre sondage : pour les données de vos acheteurs, vous êtes donc le responsable du traitement et SourceTrac les traite pour votre compte. Mentionnez le sondage dans la politique de confidentialité de votre boutique. Vous pouvez adapter ce texte :",
     "policy_text": "Après le paiement, nous pouvons vous proposer un court sondage facultatif, par exemple pour savoir comment vous nous avez connus. Vos réponses sont conservées avec votre numéro de commande par notre prestataire de sondages, SourceTrac, pendant {{months}} mois au maximum, et servent uniquement à comprendre quels canaux nous amènent des clients. Elles ne sont jamais vendues ni utilisées à des fins publicitaires.",
     "actions_notice": "Les actions Shopify copient les réponses dans votre boutique Shopify sous forme de balises de commande, de balises client ou de champs méta client. Elles suivent alors les règles de Shopify pour les données de votre boutique, et non le calendrier de suppression de SourceTrac.",
-    "export_notice": "Le fichier contient les numéros de commande, les réponses, les totaux des commandes et tout texte saisi par les acheteurs. Conservez-le avec autant de soin que vos autres documents de boutique."
+    "export_notice": "Le fichier contient les numéros de commande, les réponses, les totaux des commandes et tout texte saisi par les acheteurs. Conservez-le avec autant de soin que vos autres documents de boutique.",
+    "keep_trial": "Un enregistrement survit à cette suppression : si votre boutique a déjà eu un forfait payant, nous gardons la trace de l'utilisation de son essai gratuit (un code à sens unique calculé à partir de l'adresse myshopify et de l'ID de votre boutique, plus les dates de l'essai), afin que l'essai ne soit accordé qu'une fois par boutique. Il ne contient aucune donnée lisible sur la boutique, les acheteurs ou les commandes."
   },
   "presets": {
     "load_title": "Utiliser les réponses d'un pays",

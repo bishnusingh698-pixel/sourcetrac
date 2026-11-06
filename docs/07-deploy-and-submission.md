@@ -64,18 +64,29 @@ performance claims** — only verifiable product behaviour.
 **Subtitle:** Know where every order came from.
 
 **Description:**
-SourceTrac asks one question — "How did you hear about us?" — on your Shopify
-thank-you page and order status page, then shows you which channels actually
-drive revenue.
+SourceTrac adds a short post-purchase survey to your Shopify Thank you page
+(and, if you choose, the Order status page) and shows you which channels and
+answers bring in revenue.
 
-- Set your own question and 6–10 answer channels, with optional emoji.
-- One tap for buyers. It inherits your checkout theme automatically.
-- See responses, revenue and average order value per channel, with 7/30/90-day trends.
-- Export every answer to CSV (order ID, timestamp, channel, order total, currency).
-- Currencies are always kept separate and summed correctly.
+- Start from a ready-made survey such as "How did you hear about us?", with
+  answer lists suggested for your market, or build your own with up to 5
+  questions: single or multiple choice, dropdown, yes/no, rating, satisfaction,
+  0-10 recommendation score and free text, with follow-up questions.
+- The survey uses your checkout's own branding automatically.
+- See answers, revenue and average order value per channel and per answer,
+  NPS and satisfaction scores, first-time and returning buyers, and daily trends
+  in your store's time zone.
+- Download every answer as a CSV file.
+- Revenue is kept separate per currency, never added across currencies.
 
-**Pricing:** Free up to 50 responses/month. Growth $4.99/month or $53.89/year. Scale $9.99/month or $107.89/year (yearly saves 10%).
-Billing is handled by Shopify — no separate account.
+**Pricing (as billed through Shopify):**
+- Free: up to 50 answers a month, 1 live survey.
+- Growth: $4.99 a month, or $53.89 a year.
+- Scale: $9.99 a month, or $107.89 a year.
+- Growth and Scale include a 14-day free trial, once per store. You're charged
+  only if the plan is still active when the trial ends.
+
+Billing is handled by Shopify; there is no separate account.
 
 ---
 

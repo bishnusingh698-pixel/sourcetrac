@@ -286,6 +286,9 @@ export async function clearAccessToken(internalShopId: string): Promise<void> {
         planDisplayName: null,
         pendingSubscriptionGid: null,
         pendingSubscriptionName: null,
+        // The trial ends with the charge. The store's trial record
+        // (TrialLedger) is kept, so a reinstall cannot start another.
+        trialEndsAt: null,
       },
     }),
   );
@@ -346,7 +349,8 @@ export async function setPlan(
           ? { plan: onlyIf.plan as "free" | "growth" | "scale", planStatus: onlyIf.planStatus as PlanStatus, subscriptionGid: onlyIf.subscriptionGid }
           : {}),
       },
-      data,
+      // Free has no subscription, so no trial is running.
+      data: data.plan === "free" ? { ...data, trialEndsAt: null } : data,
     }),
   );
   if (written.count === 0) return false;

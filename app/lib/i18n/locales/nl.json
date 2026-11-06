@@ -254,7 +254,18 @@
     "choose_plan_monthly_instead": "Of betaal per maand: {{price}} per maand",
     "msg_already_scheduled": "Je hebt deze wijziging al goedgekeurd. Die begint als je huidige factureringsperiode afloopt.",
     "scheduled_change": "Je overstap naar {{plan}} is goedgekeurd en begint op {{date}}, als je huidige factureringsperiode afloopt.",
-    "scheduled_change_no_date": "Je overstap naar {{plan}} is goedgekeurd en begint als je huidige factureringsperiode afloopt."
+    "scheduled_change_no_date": "Je overstap naar {{plan}} is goedgekeurd en begint als je huidige factureringsperiode afloopt.",
+    "trial_badge": "{{days}} dagen gratis proberen",
+    "trial_then_monthly": "Gratis tot {{date}}, daarna {{price}} per maand.",
+    "trial_then_yearly": "Gratis tot {{date}}, daarna {{price}} per jaar.",
+    "trial_left_one": "Je gratis proefperiode loopt door: nog {{count}} dag.",
+    "trial_left_other": "Je gratis proefperiode loopt door: nog {{count}} dagen.",
+    "start_trial": "{{plan}} gratis proberen",
+    "trial_active_title": "Je gratis proefperiode eindigt op {{date}}",
+    "trial_active_body_monthly": "Daarna kost {{plan}} {{price}} per maand, op je Shopify-factuur. Zeg je op vóór {{date}}, dan betaal je niets.",
+    "trial_active_body_yearly": "Daarna kost {{plan}} {{price}} per jaar, op je Shopify-factuur. Zeg je op vóór {{date}}, dan betaal je niets.",
+    "cancel_body_trial": "Je zit in je gratis proefperiode, dus nu opzeggen kost niets. Je antwoorden blijven bewaard. Met Gratis ziet de koper alleen nog je belangrijkste live-enquête, stoppen Shopify-tags, metavelden en Flow, en worden antwoorden boven {{cap}} deze maand bewaard maar gemarkeerd als boven de limiet.",
+    "trial_note": "{{growth}} en {{scale}} beginnen met een gratis proefperiode van {{days}} dagen, één keer per winkel. Shopify toont de proefperiode en de prijs op de goedkeuringspagina, en je betaalt alleen als het abonnement nog actief is wanneer de proefperiode afloopt. Wissel je tijdens de proefperiode van abonnement of factureringsperiode, dan houd je de resterende dagen; er begint geen nieuwe proefperiode."
   },
   "help": {
     "title": "Help",
@@ -295,7 +306,9 @@
     "q_look": "Kan ik de kleuren en lettertypen van de enquête aanpassen?",
     "a_look": "De enquête gebruikt altijd de lettertypen en kleuren van je checkout (Instellingen › Checkout › Aanpassen), omdat Shopify apps die niet laat wijzigen; zo ziet hij er altijd uit als onderdeel van je winkel. Onder ‘Uiterlijk en teksten’ wijzig je titel, intro, knop en bedanktekst, toon je vragen één voor één, gebruik je sterren voor beoordelingen, stel je de woorden onder een schaal in en kies je rand en ruimte.",
     "q_languages": "Zien kopers de enquête in hun eigen taal?",
-    "a_languages": "Sjablonen en Snel starten zijn vertaald in tien talen. Onder ‘Talen’ in de enquête kun je vertalingen toevoegen of aanpassen, ook in het Arabisch, Hebreeuws, Koreaans, Pools, Turks en de Scandinavische talen. Een koper ziet de taal van zijn checkout als de enquête die heeft, en anders je eigen tekst; de knoppen zijn in al deze talen vertaald."
+    "a_languages": "Sjablonen en Snel starten zijn vertaald in tien talen. Onder ‘Talen’ in de enquête kun je vertalingen toevoegen of aanpassen, ook in het Arabisch, Hebreeuws, Koreaans, Pools, Turks en de Scandinavische talen. Een koper ziet de taal van zijn checkout als de enquête die heeft, en anders je eigen tekst; de knoppen zijn in al deze talen vertaald.",
+    "q_trial": "Is er een gratis proefperiode?",
+    "a_trial": "Ja. {{growth}} en {{scale}} beginnen met een gratis proefperiode van {{days}} dagen, één keer per winkel. Je betaalt alleen als het abonnement nog actief is wanneer de proefperiode afloopt: zeg je daarvoor op via de pagina Abonnementen, dan wordt er niets in rekening gebracht. Wissel je tijdens de proefperiode van abonnement, dan houd je de resterende dagen, en de app opnieuw installeren start geen nieuwe proefperiode. Het gratis abonnement heeft geen proefperiode nodig."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac is niet beschikbaar in je abonnement",
@@ -1081,7 +1094,8 @@
     "role_body": "Jij bepaalt wat je enquête vraagt, dus voor de gegevens van je kopers ben jij de verwerkingsverantwoordelijke en verwerkt SourceTrac ze voor jou. Noem de enquête in het privacybeleid van je winkel. Je kunt deze tekst aanpassen:",
     "policy_text": "Na het afrekenen kunnen we je een korte, vrijwillige enquête voorleggen, bijvoorbeeld over hoe je over ons hebt gehoord. Je antwoorden worden samen met je bestelnummer maximaal {{months}} maanden bewaard door onze enquêteprovider, SourceTrac, en alleen gebruikt om te begrijpen via welke kanalen klanten bij ons komen. Ze worden nooit verkocht of gebruikt voor advertenties.",
     "actions_notice": "Shopify-acties kopiëren antwoorden naar je Shopify-winkel als bestellingtags, klanttags of klantmetavelden. Daarna gelden de regels van Shopify voor je winkelgegevens, niet het verwijderschema van SourceTrac.",
-    "export_notice": "Het bestand bevat bestelnummers, antwoorden, besteltotalen en tekst die kopers hebben getypt. Bewaar het net zo veilig als je andere winkelgegevens."
+    "export_notice": "Het bestand bevat bestelnummers, antwoorden, besteltotalen en tekst die kopers hebben getypt. Bewaar het net zo veilig als je andere winkelgegevens.",
+    "keep_trial": "Eén gegeven blijft na die verwijdering bestaan: als je winkel ooit een betaald abonnement had, bewaren we dat de gratis proefperiode is gebruikt (een eenrichtingscode gemaakt van het myshopify-adres en de winkel-ID, plus de data van de proefperiode), zodat de proefperiode één keer per winkel wordt gegeven. Het bevat geen leesbare winkel-, koper- of bestelgegevens."
   },
   "presets": {
     "load_title": "Antwoorden voor een land gebruiken",

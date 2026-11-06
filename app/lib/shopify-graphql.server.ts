@@ -281,6 +281,8 @@ export const PLANS_QUERY = `#graphql
         status
         test
         currentPeriodEnd
+        trialDays
+        createdAt
         lineItems {
           plan {
             pricingDetails {

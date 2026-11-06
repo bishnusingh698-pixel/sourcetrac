@@ -254,7 +254,18 @@
     "choose_plan_monthly_instead": "Or pay monthly: {{price}} a month",
     "msg_already_scheduled": "You already approved this change. It starts when your current billing period ends.",
     "scheduled_change": "Your switch to {{plan}} is approved and starts on {{date}}, when your current billing period ends.",
-    "scheduled_change_no_date": "Your switch to {{plan}} is approved and starts when your current billing period ends."
+    "scheduled_change_no_date": "Your switch to {{plan}} is approved and starts when your current billing period ends.",
+    "trial_badge": "{{days}}-day free trial",
+    "trial_then_monthly": "Free until {{date}}, then {{price}} a month.",
+    "trial_then_yearly": "Free until {{date}}, then {{price}} a year.",
+    "trial_left_one": "Your free trial carries over: {{count}} day left.",
+    "trial_left_other": "Your free trial carries over: {{count}} days left.",
+    "start_trial": "Start free trial of {{plan}}",
+    "trial_active_title": "Your free trial ends on {{date}}",
+    "trial_active_body_monthly": "After that, {{plan}} costs {{price}} a month, billed on your Shopify invoice. Cancel before {{date}} and you won't be charged.",
+    "trial_active_body_yearly": "After that, {{plan}} costs {{price}} a year, billed on your Shopify invoice. Cancel before {{date}} and you won't be charged.",
+    "cancel_body_trial": "You're in your free trial, so cancelling now costs nothing. Your answers stay saved. On Free only your top live survey keeps showing to buyers, Shopify tags, metafields and Flow stop, and answers past {{cap}} this month are kept but marked over the limit.",
+    "trial_note": "{{growth}} and {{scale}} start with a {{days}}-day free trial, once per store. Shopify shows the trial and the price on its approval page, and you're only charged if the plan is still active when the trial ends. Switching plan or billing cycle during the trial keeps the days you have left; it does not start a new trial."
   },
   "help": {
     "title": "Help",
@@ -295,7 +306,9 @@
     "q_look": "Can I change the survey's colours and fonts?",
     "a_look": "The survey always uses your checkout's own fonts and colours (Settings › Checkout › Customize), because Shopify doesn't let apps change them, so it always looks like part of your store. Under “Look and wording” in the survey you can change the title, intro, button and thank-you text, show questions one at a time, use stars for ratings, set the words under a scale, and choose a border and spacing.",
     "q_languages": "Will buyers see the survey in their language?",
-    "a_languages": "Templates and the quick start come translated into ten languages. Under “Languages” in the survey you can add or change translations, including Arabic, Hebrew, Korean, Polish, Turkish and the Nordic languages. A buyer sees their checkout language when the survey has it, and your own wording otherwise; the buttons are translated for all of these languages."
+    "a_languages": "Templates and the quick start come translated into ten languages. Under “Languages” in the survey you can add or change translations, including Arabic, Hebrew, Korean, Polish, Turkish and the Nordic languages. A buyer sees their checkout language when the survey has it, and your own wording otherwise; the buttons are translated for all of these languages.",
+    "q_trial": "Is there a free trial?",
+    "a_trial": "Yes. {{growth}} and {{scale}} start with a {{days}}-day free trial, once per store. You're billed only if the plan is still active when the trial ends: cancel on the Plans page before then and nothing is charged. Changing plan during the trial keeps the days you have left, and reinstalling the app does not start a new trial. The Free plan needs no trial."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac is not available on your plan",
@@ -1081,7 +1094,8 @@
     "role_body": "You decide what your survey asks, so for your buyers' data you are the controller and SourceTrac processes it for you. Mention the survey in your store's privacy policy. You can adapt this text:",
     "policy_text": "After checkout we may ask you a short optional survey, such as how you heard about us. Your answers are stored with your order number by our survey provider, SourceTrac, for up to {{months}} months, and are used only to understand which channels bring us customers. They are never sold or used for advertising.",
     "actions_notice": "Shopify actions copy answers into your Shopify store as order tags, customer tags or customer metafields. They then follow Shopify's rules for your store data, not SourceTrac's deletion schedule.",
-    "export_notice": "The file contains order numbers, answers and order totals, and any text buyers typed. Keep it as safely as your other store records."
+    "export_notice": "The file contains order numbers, answers and order totals, and any text buyers typed. Keep it as safely as your other store records.",
+    "keep_trial": "One record outlives that deletion: if your store ever had a paid plan, we keep a note that it used its free trial (a one-way code made from your store's myshopify address and shop ID, plus the trial's dates), so the trial is given once per store. It holds no readable store, buyer or order details."
   },
   "presets": {
     "load_title": "Use answers for a country",
