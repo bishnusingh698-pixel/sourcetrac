@@ -28,7 +28,8 @@ import type { loader as rootLoader } from "~/root";
 import { Banner } from "~/components/admin-ui";
 import { SupportIconButton } from "~/components/support-button";
 import { DataNotice } from "~/components/data-notice";
-import { TopNav } from "~/components/top-nav";
+import { PageLoading } from "~/components/page-loading";
+import { SectionNav } from "~/components/section-tabs";
 import { NAV } from "~/lib/nav";
 import {
   createTranslator,
@@ -62,9 +63,9 @@ import { APP_VERSION } from "@shared/support";
  */
 
 /**
- * The pages themselves are listed once, in `~/lib/nav`, and read by both menus:
- * Shopify's own admin navigation (`<s-app-nav>`, the `sidebar` items) and the
- * in-app top bar (`TopNav`, every item).
+ * The pages themselves are listed once, in `~/lib/nav`. Shopify's own admin
+ * navigation (`<s-app-nav>`) is the app's menu; the body adds only the current
+ * section's pages (`SectionNav`) and, on a detail page, a breadcrumb.
  */
 
 /**
@@ -73,13 +74,24 @@ import { APP_VERSION } from "@shared/support";
  * `<s-page>`, so child routes name their title this way instead of drawing a
  * heading of their own.
  */
-function usePageTitleKey(): string | null {
+type PageHandle = { titleKey?: unknown; breadcrumb?: { to?: unknown; labelKey?: unknown } };
+
+function usePageHandle(): { titleKey: string | null; breadcrumb: { to: string; labelKey: string } | null } {
   const matches = useMatches();
   for (let i = matches.length - 1; i >= 0; i -= 1) {
-    const handle = matches[i]?.handle as { titleKey?: unknown } | undefined;
-    if (handle && typeof handle.titleKey === "string") return handle.titleKey;
+    const handle = matches[i]?.handle as PageHandle | undefined;
+    if (handle && typeof handle.titleKey === "string") {
+      const crumb = handle.breadcrumb;
+      return {
+        titleKey: handle.titleKey,
+        breadcrumb:
+          crumb && typeof crumb.to === "string" && typeof crumb.labelKey === "string"
+            ? { to: crumb.to, labelKey: crumb.labelKey }
+            : null,
+      };
+    }
   }
-  return null;
+  return { titleKey: null, breadcrumb: null };
 }
 
 /**
@@ -166,13 +178,12 @@ export default function AdminLayout() {
   const { apiKey, shop, plan, cap, language, messages, version, retentionMonths } = useLoaderData<typeof loader>();
   const t = shellTranslator(language, messages);
   const location = useLocation();
-  const titleKey = usePageTitleKey();
+  const { titleKey, breadcrumb } = usePageHandle();
 
   return (
     <AppProvider apiKey={apiKey}>
-      {/* Shopify admin's own sidebar entries for this app. Without this the
-          app shows no pages under its name in the admin navigation. The
-          in-app top bar below lists the same pages plus Dashboard and Export. */}
+      {/* The app's menu: Shopify's own navigation (the sidebar on desktop, the
+          app title's menu on a phone). The body never repeats it. */}
       <s-app-nav>
         <s-link href="/app" {...HOME_LINK}>
           {t("nav.home")}
@@ -183,7 +194,15 @@ export default function AdminLayout() {
           </s-link>
         ))}
       </s-app-nav>
+      <PageLoading />
       <s-page heading={titleKey ? t(titleKey) : undefined}>
+        {/* A detail page (the survey editor) names its parent in the title
+            bar, Shopify's place for the way back up. */}
+        {breadcrumb ? (
+          <s-link slot="breadcrumb-actions" href={breadcrumb.to}>
+            {t(breadcrumb.labelKey)}
+          </s-link>
+        ) : null}
         {/* Always one click away, in the page title bar's secondary-actions
             slot. `page` is the current path so the mail body says where the
             merchant was when they asked for help. */}
@@ -198,8 +217,8 @@ export default function AdminLayout() {
             inside their card instead of running past its edge. */}
         <div className="st-page">
         <s-stack gap="base">
-          {/* The app's own menu, on every page. */}
-          <TopNav t={t} />
+          {/* The current section's pages, on the pages that have siblings. */}
+          <SectionNav t={t} />
 
           {/* Plan strip: only on the Free plan, where the monthly limit is
               something to watch. A paid merchant has nothing to act on here,
@@ -252,7 +271,7 @@ export default function AdminLayout() {
                   {t("shell.cap_warning_body", { count: cap.cap ?? 0, cap: cap.cap })}
                 </s-text>
                 <div>
-                  <s-button href="/app/plans" variant="primary">
+                  <s-button href="/app/plans">
                     {t("shell.cap_warning_cta")}
                   </s-button>
                 </div>
@@ -263,7 +282,7 @@ export default function AdminLayout() {
               <s-stack gap="small">
                 <s-text>{t("shell.cap_reached_body")}</s-text>
                 <div>
-                  <s-button href="/app/plans" variant="primary">
+                  <s-button href="/app/plans">
                     {t("shell.cap_reached_cta")}
                   </s-button>
                 </div>

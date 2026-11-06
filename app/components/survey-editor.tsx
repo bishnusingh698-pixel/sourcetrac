@@ -191,7 +191,7 @@ export function LockedNote({ t, plan, children }: { t: TFn; plan: PlanTier; chil
   return (
     <s-box padding="small" borderRadius="base" background="subdued">
       <s-stack direction="inline" gap="small" alignItems="center">
-        <s-icon type="lock" />
+        <s-icon type="lock" size="small" />
         <s-text>{children ?? t("editor.locked", { plan: t(`plans.${plan}`) })}</s-text>
         <s-link href="/app/plans">{t("editor.see_plans")}</s-link>
       </s-stack>

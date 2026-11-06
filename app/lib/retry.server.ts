@@ -18,6 +18,12 @@ export type RetryOptions = {
   /** Return true once the caller should stop retrying even if retryable. */
   isAbort?: (error: unknown) => boolean;
   onRetry?: (error: unknown, attempt: number, delayMs: number) => void;
+  /**
+   * A delay the failure itself dictates (Shopify's throttle status says how
+   * long until the bucket holds enough points). Used instead of the jittered
+   * backoff when it returns a number.
+   */
+  delayFor?: (error: unknown, attempt: number) => number | undefined;
   /** Injectable for deterministic tests. */
   random?: () => number;
   sleep?: (ms: number) => Promise<void>;
@@ -39,6 +45,7 @@ export async function withRetry<T>(operation: () => Promise<T>, options: RetryOp
     shouldRetry = () => true,
     isAbort = () => false,
     onRetry,
+    delayFor,
     random = Math.random,
     sleep = defaultSleep,
   } = options;
@@ -57,7 +64,7 @@ export async function withRetry<T>(operation: () => Promise<T>, options: RetryOp
       const isLast = attempt === attempts;
       if (isLast || !shouldRetry(error, attempt)) break;
 
-      const delay = backoffDelay(attempt, baseDelayMs, maxDelayMs, random);
+      const delay = delayFor?.(error, attempt) ?? backoffDelay(attempt, baseDelayMs, maxDelayMs, random);
       onRetry?.(error, attempt, delay);
       logger.debug("retry_scheduled", {
         attempt,

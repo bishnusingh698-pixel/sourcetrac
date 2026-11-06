@@ -17,6 +17,13 @@ export const PLAN_SCALE = "scale" as const;
 export type PlanKey = typeof PLAN_FREE | typeof PLAN_GROWTH | typeof PLAN_SCALE;
 
 export const FREE_RESPONSE_CAP = 50;
+
+/**
+ * Free trial on Growth and Scale, monthly and yearly alike, in days. Shopify's
+ * `appSubscriptionCreate(trialDays:)` runs it; `app/lib/trial.server.ts` keeps
+ * it to one per store.
+ */
+export const TRIAL_DAYS = 14;
 export const CAP_WARNING_RATIO = 0.8;
 
 /**

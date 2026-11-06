@@ -20,6 +20,7 @@ import {
 } from "~/lib/shop.server";
 import { checkoutSurfacesSupported, fetchShopPlanName } from "~/lib/shopify-rest.server";
 import { fetchSubscription, testChargesAllowed } from "~/lib/billing.server";
+import { noteLiveSubscription } from "~/lib/trial.server";
 import { isPlanKey, type PlanKey } from "~/lib/plans";
 import { clearBlockSeen } from "~/lib/block-seen.server";
 
@@ -685,6 +686,18 @@ async function applySubscription(
 
   if (planStatus === "active") {
     await setPlan(shopInternalId, data);
+    // The store's one free trial is recorded the first time a paid plan goes
+    // live, and the shop learns when this subscription's own trial ends.
+    const shopRow = await retryDb(() =>
+      db.shop.findUnique({ where: { id: shopInternalId }, select: { shopId: true } }),
+    );
+    await noteLiveSubscription({
+      shopInternalId,
+      shopDomain,
+      shopGid: shopRow?.shopId ?? null,
+      plan: matched.key,
+      subscription: { trialDays: current?.trialDays ?? 0, createdAt: current?.createdAt ?? null },
+    });
   } else {
     // A charge that will never go live is no longer pending.
     if (planStatus === "declined" || planStatus === "expired" || planStatus === "cancelled") {
@@ -704,7 +717,8 @@ async function applySubscription(
           id: shopInternalId,
           OR: [{ subscriptionGid: gid }, { subscriptionGid: null, plan: matched.key }],
         },
-        data,
+        // A charge that is no longer live has no trial running.
+        data: { ...data, trialEndsAt: null },
       }),
     );
     if (applied.count === 0) {

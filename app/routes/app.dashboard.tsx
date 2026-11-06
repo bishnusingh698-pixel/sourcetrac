@@ -1,6 +1,5 @@
 import { useLoaderData, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 
-import { SectionTabs } from "~/components/section-tabs";
 import { resolveAdminLanguage, resolveFormatLocale } from "~/lib/i18n/resolve.server";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 
@@ -94,7 +93,6 @@ export default function ChannelReportPage() {
 
   return (
     <s-stack gap="base">
-      <SectionTabs section="analytics" t={t} />
       <PageIntro
         actions={
           <RangeSwitcher

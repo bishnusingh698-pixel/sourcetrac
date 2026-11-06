@@ -711,3 +711,19 @@ describe("answers limited to some countries reach only those buyers (F4)", () =>
     expect(labels).toEqual(["Instagram", "Google"]);
   });
 });
+
+describe("bundle size (Shopify's limit for UI extensions on api_version 2025-10+)", () => {
+  // Shopify refuses a UI extension whose compiled bundle is over 64 KB
+  // compressed. These are built unminified, which is larger than what the CLI
+  // ships, so staying under the limit here is a safe upper bound.
+  const LIMIT = 64 * 1024;
+
+  it.each([...SURFACES.map((s) => [s.dir, () => bundle(s)] as const), ...ADMIN_SURFACES.map((s) => [s.dir, () => bundleAdmin(s)] as const)])(
+    "%s stays under 64 KB compressed",
+    async (_dir, build) => {
+      const { gzipSync } = await import("node:zlib");
+      const compressed = gzipSync(Buffer.from(await build())).byteLength;
+      expect(compressed).toBeLessThan(LIMIT);
+    },
+  );
+});

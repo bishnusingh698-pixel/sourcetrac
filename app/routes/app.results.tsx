@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useLoaderData, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 
-import { SectionTabs } from "~/components/section-tabs";
-import { Banner, MoneyList, Panel, PageIntro, Metric, BigNumber } from "~/components/admin-ui";
+import { Banner, MoneyList, Num, NumText, Panel, PageIntro, Metric, BigNumber } from "~/components/admin-ui";
 import { SurveyPicker } from "~/components/survey-picker";
 import { ScoreBlock, scoreValueText } from "~/components/scores";
 import { resolveAdminLanguage, resolveFormatLocale } from "~/lib/i18n/resolve.server";
@@ -288,7 +287,6 @@ export default function Results() {
   if (data.surveys.length === 0 || !data.selected || !data.summary || !data.buyers) {
     return (
       <s-stack gap="base">
-        <SectionTabs section="analytics" t={t} />
         <PageIntro>{t("results.subtitle")}</PageIntro>
         <Banner tone="info" heading={t("results.empty_title")}>
           {t("results.empty_body")}
@@ -314,7 +312,6 @@ export default function Results() {
 
   return (
     <s-stack gap="base">
-      <SectionTabs section="analytics" t={t} />
       <PageIntro
         actions={
           <s-stack direction="inline" gap="small">
@@ -374,8 +371,12 @@ export default function Results() {
                         {row.id === data.selected ? `${row.name} ✓` : row.name}
                       </s-link>
                     </s-table-cell>
-                    <s-table-cell>{String(row.responses)}</s-table-cell>
-                    <s-table-cell>{row.answerRate === null ? "—" : percent(row.answerRate)}</s-table-cell>
+                    <s-table-cell>
+                      <Num value={row.responses} locale={locale} />
+                    </s-table-cell>
+                    <s-table-cell>
+                      <NumText>{row.answerRate === null ? "—" : percent(row.answerRate)}</NumText>
+                    </s-table-cell>
                     <s-table-cell>
                       <MoneyList amounts={row.revenue} />
                     </s-table-cell>
@@ -460,8 +461,12 @@ export default function Results() {
               ).map(([labelKey, group]) => (
                 <s-table-row key={labelKey}>
                   <s-table-cell>{t(labelKey)}</s-table-cell>
-                  <s-table-cell>{String(group.responses)}</s-table-cell>
-                  <s-table-cell>{percent(Math.round((group.responses / knownBuyers) * 100))}</s-table-cell>
+                  <s-table-cell>
+                    <Num value={group.responses} locale={locale} />
+                  </s-table-cell>
+                  <s-table-cell>
+                    <NumText>{percent(Math.round((group.responses / knownBuyers) * 100))}</NumText>
+                  </s-table-cell>
                   <s-table-cell>
                     <MoneyList amounts={group.revenue} />
                   </s-table-cell>

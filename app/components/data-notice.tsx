@@ -86,7 +86,10 @@ export function DataCollectionDetails({ t, retention }: { t: TFn; retention: Ret
       </s-section>
 
       <s-section heading={t("privacy.keep_title")}>
-        <s-text>{t("privacy.keep_body", { months: retention.months, days: retention.webhookDays })}</s-text>
+        <s-stack gap="small">
+          <s-text>{t("privacy.keep_body", { months: retention.months, days: retention.webhookDays })}</s-text>
+          <s-text>{t("privacy.keep_trial")}</s-text>
+        </s-stack>
       </s-section>
 
       <s-section heading={t("privacy.rights_title")}>

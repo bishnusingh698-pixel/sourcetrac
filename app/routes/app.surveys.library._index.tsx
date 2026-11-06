@@ -1,7 +1,6 @@
 import { Form, redirect, useActionData, useLoaderData, useNavigation, useSearchParams, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 
-import { SectionTabs } from "~/components/section-tabs";
-import { Banner, PageIntro } from "~/components/admin-ui";
+import { Banner, PageIntro, Segmented } from "~/components/admin-ui";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import { createTranslator } from "~/lib/i18n";
 import { resolveAdminLanguage } from "~/lib/i18n/resolve.server";
@@ -202,7 +201,6 @@ export default function TemplateLibrary() {
 
   return (
     <s-stack gap="base">
-      <SectionTabs section="surveys" t={t} />
       <PageIntro
         actions={
           <Form method="post">
@@ -224,21 +222,28 @@ export default function TemplateLibrary() {
         onInput={(e: Event) => setQuery((e.currentTarget as { value?: string }).value ?? "")}
       />
 
-      {/* One chip per goal, with how many templates it holds. A plain inline
-          stack, not a button group: long labels must wrap on a phone. */}
-      <s-stack direction="inline" gap="small">
-        <s-button type="button" variant={!category ? "primary" : "secondary"} onClick={() => setCategory(null)}>
-          {t("library.category_all_count", { count: cards.length })}
-        </s-button>
-        {categories.map((c) => (
-          <s-button key={c} type="button" variant={category === c ? "primary" : "secondary"} onClick={() => setCategory(c)}>
-            {t("library.category_count", {
+      {/* One choice per goal, with how many templates it holds. It wraps on
+          a phone; the selected goal is marked, not a primary button. */}
+      <Segmented
+        label={t("library.categories_label")}
+        items={[
+          {
+            key: "all",
+            label: t("library.category_all_count", { count: cards.length }),
+            current: !category,
+            onSelect: () => setCategory(null),
+          },
+          ...categories.map((c) => ({
+            key: c,
+            label: t("library.category_count", {
               name: t(`library.category_${c}`),
               count: cards.filter((card) => card.category === c).length,
-            })}
-          </s-button>
-        ))}
-      </s-stack>
+            }),
+            current: category === c,
+            onSelect: () => setCategory(c),
+          })),
+        ]}
+      />
 
       {searching || category ? (
         // A search or a picked goal: one flat list of what matches.
@@ -280,7 +285,7 @@ export default function TemplateLibrary() {
                 gap="base"
                 alignItems="center"
               >
-                <s-icon type="wand" tone="info" />
+                <s-icon type="wand" tone="info" size="small" />
                 <s-stack gap="small-200">
                   <s-text type="strong">{t("quick.title")}</s-text>
                   <s-text color="subdued">{t("quick.subtitle")}</s-text>

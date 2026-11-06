@@ -3,7 +3,7 @@ import { type MetaFunction } from "react-router";
 import { Panel, PageIntro } from "~/components/admin-ui";
 import { SupportContactPanel } from "~/components/support-button";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
-import { FREE_RESPONSE_CAP } from "~/lib/plans";
+import { FREE_RESPONSE_CAP, TRIAL_DAYS } from "~/lib/plans";
 
 /**
  * Help: FAQ plus a support contact.
@@ -35,6 +35,7 @@ const FAQ = [
   "missing_revenue",
   "refunds",
   "limit",
+  "trial",
   "privacy",
   "sync",
   "change",
@@ -63,7 +64,14 @@ export default function Help() {
                 </summary>
                 <s-box paddingBlockStart="small">
                   <s-stack gap="small-200">
-                    <s-text>{t(`help.a_${id}`, { cap: FREE_RESPONSE_CAP })}</s-text>
+                    <s-text>
+                      {t(`help.a_${id}`, {
+                        cap: FREE_RESPONSE_CAP,
+                        days: TRIAL_DAYS,
+                        growth: t("plans.growth"),
+                        scale: t("plans.scale"),
+                      })}
+                    </s-text>
                     {id === "privacy" ? <s-link href="/app/privacy">{t("privacy.notice_link")}</s-link> : null}
                   </s-stack>
                 </s-box>

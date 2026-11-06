@@ -4,7 +4,6 @@
     "tagline": "Descubre qué atrae a tus clientes"
   },
   "nav": {
-    "label": "Navegación principal",
     "dashboard": "Panel",
     "onboarding": "Primeros pasos",
     "settings": "Encuesta",
@@ -17,7 +16,6 @@
     "home": "Inicio",
     "channels": "Informe de canales",
     "preferences": "Ajustes",
-    "current": "(página actual)",
     "templates": "Plantillas",
     "analytics": "Análisis"
   },
@@ -233,7 +231,7 @@
     "save_percent": "Ahorra un {{percent}} % con el pago anual",
     "switch_yearly": "Cambiar a facturación anual",
     "switch_monthly": "Cambiar a facturación mensual",
-    "yearly_note": "La facturación anual cuesta un {{percent}} % menos que la mensual y se cobra una vez al año. Una mejora, o el cambio a anual, sustituye tu cargo actual cuando la apruebas en Shopify. Una bajada, o el cambio de anual a mensual, empieza cuando termina tu periodo de facturación actual.",
+    "yearly_note": "La facturación anual cuesta un {{percent}} % menos que la mensual y se cobra una vez al año. Un cambio de plan o de ciclo de facturación sustituye tu cargo actual en cuanto lo apruebas en Shopify. Hay dos cambios que esperan: pasar de un plan anual a otro anual más barato, o de facturación anual a mensual, empieza cuando termina tu año actual. Durante la prueba gratis, todos los cambios se aplican al instante.",
     "feature_live_surveys_one": "{{count}} encuesta activa a la vez",
     "feature_live_surveys_other": "Hasta {{count}} encuestas activas a la vez",
     "feature_follow_ups": "Preguntas de seguimiento y encuestas para compradores nuevos o recurrentes",
@@ -254,7 +252,18 @@
     "choose_plan_monthly_instead": "O paga al mes: {{price}} al mes",
     "msg_already_scheduled": "Ya aprobaste este cambio. Empieza cuando termine tu periodo de facturación actual.",
     "scheduled_change": "Tu cambio a {{plan}} está aprobado y empieza el {{date}}, cuando termina tu periodo de facturación actual.",
-    "scheduled_change_no_date": "Tu cambio a {{plan}} está aprobado y empieza cuando termine tu periodo de facturación actual."
+    "scheduled_change_no_date": "Tu cambio a {{plan}} está aprobado y empieza cuando termine tu periodo de facturación actual.",
+    "trial_badge": "Prueba gratis de {{days}} días",
+    "trial_then_monthly": "Gratis hasta el {{date}}, después {{price}} al mes.",
+    "trial_then_yearly": "Gratis hasta el {{date}}, después {{price}} al año.",
+    "trial_left_one": "Tu prueba gratis continúa: te queda {{count}} día.",
+    "trial_left_other": "Tu prueba gratis continúa: te quedan {{count}} días.",
+    "start_trial": "Probar {{plan}} gratis",
+    "trial_active_title": "Tu prueba gratis termina el {{date}}",
+    "trial_active_body_monthly": "Después, {{plan}} cuesta {{price}} al mes, cobrado en tu factura de Shopify. Si cancelas antes del {{date}}, no se te cobrará nada.",
+    "trial_active_body_yearly": "Después, {{plan}} cuesta {{price}} al año, cobrado en tu factura de Shopify. Si cancelas antes del {{date}}, no se te cobrará nada.",
+    "cancel_body_trial": "Estás en tu prueba gratis, así que cancelar ahora no cuesta nada. Tus respuestas siguen guardadas. En Gratis solo tu encuesta activa principal se sigue mostrando a los compradores, se detienen las etiquetas, los metacampos y Flow de Shopify, y las respuestas por encima de {{cap}} este mes se guardan pero se marcan como fuera del límite.",
+    "trial_note": "{{growth}} y {{scale}} empiezan con una prueba gratis de {{days}} días, una vez por tienda. Shopify muestra la prueba y el precio en su página de aprobación, y solo se te cobra si el plan sigue activo cuando termina la prueba. Si cambias de plan o de ciclo de facturación durante la prueba, conservas los días que te quedan; no empieza una prueba nueva."
   },
   "help": {
     "title": "Ayuda",
@@ -295,7 +304,9 @@
     "q_look": "¿Puedo cambiar los colores y las fuentes de la encuesta?",
     "a_look": "La encuesta siempre usa las fuentes y colores de tu pantalla de pago (Configuración › Pantalla de pago › Personalizar), porque Shopify no permite que las apps los cambien; así siempre parece parte de tu tienda. En «Aspecto y textos» puedes cambiar el título, la introducción, el botón y el mensaje de agradecimiento, mostrar una pregunta a la vez, usar estrellas en las valoraciones, definir las palabras bajo una escala y elegir borde y espaciado.",
     "q_languages": "¿Verán los compradores la encuesta en su idioma?",
-    "a_languages": "Las plantillas y el inicio rápido vienen traducidos a diez idiomas. En «Idiomas» dentro de la encuesta puedes añadir o cambiar traducciones, incluidos árabe, hebreo, coreano, polaco, turco y los idiomas nórdicos. El comprador ve el idioma de su pago si la encuesta lo tiene y, si no, tu propio texto; los botones están traducidos a todos estos idiomas."
+    "a_languages": "Las plantillas y el inicio rápido vienen traducidos a diez idiomas. En «Idiomas» dentro de la encuesta puedes añadir o cambiar traducciones, incluidos árabe, hebreo, coreano, polaco, turco y los idiomas nórdicos. El comprador ve el idioma de su pago si la encuesta lo tiene y, si no, tu propio texto; los botones están traducidos a todos estos idiomas.",
+    "q_trial": "¿Hay una prueba gratis?",
+    "a_trial": "Sí. {{growth}} y {{scale}} empiezan con una prueba gratis de {{days}} días, una vez por tienda. Solo se te cobra si el plan sigue activo cuando termina la prueba: si cancelas antes en la página Planes, no se cobra nada. Cambiar de plan durante la prueba conserva los días que te quedan, y reinstalar la app no empieza una prueba nueva. El plan Gratis no necesita prueba."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac no está disponible en tu plan",
@@ -384,7 +395,6 @@
     "delete": "Eliminar",
     "delete_confirm": "¿Eliminar «{{name}}»? También se eliminarán sus respuestas. No se puede deshacer.",
     "editor_title": "Editar encuesta",
-    "back_to_list": "Volver a las encuestas",
     "editor_subtitle": "Los cambios no se publican hasta que guardes.",
     "has_responses_title": "Esta encuesta tiene respuestas",
     "has_responses_body": "Las opciones eliminadas permanecen en tus resultados para que las respuestas anteriores conserven sus etiquetas.",
@@ -713,7 +723,8 @@
     "category_loyalty_help": "Lo contentos que están los compradores, si volverán y quién te recomendaría.",
     "category_know_customer_help": "Quién te compra, para qué lo usa y qué le importa.",
     "see_questions_one": "Ver la pregunta",
-    "see_questions_other": "Ver las {{count}} preguntas"
+    "see_questions_other": "Ver las {{count}} preguntas",
+    "categories_label": "Mostrar plantillas para"
   },
   "setup": {
     "title": "Configura tu encuesta",
@@ -1081,7 +1092,8 @@
     "role_body": "Tú decides qué pregunta tu encuesta, así que para los datos de tus compradores tú eres el responsable y SourceTrac los trata por encargo tuyo. Menciona la encuesta en la política de privacidad de tu tienda. Puedes adaptar este texto:",
     "policy_text": "Después de la compra, es posible que te pidamos responder una breve encuesta opcional, por ejemplo cómo nos conociste. Tus respuestas se guardan junto con tu número de pedido en nuestro proveedor de encuestas, SourceTrac, durante un máximo de {{months}} meses, y solo se usan para entender qué canales nos traen clientes. Nunca se venden ni se usan con fines publicitarios.",
     "actions_notice": "Las acciones de Shopify copian las respuestas en tu tienda de Shopify como etiquetas de pedido, etiquetas de cliente o metacampos de cliente. A partir de ahí siguen las reglas de Shopify para los datos de tu tienda, no el calendario de eliminación de SourceTrac.",
-    "export_notice": "El archivo contiene números de pedido, respuestas, totales de pedidos y cualquier texto que hayan escrito los compradores. Guárdalo con el mismo cuidado que el resto de registros de tu tienda."
+    "export_notice": "El archivo contiene números de pedido, respuestas, totales de pedidos y cualquier texto que hayan escrito los compradores. Guárdalo con el mismo cuidado que el resto de registros de tu tienda.",
+    "keep_trial": "Un registro se mantiene tras esa eliminación: si tu tienda tuvo alguna vez un plan de pago, guardamos que usó su prueba gratis (un código unidireccional creado a partir de la dirección myshopify y el ID de tu tienda, más las fechas de la prueba), para que la prueba se dé una sola vez por tienda. No contiene datos legibles de la tienda, de compradores ni de pedidos."
   },
   "presets": {
     "load_title": "Usar respuestas para un país",

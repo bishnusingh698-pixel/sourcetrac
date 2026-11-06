@@ -4,7 +4,6 @@
     "tagline": "了解顾客从哪里来"
   },
   "nav": {
-    "label": "主导航",
     "dashboard": "概览",
     "onboarding": "开始使用",
     "settings": "调查问卷",
@@ -17,7 +16,6 @@
     "home": "首页",
     "channels": "渠道报告",
     "preferences": "设置",
-    "current": "（当前页面）",
     "templates": "模板",
     "analytics": "分析"
   },
@@ -233,7 +231,7 @@
     "save_percent": "按年支付节省 {{percent}}%",
     "switch_yearly": "切换为按年计费",
     "switch_monthly": "切换为按月计费",
-    "yearly_note": "按年计费比按月便宜 {{percent}}%，每年收费一次。升级或改为按年计费，会在您于 Shopify 中批准后替换当前费用。降级或从按年改为按月，会在当前账单周期结束时开始。",
+    "yearly_note": "按年计费比按月便宜 {{percent}}%，每年收费一次。更换方案或计费周期会在您于 Shopify 中批准后立即替换当前费用。但有两种更改会等待：从按年方案改为更便宜的按年方案，或从按年改为按月计费，会在当前年度结束时开始。免费试用期间，任何更改都会立即生效。",
     "feature_live_surveys_one": "同时上线 {{count}} 个问卷",
     "feature_live_surveys_other": "同时最多上线 {{count}} 个问卷",
     "feature_follow_ups": "追问，以及面向首次购买或回头客的问卷",
@@ -254,7 +252,18 @@
     "choose_plan_monthly_instead": "或按月付费：每月 {{price}}",
     "msg_already_scheduled": "您已批准此变更。它将在当前账单周期结束时开始。",
     "scheduled_change": "您改用 {{plan}} 的变更已获批准，将于 {{date}}（当前账单周期结束时）开始。",
-    "scheduled_change_no_date": "您改用 {{plan}} 的变更已获批准，将在当前账单周期结束时开始。"
+    "scheduled_change_no_date": "您改用 {{plan}} 的变更已获批准，将在当前账单周期结束时开始。",
+    "trial_badge": "{{days}} 天免费试用",
+    "trial_then_monthly": "{{date}} 前免费，之后每月 {{price}}。",
+    "trial_then_yearly": "{{date}} 前免费，之后每年 {{price}}。",
+    "trial_left_one": "免费试用将延续：还剩 {{count}} 天。",
+    "trial_left_other": "免费试用将延续：还剩 {{count}} 天。",
+    "start_trial": "免费试用{{plan}}",
+    "trial_active_title": "您的免费试用将于 {{date}} 结束",
+    "trial_active_body_monthly": "之后，{{plan}} 每月 {{price}}，计入您的 Shopify 账单。在 {{date}} 前取消则不会收费。",
+    "trial_active_body_yearly": "之后，{{plan}} 每年 {{price}}，计入您的 Shopify 账单。在 {{date}} 前取消则不会收费。",
+    "cancel_body_trial": "您正处于免费试用期，现在取消不会产生任何费用。您的回答会保留。免费方案下，只有优先级最高的进行中问卷会继续向买家显示，Shopify 标签、元字段和 Flow 会停止，本月超过 {{cap}} 条的回答会保留，但标记为超出限额。",
+    "trial_note": "{{growth}}和{{scale}}均以 {{days}} 天免费试用开始，每家店铺仅一次。Shopify 会在审批页面显示试用期和价格，只有试用结束时方案仍有效才会收费。试用期间更换方案或计费周期会保留剩余天数，不会重新开始试用。"
   },
   "help": {
     "title": "帮助",
@@ -295,7 +304,9 @@
     "q_look": "可以更改问卷的颜色和字体吗？",
     "a_look": "问卷始终使用结账页自身的字体和颜色（设置 › 结账 › 自定义），因为 Shopify 不允许应用更改它们，所以问卷总像是商店的一部分。在问卷的“外观和文字”中，您可以修改标题、简介、按钮和感谢文字，一次显示一个问题，评分使用星星，设置量表下方的文字，并选择边框和间距。",
     "q_languages": "买家会看到自己语言的问卷吗？",
-    "a_languages": "模板和快速开始已翻译成十种语言。在问卷的“语言”中可以添加或修改翻译，包括阿拉伯语、希伯来语、韩语、波兰语、土耳其语和北欧语言。如果问卷有买家的结账语言，买家就会看到该语言，否则会看到您自己的文字；按钮已翻译为所有这些语言。"
+    "a_languages": "模板和快速开始已翻译成十种语言。在问卷的“语言”中可以添加或修改翻译，包括阿拉伯语、希伯来语、韩语、波兰语、土耳其语和北欧语言。如果问卷有买家的结账语言，买家就会看到该语言，否则会看到您自己的文字；按钮已翻译为所有这些语言。",
+    "q_trial": "有免费试用吗？",
+    "a_trial": "有。{{growth}}和{{scale}}均以 {{days}} 天免费试用开始，每家店铺仅一次。只有试用结束时方案仍有效才会收费：在此之前在“套餐”页面取消则不会收取任何费用。试用期间更换方案会保留剩余天数，重新安装应用也不会重新开始试用。免费方案无需试用。"
   },
   "shell": {
     "plan_blocked_title": "SourceTrac 在您当前的套餐中不可用",
@@ -384,7 +395,6 @@
     "delete": "删除",
     "delete_confirm": "删除“{{name}}”？其回答也会被删除。此操作无法撤销。",
     "editor_title": "编辑问卷",
-    "back_to_list": "返回问卷列表",
     "editor_subtitle": "保存后更改才会生效。",
     "has_responses_title": "此问卷已有回答",
     "has_responses_body": "已删除的答案选项仍会保留在结果中，以便过往回答保留其标签。",
@@ -713,7 +723,8 @@
     "category_loyalty_help": "买家有多满意，是否会再来，以及谁会推荐你。",
     "category_know_customer_help": "谁在你这里购买，他们买来做什么，以及他们在意什么。",
     "see_questions_one": "查看问题",
-    "see_questions_other": "查看全部 {{count}} 个问题"
+    "see_questions_other": "查看全部 {{count}} 个问题",
+    "categories_label": "按目的显示模板"
   },
   "setup": {
     "title": "设置你的问卷",
@@ -1081,7 +1092,8 @@
     "role_body": "问卷问什么由您决定，因此对于您买家的数据，您是控制者，SourceTrac 代您处理这些数据。请在店铺的隐私政策中提及该问卷。您可以参考以下文字：",
     "policy_text": "结账后，我们可能会请您填写一份简短的可选问卷，例如您是如何了解到我们的。您的回答会由我们的问卷服务商 SourceTrac 与您的订单号一起保存，最长 {{months}} 个月，仅用于了解哪些渠道为我们带来顾客。这些回答绝不会被出售或用于广告。",
     "actions_notice": "Shopify 操作会将回答以订单标签、客户标签或客户元字段的形式复制到您的 Shopify 店铺中。之后，这些数据遵循 Shopify 对您店铺数据的规则，而不是 SourceTrac 的删除时间表。",
-    "export_notice": "该文件包含订单号、回答、订单总额以及买家输入的任何文字。请像保管其他店铺记录一样妥善保管。"
+    "export_notice": "该文件包含订单号、回答、订单总额以及买家输入的任何文字。请像保管其他店铺记录一样妥善保管。",
+    "keep_trial": "有一条记录在删除后仍会保留：如果您的店铺曾使用过付费套餐，我们会记录其已使用免费试用（由店铺的 myshopify 地址和店铺 ID 生成的单向编码，以及试用日期），以确保每家店铺只能试用一次。其中不含任何可读的店铺、买家或订单信息。"
   },
   "presets": {
     "load_title": "使用某个国家/地区的答案",

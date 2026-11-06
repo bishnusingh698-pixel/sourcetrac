@@ -68,7 +68,7 @@ export function ProductPicker({
         <s-stack gap="small-200">
           {value.map((id) => (
             <s-stack key={id} direction="inline" gap="small" alignItems="center">
-              <s-icon type="product" />
+              <s-icon type="product" size="small" />
               <s-text>{name(id)}</s-text>
               <s-button
                 type="button"

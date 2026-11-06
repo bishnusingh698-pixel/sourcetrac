@@ -28,6 +28,12 @@ declare global {
     shopify?: {
       toast?: { show(message: string, options?: { isError?: boolean }): void };
       /**
+       * App Bridge Loading API: the admin's own progress bar in its header.
+       * `true` starts it and it runs until `false`.
+       * https://shopify.dev/docs/api/app-home/latest/apis/user-interface-and-interactions/loading-api
+       */
+      loading?(isLoading: boolean): void;
+      /**
        * App Bridge contextual save bar. The editor shows it while there are
        * unsaved changes; `data-save-bar` must never be used on the same page.
        */

@@ -10,7 +10,7 @@ import {
   type MetaFunction,
 } from "react-router";
 
-import { Banner, Panel } from "~/components/admin-ui";
+import { Banner, Panel, Segmented } from "~/components/admin-ui";
 import { isShopifyConfirmationUrl } from "~/lib/billing-redirect";
 import { createSubscription, cancelSubscription, cycleOf, isBillingNotEnabled } from "~/lib/billing.server";
 import { logger } from "~/lib/logger";
@@ -23,7 +23,9 @@ import {
   PLAN_ORDER,
   planFor,
   PLANS,
+  planPriceMinor,
   subscriptionName,
+  TRIAL_DAYS,
   YEARLY_DISCOUNT_PERCENT,
   yearlySavingMinor,
   type BillingCycle,
@@ -46,6 +48,8 @@ import { resolveAdminLanguage, resolveFormatLocale } from "~/lib/i18n/resolve.se
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import type { I18nText } from "~/lib/settings";
 import type { PlanStatus } from "@prisma/client";
+import { getReportTimeZone } from "~/lib/studio.server";
+import { findTrial, noteLiveSubscription, remainingTrialDays, subscriptionTrialEnd } from "~/lib/trial.server";
 import { authenticate } from "~/shopify.server";
 
 /**
@@ -92,6 +96,8 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   let activeCycle: BillingCycle | null = null;
   // An approved change that starts when the current billing period ends.
   let scheduled: { plan: "free" | "growth" | "scale"; startsAt: string | null } | null = null;
+  // The live subscription's own trial end, when it is still running.
+  let trialEndsAt: Date | null = null;
   if (session.accessToken) {
     try {
       const subscriptions = await fetchActiveSubscriptions({
@@ -136,6 +142,19 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
           { onlyIf: { plan: shop.plan, planStatus: shop.planStatus, subscriptionGid: shop.subscriptionGid } },
         );
       }
+      if (live && paid) {
+        // The store's one trial is recorded the first time a paid plan is
+        // seen live (here on the billing return, or by the webhook).
+        await noteLiveSubscription({
+          shopInternalId: shop.id,
+          shopDomain: shop.shopDomain,
+          shopGid: shop.shopId,
+          plan: paid,
+          subscription: live,
+        });
+        const end = subscriptionTrialEnd(live);
+        trialEndsAt = end && end.getTime() > Date.now() ? end : null;
+      }
       scheduled = await scheduledChange(shop, live, session.accessToken);
       // Shown only once stored: if the write above failed, the page keeps
       // showing the plan that is actually enforced.
@@ -150,8 +169,41 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
     }
   }
 
+  // Dates are the store's calendar days, formatted here: formatting them in
+  // the component used the browser's zone on one side of hydration and the
+  // server's on the other.
+  const timeZone = await getReportTimeZone(shop.id, shop.shopDomain, session.accessToken);
+  const formatDate = (value: Date | string) =>
+    new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone }).format(new Date(value));
+  const trialRecord = await findTrial(shop).catch((error: unknown) => {
+    logger.warn("plans_trial_lookup_failed", {
+      shop_domain: shop.shopDomain,
+      error_message: error instanceof Error ? error.message : String(error),
+    });
+    return undefined;
+  });
+  // Unknown (the lookup failed): offer no trial rather than promise one the
+  // charge might not carry.
+  const offerDays = trialRecord === undefined ? 0 : remainingTrialDays(trialRecord);
+  const currentCycle = activeCycle ?? "monthly";
+
   return {
     activePlan,
+    trial: {
+      /** Free days a new subscription gets now: 14, the rest of a running trial, or 0. */
+      offerDays,
+      fullDays: TRIAL_DAYS,
+      /** Set while the live subscription is in its trial. */
+      endsOn: trialEndsAt && activePlan !== "free" ? formatDate(trialEndsAt) : null,
+      /** What the live plan costs once the trial ends. */
+      priceAfter:
+        trialEndsAt && activePlan !== "free"
+          ? formatMoney(planPriceMinor(activePlan, currentCycle), PLANS[activePlan].currencyCode, locale)
+          : null,
+      /** "If you started today": when a new trial would end. */
+      wouldEndOn: offerDays > 0 ? formatDate(new Date(Date.now() + offerDays * 24 * 60 * 60 * 1000)) : null,
+    },
+    scheduledOn: scheduled?.startsAt ? formatDate(scheduled.startsAt) : null,
     // The shell loader ran in parallel with this one and read the old plan, so
     // the toolbar showed "Free" above "You're on Growth" after a billing
     // return. The component revalidates once when this is true.
@@ -343,6 +395,10 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
     // Choosing the plan and cycle already held would create a second,
     // duplicate charge for the merchant to approve; so would choosing again a
     // change already approved that Shopify starts at the end of the period.
+    // The free days this charge carries: the full trial for a store that
+    // never had a paid plan, what is left of a running one, else none.
+    let trialDays = 0;
+    let inTrial = false;
     try {
       const subscriptions = await fetchActiveSubscriptions({ shopDomain: shop.shopDomain, accessToken });
       const current = paidPlanFromSubscriptions(subscriptions, { allowTest });
@@ -350,6 +406,20 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
       if (current === plan && cycleOf(live) === cycle) {
         return result(true, "plans.msg_already_on_plan");
       }
+      if (live && current) {
+        // A plan bought before trials existed (or whose notice we missed) is
+        // recorded first, so switching from it never starts a fresh trial.
+        await noteLiveSubscription({
+          shopInternalId: shop.id,
+          shopDomain: shop.shopDomain,
+          shopGid: shop.shopId,
+          plan: current,
+          subscription: live,
+        });
+        const end = subscriptionTrialEnd(live);
+        inTrial = end !== null && end.getTime() > Date.now();
+      }
+      trialDays = remainingTrialDays(await findTrial(shop));
       if (shop.pendingSubscriptionGid && shop.pendingSubscriptionName === subscriptionName(plan, cycle)) {
         const pending = await fetchSubscription({
           shopDomain: shop.shopDomain,
@@ -371,6 +441,11 @@ export const action = guarded(async ({ request }: ActionFunctionArgs) => {
       plan,
       cycle,
       test: allowTest,
+      trialDays,
+      // During the trial nothing has been paid, so a switch (even a cheaper
+      // plan, or yearly to monthly) applies at once with the days left,
+      // instead of waiting for the end of a period that was never billed.
+      replacementBehavior: inTrial ? "APPLY_IMMEDIATELY" : undefined,
     });
 
     if (!created.ok) {
@@ -402,7 +477,7 @@ export default function Plans() {
   const data = useLoaderData<typeof loader>();
   const outcome = useActionData<typeof action>();
   const navigation = useNavigation();
-  const { t, language } = useAdminI18n();
+  const { t } = useAdminI18n();
   const { revalidate } = useRevalidator();
 
   // The charge's approval page cannot load inside the admin iframe.
@@ -482,14 +557,28 @@ export default function Plans() {
         </s-query-container>
       </s-section>
 
+      {/* The trial in plain facts: when it ends, what is billed then, and
+          that cancelling before costs nothing (Shopify's own trial rule). */}
+      {data.trial.endsOn && data.trial.priceAfter ? (
+        <Banner tone="info" heading={t("plans.trial_active_title", { date: data.trial.endsOn })}>
+          <s-text>
+            {t(data.activeCycle === "yearly" ? "plans.trial_active_body_yearly" : "plans.trial_active_body_monthly", {
+              plan: currentName,
+              price: data.trial.priceAfter,
+              date: data.trial.endsOn,
+            })}
+          </s-text>
+        </Banner>
+      ) : null}
+
       {data.scheduled ? (
         <Banner
           tone="info"
           heading={
-            data.scheduled.startsAt
+            data.scheduledOn
               ? t("plans.scheduled_change", {
                   plan: t(`plans.${data.scheduled.plan}`),
-                  date: new Date(data.scheduled.startsAt).toLocaleDateString(language),
+                  date: data.scheduledOn,
                 })
               : t("plans.scheduled_change_no_date", { plan: t(`plans.${data.scheduled.plan}`) })
           }
@@ -499,14 +588,13 @@ export default function Plans() {
       {/* Monthly / yearly switch. Every paid card also offers the other cycle
           as its own button, so buying yearly never depends on this switch. */}
       <s-stack direction="inline" gap="small" alignItems="center">
-        <s-button-group accessibilityLabel={t("plans.cycle_label")}>
-          <s-button type="button" onClick={() => setCycle("monthly")} variant={yearly ? "secondary" : "primary"}>
-            {t("plans.cycle_monthly")}
-          </s-button>
-          <s-button type="button" onClick={() => setCycle("yearly")} variant={yearly ? "primary" : "secondary"}>
-            {t("plans.cycle_yearly")}
-          </s-button>
-        </s-button-group>
+        <Segmented
+          label={t("plans.cycle_label")}
+          items={[
+            { key: "monthly", label: t("plans.cycle_monthly"), current: !yearly, onSelect: () => setCycle("monthly") },
+            { key: "yearly", label: t("plans.cycle_yearly"), current: yearly, onSelect: () => setCycle("yearly") },
+          ]}
+        />
         <s-badge tone="success">{t("plans.save_up_to", { amount: data.maxYearlySaving })}</s-badge>
       </s-stack>
 
@@ -549,6 +637,28 @@ export default function Plans() {
 
                 <PlanPrice plan={plan} yearly={yearly} percent={data.discountPercent} t={t} />
 
+                {/* The trial this card would start, stated before the merchant
+                    goes to Shopify's approval page (which shows it too). */}
+                {plan.key !== "free" && !isCurrent && data.trial.offerDays > 0 ? (
+                  <s-stack gap="small-200">
+                    <s-stack direction="inline" gap="small">
+                      <s-badge tone="info" icon="clock">
+                        {data.trial.endsOn
+                          ? t("plans.trial_left", { count: data.trial.offerDays })
+                          : t("plans.trial_badge", { days: data.trial.offerDays })}
+                      </s-badge>
+                    </s-stack>
+                    {data.trial.wouldEndOn ? (
+                      <s-text color="subdued" fontSize="small">
+                        {t(yearly ? "plans.trial_then_yearly" : "plans.trial_then_monthly", {
+                          date: data.trial.wouldEndOn,
+                          price: (yearly ? plan.yearly : plan.monthly) ?? "",
+                        })}
+                      </s-text>
+                    ) : null}
+                  </s-stack>
+                ) : null}
+
                 <s-divider />
 
                 {/* What the merchant gets, one outcome per line. */}
@@ -570,12 +680,12 @@ export default function Plans() {
                       {t("plans.on_free")}
                     </s-text>
                   ) : (
-                    <ConfirmCancel label={t("plans.cancel_confirm")} busy={pendingPlan === "cancel"} t={t}>
+                    <ConfirmCancel label={t("plans.cancel_confirm")} busy={pendingPlan === "cancel"} inTrial={data.trial.endsOn !== null} t={t}>
                       <input type="hidden" name="intent" value="cancel" />
                     </ConfirmCancel>
                   )
                 ) : plan.key === "free" ? (
-                  <ConfirmCancel label={t("plans.switch_free")} busy={pendingPlan === "free"} t={t}>
+                  <ConfirmCancel label={t("plans.switch_free")} busy={pendingPlan === "free"} inTrial={data.trial.endsOn !== null} t={t}>
                     <input type="hidden" name="intent" value="subscribe" />
                     <input type="hidden" name="plan" value="free" />
                   </ConfirmCancel>
@@ -590,7 +700,9 @@ export default function Plans() {
                         ? yearly
                           ? t("plans.switch_yearly")
                           : t("plans.switch_monthly")
-                        : t(yearly ? "plans.choose_plan_yearly" : "plans.choose_plan", { plan: name })
+                        : data.activePlan === "free" && data.trial.offerDays > 0
+                          ? t("plans.start_trial", { plan: name })
+                          : t(yearly ? "plans.choose_plan_yearly" : "plans.choose_plan", { plan: name })
                     }
                   />
                 )}
@@ -631,6 +743,13 @@ export default function Plans() {
       <Panel title={t("plans.billing_title")}>
         <s-stack gap="small">
           <s-text>{t("plans.billing_body")}</s-text>
+          {/* Only while a trial is on offer or running: a store that used its
+              trial would read it as a fresh one. */}
+          {data.trial.offerDays > 0 || data.trial.endsOn ? (
+            <s-text>
+              {t("plans.trial_note", { days: data.trial.fullDays, growth: t("plans.growth"), scale: t("plans.scale") })}
+            </s-text>
+          ) : null}
           <s-text color="subdued">{t("plans.yearly_note", { percent: data.discountPercent })}</s-text>
         </s-stack>
       </Panel>
@@ -751,11 +870,14 @@ function PlanPrice({
 function ConfirmCancel({
   label,
   busy,
+  inTrial,
   t,
   children,
 }: {
   label: string;
   busy: boolean;
+  /** During the free trial nothing is charged, and the dialog says so. */
+  inTrial: boolean;
   t: ReturnType<typeof useAdminI18n>["t"];
   children: ReactNode;
 }) {
@@ -777,7 +899,9 @@ function ConfirmCancel({
         {children}
         <s-stack gap="small">
           <s-text type="strong">{t("plans.cancel_title")}</s-text>
-          <s-text color="subdued">{t("plans.cancel_body", { cap: FREE_RESPONSE_CAP })}</s-text>
+          <s-text color="subdued">
+            {t(inTrial ? "plans.cancel_body_trial" : "plans.cancel_body", { cap: FREE_RESPONSE_CAP })}
+          </s-text>
           <s-stack direction="inline" gap="small">
             <s-button type="button" variant="primary" onClick={() => setAsking(false)}>
               {t("plans.keep_plan")}

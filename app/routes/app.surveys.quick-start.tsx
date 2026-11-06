@@ -10,7 +10,6 @@ import {
   type MetaFunction,
 } from "react-router";
 
-import { SectionTabs } from "~/components/section-tabs";
 import { Banner, PageIntro, Panel } from "~/components/admin-ui";
 import { CountrySelect, countryName } from "~/components/country-select";
 import { SurveyPreview } from "~/components/survey-preview";
@@ -243,7 +242,6 @@ export default function QuickStart() {
 
   return (
     <s-stack gap="base">
-      <SectionTabs section="surveys" t={t} />
       <PageIntro
         actions={
           <s-button href="/app/surveys/library" variant="tertiary">

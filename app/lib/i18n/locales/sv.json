@@ -4,7 +4,6 @@
     "tagline": "Ta reda på vad som lockar kunder"
   },
   "nav": {
-    "label": "Huvudnavigering",
     "dashboard": "Översikt",
     "onboarding": "Kom igång",
     "settings": "Enkät",
@@ -17,7 +16,6 @@
     "home": "Hem",
     "channels": "Kanalrapport",
     "preferences": "Inställningar",
-    "current": "(aktuell sida)",
     "templates": "Mallar",
     "analytics": "Analys"
   },
@@ -233,7 +231,7 @@
     "save_percent": "Spara {{percent}} % med årsvis",
     "switch_yearly": "Byt till årsvis fakturering",
     "switch_monthly": "Byt till månadsvis fakturering",
-    "yearly_note": "Årsvis fakturering kostar {{percent}} % mindre än månadsvis och dras en gång om året. En uppgradering, eller ett byte till årsvis, ersätter din nuvarande debitering när du godkänner den i Shopify. En nedgradering, eller ett byte från årsvis till månadsvis, börjar när din nuvarande faktureringsperiod tar slut.",
+    "yearly_note": "Årsvis fakturering kostar {{percent}} % mindre än månadsvis och dras en gång om året. Ett byte av plan eller faktureringsperiod ersätter din nuvarande debitering så snart du godkänner det i Shopify. Två byten väntar i stället: från en årsplan till en billigare årsplan, eller från årsvis till månadsvis fakturering, börjar när ditt nuvarande år tar slut. Under den gratis provperioden gäller varje byte direkt.",
     "feature_live_surveys_one": "{{count}} publicerad enkät åt gången",
     "feature_live_surveys_other": "Upp till {{count}} publicerade enkäter åt gången",
     "feature_follow_ups": "Följdfrågor och enkäter för förstagångsköpare eller återkommande köpare",
@@ -254,7 +252,18 @@
     "choose_plan_monthly_instead": "Eller betala månadsvis: {{price}} per månad",
     "msg_already_scheduled": "Du har redan godkänt den här ändringen. Den börjar när din nuvarande faktureringsperiod tar slut.",
     "scheduled_change": "Ditt byte till {{plan}} är godkänt och börjar {{date}}, när din nuvarande faktureringsperiod tar slut.",
-    "scheduled_change_no_date": "Ditt byte till {{plan}} är godkänt och börjar när din nuvarande faktureringsperiod tar slut."
+    "scheduled_change_no_date": "Ditt byte till {{plan}} är godkänt och börjar när din nuvarande faktureringsperiod tar slut.",
+    "trial_badge": "{{days}} dagars gratis provperiod",
+    "trial_then_monthly": "Gratis till {{date}}, sedan {{price}} per månad.",
+    "trial_then_yearly": "Gratis till {{date}}, sedan {{price}} per år.",
+    "trial_left_one": "Din gratis provperiod fortsätter: {{count}} dag kvar.",
+    "trial_left_other": "Din gratis provperiod fortsätter: {{count}} dagar kvar.",
+    "start_trial": "Prova {{plan}} gratis",
+    "trial_active_title": "Din gratis provperiod slutar den {{date}}",
+    "trial_active_body_monthly": "Därefter kostar {{plan}} {{price}} per månad, på din Shopify-faktura. Säg upp före {{date}} så debiteras du inget.",
+    "trial_active_body_yearly": "Därefter kostar {{plan}} {{price}} per år, på din Shopify-faktura. Säg upp före {{date}} så debiteras du inget.",
+    "cancel_body_trial": "Du har din gratis provperiod, så att säga upp nu kostar inget. Dina svar finns kvar. På Gratis visas bara din högst prioriterade aktiva enkät för köpare, Shopify-taggar, metafält och Flow stoppas, och svar över {{cap}} den här månaden sparas men markeras som över gränsen.",
+    "trial_note": "{{growth}} och {{scale}} börjar med en gratis provperiod på {{days}} dagar, en gång per butik. Shopify visar provperioden och priset på sin godkännandesida, och du debiteras bara om planen fortfarande är aktiv när provperioden slutar. Byter du plan eller faktureringsperiod under provperioden behåller du de dagar som är kvar; ingen ny provperiod börjar."
   },
   "help": {
     "title": "Hjälp",
@@ -295,7 +304,9 @@
     "q_look": "Kan jag ändra enkätens färger och typsnitt?",
     "a_look": "Enkäten använder alltid kassans egna typsnitt och färger (Inställningar › Kassa › Anpassa), eftersom Shopify inte låter appar ändra dem, så den ser alltid ut som en del av butiken. Under ”Utseende och texter” ändrar du rubrik, intro, knapp och tacktext, visar en fråga i taget, använder stjärnor för betyg, väljer orden under en skala och väljer kant och avstånd.",
     "q_languages": "Ser köparna enkäten på sitt eget språk?",
-    "a_languages": "Mallar och snabbstarten är översatta till tio språk. Under ”Språk” i enkäten kan du lägga till eller ändra översättningar, även på arabiska, hebreiska, koreanska, polska, turkiska och de nordiska språken. Köparen ser sitt kassaspråk om enkäten har det, annars din egen text; knapparna är översatta till alla dessa språk."
+    "a_languages": "Mallar och snabbstarten är översatta till tio språk. Under ”Språk” i enkäten kan du lägga till eller ändra översättningar, även på arabiska, hebreiska, koreanska, polska, turkiska och de nordiska språken. Köparen ser sitt kassaspråk om enkäten har det, annars din egen text; knapparna är översatta till alla dessa språk.",
+    "q_trial": "Finns det en gratis provperiod?",
+    "a_trial": "Ja. {{growth}} och {{scale}} börjar med en gratis provperiod på {{days}} dagar, en gång per butik. Du debiteras bara om planen fortfarande är aktiv när provperioden slutar: säg upp innan dess på sidan Planer så debiteras inget. Byter du plan under provperioden behåller du de dagar som är kvar, och att installera om appen startar ingen ny provperiod. Gratisplanen behöver ingen provperiod."
   },
   "shell": {
     "plan_blocked_title": "SourceTrac är inte tillgängligt med din plan",
@@ -384,7 +395,6 @@
     "delete": "Ta bort",
     "delete_confirm": "Ta bort “{{name}}”? Även svaren tas bort. Detta kan inte ångras.",
     "editor_title": "Redigera enkät",
-    "back_to_list": "Tillbaka till enkäter",
     "editor_subtitle": "Ändringar publiceras först när du sparar.",
     "has_responses_title": "Den här enkäten har svar",
     "has_responses_body": "Borttagna svarsalternativ finns kvar i resultaten så att tidigare svar behåller sina etiketter.",
@@ -713,7 +723,8 @@
     "category_loyalty_help": "Hur nöjda köparna är, om de kommer tillbaka och vem som skulle rekommendera dig.",
     "category_know_customer_help": "Vilka som köper av dig, vad de använder det till och vad som är viktigt för dem.",
     "see_questions_one": "Visa frågan",
-    "see_questions_other": "Visa alla {{count}} frågor"
+    "see_questions_other": "Visa alla {{count}} frågor",
+    "categories_label": "Visa mallar för"
   },
   "setup": {
     "title": "Ställ in din enkät",
@@ -1081,7 +1092,8 @@
     "role_body": "Du bestämmer vad enkäten frågar, så för dina köpares data är du personuppgiftsansvarig och SourceTrac behandlar den åt dig. Nämn enkäten i butikens integritetspolicy. Du kan anpassa den här texten:",
     "policy_text": "Efter köpet kan vi be dig svara på en kort, frivillig enkät, till exempel om hur du hörde talas om oss. Dina svar sparas tillsammans med ditt ordernummer av vår enkätleverantör, SourceTrac, i upp till {{months}} månader och används bara för att förstå vilka kanaler som ger oss kunder. De säljs aldrig och används aldrig för reklam.",
     "actions_notice": "Shopify-åtgärder kopierar svar till din Shopify-butik som ordertaggar, kundtaggar eller kundmetafält. Därefter gäller Shopifys regler för din butiksdata, inte SourceTracs raderingsschema.",
-    "export_notice": "Filen innehåller ordernummer, svar, ordervärden och text som köpare har skrivit. Förvara den lika säkert som dina andra butiksuppgifter."
+    "export_notice": "Filen innehåller ordernummer, svar, ordervärden och text som köpare har skrivit. Förvara den lika säkert som dina andra butiksuppgifter.",
+    "keep_trial": "En uppgift finns kvar efter den raderingen: om din butik någon gång haft en betald plan sparar vi att den använt sin gratis provperiod (en envägskod gjord av butikens myshopify-adress och butiks-ID, plus provperiodens datum), så att provperioden ges en gång per butik. Den innehåller inga läsbara butiks-, köpar- eller orderuppgifter."
   },
   "presets": {
     "load_title": "Använd svar för ett land",

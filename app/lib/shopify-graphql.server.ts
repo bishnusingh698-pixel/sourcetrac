@@ -35,10 +35,84 @@ export class ShopifyGraphQLError extends Error {
 }
 
 export class ShopifyThrottledError extends ShopifyGraphQLError {
-  constructor(errors: GraphQLError[]) {
+  /** How long Shopify's throttle status says to wait, when it said. */
+  readonly waitMs: number | undefined;
+
+  constructor(errors: GraphQLError[], waitMs?: number) {
     super(errors);
     this.name = "ShopifyThrottledError";
+    this.waitMs = waitMs;
   }
+}
+
+/**
+ * Shopify's cost report on every GraphQL Admin response
+ * (`extensions.cost`): what the query asked for, and the shop's leaky bucket
+ * after it. Docs: https://shopify.dev/docs/api/usage/rate-limits
+ */
+export type QueryCost = {
+  requestedQueryCost?: number;
+  actualQueryCost?: number | null;
+  throttleStatus?: { maximumAvailable?: number; currentlyAvailable?: number; restoreRate?: number };
+};
+
+/** The longest a single throttle wait may hold a request (a webhook has 5 s). */
+const MAX_THROTTLE_WAIT_MS = 4_000;
+
+/**
+ * How long until the bucket holds `needed` points again, from Shopify's own
+ * throttle status: (needed - currentlyAvailable) / restoreRate seconds. Null
+ * when the status is missing or unreadable, so the caller falls back to its
+ * generic backoff instead of guessing a rate.
+ */
+export function throttleWaitMs(cost: QueryCost | undefined, needed?: number): number | null {
+  const status = cost?.throttleStatus;
+  const available = status?.currentlyAvailable;
+  const restoreRate = status?.restoreRate;
+  if (typeof available !== "number" || typeof restoreRate !== "number" || !(restoreRate > 0)) return null;
+  const want = needed ?? cost?.requestedQueryCost ?? 0;
+  if (!(want > available)) return 0;
+  return Math.min(MAX_THROTTLE_WAIT_MS, Math.ceil(((want - available) / restoreRate) * 1000));
+}
+
+/**
+ * The last throttle status Shopify reported per shop, so a loop of calls (the
+ * sync sweep, the order backfill) slows down before the bucket is empty
+ * instead of being refused. Bounded: one entry per shop, cleared when large.
+ */
+const lastCost = new Map<string, { available: number; maximum: number; restoreRate: number; at: number }>();
+/** Keep this share of the bucket free for the merchant's other apps. */
+const HEADROOM_RATIO = 0.1;
+
+function rememberCost(shopDomain: string, cost: QueryCost | undefined, now = Date.now()): void {
+  const status = cost?.throttleStatus;
+  if (typeof status?.currentlyAvailable !== "number" || typeof status.restoreRate !== "number") return;
+  if (lastCost.size > 5_000) lastCost.clear();
+  lastCost.set(shopDomain, {
+    available: status.currentlyAvailable,
+    maximum: typeof status.maximumAvailable === "number" ? status.maximumAvailable : status.currentlyAvailable,
+    restoreRate: status.restoreRate,
+    at: now,
+  });
+}
+
+/**
+ * How long to wait before the next call to this shop so the bucket keeps its
+ * headroom, estimated from the last report and the time since (the bucket
+ * refills at `restoreRate` points a second). Zero when unknown or full enough.
+ */
+export function pacingDelayMs(shopDomain: string, now = Date.now()): number {
+  const last = lastCost.get(shopDomain);
+  if (!last || !(last.restoreRate > 0)) return 0;
+  const refilled = Math.min(last.maximum, last.available + ((now - last.at) / 1000) * last.restoreRate);
+  const floor = last.maximum * HEADROOM_RATIO;
+  if (refilled >= floor) return 0;
+  return Math.min(MAX_THROTTLE_WAIT_MS, Math.ceil(((floor - refilled) / last.restoreRate) * 1000));
+}
+
+/** Test seam: forget every shop's last throttle status. */
+export function resetThrottleState(): void {
+  lastCost.clear();
 }
 
 /** Throttle codes Shopify returns for rate limiting and token-bucket depletion. */
@@ -119,6 +193,8 @@ export async function shopifyGraphql<T>(
 
   return withRetry(
     async () => {
+      const pause = pacingDelayMs(shopDomain);
+      if (pause > 0) await new Promise((r) => setTimeout(r, pause));
       const response = await fetch(endpoint, {
         method: "POST",
         headers: {
@@ -158,8 +234,18 @@ export async function shopifyGraphql<T>(
       }
 
       const payload = (await response.json()) as GraphQLResponse<T> & { errors?: GraphQLError[] };
+      const cost = payload.extensions?.cost as QueryCost | undefined;
+      rememberCost(shopDomain, cost);
 
       if (payload.errors && payload.errors.length > 0) {
+        // THROTTLED: the query never ran. Shopify's throttle status says how
+        // long until the bucket can pay for it; wait that long, not a guess.
+        if (payload.errors.some((e) => e.extensions?.code === "THROTTLED")) {
+          // A zero wait (the bucket already covers the cost, a race) falls
+          // back to the jittered backoff rather than retrying at once.
+          const wait = throttleWaitMs(cost);
+          throw new ShopifyThrottledError(payload.errors, wait && wait > 0 ? wait : undefined);
+        }
         throw new ShopifyGraphQLError(payload.errors);
       }
 
@@ -175,6 +261,8 @@ export async function shopifyGraphql<T>(
       shouldRetry: idempotent ? isThrottle : isRejectedBeforeRunning,
       // A 4xx is permanent; retrying wastes a webhook delivery.
       isAbort: (error) => error instanceof ShopifyGraphQLError && !isThrottle(error),
+      // A THROTTLED answer carries the bucket's state: wait until it refills.
+      delayFor: (error) => (error instanceof ShopifyThrottledError ? error.waitMs : undefined),
       onRetry: (error, attempt, delayMs) => {
         logger.warn("shopify_graphql_retry", {
           shop_domain: shopDomain,
@@ -196,6 +284,8 @@ export const PLANS_QUERY = `#graphql
         status
         test
         currentPeriodEnd
+        trialDays
+        createdAt
         lineItems {
           plan {
             pricingDetails {

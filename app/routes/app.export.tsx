@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useLoaderData, useNavigate, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 
-import { SectionTabs } from "~/components/section-tabs";
 import { Panel, PageIntro } from "~/components/admin-ui";
 import { JustInTimeNotice } from "~/components/data-notice";
 import { countChannelAnswers, fetchResponsesInWindow, toExportRows } from "~/lib/analytics-queries.server";
@@ -145,7 +144,6 @@ export default function Export() {
 
   return (
     <s-stack gap="base">
-      <SectionTabs section="responses" t={t} />
       <PageIntro>{t("export.subtitle")}</PageIntro>
 
       <Panel title={t("export.panel_title")}>

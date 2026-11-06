@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Link } from "react-router";
 
 /**
  * Small shared UI helpers for the embedded admin.
@@ -68,6 +69,20 @@ export function MoneyList({
       ))}
     </s-stack>
   );
+}
+
+/**
+ * A count in a table or a line of text: grouped for the merchant's locale
+ * ("12,345", "12.345") and in tabular figures, so a column of counts lines
+ * up and digits do not jitter between rows.
+ */
+export function Num({ value, locale }: { value: number; locale: string }) {
+  return <s-text fontVariantNumeric="tabular-nums">{new Intl.NumberFormat(locale).format(value)}</s-text>;
+}
+
+/** A percentage that is already a translated string, in tabular figures. */
+export function NumText({ children }: { children: ReactNode }) {
+  return <s-text fontVariantNumeric="tabular-nums">{children}</s-text>;
 }
 
 /** A headline number, sized and weighted to match `MoneyList size="large"`. */
@@ -210,11 +225,46 @@ export function AdvancedDisclosure({
 }
 
 /**
- * The date-range buttons above a report. Each is a link, so the range survives
- * a refresh and the back button. An inline stack, not a button group: a group
- * never wraps, and the ranges in French or German are wider than a phone. The
- * plain div keeps the group role and its label for screen readers.
+ * A choice between a few views (a date range, a billing cycle, a template
+ * category), drawn as one segmented row, the same control as the section
+ * bar (`.st-segmented`).
+ *
+ * A selection is not an action, so it is never a primary button: Polaris
+ * keeps one primary action per page, and a row of filled buttons for the
+ * selected range competed with it. The selected item is raised and carries
+ * `aria-current` (links) or `aria-pressed` (buttons) for screen readers. The
+ * row wraps on a phone; it never scrolls sideways.
+ *
+ * Items with `href` are React Router links (the choice survives a refresh and
+ * the back button, and stays an in-app navigation); items with `onSelect` are
+ * plain buttons for a choice held in the page's own state.
  */
+export function Segmented({
+  label,
+  items,
+}: {
+  label: string;
+  items: ReadonlyArray<{ key: string; label: string; current: boolean; href?: string; onSelect?: () => void }>;
+}) {
+  return (
+    <div role="group" aria-label={label} className="st-segmented">
+      {items.map((item) => {
+        const className = item.current ? "st-segmented-item st-segmented-item--current" : "st-segmented-item";
+        return item.href ? (
+          <Link key={item.key} to={item.href} className={className} aria-current={item.current ? "true" : undefined}>
+            {item.label}
+          </Link>
+        ) : (
+          <button key={item.key} type="button" className={className} aria-pressed={item.current} onClick={item.onSelect}>
+            {item.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** The date-range choice above a report: a `Segmented` row of links. */
 export function RangeSwitcher({
   label,
   options,
@@ -222,17 +272,7 @@ export function RangeSwitcher({
   label: string;
   options: ReadonlyArray<{ key: string; label: string; href: string; current: boolean }>;
 }) {
-  return (
-    <div role="group" aria-label={label}>
-      <s-stack direction="inline" gap="small-200">
-        {options.map((option) => (
-          <s-button key={option.key} href={option.href} variant={option.current ? "primary" : "secondary"}>
-            {option.label}
-          </s-button>
-        ))}
-      </s-stack>
-    </div>
-  );
+  return <Segmented label={label} items={options} />;
 }
 
 export function Banner({

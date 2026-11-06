@@ -63,7 +63,7 @@ import { templateById } from "@shared/templates";
 
 export const meta: MetaFunction = ({ matches }) => adminTitle(matches, "surveys.editor_title");
 
-export const handle = { titleKey: "surveys.editor_title" };
+export const handle = { titleKey: "surveys.editor_title", breadcrumb: { to: "/app/surveys", labelKey: "nav.surveys" } };
 
 export const loader = guarded(async ({ request, params }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -416,7 +416,6 @@ export default function SurveyEditorPage() {
         onDiscard={discardChanges}
         t={t}
       />
-      <s-link href="/app/surveys">{t("surveys.back_to_list")}</s-link>
       <s-stack gap="small-200">
         <s-stack direction="inline" gap="small" alignItems="center">
           <s-text fontSize="large-100" fontWeight="bold">
@@ -579,7 +578,7 @@ export default function SurveyEditorPage() {
                 <s-stack gap="small">
                   {problems.map((item) => (
                     <s-stack key={item.id} direction="inline" gap="small" alignItems="center">
-                      <s-icon type="alert-circle" tone={item.blocking ? "critical" : "caution"} />
+                      <s-icon type="alert-circle" tone={item.blocking ? "critical" : "caution"} size="small" />
                       <s-text>{t(`editor.ready_${item.id}`, { limit: data.liveLimit })}</s-text>
                     </s-stack>
                   ))}

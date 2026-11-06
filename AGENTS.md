@@ -772,9 +772,9 @@ must return the `app-bridge.js` script tag, not the error text.
 - **No in-iframe sidebar.** Shopify renders `<s-app-nav>` in its own sidebar on
   desktop and the app title menu on phones; a second copy inside the frame took
   a column and squeezed every page on a phone. The shell is now a compact
-  toolbar (plan badge + usage, language select) above the page. (A horizontal
-  *top* bar was added 2026-10-15; see "Top navigation bar" below. It is one row,
-  not a column, so it does not squeeze the page.)
+  toolbar (plan badge + usage, language select) above the page. (A top tile
+  grid added 2026-10-15 was removed again on 2026-11-06: see "Navigation is
+  Shopify's" in the 2026-11-06 section.)
 - **The dashboard is home.** Its `s-link` in `<s-app-nav>` carries `rel="home"`
   (spread, since Polaris's `s-link` type has no `rel`), so it is the app's
   landing page, not a separate "Dashboard" sub-page. The onboarding page was
@@ -1255,7 +1255,7 @@ mounted when the root fails.
 - **Shopify's sidebar is seven items** (its limit, and no item may repeat the
   home page): Surveys, Results, Channel report, Responses, Plans, Settings, Help.
   Results was added 2026-10-15 because NPS lives there and merchants could not
-  find it. The in-app top bar lists those plus Dashboard and Export.
+  find it. (Superseded: see "Navigation is Shopify's", 2026-11-06.)
 - **Page titles come from `export const handle = { titleKey }`**, read by the
   shell's `<s-page heading>`. Child routes must not draw their own title.
 - Home and the channel report share `loadChannelReport`
@@ -1403,21 +1403,12 @@ The merchant reported three things: no way to move around the app, NPS and the
 other survey stats nowhere to be found, and Home and the channel report looking
 the same. What changed, and the rules that keep it that way:
 
-- **One nav list, two menus.** `app/lib/nav.ts` `NAV` holds every page (key,
-  icon, `sidebar` flag). `<s-app-nav>` renders the `sidebar` items; `TopNav`
-  (`app/components/top-nav.tsx`) renders all nine at the top of every page,
-  marks the current one (`activeNavPath`, whole-segment prefix match, `/app`
-  exact only) and announces it to screen readers. Items are `s-clickable href`,
-  so navigation goes through App Bridge's `shopify:navigate` and React Router.
-  `i18n-usage.test.ts` reads the keys out of `nav.ts`, not `app.tsx`.
-- **The menu is a grid of icon tiles, never a scrolling row** (changed
-  2026-10-18: the merchant reported the phone row overlapping and rejected
-  sideways scrolling). Plain CSS on our own `ul.st-topnav-grid`: 3 / 5 / 9
-  columns by iframe width, so nine items always fill whole rows. Each `li` is
-  a flex container, which blockifies the `s-clickable` inside it. Do not set
-  `display` on the `s-clickable` hosts: that overrides Polaris's own `:host`
-  display and can break the element. `top-nav.test.ts` fails on `overflow-x`
-  or a column count that leaves a lone tile.
+- **One nav list.** `app/lib/nav.ts` `NAV` holds every page (key, icon,
+  `sidebar` flag); `<s-app-nav>` renders the `sidebar` items, and
+  `activeNavPath` (whole-segment prefix match, `/app` exact only) maps a page to
+  its section. `i18n-usage.test.ts` reads the keys out of `nav.ts`.
+  (The in-page `TopNav` tile grid described in earlier versions of this file
+  was removed on 2026-11-06; see "Navigation is Shopify's".)
 - **`/app` is the Dashboard** (`loadDashboard`, `app/lib/dashboard.server.ts`):
   the four attribution tiles (from `loadChannelReport`, so they always match the
   channel report), Customer scores (shop-wide NPS and CSAT), top 5 channels, new
@@ -1710,8 +1701,7 @@ once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
   all-optional. Both blocks share the hook. Block change: needs
   `shopify app deploy`.
 - **Templates is its own nav item** (`/app/surveys/library`, in Shopify's
-  sidebar; Responses moved off the sidebar and is linked from Results). The top
-  bar is 10 tiles: 5 columns, 10 on desktop. The library groups templates by
+  sidebar; Responses moved off the sidebar and is linked from Results). The library groups templates by
   goal (category names are goals: "Where buyers find you", "Why they buy", ...)
   with a one-line description each; a chip or a search shows one flat list.
 - **50 templates.** Sixteen added with branching follow-ups: `podcast-creator-trace`,
@@ -1745,9 +1735,8 @@ once the block has been seen. Tests: `tests/db-block-seen.test.ts`,
   sends it as `formatLocale` and `useAdminI18n().locale` uses it.
 - **Navigation is seven sections** (`NAV` in `app/lib/nav.ts`): Home, Surveys,
   Analytics, Responses, Plans, Settings, Help. Sub-pages are tabs
-  (`SECTION_TABS`, `SectionTabs`) and are matched to their section through
-  `also`. URLs did not change. The top grid is 4 columns on a phone, 7 from 48rem;
-  `top-nav.test.ts` fails on a lone tile.
+  (`SECTION_TABS`, now drawn once by the shell as `SectionNav`) and are matched
+  to their section through `also`. URLs did not change.
 - **Market presets** (`shared/templates/channel-presets.ts`): 23 markets, at most
   nine answers each. Generic answers name template locale keys; their wording is
   resolved on the server (`presetLabels`) because template text is not in the
@@ -1799,3 +1788,72 @@ helpers nothing called (`sumByCurrency`, `toUtcDateKey`, `requiredScopes`, ...),
 with the tests that existed only for them. Rule kept: delete code first, its
 tests follow; do not delete a test that guards live behaviour.
 
+
+## Production-readiness pass (2026-11-06; REVIEW.md is the record)
+
+### shopify.dev is unreachable from this container
+`curl` gets a proxy 403 and the fetch tool `ENOTFOUND`. Verify Shopify rules
+with web search of shopify.dev pages, and field names in Shopify's own
+`node_modules/@shopify/shopify-api/lib/billing/*.ts` (it targets 2026-07). Mark
+anything neither source settles "unverified" rather than guessing.
+
+### Navigation is Shopify's
+- `<s-app-nav>` is the app's menu (sidebar on desktop, app title menu on a
+  phone). **Never draw a copy of it in the page body**: the app design
+  guidelines say not to replicate the app nav in the body, and Built for
+  Shopify counts an app's own navigation menu as an audit failure. That is why
+  the old `TopNav` tile grid is gone; do not bring it back.
+- In the body, only secondary navigation: `SectionNav`
+  (`app/components/section-tabs.tsx`), drawn once by the shell and only on a
+  section's own pages (`sectionFor`), and a title-bar breadcrumb for detail
+  pages via `handle.breadcrumb` (`<s-link slot="breadcrumb-actions">`). Routes
+  never draw either themselves (`top-nav.test.ts`).
+- A selection (date range, billing cycle, template goal) is a `Segmented`
+  control (`app/components/admin-ui.tsx`), never a primary button: one primary
+  action per page. Upgrade prompts are never primary buttons. Every `s-icon`
+  is `size="small"`. `tests/unit/ui-polish.test.tsx` pins all three.
+- `.st-segmented` is the one CSS for both; colour only from `var(--p-…)` tokens
+  with `currentColor`/`transparent` fallbacks.
+- `PageLoading` runs the admin's progress bar (`shopify.loading`) during page
+  switches; form submits rely on their button's spinner instead.
+
+### Free trial (14 days, Growth and Scale, one per store)
+- Shopify runs the trial (`appSubscriptionCreate(trialDays:)`), but does not
+  remember it across Billing API subscriptions. `TrialLedger` does: hashed
+  domain/GID keys, **no relation to `Shop`** so uninstall and `shop/redact`
+  cannot reset it. Never add a foreign key or cascade to it.
+- The ledger row is written once (first live paid subscription, from its own
+  `createdAt` + `trialDays`) and never updated. `remainingTrialDays` counts
+  from that fixed end, so switching cannot stack days. Do not "refresh" the row.
+- During a trial, switching uses `APPLY_IMMEDIATELY`; otherwise Shopify's
+  default `STANDARD` (which defers only yearly → cheaper yearly and
+  yearly → monthly; every other change applies on approval).
+- `Shop.trialEndsAt` is display only. Plan enforcement still follows
+  `effectivePlan` (a trial subscription is ACTIVE).
+- Dates on the Plans page are formatted in the loader (store zone, regional
+  format), never in the component (hydration mismatch).
+
+### Webhooks answer within Shopify's 5 seconds
+`app/routes/webhooks.tsx` races the work against 4.5 s and replies 503 past
+it; the work still records itself (processed or failed). Keep all handler work
+inside the `work` promise so this holds; `tests/db-webhook-budget.test.ts`.
+
+### GraphQL throttling
+`shopifyGraphql` reads `extensions.cost` on every response: a THROTTLED retry
+waits for the bucket per `throttleStatus`, and calls to a shop pause while its
+bucket is under 10% (`pacingDelayMs`). New loops of Admin calls get this for
+free; still cap them.
+
+### Test harnesses for real entry points
+- `tests/helpers/admin-request.ts`: `seedOfflineSession(shop)` +
+  `adminRequest(shop, path)` / `adminForm(...)` run any admin loader/action
+  through the real `authenticate.admin`. Stub only `fetch`.
+- `tests/helpers/checkout-request.ts`: signed checkout requests.
+- `tests/db-store-simulation.test.ts`: one store end to end; extend it when a
+  flow changes rather than testing a helper in isolation.
+- `npx prisma migrate diff --shadow-database-url` against `sourcetrac_test`
+  **resets that database**; afterwards `DROP SCHEMA public CASCADE; CREATE
+  SCHEMA public;` and `npx prisma migrate deploy`.
+
+Verified 2026-11-06: `npm run check` = 119 files / 1,449 tests green;
+`npm run build` clean.

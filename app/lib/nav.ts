@@ -1,13 +1,18 @@
 /**
  * Every place a merchant can go in the app, in one list.
  *
- * Two menus read it:
+ * Shopify's own admin navigation (`<s-app-nav>`) is the app's menu: the left
+ * sidebar on desktop, the app title's menu on a phone. It shows the items
+ * marked `sidebar`; past seven, Shopify folds the rest under "View more", and
+ * none may repeat the home page (the app name itself links to it), so Home
+ * stays out.
  *
- * - The in-app top bar (`TopNav`), which shows every item. It is always on
- *   screen, on desktop and on a phone, so nothing is more than one tap away.
- * - Shopify's own admin navigation (`<s-app-nav>`), which shows the items marked
- *   `sidebar`. Shopify allows at most seven there, and none may repeat the home
- *   page (the app name itself links to it), so Home stays out.
+ * The page body does not repeat that menu. Shopify's app design guidelines
+ * ask apps not to replicate the app nav in the app body, and Built for
+ * Shopify counts an app's own navigation menu as an audit failure (the
+ * in-page tile grid this replaced did exactly that). Inside the body there
+ * is only secondary navigation: the pages of the current section
+ * (`SectionNav`), and a breadcrumb in the title bar on a detail page.
  *
  * `key` is an i18next key, not display text: this is a module-level constant
  * shared by every request, so a translated string could never be stored here
@@ -23,7 +28,7 @@ export type NavItem = {
   sidebar: boolean;
   /**
    * Other pages that belong to this section, shown as tabs on its pages
-   * (`SectionTabs`). They light up this item, never one of their own.
+   * (`SectionNav`). They light up this item, never one of their own.
    */
   also?: readonly string[];
 };
@@ -82,24 +87,43 @@ export function activeNavPath(
 }
 
 /**
- * The tabs inside each section, in order. `labelKey` is resolved per render.
- * A page lists here only if it is one of its section's pages; the survey
- * editor and the CSV downloads are not tabs.
+ * The pages inside each section, in order. `labelKey` is resolved per render;
+ * `icon` is a Polaris icon name, drawn small beside the label. A page lists
+ * here only if it is one of its section's pages; the survey editor and the CSV
+ * downloads are not.
  */
 export const SECTION_TABS = {
   surveys: [
-    { to: "/app/surveys", labelKey: "tabs.my_surveys" },
-    { to: "/app/surveys/library", labelKey: "tabs.templates" },
-    { to: "/app/surveys/quick-start", labelKey: "tabs.quick_start" },
+    { to: "/app/surveys", labelKey: "tabs.my_surveys", icon: "list-bulleted" },
+    { to: "/app/surveys/library", labelKey: "tabs.templates", icon: "page-list" },
+    { to: "/app/surveys/quick-start", labelKey: "tabs.quick_start", icon: "bolt" },
   ],
   analytics: [
-    { to: "/app/dashboard", labelKey: "tabs.channels" },
-    { to: "/app/results", labelKey: "tabs.results" },
+    { to: "/app/dashboard", labelKey: "tabs.channels", icon: "chart-vertical" },
+    { to: "/app/results", labelKey: "tabs.results", icon: "chart-horizontal" },
   ],
   responses: [
-    { to: "/app/responses", labelKey: "tabs.answers" },
-    { to: "/app/export", labelKey: "tabs.export" },
+    { to: "/app/responses", labelKey: "tabs.answers", icon: "chat" },
+    { to: "/app/export", labelKey: "tabs.export", icon: "export" },
   ],
 } as const;
 
 export type SectionTabsKey = keyof typeof SECTION_TABS;
+
+function trimPath(pathname: string): string {
+  return pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+}
+
+/**
+ * The section whose page list to show on `pathname`, or null. Only on one of
+ * the section's own pages: a detail page (the survey editor) gets a
+ * breadcrumb instead, where a row of tabs with none selected would only
+ * confuse.
+ */
+export function sectionFor(pathname: string): SectionTabsKey | null {
+  const path = trimPath(pathname);
+  for (const [section, tabs] of Object.entries(SECTION_TABS) as Array<[SectionTabsKey, (typeof SECTION_TABS)[SectionTabsKey]]>) {
+    if (tabs.some((tab) => tab.to === path)) return section;
+  }
+  return null;
+}

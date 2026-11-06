@@ -4,7 +4,6 @@
     "tagline": "Descubra o que atrai seus clientes"
   },
   "nav": {
-    "label": "Navegação principal",
     "dashboard": "Painel",
     "onboarding": "Primeiros passos",
     "settings": "Pesquisa",
@@ -17,7 +16,6 @@
     "home": "Início",
     "channels": "Relatório de canais",
     "preferences": "Configurações",
-    "current": "(página atual)",
     "templates": "Modelos",
     "analytics": "Análises"
   },
@@ -233,7 +231,7 @@
     "save_percent": "Economize {{percent}}% no anual",
     "switch_yearly": "Mudar para cobrança anual",
     "switch_monthly": "Mudar para cobrança mensal",
-    "yearly_note": "A cobrança anual custa {{percent}}% menos do que a mensal e é feita uma vez por ano. Um upgrade, ou a troca para anual, substitui sua cobrança atual assim que você aprova na Shopify. Um downgrade, ou a troca de anual para mensal, começa quando seu período de cobrança atual termina.",
+    "yearly_note": "A cobrança anual custa {{percent}}% menos do que a mensal e é feita uma vez por ano. Uma troca de plano ou de ciclo de cobrança substitui sua cobrança atual assim que você aprova na Shopify. Duas trocas esperam: passar de um plano anual para um anual mais barato, ou da cobrança anual para a mensal, começa quando seu ano atual termina. Durante o teste grátis, toda troca vale na hora.",
     "feature_live_surveys_one": "{{count}} pesquisa no ar por vez",
     "feature_live_surveys_other": "Até {{count}} pesquisas no ar por vez",
     "feature_follow_ups": "Perguntas complementares e pesquisas para quem compra pela primeira vez ou já comprou antes",
@@ -254,7 +252,18 @@
     "choose_plan_monthly_instead": "Ou pague por mês: {{price}} por mês",
     "msg_already_scheduled": "Você já aprovou esta mudança. Ela começa quando seu período de cobrança atual terminar.",
     "scheduled_change": "Sua mudança para {{plan}} está aprovada e começa em {{date}}, quando seu período de cobrança atual termina.",
-    "scheduled_change_no_date": "Sua mudança para {{plan}} está aprovada e começa quando seu período de cobrança atual terminar."
+    "scheduled_change_no_date": "Sua mudança para {{plan}} está aprovada e começa quando seu período de cobrança atual terminar.",
+    "trial_badge": "Teste grátis de {{days}} dias",
+    "trial_then_monthly": "Grátis até {{date}}, depois {{price}} por mês.",
+    "trial_then_yearly": "Grátis até {{date}}, depois {{price}} por ano.",
+    "trial_left_one": "Seu teste grátis continua: resta {{count}} dia.",
+    "trial_left_other": "Seu teste grátis continua: restam {{count}} dias.",
+    "start_trial": "Testar {{plan}} grátis",
+    "trial_active_title": "Seu teste grátis termina em {{date}}",
+    "trial_active_body_monthly": "Depois disso, {{plan}} custa {{price}} por mês, cobrado na sua fatura da Shopify. Cancele antes de {{date}} e você não será cobrado.",
+    "trial_active_body_yearly": "Depois disso, {{plan}} custa {{price}} por ano, cobrado na sua fatura da Shopify. Cancele antes de {{date}} e você não será cobrado.",
+    "cancel_body_trial": "Você está no teste grátis, então cancelar agora não custa nada. Suas respostas continuam salvas. No Grátis, só a sua pesquisa ativa principal continua aparecendo para os compradores, as tags, os metacampos e o Flow da Shopify param, e as respostas acima de {{cap}} neste mês são mantidas, mas marcadas como acima do limite.",
+    "trial_note": "{{growth}} e {{scale}} começam com um teste grátis de {{days}} dias, uma vez por loja. A Shopify mostra o teste e o preço na página de aprovação, e você só é cobrado se o plano ainda estiver ativo quando o teste terminar. Trocar de plano ou de ciclo de cobrança durante o teste mantém os dias que restam; não começa um teste novo."
   },
   "help": {
     "title": "Ajuda",
@@ -295,7 +304,9 @@
     "q_look": "Posso mudar as cores e as fontes da pesquisa?",
     "a_look": "A pesquisa sempre usa as fontes e cores do seu checkout (Configurações › Checkout › Personalizar), porque a Shopify não permite que apps as alterem; assim ela sempre parece parte da sua loja. Em “Aparência e textos” você muda o título, a introdução, o botão e o agradecimento, mostra uma pergunta por vez, usa estrelas nas avaliações, define as palavras abaixo de uma escala e escolhe borda e espaçamento.",
     "q_languages": "Os compradores verão a pesquisa no idioma deles?",
-    "a_languages": "Os modelos e o início rápido vêm traduzidos em dez idiomas. Em “Idiomas”, na pesquisa, você adiciona ou altera traduções, inclusive árabe, hebraico, coreano, polonês, turco e os idiomas nórdicos. O comprador vê o idioma do checkout quando a pesquisa tem, e seu próprio texto caso contrário; os botões são traduzidos em todos esses idiomas."
+    "a_languages": "Os modelos e o início rápido vêm traduzidos em dez idiomas. Em “Idiomas”, na pesquisa, você adiciona ou altera traduções, inclusive árabe, hebraico, coreano, polonês, turco e os idiomas nórdicos. O comprador vê o idioma do checkout quando a pesquisa tem, e seu próprio texto caso contrário; os botões são traduzidos em todos esses idiomas.",
+    "q_trial": "Existe um teste grátis?",
+    "a_trial": "Sim. {{growth}} e {{scale}} começam com um teste grátis de {{days}} dias, uma vez por loja. Você só é cobrado se o plano ainda estiver ativo quando o teste terminar: cancele antes na página Planos e nada é cobrado. Trocar de plano durante o teste mantém os dias que restam, e reinstalar o app não começa um teste novo. O plano Gratuito não precisa de teste."
   },
   "shell": {
     "plan_blocked_title": "O SourceTrac não está disponível no seu plano",
@@ -384,7 +395,6 @@
     "delete": "Excluir",
     "delete_confirm": "Excluir “{{name}}”? As respostas também serão excluídas. Não é possível desfazer.",
     "editor_title": "Editar pesquisa",
-    "back_to_list": "Voltar para as pesquisas",
     "editor_subtitle": "As alterações só entram no ar depois de salvar.",
     "has_responses_title": "Esta pesquisa tem respostas",
     "has_responses_body": "As opções removidas continuam nos resultados para que as respostas antigas mantenham seus rótulos.",
@@ -713,7 +723,8 @@
     "category_loyalty_help": "O quanto os compradores estão satisfeitos, se vão voltar e quem recomendaria você.",
     "category_know_customer_help": "Quem compra de você, para que usa e o que importa para essas pessoas.",
     "see_questions_one": "Ver a pergunta",
-    "see_questions_other": "Ver todas as {{count}} perguntas"
+    "see_questions_other": "Ver todas as {{count}} perguntas",
+    "categories_label": "Mostrar modelos para"
   },
   "setup": {
     "title": "Configure sua pesquisa",
@@ -1081,7 +1092,8 @@
     "role_body": "Você decide o que a sua pesquisa pergunta, então, para os dados dos seus compradores, você é o controlador e o SourceTrac os trata em seu nome. Mencione a pesquisa na política de privacidade da sua loja. Você pode adaptar este texto:",
     "policy_text": "Depois do checkout, podemos pedir que você responda a uma pesquisa curta e opcional, como onde nos conheceu. Suas respostas são guardadas com o número do seu pedido pelo nosso provedor de pesquisas, o SourceTrac, por até {{months}} meses, e são usadas apenas para entender quais canais nos trazem clientes. Elas nunca são vendidas nem usadas para publicidade.",
     "actions_notice": "As Ações do Shopify copiam as respostas para a sua loja Shopify como tags de pedido, tags de cliente ou metacampos de cliente. A partir daí, elas seguem as regras da Shopify para os dados da sua loja, não o prazo de exclusão do SourceTrac.",
-    "export_notice": "O arquivo contém números de pedido, respostas, totais dos pedidos e qualquer texto que os compradores digitaram. Guarde-o com o mesmo cuidado que os outros registros da sua loja."
+    "export_notice": "O arquivo contém números de pedido, respostas, totais dos pedidos e qualquer texto que os compradores digitaram. Guarde-o com o mesmo cuidado que os outros registros da sua loja.",
+    "keep_trial": "Um registro permanece depois dessa exclusão: se sua loja já teve um plano pago, guardamos que ela usou o teste grátis (um código de mão única feito a partir do endereço myshopify e do ID da loja, mais as datas do teste), para que o teste seja dado uma vez por loja. Ele não contém dados legíveis da loja, de compradores ou de pedidos."
   },
   "presets": {
     "load_title": "Usar respostas de um país",
