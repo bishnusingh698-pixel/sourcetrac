@@ -9,6 +9,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { PrismaClient } from "@prisma/client";
 
 import { clearDevStoreCache } from "~/lib/billing.server";
+import { handleShopRedact } from "~/lib/compliance.server";
 import { effectivePlan, evaluateCap, TRIAL_DAYS } from "~/lib/plans";
 import { upsertShop } from "~/lib/shop.server";
 import { clearShopDisplayCache } from "~/lib/studio.server";
@@ -257,8 +258,12 @@ describe("the 14-day trial", () => {
     await notice(subs[0]!.id, "ACTIVE");
 
     await processWebhook({ topic: "app/uninstalled", shopDomain: DOMAIN, payload: {}, accessToken: null });
-    // shop/redact 48 hours later deletes the shop row and everything under it.
-    await prisma.shop.delete({ where: { id: shopId } });
+    // shop/redact 48 hours later deletes the shop row and everything under it,
+    // through the real handler.
+    const redacted = await handleShopRedact({ shopDomain: DOMAIN, triggeredAt: new Date(Date.now() + 48 * 60 * 60 * 1000) });
+    expect(redacted.deleted).toBe(true);
+    expect(await prisma.shop.count({ where: { shopDomain: DOMAIN } })).toBe(0);
+    expect(await prisma.trialLedger.count({ where: { domainKey: trialDomainKey(DOMAIN) } })).toBe(1);
 
     subs = [];
     shopId = (await upsertShop({ shopDomain: DOMAIN, shopId: SHOP_GID })).id;
