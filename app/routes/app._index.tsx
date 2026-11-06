@@ -68,7 +68,8 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   void maybeMarkUnreconcilable();
   void maybeRunPendingDeletions(shop.id);
 
-  const locale = resolveFormatLocale(request, resolveAdminLanguage(request, shop.language, shop.adminLocale), shop.adminLocale);
+  const language = resolveAdminLanguage(request, shop.language, shop.adminLocale);
+  const locale = resolveFormatLocale(request, language, shop.adminLocale);
 
   const [anyResponse, liveSurveys, blockSeen, localeInfo] = await Promise.all([
     // Ever, not in a window: a quiet week must not send an established
@@ -88,7 +89,10 @@ export const loader = guarded(async ({ request }: LoaderFunctionArgs) => {
   // The seasonal spotlight (T15) is the fallback next step when nothing more
   // urgent applies. Evaluated in the admin from the date and the shop's region:
   // no database, no network.
-  const templateLocale = shop.language ?? "en";
+  // The language the page itself is in: a merchant who never picked one sees
+  // Shopify's admin language, and the template name inside a translated
+  // sentence must match it (it was the saved choice or English).
+  const templateLocale = language;
   let spotlightTemplateName: string | null = null;
   if (surveys.length > 0) {
     const spotlight = currentSpotlight({
