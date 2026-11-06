@@ -231,7 +231,7 @@
     "save_percent": "Economize {{percent}}% no anual",
     "switch_yearly": "Mudar para cobrança anual",
     "switch_monthly": "Mudar para cobrança mensal",
-    "yearly_note": "A cobrança anual custa {{percent}}% menos do que a mensal e é feita uma vez por ano. Um upgrade, ou a troca para anual, substitui sua cobrança atual assim que você aprova na Shopify. Um downgrade, ou a troca de anual para mensal, começa quando seu período de cobrança atual termina.",
+    "yearly_note": "A cobrança anual custa {{percent}}% menos do que a mensal e é feita uma vez por ano. Uma troca de plano ou de ciclo de cobrança substitui sua cobrança atual assim que você aprova na Shopify. Duas trocas esperam: passar de um plano anual para um anual mais barato, ou da cobrança anual para a mensal, começa quando seu ano atual termina. Durante o teste grátis, toda troca vale na hora.",
     "feature_live_surveys_one": "{{count}} pesquisa no ar por vez",
     "feature_live_surveys_other": "Até {{count}} pesquisas no ar por vez",
     "feature_follow_ups": "Perguntas complementares e pesquisas para quem compra pela primeira vez ou já comprou antes",

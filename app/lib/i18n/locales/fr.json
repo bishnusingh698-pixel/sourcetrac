@@ -231,7 +231,7 @@
     "save_percent": "Économisez {{percent}} % en annuel",
     "switch_yearly": "Passer à la facturation annuelle",
     "switch_monthly": "Passer à la facturation mensuelle",
-    "yearly_note": "La facturation annuelle coûte {{percent}} % de moins que la mensuelle et est prélevée une fois par an. Une montée en gamme, ou le passage à l'annuel, remplace votre facturation actuelle dès que vous l'approuvez dans Shopify. Une baisse de gamme, ou le passage de l'annuel au mensuel, commence à la fin de votre période de facturation actuelle.",
+    "yearly_note": "La facturation annuelle coûte {{percent}} % de moins que la mensuelle et est prélevée une fois par an. Un changement de forfait ou de cycle de facturation remplace votre facturation actuelle dès que vous l'approuvez dans Shopify. Deux changements attendent : passer d'un forfait annuel à un forfait annuel moins cher, ou de l'annuel au mensuel, commence à la fin de votre année en cours. Pendant l'essai gratuit, tout changement s'applique immédiatement.",
     "feature_live_surveys_one": "{{count}} sondage en ligne à la fois",
     "feature_live_surveys_other": "Jusqu'à {{count}} sondages en ligne à la fois",
     "feature_follow_ups": "Questions de suivi, et sondages pour les nouveaux acheteurs ou les acheteurs récurrents",

@@ -231,7 +231,7 @@
     "save_percent": "Spara {{percent}} % med årsvis",
     "switch_yearly": "Byt till årsvis fakturering",
     "switch_monthly": "Byt till månadsvis fakturering",
-    "yearly_note": "Årsvis fakturering kostar {{percent}} % mindre än månadsvis och dras en gång om året. En uppgradering, eller ett byte till årsvis, ersätter din nuvarande debitering när du godkänner den i Shopify. En nedgradering, eller ett byte från årsvis till månadsvis, börjar när din nuvarande faktureringsperiod tar slut.",
+    "yearly_note": "Årsvis fakturering kostar {{percent}} % mindre än månadsvis och dras en gång om året. Ett byte av plan eller faktureringsperiod ersätter din nuvarande debitering så snart du godkänner det i Shopify. Två byten väntar i stället: från en årsplan till en billigare årsplan, eller från årsvis till månadsvis fakturering, börjar när ditt nuvarande år tar slut. Under den gratis provperioden gäller varje byte direkt.",
     "feature_live_surveys_one": "{{count}} publicerad enkät åt gången",
     "feature_live_surveys_other": "Upp till {{count}} publicerade enkäter åt gången",
     "feature_follow_ups": "Följdfrågor och enkäter för förstagångsköpare eller återkommande köpare",

@@ -231,7 +231,7 @@
     "save_percent": "Risparmia il {{percent}}% con l'annuale",
     "switch_yearly": "Passa alla fatturazione annuale",
     "switch_monthly": "Passa alla fatturazione mensile",
-    "yearly_note": "La fatturazione annuale costa il {{percent}}% in meno di quella mensile e viene addebitata una volta l'anno. Un upgrade, o il passaggio all'annuale, sostituisce l'addebito attuale quando lo approvi in Shopify. Un downgrade, o il passaggio da annuale a mensile, inizia alla fine del periodo di fatturazione attuale.",
+    "yearly_note": "La fatturazione annuale costa il {{percent}}% in meno di quella mensile e viene addebitata una volta l'anno. Un cambio di piano o di ciclo di fatturazione sostituisce l'addebito attuale appena lo approvi in Shopify. Due cambi invece aspettano: passare da un piano annuale a uno annuale più economico, o dalla fatturazione annuale a quella mensile, inizia alla fine dell'anno in corso. Durante la prova gratuita ogni cambio si applica subito.",
     "feature_live_surveys_one": "{{count}} sondaggio online alla volta",
     "feature_live_surveys_other": "Fino a {{count}} sondaggi online alla volta",
     "feature_follow_ups": "Domande di approfondimento e sondaggi per chi acquista per la prima volta o torna ad acquistare",

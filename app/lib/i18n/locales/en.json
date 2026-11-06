@@ -231,7 +231,7 @@
     "save_percent": "Save {{percent}}% with yearly",
     "switch_yearly": "Switch to yearly billing",
     "switch_monthly": "Switch to monthly billing",
-    "yearly_note": "Yearly billing costs {{percent}}% less than paying monthly and is charged once a year. An upgrade, or a switch to yearly, replaces your current charge once you approve it in Shopify. A downgrade, or a switch from yearly to monthly, starts when your current billing period ends.",
+    "yearly_note": "Yearly billing costs {{percent}}% less than paying monthly and is charged once a year. A change of plan or billing cycle replaces your current charge as soon as you approve it in Shopify. Two changes wait instead: moving from a yearly plan to a cheaper yearly plan, or from yearly to monthly billing, starts when your current year ends. During the free trial every change applies at once.",
     "feature_live_surveys_one": "{{count}} live survey at a time",
     "feature_live_surveys_other": "Up to {{count}} live surveys at a time",
     "feature_follow_ups": "Follow-up questions, and surveys for first-time or returning buyers",

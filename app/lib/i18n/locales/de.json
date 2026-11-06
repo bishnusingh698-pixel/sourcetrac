@@ -231,7 +231,7 @@
     "save_percent": "{{percent}} % sparen mit jährlicher Zahlung",
     "switch_yearly": "Zur jährlichen Abrechnung wechseln",
     "switch_monthly": "Zur monatlichen Abrechnung wechseln",
-    "yearly_note": "Die jährliche Abrechnung kostet {{percent}} % weniger als die monatliche und wird einmal im Jahr berechnet. Ein Upgrade oder ein Wechsel zur jährlichen Abrechnung ersetzt Ihre aktuelle Abbuchung, sobald Sie ihn in Shopify genehmigen. Ein Downgrade oder ein Wechsel von jährlich zu monatlich beginnt mit dem Ende Ihres aktuellen Abrechnungszeitraums.",
+    "yearly_note": "Die jährliche Abrechnung kostet {{percent}} % weniger als die monatliche und wird einmal im Jahr berechnet. Ein Wechsel des Tarifs oder der Abrechnungsperiode ersetzt Ihre aktuelle Abbuchung, sobald Sie ihn in Shopify genehmigen. Zwei Wechsel warten stattdessen: von einem jährlichen auf einen günstigeren jährlichen Tarif oder von jährlicher auf monatliche Abrechnung – sie beginnen, wenn Ihr aktuelles Jahr endet. Während des kostenlosen Testzeitraums gilt jeder Wechsel sofort.",
     "feature_live_surveys_one": "{{count}} Live-Umfrage gleichzeitig",
     "feature_live_surveys_other": "Bis zu {{count}} Live-Umfragen gleichzeitig",
     "feature_follow_ups": "Folgefragen sowie Umfragen für Erstkäufer oder wiederkehrende Käufer",

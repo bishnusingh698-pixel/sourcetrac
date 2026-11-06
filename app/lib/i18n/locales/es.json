@@ -231,7 +231,7 @@
     "save_percent": "Ahorra un {{percent}} % con el pago anual",
     "switch_yearly": "Cambiar a facturación anual",
     "switch_monthly": "Cambiar a facturación mensual",
-    "yearly_note": "La facturación anual cuesta un {{percent}} % menos que la mensual y se cobra una vez al año. Una mejora, o el cambio a anual, sustituye tu cargo actual cuando la apruebas en Shopify. Una bajada, o el cambio de anual a mensual, empieza cuando termina tu periodo de facturación actual.",
+    "yearly_note": "La facturación anual cuesta un {{percent}} % menos que la mensual y se cobra una vez al año. Un cambio de plan o de ciclo de facturación sustituye tu cargo actual en cuanto lo apruebas en Shopify. Hay dos cambios que esperan: pasar de un plan anual a otro anual más barato, o de facturación anual a mensual, empieza cuando termina tu año actual. Durante la prueba gratis, todos los cambios se aplican al instante.",
     "feature_live_surveys_one": "{{count}} encuesta activa a la vez",
     "feature_live_surveys_other": "Hasta {{count}} encuestas activas a la vez",
     "feature_follow_ups": "Preguntas de seguimiento y encuestas para compradores nuevos o recurrentes",

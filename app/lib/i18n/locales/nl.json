@@ -231,7 +231,7 @@
     "save_percent": "Bespaar {{percent}}% met jaarlijks",
     "switch_yearly": "Overstappen op jaarlijks",
     "switch_monthly": "Overstappen op maandelijks",
-    "yearly_note": "Jaarlijkse facturering kost {{percent}}% minder dan maandelijks betalen en wordt één keer per jaar in rekening gebracht. Een upgrade, of overstappen op jaarlijks, vervangt je huidige afschrijving zodra je die in Shopify goedkeurt. Een downgrade, of overstappen van jaarlijks naar maandelijks, begint als je huidige factureringsperiode afloopt.",
+    "yearly_note": "Jaarlijkse facturering kost {{percent}}% minder dan maandelijks betalen en wordt één keer per jaar in rekening gebracht. Een wijziging van abonnement of factureringsperiode vervangt je huidige afschrijving zodra je die in Shopify goedkeurt. Twee wijzigingen wachten: van een jaarabonnement naar een goedkoper jaarabonnement, of van jaarlijks naar maandelijks, begint als je huidige jaar afloopt. Tijdens de gratis proefperiode gaat elke wijziging direct in.",
     "feature_live_surveys_one": "{{count}} live enquête tegelijk",
     "feature_live_surveys_other": "Tot {{count}} live enquêtes tegelijk",
     "feature_follow_ups": "Vervolgvragen, en enquêtes voor nieuwe of terugkerende kopers",

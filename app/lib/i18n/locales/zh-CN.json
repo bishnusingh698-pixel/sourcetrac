@@ -231,7 +231,7 @@
     "save_percent": "按年支付节省 {{percent}}%",
     "switch_yearly": "切换为按年计费",
     "switch_monthly": "切换为按月计费",
-    "yearly_note": "按年计费比按月便宜 {{percent}}%，每年收费一次。升级或改为按年计费，会在您于 Shopify 中批准后替换当前费用。降级或从按年改为按月，会在当前账单周期结束时开始。",
+    "yearly_note": "按年计费比按月便宜 {{percent}}%，每年收费一次。更换方案或计费周期会在您于 Shopify 中批准后立即替换当前费用。但有两种更改会等待：从按年方案改为更便宜的按年方案，或从按年改为按月计费，会在当前年度结束时开始。免费试用期间，任何更改都会立即生效。",
     "feature_live_surveys_one": "同时上线 {{count}} 个问卷",
     "feature_live_surveys_other": "同时最多上线 {{count}} 个问卷",
     "feature_follow_ups": "追问，以及面向首次购买或回头客的问卷",
