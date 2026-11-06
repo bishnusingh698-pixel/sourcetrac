@@ -723,7 +723,8 @@
     "category_loyalty_help": "Wie zufrieden Käufer sind, ob sie wiederkommen und wer Sie weiterempfehlen würde.",
     "category_know_customer_help": "Wer bei Ihnen kauft, wofür die Produkte genutzt werden und was den Käufern wichtig ist.",
     "see_questions_one": "Frage ansehen",
-    "see_questions_other": "Alle {{count}} Fragen ansehen"
+    "see_questions_other": "Alle {{count}} Fragen ansehen",
+    "categories_label": "Vorlagen anzeigen für"
   },
   "setup": {
     "title": "Umfrage einrichten",

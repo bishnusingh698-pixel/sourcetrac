@@ -723,7 +723,8 @@
     "category_loyalty_help": "买家有多满意，是否会再来，以及谁会推荐你。",
     "category_know_customer_help": "谁在你这里购买，他们买来做什么，以及他们在意什么。",
     "see_questions_one": "查看问题",
-    "see_questions_other": "查看全部 {{count}} 个问题"
+    "see_questions_other": "查看全部 {{count}} 个问题",
+    "categories_label": "按目的显示模板"
   },
   "setup": {
     "title": "设置你的问卷",

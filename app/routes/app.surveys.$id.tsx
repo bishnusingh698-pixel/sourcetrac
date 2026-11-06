@@ -578,7 +578,7 @@ export default function SurveyEditorPage() {
                 <s-stack gap="small">
                   {problems.map((item) => (
                     <s-stack key={item.id} direction="inline" gap="small" alignItems="center">
-                      <s-icon type="alert-circle" tone={item.blocking ? "critical" : "caution"} />
+                      <s-icon type="alert-circle" tone={item.blocking ? "critical" : "caution"} size="small" />
                       <s-text>{t(`editor.ready_${item.id}`, { limit: data.liveLimit })}</s-text>
                     </s-stack>
                   ))}

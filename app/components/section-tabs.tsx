@@ -12,7 +12,7 @@ import { SECTION_TABS, sectionFor } from "~/lib/nav";
  *
  * Each item is a small icon beside its label, so a row of three stays one line
  * on a phone; a long translation wraps onto the next line instead of scrolling
- * sideways or overlapping. Plain React Router links (`.st-sectionnav-link`), so
+ * sideways or overlapping. Plain React Router links (`.st-segmented-item`), so
  * a tap is an in-app navigation that keeps the embedded session, never a full
  * reload. The current page carries `aria-current="page"`, which screen readers
  * announce. Query strings (a range, a survey) are not carried over: each page
@@ -25,8 +25,8 @@ export function SectionNav({ t }: { t: TFunction }) {
   const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
 
   return (
-    <nav aria-label={t("tabs.label")} className="st-sectionnav">
-      <ul className="st-sectionnav-list">
+    <nav aria-label={t("tabs.label")}>
+      <ul className="st-segmented">
         {SECTION_TABS[section].map((tab) => {
           const current = tab.to === path;
           return (
@@ -34,7 +34,7 @@ export function SectionNav({ t }: { t: TFunction }) {
               <Link
                 to={tab.to}
                 prefetch="intent"
-                className={current ? "st-sectionnav-link st-sectionnav-link--current" : "st-sectionnav-link"}
+                className={current ? "st-segmented-item st-segmented-item--current" : "st-segmented-item"}
                 aria-current={current ? "page" : undefined}
               >
                 <s-icon type={tab.icon} size="small" color={current ? "base" : "subdued"} />

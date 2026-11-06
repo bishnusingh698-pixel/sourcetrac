@@ -723,7 +723,8 @@
     "category_loyalty_help": "Quanto sono soddisfatti gli acquirenti, se torneranno e chi ti consiglierebbe.",
     "category_know_customer_help": "Chi compra da te, per cosa usa i tuoi prodotti e a cosa tiene.",
     "see_questions_one": "Vedi la domanda",
-    "see_questions_other": "Vedi tutte le {{count}} domande"
+    "see_questions_other": "Vedi tutte le {{count}} domande",
+    "categories_label": "Mostra modelli per"
   },
   "setup": {
     "title": "Configura il tuo sondaggio",

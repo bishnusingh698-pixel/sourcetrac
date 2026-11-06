@@ -21,6 +21,6 @@ describe("Plans page", () => {
 
   it("switches cycle without depending on a link", () => {
     expect(source).not.toContain('href="/app/plans?cycle=');
-    expect(source).toContain('onClick={() => setCycle("yearly")}');
+    expect(source).toContain('onSelect: () => setCycle("yearly")');
   });
 });

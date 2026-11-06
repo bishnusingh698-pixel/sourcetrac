@@ -723,7 +723,8 @@
     "category_loyalty_help": "À quel point les acheteurs sont satisfaits, s'ils reviendront et qui vous recommanderait.",
     "category_know_customer_help": "Qui achète chez vous, à quoi sert ce qu'ils achètent et ce qui compte pour eux.",
     "see_questions_one": "Voir la question",
-    "see_questions_other": "Voir les {{count}} questions"
+    "see_questions_other": "Voir les {{count}} questions",
+    "categories_label": "Afficher les modèles pour"
   },
   "setup": {
     "title": "Configurer votre sondage",

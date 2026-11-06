@@ -10,7 +10,7 @@ import {
   type MetaFunction,
 } from "react-router";
 
-import { Banner, Panel } from "~/components/admin-ui";
+import { Banner, Panel, Segmented } from "~/components/admin-ui";
 import { isShopifyConfirmationUrl } from "~/lib/billing-redirect";
 import { createSubscription, cancelSubscription, cycleOf, isBillingNotEnabled } from "~/lib/billing.server";
 import { logger } from "~/lib/logger";
@@ -588,14 +588,13 @@ export default function Plans() {
       {/* Monthly / yearly switch. Every paid card also offers the other cycle
           as its own button, so buying yearly never depends on this switch. */}
       <s-stack direction="inline" gap="small" alignItems="center">
-        <s-button-group accessibilityLabel={t("plans.cycle_label")}>
-          <s-button type="button" onClick={() => setCycle("monthly")} variant={yearly ? "secondary" : "primary"}>
-            {t("plans.cycle_monthly")}
-          </s-button>
-          <s-button type="button" onClick={() => setCycle("yearly")} variant={yearly ? "primary" : "secondary"}>
-            {t("plans.cycle_yearly")}
-          </s-button>
-        </s-button-group>
+        <Segmented
+          label={t("plans.cycle_label")}
+          items={[
+            { key: "monthly", label: t("plans.cycle_monthly"), current: !yearly, onSelect: () => setCycle("monthly") },
+            { key: "yearly", label: t("plans.cycle_yearly"), current: yearly, onSelect: () => setCycle("yearly") },
+          ]}
+        />
         <s-badge tone="success">{t("plans.save_up_to", { amount: data.maxYearlySaving })}</s-badge>
       </s-stack>
 

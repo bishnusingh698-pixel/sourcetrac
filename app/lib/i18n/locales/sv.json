@@ -723,7 +723,8 @@
     "category_loyalty_help": "Hur nöjda köparna är, om de kommer tillbaka och vem som skulle rekommendera dig.",
     "category_know_customer_help": "Vilka som köper av dig, vad de använder det till och vad som är viktigt för dem.",
     "see_questions_one": "Visa frågan",
-    "see_questions_other": "Visa alla {{count}} frågor"
+    "see_questions_other": "Visa alla {{count}} frågor",
+    "categories_label": "Visa mallar för"
   },
   "setup": {
     "title": "Ställ in din enkät",

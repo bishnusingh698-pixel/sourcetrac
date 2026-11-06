@@ -249,7 +249,7 @@ export function TopChannelCallout({
     <s-section>
       <s-grid gridTemplateColumns="auto minmax(0, 1fr)" gap="base" alignItems="start">
         <s-box padding="small" borderRadius="large" background="subdued">
-          <s-icon type="chart-popular" tone="success" />
+          <s-icon type="chart-popular" tone="success" size="small" />
         </s-box>
         <s-stack gap="small-200">
           <s-stack direction="inline" gap="small" alignItems="center">
@@ -373,7 +373,7 @@ export function ReportNotes({ summary, t }: { summary: ChannelReport["summary"];
         ))}
         {summary.lockedResponses > 0 ? (
           <div>
-            <s-button href="/app/plans" variant="primary">
+            <s-button href="/app/plans">
               {t("shell.cap_reached_cta")}
             </s-button>
           </div>

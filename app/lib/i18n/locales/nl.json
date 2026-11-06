@@ -723,7 +723,8 @@
     "category_loyalty_help": "Hoe tevreden kopers zijn, of ze terugkomen en wie je zou aanbevelen.",
     "category_know_customer_help": "Wie bij je koopt, waarvoor ze het gebruiken en wat ze belangrijk vinden.",
     "see_questions_one": "Bekijk de vraag",
-    "see_questions_other": "Bekijk alle {{count}} vragen"
+    "see_questions_other": "Bekijk alle {{count}} vragen",
+    "categories_label": "Sjablonen tonen voor"
   },
   "setup": {
     "title": "Stel je enquête in",

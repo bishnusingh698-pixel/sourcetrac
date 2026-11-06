@@ -723,7 +723,8 @@
     "category_loyalty_help": "Lo contentos que están los compradores, si volverán y quién te recomendaría.",
     "category_know_customer_help": "Quién te compra, para qué lo usa y qué le importa.",
     "see_questions_one": "Ver la pregunta",
-    "see_questions_other": "Ver las {{count}} preguntas"
+    "see_questions_other": "Ver las {{count}} preguntas",
+    "categories_label": "Mostrar plantillas para"
   },
   "setup": {
     "title": "Configura tu encuesta",

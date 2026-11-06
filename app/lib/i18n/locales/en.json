@@ -723,7 +723,8 @@
     "category_loyalty_help": "How happy buyers are, whether they'll come back, and who would recommend you.",
     "category_know_customer_help": "Who buys from you, what they use it for, and what matters to them.",
     "see_questions_one": "See the question",
-    "see_questions_other": "See all {{count}} questions"
+    "see_questions_other": "See all {{count}} questions",
+    "categories_label": "Show templates for"
   },
   "setup": {
     "title": "Set up your survey",

@@ -358,7 +358,7 @@ function NextStep({
     <s-section heading={t("home.next_step")}>
       <s-stack gap="base">
         <s-grid gridTemplateColumns="auto minmax(0, 1fr)" gap="small" alignItems="start">
-          <s-icon type="lightbulb" tone="info" />
+          <s-icon type="lightbulb" tone="info" size="small" />
           <s-text>{body}</s-text>
         </s-grid>
         <div>

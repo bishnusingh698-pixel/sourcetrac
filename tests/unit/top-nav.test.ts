@@ -133,7 +133,7 @@ describe("SectionNav", () => {
     const current = [...html.matchAll(/<a[^>]*aria-current="page"[^>]*>/g)].map((m) => m[0]);
     expect(current).toHaveLength(1);
     expect(current[0]).toContain('href="/app/results"');
-    expect(current[0]).toContain("st-sectionnav-link--current");
+    expect(current[0]).toContain("st-segmented-item--current");
   });
 
   it("draws a small icon beside each label, never a large one above it", () => {
@@ -142,7 +142,7 @@ describe("SectionNav", () => {
     expect(icons).toHaveLength(SECTION_TABS.surveys.length);
     for (const icon of icons) expect(icon).toContain('size="small"');
     // Icon and label are siblings inside the same inline link.
-    expect(html).toMatch(/<a [^>]*class="st-sectionnav-link[^"]*"[^>]*><s-icon[^>]*><\/s-icon><span>/);
+    expect(html).toMatch(/<a [^>]*class="st-segmented-item[^"]*"[^>]*><s-icon[^>]*><\/s-icon><span>/);
   });
 
   it("shows nothing outside a section with several pages, nor on a detail page", () => {
@@ -197,19 +197,19 @@ describe("client components", () => {
 
 describe("the section bar's layout", () => {
   const css = readFileSync(join(ROOT, "app/styles/app.css"), "utf8");
-  const start = css.indexOf("/* --- Section navigation");
+  const start = css.indexOf("/* --- Segmented rows");
   const block = css.slice(start, css.indexOf("/* --- Charts", start));
 
   it("wraps instead of scrolling sideways, so items never overlap on a phone", () => {
     expect(start).toBeGreaterThan(-1);
-    expect(block).toMatch(/\.st-sectionnav-list \{[^}]*flex-wrap: wrap;/);
-    expect(block).toMatch(/\.st-sectionnav-list \{[^}]*max-inline-size: 100%;/);
+    expect(block).toMatch(/\.st-segmented \{[^}]*flex-wrap: wrap;/);
+    expect(block).toMatch(/\.st-segmented \{[^}]*max-inline-size: 100%;/);
     expect(block).not.toMatch(/overflow-x|nowrap|overflow: (auto|scroll)/);
   });
 
   it("keeps icon and label on one line, with a 44px touch target", () => {
-    expect(block).toMatch(/\.st-sectionnav-link \{[^}]*display: inline-flex;[^}]*align-items: center;/);
-    expect(block).toMatch(/\.st-sectionnav-link \{[^}]*min-block-size: 2\.75rem;/);
+    expect(block).toMatch(/\.st-segmented-item \{[^}]*display: inline-flex;[^}]*align-items: center;/);
+    expect(block).toMatch(/\.st-segmented-item \{[^}]*min-block-size: 2\.75rem;/);
     expect(block).not.toMatch(/flex-direction: column/);
   });
 

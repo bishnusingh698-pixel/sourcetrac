@@ -723,7 +723,8 @@
     "category_loyalty_help": "購入者の満足度、また来てくれるか、誰がおすすめしてくれるか。",
     "category_know_customer_help": "誰が買っているのか、何に使うのか、何を大切にしているのか。",
     "see_questions_one": "質問を見る",
-    "see_questions_other": "{{count}}問すべてを見る"
+    "see_questions_other": "{{count}}問すべてを見る",
+    "categories_label": "表示するテンプレートの目的"
   },
   "setup": {
     "title": "アンケートを設定",

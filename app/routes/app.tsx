@@ -28,6 +28,7 @@ import type { loader as rootLoader } from "~/root";
 import { Banner } from "~/components/admin-ui";
 import { SupportIconButton } from "~/components/support-button";
 import { DataNotice } from "~/components/data-notice";
+import { PageLoading } from "~/components/page-loading";
 import { SectionNav } from "~/components/section-tabs";
 import { NAV } from "~/lib/nav";
 import {
@@ -193,6 +194,7 @@ export default function AdminLayout() {
           </s-link>
         ))}
       </s-app-nav>
+      <PageLoading />
       <s-page heading={titleKey ? t(titleKey) : undefined}>
         {/* A detail page (the survey editor) names its parent in the title
             bar, Shopify's place for the way back up. */}
@@ -269,7 +271,7 @@ export default function AdminLayout() {
                   {t("shell.cap_warning_body", { count: cap.cap ?? 0, cap: cap.cap })}
                 </s-text>
                 <div>
-                  <s-button href="/app/plans" variant="primary">
+                  <s-button href="/app/plans">
                     {t("shell.cap_warning_cta")}
                   </s-button>
                 </div>
@@ -280,7 +282,7 @@ export default function AdminLayout() {
               <s-stack gap="small">
                 <s-text>{t("shell.cap_reached_body")}</s-text>
                 <div>
-                  <s-button href="/app/plans" variant="primary">
+                  <s-button href="/app/plans">
                     {t("shell.cap_reached_cta")}
                   </s-button>
                 </div>

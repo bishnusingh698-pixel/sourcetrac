@@ -723,7 +723,8 @@
     "category_loyalty_help": "O quanto os compradores estão satisfeitos, se vão voltar e quem recomendaria você.",
     "category_know_customer_help": "Quem compra de você, para que usa e o que importa para essas pessoas.",
     "see_questions_one": "Ver a pergunta",
-    "see_questions_other": "Ver todas as {{count}} perguntas"
+    "see_questions_other": "Ver todas as {{count}} perguntas",
+    "categories_label": "Mostrar modelos para"
   },
   "setup": {
     "title": "Configure sua pesquisa",

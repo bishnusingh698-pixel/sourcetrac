@@ -23,7 +23,7 @@ function Row({ line }: { line: Line }) {
   const tone = line.ok === true ? "success" : line.ok === false ? "critical" : "info";
   return (
     <s-grid gridTemplateColumns="auto minmax(0, 1fr)" gap="small" alignItems="start">
-      <s-icon type={icon} tone={tone} />
+      <s-icon type={icon} tone={tone} size="small" />
       <s-stack gap="small-200">
         <s-text>{line.text}</s-text>
         {line.action ? (
