@@ -4,7 +4,6 @@
     "tagline": "Descubre qué atrae a tus clientes"
   },
   "nav": {
-    "label": "Navegación principal",
     "dashboard": "Panel",
     "onboarding": "Primeros pasos",
     "settings": "Encuesta",
@@ -17,7 +16,6 @@
     "home": "Inicio",
     "channels": "Informe de canales",
     "preferences": "Ajustes",
-    "current": "(página actual)",
     "templates": "Plantillas",
     "analytics": "Análisis"
   },
@@ -397,7 +395,6 @@
     "delete": "Eliminar",
     "delete_confirm": "¿Eliminar «{{name}}»? También se eliminarán sus respuestas. No se puede deshacer.",
     "editor_title": "Editar encuesta",
-    "back_to_list": "Volver a las encuestas",
     "editor_subtitle": "Los cambios no se publican hasta que guardes.",
     "has_responses_title": "Esta encuesta tiene respuestas",
     "has_responses_body": "Las opciones eliminadas permanecen en tus resultados para que las respuestas anteriores conserven sus etiquetas.",

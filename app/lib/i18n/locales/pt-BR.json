@@ -4,7 +4,6 @@
     "tagline": "Descubra o que atrai seus clientes"
   },
   "nav": {
-    "label": "Navegação principal",
     "dashboard": "Painel",
     "onboarding": "Primeiros passos",
     "settings": "Pesquisa",
@@ -17,7 +16,6 @@
     "home": "Início",
     "channels": "Relatório de canais",
     "preferences": "Configurações",
-    "current": "(página atual)",
     "templates": "Modelos",
     "analytics": "Análises"
   },
@@ -397,7 +395,6 @@
     "delete": "Excluir",
     "delete_confirm": "Excluir “{{name}}”? As respostas também serão excluídas. Não é possível desfazer.",
     "editor_title": "Editar pesquisa",
-    "back_to_list": "Voltar para as pesquisas",
     "editor_subtitle": "As alterações só entram no ar depois de salvar.",
     "has_responses_title": "Esta pesquisa tem respostas",
     "has_responses_body": "As opções removidas continuam nos resultados para que as respostas antigas mantenham seus rótulos.",

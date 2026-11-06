@@ -4,7 +4,6 @@
     "tagline": "お客様を引き寄せている最初のきっかけを知る"
   },
   "nav": {
-    "label": "メインナビゲーション",
     "dashboard": "ダッシュボード",
     "onboarding": "はじめに",
     "settings": "アンケート",
@@ -17,7 +16,6 @@
     "home": "ホーム",
     "channels": "チャネルレポート",
     "preferences": "設定",
-    "current": "（現在のページ）",
     "templates": "テンプレート",
     "analytics": "分析"
   },
@@ -397,7 +395,6 @@
     "delete": "削除",
     "delete_confirm": "「{{name}}」を削除しますか？回答も削除されます。元に戻せません。",
     "editor_title": "アンケートを編集",
-    "back_to_list": "アンケート一覧へ戻る",
     "editor_subtitle": "変更は保存するまで反映されません。",
     "has_responses_title": "このアンケートには回答があります",
     "has_responses_body": "削除した回答選択肢は結果に残り、過去の回答はラベルを保ちます。",

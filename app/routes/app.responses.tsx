@@ -1,6 +1,5 @@
 import { useLoaderData, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 
-import { SectionTabs } from "~/components/section-tabs";
 import { Panel, PageIntro } from "~/components/admin-ui";
 import { SurveyPicker } from "~/components/survey-picker";
 import { orderAdminLink, resolveExportTimeZone, type RevenueStatus } from "~/lib/csv";
@@ -160,7 +159,6 @@ export default function Responses() {
   if (!data.selected) {
     return (
       <s-stack gap="base">
-        <SectionTabs section="responses" t={t} />
         <PageIntro>{t("responses.subtitle")}</PageIntro>
         <Panel title={t("responses.empty_title")}>
           <s-text>{t("responses.empty_body")}</s-text>
@@ -171,7 +169,6 @@ export default function Responses() {
 
   return (
     <s-stack gap="base">
-      <SectionTabs section="responses" t={t} />
       <PageIntro
         actions={
           <s-button href="/app/export" icon="export">

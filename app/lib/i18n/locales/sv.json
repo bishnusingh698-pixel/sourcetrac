@@ -4,7 +4,6 @@
     "tagline": "Ta reda på vad som lockar kunder"
   },
   "nav": {
-    "label": "Huvudnavigering",
     "dashboard": "Översikt",
     "onboarding": "Kom igång",
     "settings": "Enkät",
@@ -17,7 +16,6 @@
     "home": "Hem",
     "channels": "Kanalrapport",
     "preferences": "Inställningar",
-    "current": "(aktuell sida)",
     "templates": "Mallar",
     "analytics": "Analys"
   },
@@ -397,7 +395,6 @@
     "delete": "Ta bort",
     "delete_confirm": "Ta bort “{{name}}”? Även svaren tas bort. Detta kan inte ångras.",
     "editor_title": "Redigera enkät",
-    "back_to_list": "Tillbaka till enkäter",
     "editor_subtitle": "Ändringar publiceras först när du sparar.",
     "has_responses_title": "Den här enkäten har svar",
     "has_responses_body": "Borttagna svarsalternativ finns kvar i resultaten så att tidigare svar behåller sina etiketter.",

@@ -4,7 +4,6 @@
     "tagline": "Sachez ce qui attire vos clients"
   },
   "nav": {
-    "label": "Navigation principale",
     "dashboard": "Tableau de bord",
     "onboarding": "Prise en main",
     "settings": "Sondage",
@@ -17,7 +16,6 @@
     "home": "Accueil",
     "channels": "Rapport par canal",
     "preferences": "Paramètres",
-    "current": "(page actuelle)",
     "templates": "Modèles",
     "analytics": "Analyses"
   },
@@ -397,7 +395,6 @@
     "delete": "Supprimer",
     "delete_confirm": "Supprimer « {{name}} » ? Ses réponses seront aussi supprimées. Action irréversible.",
     "editor_title": "Modifier le sondage",
-    "back_to_list": "Retour aux sondages",
     "editor_subtitle": "Les changements ne sont visibles qu’après l’enregistrement.",
     "has_responses_title": "Ce sondage a des réponses",
     "has_responses_body": "Les options supprimées restent dans vos résultats pour que les réponses passées gardent leurs libellés.",

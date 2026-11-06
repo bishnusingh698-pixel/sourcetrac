@@ -4,7 +4,6 @@
     "tagline": "Wissen, was Kunden zu Ihnen bringt"
   },
   "nav": {
-    "label": "Hauptnavigation",
     "dashboard": "Übersicht",
     "onboarding": "Erste Schritte",
     "settings": "Umfrage",
@@ -17,7 +16,6 @@
     "home": "Startseite",
     "channels": "Kanalbericht",
     "preferences": "Einstellungen",
-    "current": "(aktuelle Seite)",
     "templates": "Vorlagen",
     "analytics": "Analysen"
   },
@@ -397,7 +395,6 @@
     "delete": "Löschen",
     "delete_confirm": "„{{name}}“ löschen? Die Antworten werden ebenfalls gelöscht. Das kann nicht rückgängig gemacht werden.",
     "editor_title": "Umfrage bearbeiten",
-    "back_to_list": "Zurück zu den Umfragen",
     "editor_subtitle": "Änderungen sind erst nach dem Speichern live.",
     "has_responses_title": "Diese Umfrage hat Antworten",
     "has_responses_body": "Entfernte Antwortoptionen bleiben in Ihren Ergebnissen, damit vergangene Antworten ihre Bezeichnungen behalten.",

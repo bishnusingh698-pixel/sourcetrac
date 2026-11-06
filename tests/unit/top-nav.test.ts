@@ -1,9 +1,18 @@
 /**
- * The in-app top bar: every page is reachable, the current one is marked, and
- * Shopify's sidebar stays inside its limits.
+ * The app's navigation, pinned to Shopify's rules and to earlier merchant
+ * feedback.
  *
- * `TopNav` is rendered for real (inside a memory router), not inspected as
- * source, so a broken active state or a missing link fails here.
+ * - Shopify's own admin navigation (`<s-app-nav>`) is the menu, within its
+ *   seven-item limit. The page body never repeats it: the app design
+ *   guidelines ask apps not to replicate the app nav in the body, and Built
+ *   for Shopify counts an app's own menu as an audit failure.
+ * - Inside the body there is only secondary navigation: the current
+ *   section's pages (`SectionNav`), small icon beside label, wrapping (never
+ *   scrolling sideways, never overlapping), with `aria-current` on the page
+ *   you are on; and a title-bar breadcrumb on the survey editor.
+ *
+ * `SectionNav` is rendered for real (inside a memory router), not inspected as
+ * source, so a broken current state or a missing link fails here.
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -13,15 +22,15 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 
-import { TopNav } from "~/components/top-nav";
+import { SectionNav } from "~/components/section-tabs";
 import { createTranslator } from "~/lib/i18n";
-import { activeNavPath, NAV, SECTION_TABS } from "~/lib/nav";
+import { activeNavPath, NAV, SECTION_TABS, sectionFor } from "~/lib/nav";
 
 const ROOT = process.cwd();
 const t = createTranslator("en");
 
 function render(path: string): string {
-  return renderToStaticMarkup(createElement(MemoryRouter, { initialEntries: [path] }, createElement(TopNav, { t })));
+  return renderToStaticMarkup(createElement(MemoryRouter, { initialEntries: [path] }, createElement(SectionNav, { t })));
 }
 
 /** The route file flat-routes maps a nav path to. */
@@ -106,39 +115,65 @@ describe("the nav list", () => {
   });
 });
 
-describe("TopNav", () => {
-  it("renders a link to every page with its translated label", () => {
-    const html = render("/app");
-    for (const item of NAV) {
-      expect(html).toContain(`href="${item.to}"`);
-      expect(html).toContain(t(item.key));
+describe("SectionNav", () => {
+  it.each(Object.entries(SECTION_TABS))("lists every page of %s on each of them", (section, tabs) => {
+    for (const tab of tabs) {
+      expect(sectionFor(tab.to)).toBe(section);
+      const html = render(tab.to);
+      for (const other of tabs) {
+        expect(html).toContain(`href="${other.to}"`);
+        expect(html).toContain(t(other.labelKey));
+      }
+      expect(html).toContain(`aria-label="${t("tabs.label")}"`);
     }
-    expect(html).toContain(`aria-label="${t("nav.label")}"`);
   });
 
-  it("marks exactly one item as the current page, and says so to screen readers", () => {
-    const html = render("/app/surveys/cm123");
-    const current = [...html.matchAll(/<s-clickable[^>]*data-current="true"[^>]*>/g)].map((m) => m[0]);
+  it("marks exactly the page you are on, for screen readers too", () => {
+    const html = render("/app/results");
+    const current = [...html.matchAll(/<a[^>]*aria-current="page"[^>]*>/g)].map((m) => m[0]);
     expect(current).toHaveLength(1);
-    expect(current[0]).toContain('href="/app/surveys"');
-    expect(html.split(t("nav.current")).length - 1).toBe(1);
+    expect(current[0]).toContain('href="/app/results"');
+    expect(current[0]).toContain("st-sectionnav-link--current");
   });
 
-  it("marks nothing on a page outside the menu", () => {
-    expect(render("/app/privacy")).not.toContain('data-current="true"');
+  it("draws a small icon beside each label, never a large one above it", () => {
+    const html = render("/app/surveys");
+    const icons = [...html.matchAll(/<s-icon[^>]*>/g)].map((m) => m[0]);
+    expect(icons).toHaveLength(SECTION_TABS.surveys.length);
+    for (const icon of icons) expect(icon).toContain('size="small"');
+    // Icon and label are siblings inside the same inline link.
+    expect(html).toMatch(/<a [^>]*class="st-sectionnav-link[^"]*"[^>]*><s-icon[^>]*><\/s-icon><span>/);
+  });
+
+  it("shows nothing outside a section with several pages, nor on a detail page", () => {
+    for (const path of ["/app", "/app/plans", "/app/settings", "/app/help", "/app/privacy", "/app/surveys/cm123"]) {
+      expect(render(path), path).toBe("");
+    }
   });
 });
 
 describe("the shell", () => {
   const shell = readFileSync(join(ROOT, "app/routes/app.tsx"), "utf8");
 
-  it("renders the top bar on every page", () => {
-    expect(shell).toMatch(/import \{ TopNav \} from "~\/components\/top-nav"/);
-    expect(shell).toMatch(/<TopNav t=\{t\} \/>/);
+  it("builds Shopify's admin navigation from the list, and repeats it nowhere in the body", () => {
+    expect(shell).toMatch(/<s-app-nav>[\s\S]*NAV\.filter\(\(item\) => item\.sidebar\)[\s\S]*<\/s-app-nav>/);
+    // NAV is read once, for <s-app-nav>: the import and that one use.
+    expect(shell.match(/\bNAV\b/g)?.length).toBe(2);
+    expect(existsSync(join(ROOT, "app/components/top-nav.tsx"))).toBe(false);
+    expect(shell).toMatch(/<SectionNav t=\{t\} \/>/);
   });
 
-  it("builds Shopify's sidebar from the same list", () => {
-    expect(shell).toMatch(/NAV\.filter\(\(item\) => item\.sidebar\)/);
+  it("gives the survey editor a title-bar breadcrumb back to Surveys", () => {
+    expect(shell).toMatch(/<s-link slot="breadcrumb-actions" href=\{breadcrumb\.to\}>/);
+    const editor = readFileSync(join(ROOT, "app/routes/app.surveys.$id.tsx"), "utf8");
+    expect(editor).toMatch(/breadcrumb: \{ to: "\/app\/surveys", labelKey: "nav\.surveys" \}/);
+  });
+
+  it("is drawn by the shell alone, never again by a page", () => {
+    const routes = readdirSync(join(ROOT, "app/routes")).filter((name) => name !== "app.tsx" && name.endsWith(".tsx"));
+    for (const file of routes) {
+      expect(readFileSync(join(ROOT, "app/routes", file), "utf8"), file).not.toMatch(/SectionNav|SectionTabs|TopNav/);
+    }
   });
 });
 
@@ -160,30 +195,25 @@ describe("client components", () => {
   });
 });
 
-describe("the menu's layout", () => {
+describe("the section bar's layout", () => {
   const css = readFileSync(join(ROOT, "app/styles/app.css"), "utf8");
-  const start = css.indexOf("/* --- Top navigation");
+  const start = css.indexOf("/* --- Section navigation");
   const block = css.slice(start, css.indexOf("/* --- Charts", start));
 
-  it("never scrolls sideways", () => {
-    expect(block).not.toMatch(/overflow-x|nowrap/);
+  it("wraps instead of scrolling sideways, so items never overlap on a phone", () => {
+    expect(start).toBeGreaterThan(-1);
+    expect(block).toMatch(/\.st-sectionnav-list \{[^}]*flex-wrap: wrap;/);
+    expect(block).toMatch(/\.st-sectionnav-list \{[^}]*max-inline-size: 100%;/);
+    expect(block).not.toMatch(/overflow-x|nowrap|overflow: (auto|scroll)/);
   });
 
-  it("fills its rows evenly at every width, with no lone tile on the last row", () => {
-    const columns = [...block.matchAll(/repeat\((\d+), minmax\(0, 1fr\)\)/g)].map((m) => Number(m[1]));
-    expect(columns.length).toBeGreaterThanOrEqual(2);
-    for (const cols of columns) {
-      const lastRow = NAV.length % cols;
-      expect(lastRow === 0 || lastRow >= cols - 1, `${cols} columns leave ${lastRow} on the last row`).toBe(true);
-    }
+  it("keeps icon and label on one line, with a 44px touch target", () => {
+    expect(block).toMatch(/\.st-sectionnav-link \{[^}]*display: inline-flex;[^}]*align-items: center;/);
+    expect(block).toMatch(/\.st-sectionnav-link \{[^}]*min-block-size: 2\.75rem;/);
+    expect(block).not.toMatch(/flex-direction: column/);
   });
 
-  it("puts each label under its icon inside its own tile", () => {
-    const html = render("/app");
-    expect(html.match(/class="st-topnav-tile"/g)).toHaveLength(NAV.length);
-    // Each link is a flex item of its own cell, so the rows cannot overlap,
-    // without overriding Polaris's own display on the element.
-    expect(block).toMatch(/\.st-topnav-cell \{\s*display: flex;/);
-    expect(block).not.toMatch(/s-clickable \{[^}]*display:/);
+  it("takes colour only from Polaris tokens", () => {
+    expect(block).not.toMatch(/#[0-9a-f]{3,8}\b|rgb\(|hsl\(/i);
   });
 });

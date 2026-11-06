@@ -4,7 +4,6 @@
     "tagline": "Ontdek wat klanten aantrekt"
   },
   "nav": {
-    "label": "Hoofdnavigatie",
     "dashboard": "Overzicht",
     "onboarding": "Aan de slag",
     "settings": "Enquête",
@@ -17,7 +16,6 @@
     "home": "Start",
     "channels": "Kanaalrapport",
     "preferences": "Instellingen",
-    "current": "(huidige pagina)",
     "templates": "Sjablonen",
     "analytics": "Analyse"
   },
@@ -397,7 +395,6 @@
     "delete": "Verwijderen",
     "delete_confirm": "“{{name}}” verwijderen? De antwoorden worden ook verwijderd. Dit kan niet ongedaan worden gemaakt.",
     "editor_title": "Enquête bewerken",
-    "back_to_list": "Terug naar enquêtes",
     "editor_subtitle": "Wijzigingen zijn pas live nadat je opslaat.",
     "has_responses_title": "Deze enquête heeft antwoorden",
     "has_responses_body": "Verwijderde antwoordopties blijven in je resultaten staan, zodat eerdere antwoorden hun labels behouden.",

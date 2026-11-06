@@ -4,7 +4,6 @@
     "tagline": "Know what brings customers in"
   },
   "nav": {
-    "label": "Main",
     "dashboard": "Dashboard",
     "onboarding": "Get started",
     "settings": "Survey",
@@ -17,7 +16,6 @@
     "home": "Home",
     "channels": "Channel report",
     "preferences": "Settings",
-    "current": "(current page)",
     "templates": "Templates",
     "analytics": "Analytics"
   },
@@ -390,7 +388,6 @@
     "delete": "Delete",
     "delete_confirm": "Delete “{{name}}”? Its responses will also be deleted. This can’t be undone.",
     "editor_title": "Edit survey",
-    "back_to_list": "Back to surveys",
     "editor_subtitle": "Changes are not live until you save.",
     "has_responses_title": "This survey has responses",
     "has_responses_body": "Removed answer options stay in your results so past answers keep their labels.",

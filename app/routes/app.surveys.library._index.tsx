@@ -1,6 +1,5 @@
 import { Form, redirect, useActionData, useLoaderData, useNavigation, useSearchParams, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from "react-router";
 
-import { SectionTabs } from "~/components/section-tabs";
 import { Banner, PageIntro } from "~/components/admin-ui";
 import { adminTitle, useAdminI18n } from "~/lib/i18n/use-admin-i18n";
 import { createTranslator } from "~/lib/i18n";
@@ -202,7 +201,6 @@ export default function TemplateLibrary() {
 
   return (
     <s-stack gap="base">
-      <SectionTabs section="surveys" t={t} />
       <PageIntro
         actions={
           <Form method="post">

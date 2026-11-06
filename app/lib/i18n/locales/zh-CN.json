@@ -4,7 +4,6 @@
     "tagline": "了解顾客从哪里来"
   },
   "nav": {
-    "label": "主导航",
     "dashboard": "概览",
     "onboarding": "开始使用",
     "settings": "调查问卷",
@@ -17,7 +16,6 @@
     "home": "首页",
     "channels": "渠道报告",
     "preferences": "设置",
-    "current": "（当前页面）",
     "templates": "模板",
     "analytics": "分析"
   },
@@ -397,7 +395,6 @@
     "delete": "删除",
     "delete_confirm": "删除“{{name}}”？其回答也会被删除。此操作无法撤销。",
     "editor_title": "编辑问卷",
-    "back_to_list": "返回问卷列表",
     "editor_subtitle": "保存后更改才会生效。",
     "has_responses_title": "此问卷已有回答",
     "has_responses_body": "已删除的答案选项仍会保留在结果中，以便过往回答保留其标签。",

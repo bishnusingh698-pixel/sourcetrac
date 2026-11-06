@@ -4,7 +4,6 @@
     "tagline": "Scopri cosa attira i tuoi clienti"
   },
   "nav": {
-    "label": "Navigazione principale",
     "dashboard": "Dashboard",
     "onboarding": "Introduzione",
     "settings": "Sondaggio",
@@ -17,7 +16,6 @@
     "home": "Home",
     "channels": "Report canali",
     "preferences": "Impostazioni",
-    "current": "(pagina attuale)",
     "templates": "Modelli",
     "analytics": "Analisi"
   },
@@ -397,7 +395,6 @@
     "delete": "Elimina",
     "delete_confirm": "Eliminare «{{name}}»? Verranno eliminate anche le sue risposte. L’operazione è irreversibile.",
     "editor_title": "Modifica sondaggio",
-    "back_to_list": "Torna ai sondaggi",
     "editor_subtitle": "Le modifiche non sono attive finché non salvi.",
     "has_responses_title": "Questo sondaggio ha risposte",
     "has_responses_body": "Le opzioni rimosse restano nei risultati, così le risposte passate mantengono le loro etichette.",
