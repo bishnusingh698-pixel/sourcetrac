@@ -130,9 +130,16 @@ export async function noteLiveSubscription(params: {
       );
     } else if (existing && shopKey) {
       // Learn the GID key once it is known, so a later domain change still matches.
+      // Best effort: the domain key already matches; a failure is logged and
+      // the next notice or page load tries again.
       await retryDb(() =>
         db.trialLedger.updateMany({ where: { domainKey, shopKey: null }, data: { shopKey } }),
-      ).catch(() => undefined);
+      ).catch((error: unknown) => {
+        logger.warn("trial_shop_key_update_failed", {
+          shop_id: params.shopInternalId,
+          error_message: error instanceof Error ? error.message : String(error),
+        });
+      });
     }
 
     await retryDb(() =>
@@ -144,16 +151,4 @@ export async function noteLiveSubscription(params: {
       error_message: error instanceof Error ? error.message : String(error),
     });
   }
-}
-
-/**
- * The trial the shop is in right now, or null: a paid plan whose live
- * subscription's trial has not ended.
- */
-export function activeTrialEnd(
-  shop: { plan: string; planStatus: string; trialEndsAt: Date | null },
-  now = new Date(),
-): Date | null {
-  if (shop.plan === "free" || shop.planStatus !== "active" || !shop.trialEndsAt) return null;
-  return shop.trialEndsAt.getTime() > now.getTime() ? shop.trialEndsAt : null;
 }

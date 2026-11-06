@@ -56,55 +56,51 @@ export const action = async ({ request }: { request: Request }) => {
   const triggeredAtParsed = triggeredHeader ? new Date(triggeredHeader) : null;
   const triggeredAt = triggeredAtParsed && !Number.isNaN(triggeredAtParsed.getTime()) ? triggeredAtParsed : null;
 
-  let claim: Awaited<ReturnType<typeof claimWebhook>>;
-  try {
-    claim = await claimWebhook({
-      webhookId,
-      topic,
-      apiVersion: verified.apiVersion ?? null,
-    });
-  } catch (error) {
-    // The ledger is unreachable (typically Neon waking). Nothing was done, so
-    // a logged 500 lets Shopify retry the whole delivery.
-    logger.error("webhook_claim_failed", {
-      request_id: requestId,
-      topic,
-      webhook_id: webhookId,
-      error_message: error instanceof Error ? error.message : String(error),
-    });
-    return new Response(JSON.stringify({ error: "processing_failed" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  if (!claim.claimed && claim.inFlight) {
-    // Another request is still working on this delivery (typically Shopify's
-    // timeout retry landing during a cold start). A 200 here would end Shopify's
-    // retries, so if that first attempt then fails the order is lost for good.
-    // 503 keeps Shopify retrying; the next attempt finds it processed (200) or
-    // failed (re-claimed and redone).
-    logger.info("webhook_in_flight_retry_later", { request_id: requestId, topic, webhook_id: webhookId });
-    return new Response(JSON.stringify({ received: false, in_flight: true }), {
-      status: 503,
-      headers: { "Content-Type": "application/json", "Retry-After": "30" },
-    });
-  }
-
-  if (!claim.claimed) {
-    logger.info("webhook_duplicate_skipped", { request_id: requestId, topic, webhook_id: webhookId });
-    return new Response(JSON.stringify({ received: true, duplicate: true }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  // The work runs as one promise that records its own outcome (processed, or
-  // failed so a retry re-claims it). The reply races it against Shopify's
-  // five-second budget: past that, Shopify has already counted the delivery
-  // as failed, so answering 503 lets it retry, and the retry finds the work
-  // done (200) or still running (503 again) instead of a timeout.
+  // Everything from the claim on runs as one promise that records its own
+  // outcome (processed, or failed so a retry re-claims it). The reply races it
+  // against Shopify's five-second budget, counted from here: the claim is the
+  // first database write, the very thing that stalls while Neon wakes. Past
+  // the budget Shopify has already counted the delivery as failed, so a 503
+  // lets it retry, and the retry finds the work done (200) or still running
+  // (503 again) instead of timing out.
   const work = (async (): Promise<Response> => {
+    let claim: Awaited<ReturnType<typeof claimWebhook>>;
+    try {
+      claim = await claimWebhook({
+        webhookId,
+        topic,
+        apiVersion: verified.apiVersion ?? null,
+      });
+    } catch (error) {
+      // The ledger is unreachable (typically Neon waking). Nothing was done, so
+      // a logged 500 lets Shopify retry the whole delivery.
+      logger.error("webhook_claim_failed", {
+        request_id: requestId,
+        topic,
+        webhook_id: webhookId,
+        error_message: error instanceof Error ? error.message : String(error),
+      });
+      return json(500, { error: "processing_failed" });
+    }
+
+    if (!claim.claimed && claim.inFlight) {
+      // Another request is still working on this delivery (typically Shopify's
+      // timeout retry landing during a cold start). A 200 here would end
+      // Shopify's retries, so if that first attempt then fails the order is
+      // lost for good. 503 keeps Shopify retrying; the next attempt finds it
+      // processed (200) or failed (re-claimed and redone).
+      logger.info("webhook_in_flight_retry_later", { request_id: requestId, topic, webhook_id: webhookId });
+      return new Response(JSON.stringify({ received: false, in_flight: true }), {
+        status: 503,
+        headers: { "Content-Type": "application/json", "Retry-After": "30" },
+      });
+    }
+
+    if (!claim.claimed) {
+      logger.info("webhook_duplicate_skipped", { request_id: requestId, topic, webhook_id: webhookId });
+      return json(200, { received: true, duplicate: true });
+    }
+
     try {
       if (COMPLIANCE_TOPICS.has(topic)) {
         await handleCompliance(topic, shop, payload, webhookId, triggeredAt);

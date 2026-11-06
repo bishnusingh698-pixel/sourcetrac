@@ -241,7 +241,10 @@ export async function shopifyGraphql<T>(
         // THROTTLED: the query never ran. Shopify's throttle status says how
         // long until the bucket can pay for it; wait that long, not a guess.
         if (payload.errors.some((e) => e.extensions?.code === "THROTTLED")) {
-          throw new ShopifyThrottledError(payload.errors, throttleWaitMs(cost) ?? undefined);
+          // A zero wait (the bucket already covers the cost, a race) falls
+          // back to the jittered backoff rather than retrying at once.
+          const wait = throttleWaitMs(cost);
+          throw new ShopifyThrottledError(payload.errors, wait && wait > 0 ? wait : undefined);
         }
         throw new ShopifyGraphQLError(payload.errors);
       }
