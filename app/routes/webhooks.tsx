@@ -99,64 +99,92 @@ export const action = async ({ request }: { request: Request }) => {
     });
   }
 
-  try {
-    if (COMPLIANCE_TOPICS.has(topic)) {
-      await handleCompliance(topic, shop, payload, webhookId, triggeredAt);
-      await markWebhookProcessed(webhookId, null);
-      return new Response(JSON.stringify({ received: true }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
+  // The work runs as one promise that records its own outcome (processed, or
+  // failed so a retry re-claims it). The reply races it against Shopify's
+  // five-second budget: past that, Shopify has already counted the delivery
+  // as failed, so answering 503 lets it retry, and the retry finds the work
+  // done (200) or still running (503 again) instead of a timeout.
+  const work = (async (): Promise<Response> => {
+    try {
+      if (COMPLIANCE_TOPICS.has(topic)) {
+        await handleCompliance(topic, shop, payload, webhookId, triggeredAt);
+        await markWebhookProcessed(webhookId, null);
+        return json(200, { received: true });
+      }
+
+      // Only billing notices call Shopify. Resolving a token for every order
+      // delivery cost a lookup (and possibly a refresh) inside Shopify's
+      // five-second budget for nothing.
+      const accessToken = topic === "app_subscriptions/update" ? await getAccessTokenForShop(shop) : null;
+
+      const result = await processWebhook({ topic, shopDomain: shop, payload, accessToken, triggeredAt });
+
+      const shopInternalId = "shopInternalId" in result ? result.shopInternalId : null;
+      await markWebhookProcessed(webhookId, shopInternalId || null);
+      logger.info("webhook_processed", { request_id: requestId, topic, action: result.action });
+
+      // Fire-and-forget daily purge, and any deferred redact still queued for any
+      // shop; the database is already awake here.
+      void maybeRunRetention();
+      void maybeRunAllPendingDeletions();
+
+      return json(200, { received: true });
+    } catch (error) {
+      // Returning 500 asks Shopify to retry, which is correct for a transient
+      // database or network fault. markWebhookFailed keeps the error for triage.
+      logger.error("webhook_failed_retrying", {
+        request_id: requestId,
+        topic,
+        webhook_id: webhookId,
+        error_message: error instanceof Error ? error.message : String(error),
       });
+
+      await markWebhookFailed(webhookId, error instanceof Error ? error.message : String(error)).catch(
+        (markError: unknown) => {
+          // Never let a bookkeeping failure mask the original error, but do not
+          // lose it either: an unmarked row is only re-claimed once it is stale.
+          logger.warn("webhook_mark_failed_failed", {
+            request_id: requestId,
+            webhook_id: webhookId,
+            error_message: markError instanceof Error ? markError.message : String(markError),
+          });
+        },
+      );
+
+      return json(500, { error: "processing_failed" });
     }
+  })();
 
-    // Only billing notices call Shopify. Resolving a token for every order
-    // delivery cost a lookup (and possibly a refresh) inside Shopify's
-    // five-second budget for nothing.
-    const accessToken = topic === "app_subscriptions/update" ? await getAccessTokenForShop(shop) : null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), replyBudgetMs);
+  });
+  const answered = await Promise.race([work, late]);
+  clearTimeout(timer);
+  if (answered) return answered;
 
-    const result = await processWebhook({ topic, shopDomain: shop, payload, accessToken, triggeredAt });
-
-    const shopInternalId = "shopInternalId" in result ? result.shopInternalId : null;
-    await markWebhookProcessed(webhookId, shopInternalId || null);
-    logger.info("webhook_processed", { request_id: requestId, topic, action: result.action });
-
-    // Fire-and-forget daily purge, and any deferred redact still queued for any
-    // shop; the database is already awake here.
-    void maybeRunRetention();
-    void maybeRunAllPendingDeletions();
-
-    return new Response(JSON.stringify({ received: true }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-  } catch (error) {
-    // Returning 500 asks Shopify to retry, which is correct for a transient
-    // database or network fault. markWebhookFailed keeps the error for triage.
-    logger.error("webhook_failed_retrying", {
-      request_id: requestId,
-      topic,
-      webhook_id: webhookId,
-      error_message: error instanceof Error ? error.message : String(error),
-    });
-
-    await markWebhookFailed(webhookId, error instanceof Error ? error.message : String(error)).catch(
-      (markError: unknown) => {
-        // Never let a bookkeeping failure mask the original error, but do not
-        // lose it either: an unmarked row is only re-claimed once it is stale.
-        logger.warn("webhook_mark_failed_failed", {
-          request_id: requestId,
-          webhook_id: webhookId,
-          error_message: markError instanceof Error ? markError.message : String(markError),
-        });
-      },
-    );
-
-    return new Response(JSON.stringify({ error: "processing_failed" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  logger.warn("webhook_reply_budget_exceeded", { request_id: requestId, topic, webhook_id: webhookId, budget_ms: replyBudgetMs });
+  return new Response(JSON.stringify({ received: false, in_flight: true }), {
+    status: 503,
+    headers: { "Content-Type": "application/json", "Retry-After": "30" },
+  });
 };
+
+function json(status: number, body: Record<string, unknown>): Response {
+  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+}
+
+/**
+ * How long the route works before answering. Shopify fails a delivery that is
+ * not answered within five seconds; 4.5 s leaves room for the response itself.
+ */
+const DEFAULT_REPLY_BUDGET_MS = 4_500;
+let replyBudgetMs = DEFAULT_REPLY_BUDGET_MS;
+
+/** Test seam: a shorter budget, or null for the default. */
+export function setWebhookReplyBudgetForTests(ms: number | null): void {
+  replyBudgetMs = ms ?? DEFAULT_REPLY_BUDGET_MS;
+}
 
 /**
  * Resolve the internal shop id for the token fallback. Kept in a helper so the
